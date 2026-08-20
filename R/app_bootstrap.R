@@ -32,6 +32,7 @@ required_packages <- c(
   "TOSTER",
   "MASS",
   "nnet",
+  "ordinal",
   "geepack",
   "lme4",
   "lmerTest",

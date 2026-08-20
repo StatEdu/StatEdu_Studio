@@ -141,7 +141,12 @@ prepare_regression_model_data_static <- function(data, variables, variable_info 
   for (name in as.character(categorical_info$name)) {
     measurement <- as.character(categorical_info$measurement[match(name, categorical_info$name)] %||% "")
     values <- data[[name]]
-    data[[name]] <- factor(as.character(values), ordered = identical(measurement, "ordered"))
+    existing_levels <- if (is.factor(values)) levels(values) else NULL
+    data[[name]] <- if (length(existing_levels) > 0L) {
+      factor(as.character(values), levels = existing_levels, ordered = identical(measurement, "ordered"))
+    } else {
+      factor(as.character(values), ordered = identical(measurement, "ordered"))
+    }
     reference <- trimws(named_value(reference_values, name, ""))
     if (nzchar(reference) && reference %in% levels(data[[name]]) && !isTRUE(is.ordered(data[[name]]))) {
       data[[name]] <- stats::relevel(data[[name]], ref = reference)
@@ -184,6 +189,7 @@ regression_preflight <- function(data, dependent, predictors, formula, variable_
   if (inherits(frame, "error")) {
     return(list(ok = FALSE, skipped = regression_guard_row(dependent, predictors, conditionMessage(frame), NA_integer_, variable_info, labels)))
   }
+  frame <- droplevels(frame)
   n <- nrow(frame)
   if (n < 3) {
     return(list(ok = FALSE, skipped = regression_guard_row(dependent, predictors, "At least 3 complete cases are required.", n, variable_info, labels)))
@@ -219,19 +225,17 @@ regression_preflight <- function(data, dependent, predictors, formula, variable_
       labels
     )))
   }
-  warnings <- list()
   if (rank < ncol(model_matrix)) {
-    warnings[[length(warnings) + 1L]] <- regression_guard_row(
+    return(list(ok = FALSE, skipped = regression_guard_row(
       dependent,
       predictors,
-      "Model matrix is rank deficient; one or more coefficients may be aliased because of perfect multicollinearity.",
+      "Model matrix is rank deficient; coefficients are not uniquely estimable because of perfect multicollinearity.",
       n,
       variable_info,
-      labels,
-      type = "Warning"
-    )
+      labels
+    )))
   }
-  list(ok = TRUE, frame = frame, n = n, rank = rank, residual_df = residual_df, warnings = regression_bind_guard_rows(warnings))
+  list(ok = TRUE, frame = frame, n = n, rank = rank, residual_df = residual_df, warnings = data.frame())
 }
 
 coefficient_collinearity <- function(model_matrix) {
@@ -336,6 +340,48 @@ coeftest_table <- function(model, vcov_matrix = NULL) {
   )
 }
 
+regression_bootstrap_status <- function(valid, requested) {
+  valid <- as.integer(valid %||% 0L)
+  requested <- as.integer(requested %||% 0L)
+  ratio <- if (requested > 0L) valid / requested else 0
+  if (valid < max(20L, ceiling(.50 * requested))) return("Unreliable")
+  if (ratio < .80) return("Caution")
+  "Adequate"
+}
+
+regression_bootstrap_p <- function(values) {
+  values <- suppressWarnings(as.numeric(values %||% numeric(0)))
+  values <- values[is.finite(values)]
+  n <- length(values)
+  if (n == 0L) return(NA_real_)
+  lower <- (sum(values <= 0) + 1) / (n + 1)
+  upper <- (sum(values >= 0) + 1) / (n + 1)
+  min(1, 2 * min(lower, upper))
+}
+
+regression_bootstrap_term_summary <- function(point, values, requested, conf = .95, ci_method = "bias_corrected") {
+  values <- suppressWarnings(as.numeric(values %||% numeric(0)))
+  values <- values[is.finite(values)]
+  valid <- length(values)
+  status <- regression_bootstrap_status(valid, requested)
+  interval_available <- !identical(status, "Unreliable") && is.finite(point)
+  interval <- if (interval_available) {
+    bootstrap_ci(point, values, conf = conf, method = ci_method)
+  } else {
+    c(NA_real_, NA_real_)
+  }
+  c(
+    Boot_SE = if (valid > 1L) stats::sd(values) else NA_real_,
+    Boot_LLCI = interval[[1L]],
+    Boot_ULCI = interval[[2L]],
+    Boot_p = if (interval_available) regression_bootstrap_p(values) else NA_real_,
+    Requested = requested,
+    Valid = valid,
+    Valid_Pct = if (requested > 0L) 100 * valid / requested else NA_real_,
+    Status = status
+  )
+}
+
 bootstrap_coef_table <- function(data, formula, r = 2000, conf = .95, seed = 1234, ci_method = "bias_corrected") {
   complete_data <- model.frame(formula, data = data, na.action = na.omit)
   model_terms <- stats::terms(formula)
@@ -355,23 +401,20 @@ bootstrap_coef_table <- function(data, formula, r = 2000, conf = .95, seed = 123
   original_fit <- stats::lm.fit(model_matrix, outcome)
   point_estimates <- as.numeric(original_fit$coefficients)
   names(point_estimates) <- terms
-  limits <- t(vapply(terms, function(term) {
-    bootstrap_ci(point_estimates[[term]], samples[, term], conf = conf, method = ci_method)
-  }, numeric(2)))
-
-  boot_p <- function(x) {
-    n <- sum(!is.na(x))
-    lower <- (sum(x <= 0, na.rm = TRUE) + 1) / (n + 1)
-    upper <- (sum(x >= 0, na.rm = TRUE) + 1) / (n + 1)
-    min(1, 2 * min(lower, upper))
-  }
+  summaries <- lapply(terms, function(term) {
+    regression_bootstrap_term_summary(point_estimates[[term]], samples[, term], nrow(samples), conf, ci_method)
+  })
 
   data.frame(
     Term = terms,
-    Boot_SE = apply(samples, 2, stats::sd, na.rm = TRUE),
-    Boot_LLCI = limits[, 1],
-    Boot_ULCI = limits[, 2],
-    Boot_p = apply(samples, 2, boot_p),
+    Boot_SE = vapply(summaries, function(item) as.numeric(item[["Boot_SE"]]), numeric(1)),
+    Boot_LLCI = vapply(summaries, function(item) as.numeric(item[["Boot_LLCI"]]), numeric(1)),
+    Boot_ULCI = vapply(summaries, function(item) as.numeric(item[["Boot_ULCI"]]), numeric(1)),
+    Boot_p = vapply(summaries, function(item) as.numeric(item[["Boot_p"]]), numeric(1)),
+    Requested = vapply(summaries, function(item) as.integer(item[["Requested"]]), integer(1)),
+    Valid = vapply(summaries, function(item) as.integer(item[["Valid"]]), integer(1)),
+    `Valid %` = vapply(summaries, function(item) as.numeric(item[["Valid_Pct"]]), numeric(1)),
+    Status = vapply(summaries, function(item) as.character(item[["Status"]]), character(1)),
     row.names = NULL,
     check.names = FALSE
   )
@@ -382,28 +425,60 @@ bootstrap_summary_table <- function(boot_samples, original_fit, conf = .95, ci_m
     return(NULL)
   }
   point_estimates <- stats::coef(original_fit)
-  limits <- t(vapply(colnames(boot_samples), function(term) {
-    bootstrap_ci(point_estimates[[term]], boot_samples[, term], conf = conf, method = ci_method)
-  }, numeric(2)))
-
-  boot_p <- function(x) {
-    n <- sum(!is.na(x))
-    if (n == 0) {
-      return(NA_real_)
-    }
-    lower <- (sum(x <= 0, na.rm = TRUE) + 1) / (n + 1)
-    upper <- (sum(x >= 0, na.rm = TRUE) + 1) / (n + 1)
-    min(1, 2 * min(lower, upper))
-  }
+  summaries <- lapply(colnames(boot_samples), function(term) {
+    regression_bootstrap_term_summary(point_estimates[[term]], boot_samples[, term], nrow(boot_samples), conf, ci_method)
+  })
 
   data.frame(
     Term = names(coef(original_fit)),
-    Boot_SE = apply(boot_samples, 2, stats::sd, na.rm = TRUE),
-    Boot_LLCI = limits[, 1],
-    Boot_ULCI = limits[, 2],
-    Boot_p = apply(boot_samples, 2, boot_p),
+    Boot_SE = vapply(summaries, function(item) as.numeric(item[["Boot_SE"]]), numeric(1)),
+    Boot_LLCI = vapply(summaries, function(item) as.numeric(item[["Boot_LLCI"]]), numeric(1)),
+    Boot_ULCI = vapply(summaries, function(item) as.numeric(item[["Boot_ULCI"]]), numeric(1)),
+    Boot_p = vapply(summaries, function(item) as.numeric(item[["Boot_p"]]), numeric(1)),
+    Requested = vapply(summaries, function(item) as.integer(item[["Requested"]]), integer(1)),
+    Valid = vapply(summaries, function(item) as.integer(item[["Valid"]]), integer(1)),
+    `Valid %` = vapply(summaries, function(item) as.numeric(item[["Valid_Pct"]]), numeric(1)),
+    Status = vapply(summaries, function(item) as.character(item[["Status"]]), character(1)),
     row.names = NULL,
     check.names = FALSE
+  )
+}
+
+regression_model_test <- function(model, vcov_matrix = NULL) {
+  model_summary <- summary(model)
+  if (is.null(vcov_matrix)) {
+    f_stat <- unname(model_summary$fstatistic["value"])
+    f_df1 <- unname(model_summary$fstatistic["numdf"])
+    f_df2 <- unname(model_summary$fstatistic["dendf"])
+    return(list(
+      statistic = f_stat,
+      df1 = f_df1,
+      df2 = f_df2,
+      p = stats::pf(f_stat, f_df1, f_df2, lower.tail = FALSE),
+      label = "F"
+    ))
+  }
+  coefficients <- stats::coef(model)
+  terms <- setdiff(names(coefficients), "(Intercept)")
+  terms <- terms[is.finite(coefficients[terms]) & terms %in% rownames(vcov_matrix)]
+  if (length(terms) == 0L) {
+    return(list(statistic = NA_real_, df1 = NA_real_, df2 = stats::df.residual(model), p = NA_real_, label = "Robust Wald F"))
+  }
+  beta <- coefficients[terms]
+  covariance <- vcov_matrix[terms, terms, drop = FALSE]
+  inverse_covariance <- tryCatch(solve(covariance), error = function(e) NULL)
+  if (is.null(inverse_covariance)) {
+    return(list(statistic = NA_real_, df1 = length(beta), df2 = stats::df.residual(model), p = NA_real_, label = "Robust Wald F"))
+  }
+  df1 <- length(beta)
+  df2 <- stats::df.residual(model)
+  statistic <- as.numeric(t(beta) %*% inverse_covariance %*% beta / df1)
+  list(
+    statistic = statistic,
+    df1 = df1,
+    df2 = df2,
+    p = if (is.finite(statistic) && df1 > 0 && df2 > 0) stats::pf(statistic, df1, df2, lower.tail = FALSE) else NA_real_,
+    label = "Robust Wald F"
   )
 }
 
@@ -599,9 +674,7 @@ prepare_single_regression_result <- function(
   }
 
   model_summary <- summary(model)
-  f_stat <- unname(model_summary$fstatistic["value"])
-  f_df1 <- unname(model_summary$fstatistic["numdf"])
-  f_df2 <- unname(model_summary$fstatistic["dendf"])
+  model_test <- regression_model_test(model, vcov_matrix)
 
   result <- list(
     model = model,
@@ -609,10 +682,11 @@ prepare_single_regression_result <- function(
     n = stats::nobs(model),
     r_squared = unname(model_summary$r.squared),
     adjusted_r_squared = unname(model_summary$adj.r.squared),
-    f_statistic = f_stat,
-    f_df1 = f_df1,
-    f_df2 = f_df2,
-    f_p = stats::pf(f_stat, f_df1, f_df2, lower.tail = FALSE),
+    f_statistic = model_test$statistic,
+    f_df1 = model_test$df1,
+    f_df2 = model_test$df2,
+    f_p = model_test$p,
+    model_test_label = model_test$label,
     dw_d = dw_d,
     dw_crit = dw_crit,
     normality_statistic = normality_statistic,

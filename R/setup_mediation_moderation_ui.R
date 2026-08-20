@@ -4715,18 +4715,56 @@ mediation_moderation_result_diagram_ui <- function(result, language = statedu_in
   )
 }
 
+mediation_moderation_boot_status <- function(valid, requested) {
+  valid <- as.integer(valid %||% 0L)
+  requested <- as.integer(requested %||% 0L)
+  ratio <- if (requested > 0L) valid / requested else 0
+  if (valid < max(20L, ceiling(.50 * requested))) return("Unreliable")
+  if (ratio < .80) return("Caution")
+  "Adequate"
+}
+
+mediation_moderation_boot_p <- function(values) {
+  values <- mediation_moderation_numeric_vector(values)
+  values <- values[is.finite(values)]
+  n <- length(values)
+  if (n == 0L) return(NA_real_)
+  lower <- (sum(values <= 0) + 1) / (n + 1)
+  upper <- (sum(values >= 0) + 1) / (n + 1)
+  min(1, 2 * min(lower, upper))
+}
+
 mediation_moderation_boot_summary <- function(point, boot_values, ci_method = "bias_corrected") {
+  requested <- length(boot_values %||% numeric(0))
   boot_values <- mediation_moderation_numeric_vector(boot_values)
   boot_values <- boot_values[is.finite(boot_values)]
-  if (length(boot_values) == 0 || !is.finite(point)) {
-    return(c(Estimate = point, `Boot SE` = NA_real_, LLCI = NA_real_, ULCI = NA_real_))
+  valid <- length(boot_values)
+  status <- mediation_moderation_boot_status(valid, requested)
+  interval_available <- !identical(status, "Unreliable") && is.finite(point)
+  interval <- if (interval_available) {
+    bootstrap_ci(point, boot_values, method = ci_method)
+  } else {
+    c(NA_real_, NA_real_)
   }
-  c(
+  summary <- c(
     Estimate = point,
-    `Boot SE` = stats::sd(boot_values),
-    LLCI = bootstrap_ci(point, boot_values, method = ci_method)[[1]],
-    ULCI = bootstrap_ci(point, boot_values, method = ci_method)[[2]]
+    `Boot SE` = if (valid > 1L) stats::sd(boot_values) else NA_real_,
+    LLCI = interval[[1]],
+    ULCI = interval[[2]],
+    `Boot p` = if (interval_available) mediation_moderation_boot_p(boot_values) else NA_real_,
+    Valid = valid,
+    Requested = requested,
+    `Valid %` = if (requested > 0L) 100 * valid / requested else NA_real_
   )
+  attr(summary, "status") <- status
+  summary
+}
+
+mediation_moderation_effect_sum <- function(values) {
+  values <- mediation_moderation_numeric_vector(values)
+  if (length(values) == 0L) return(0)
+  if (any(!is.finite(values))) return(NA_real_)
+  sum(values)
 }
 
 mediation_moderation_effect_variable_label <- function(name, variable_info = NULL, labels = character(0)) {
@@ -4847,9 +4885,22 @@ mediation_moderation_effect_table <- function(
   model_label = NULL
 ) {
   model_label <- as.character(model_label %||% paste("Model", model))[[1L]]
+  diagnostic_rows <- list()
   rows <- lapply(names(effects), function(effect_name) {
     summary <- mediation_moderation_boot_summary(effects[[effect_name]], boot_matrix[, effect_name], ci_method = ci_method)
     label_parts <- mediation_moderation_effect_label_parts(effect_name, focal, y, mediators, w, variable_info, labels)
+    diagnostic_rows[[length(diagnostic_rows) + 1L]] <<- data.frame(
+      Model = model_label,
+      X = focal,
+      Effect = label_parts$effect,
+      Path = label_parts$path,
+      Requested = as.integer(summary[["Requested"]]),
+      Valid = as.integer(summary[["Valid"]]),
+      `Valid %` = format_decimal3(summary[["Valid %"]]),
+      Status = as.character(attr(summary, "status", exact = TRUE) %||% "Unreliable"),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
     data.frame(
       Model = model_label,
       X = focal,
@@ -4859,6 +4910,7 @@ mediation_moderation_effect_table <- function(
       `Boot SE` = format_decimal3(summary[["Boot SE"]]),
       LLCI = format_decimal3(summary[["LLCI"]]),
       ULCI = format_decimal3(summary[["ULCI"]]),
+      `Boot p` = format_p(summary[["Boot p"]]),
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -4885,7 +4937,9 @@ mediation_moderation_effect_table <- function(
       table <- table[keep, , drop = FALSE]
     }
   }
-  attr(table, "compact_column_widths") <- c(10, 7, 18, 35, 10, 10, 10, 10)
+  diagnostics <- if (length(diagnostic_rows)) do.call(rbind, diagnostic_rows) else data.frame()
+  attr(table, "bootstrap_diagnostics") <- diagnostics
+  attr(table, "compact_column_widths") <- c(9, 6, 17, 31, 8, 8, 8, 8, 5)
   table
 }
 
@@ -5231,7 +5285,8 @@ mediation_moderation_fast_boot_fit <- function(context, rows) {
       `Indirect: X -> M2 -> Y` = a2 * b2,
       `Indirect: X -> M1 -> M2 -> Y` = a1 * d21 * b2
     )
-    effects <- c(effects, `Total indirect` = sum(effects[grepl("^Indirect", names(effects))], na.rm = TRUE), Total = direct_total + sum(effects[grepl("^Indirect", names(effects))], na.rm = TRUE))
+    indirect_total <- mediation_moderation_effect_sum(effects[grepl("^Indirect", names(effects))])
+    effects <- c(effects, `Total indirect` = indirect_total, Total = if (is.finite(indirect_total)) direct_total + indirect_total else NA_real_)
   } else {
     y_coef <- fits$y$full$coefficients
     direct <- if (focal %in% context$direct_x) mediation_moderation_fast_coef(y_coef, focal) else NA_real_
@@ -5248,7 +5303,8 @@ mediation_moderation_fast_boot_fit <- function(context, rows) {
       value * mediation_moderation_fast_coef(y_coef, path[[length(path)]])
     }, numeric(1))
     names(indirects) <- vapply(indirect_paths, mediation_moderation_indirect_path_name, character(1))
-    effects <- c(Direct = direct, indirects, `Total indirect` = sum(indirects, na.rm = TRUE), Total = direct_total + sum(indirects, na.rm = TRUE))
+    indirect_total <- mediation_moderation_effect_sum(indirects)
+    effects <- c(Direct = direct, indirects, `Total indirect` = indirect_total, Total = if (is.finite(indirect_total)) direct_total + indirect_total else NA_real_)
     has_xm_moderated_effect <- any(vapply(mediators, function(mediator) {
       focal %in% as.character(context$moderated_x_to_m[[mediator]] %||% character(0))
     }, logical(1)))
@@ -5550,7 +5606,8 @@ mediation_moderation_fit_focal <- function(
       `Indirect: X -> M2 -> Y` = a2 * b2,
       `Indirect: X -> M1 -> M2 -> Y` = a1 * d21 * b2
     )
-    effects <- c(effects, `Total indirect` = sum(effects[grepl("^Indirect", names(effects))], na.rm = TRUE), Total = direct_total + sum(effects[grepl("^Indirect", names(effects))], na.rm = TRUE))
+    indirect_total <- mediation_moderation_effect_sum(effects[grepl("^Indirect", names(effects))])
+    effects <- c(effects, `Total indirect` = indirect_total, Total = if (is.finite(indirect_total)) direct_total + indirect_total else NA_real_)
   } else {
     mediator_terms <- vapply(y_model_mediators, mediation_moderation_var_term, character(1))
     for (mediator in mediators) {
@@ -5614,7 +5671,8 @@ mediation_moderation_fit_focal <- function(
       value * mediation_moderation_model_coef(models$y, path[[length(path)]])
     }, numeric(1))
     names(indirects) <- vapply(indirect_paths, mediation_moderation_indirect_path_name, character(1))
-    effects <- c(Direct = direct, indirects, `Total indirect` = sum(indirects, na.rm = TRUE), Total = direct_total + sum(indirects, na.rm = TRUE))
+    indirect_total <- mediation_moderation_effect_sum(indirects)
+    effects <- c(Direct = direct, indirects, `Total indirect` = indirect_total, Total = if (is.finite(indirect_total)) direct_total + indirect_total else NA_real_)
     conditional_moderator_grid <- if (has_w) mediation_moderation_conditional_moderator_grid(fit_data, w) else data.frame(stringsAsFactors = FALSE)
     has_xm_moderated_effect <- any(vapply(mediators, function(mediator) {
       focal %in% mediator_moderated_x_vars(mediator)
@@ -5842,6 +5900,7 @@ mediation_moderation_boot_effects <- function(
     labels = labels,
     model_label = if (isTRUE(custom_path_model)) "Custom" else paste("Model", model)
   )
+  base$effect_bootstrap_diagnostics <- attr(base$effect_table, "bootstrap_diagnostics", exact = TRUE) %||% data.frame()
   base
 }
 
@@ -5908,14 +5967,15 @@ mediation_mini_effects_table <- function(section_title, rows) {
       tags$thead(
         tags$tr(
           tags$th(style = paste0(h1_st, effect_col_st), ""),
-          tags$th(colspan = 4, style = h1_st, section_title)
+          tags$th(colspan = 5, style = h1_st, section_title)
         ),
         tags$tr(
           tags$th(style = paste0(h2_st, effect_col_st), "Effect"),
           tags$th(style = h2_st, "B"),
           tags$th(style = h2_st, "Boot SE"),
           tags$th(style = h2_st, "LLCI"),
-          tags$th(style = h2_st, "ULCI")
+          tags$th(style = h2_st, "ULCI"),
+          tags$th(style = h2_st, "p")
         )
       ),
       tags$tbody(lapply(seq_len(nrow(rows)), function(i) {
@@ -5926,7 +5986,8 @@ mediation_mini_effects_table <- function(section_title, rows) {
           tags$td(style = paste0(c_st, row_st), as.character(row$Estimate[[1L]] %||% "")),
           tags$td(style = paste0(c_st, row_st), as.character(row[["Boot SE"]][[1L]] %||% "")),
           tags$td(style = paste0(c_st, row_st), as.character(row$LLCI[[1L]] %||% "")),
-          tags$td(style = paste0(c_st, row_st), as.character(row$ULCI[[1L]] %||% ""))
+          tags$td(style = paste0(c_st, row_st), as.character(row$ULCI[[1L]] %||% "")),
+          tags$td(style = paste0(c_st, row_st), as.character(if ("Boot p" %in% names(row)) row[["Boot p"]][[1L]] else ""))
         )
       }))
     )
@@ -6323,6 +6384,7 @@ mediation_moderation_result_ui <- function(result, language = statedu_initial_la
     if (!use_combined_path_table) {
       analysis_result_table_section("Bootstrap effects", effect_table, class = "result-section regression-result-panel")
     },
+    analysis_result_table_section("Bootstrap diagnostics", result$effect_bootstrap_diagnostics, class = "result-section regression-result-panel mm-bootstrap-diagnostics-section"),
     result_note_tag(result$note),
     if (!isTRUE(result$custom_model_canvas)) {
       mediation_moderation_result_diagram_ui(result, language, dash_nonsignificant = dash_nonsignificant)
@@ -6366,7 +6428,8 @@ mediation_moderation_export_tables <- function(result) {
     `Conditional effects` = result$simple_slopes_table,
     `Johnson-Neyman` = result$johnson_neyman_table,
     `JN conditional effects` = result$johnson_neyman_detail_table,
-    `Bootstrap effects` = result$effect_table
+    `Bootstrap effects` = result$effect_table,
+    `Bootstrap diagnostics` = result$effect_bootstrap_diagnostics
   )
   path_tables <- lapply(seq_along(result$path_results %||% list()), function(index) {
     path_result <- result$path_results[[index]]
@@ -6819,7 +6882,8 @@ run_mediation_moderation_analysis <- function(
   path_table <- analysis_bind_rows(lapply(results, `[[`, "path_table"))
   path_results <- unlist(lapply(results, `[[`, "path_results"), recursive = FALSE)
   effect_table <- do.call(rbind, lapply(results, `[[`, "effect_table"))
-  attr(effect_table, "compact_column_widths") <- c(10, 7, 18, 35, 10, 10, 10, 10)
+  attr(effect_table, "compact_column_widths") <- c(9, 6, 17, 31, 8, 8, 8, 8, 5)
+  effect_bootstrap_diagnostics <- analysis_bind_rows(lapply(results, `[[`, "effect_bootstrap_diagnostics"))
   model_summary_table <- mediation_moderation_model_summary_process_table(path_results)
   interaction_table <- mediation_moderation_interaction_change_table(path_results)
   simple_slopes_table <- if (isTRUE(simple_slopes)) {
@@ -6865,6 +6929,7 @@ run_mediation_moderation_analysis <- function(
       )
     },
     sprintf("Bootstrap effect confidence limits use the %s method.", bootstrap_ci_method_label(ci_method)),
+    "Bootstrap p values use a two-sided plus-one sign-count calculation. Adequate requires at least 80% valid resamples; Caution denotes 50% to less than 80%; intervals and p values are suppressed below 50% valid or fewer than 20 valid resamples.",
     if (isTRUE(residual_diagnostics)) "Residual normality, homoscedasticity, and Durbin-Watson diagnostics are reported for review." else "Residual diagnostics were not run."
   )
   note <- paste(note_parts[nzchar(note_parts)], collapse = "\n")
@@ -6896,6 +6961,7 @@ run_mediation_moderation_analysis <- function(
     johnson_neyman_detail_table = johnson_neyman_detail_table,
     conditional_plot_specs = conditional_plot_specs,
     effect_table = effect_table,
+    effect_bootstrap_diagnostics = effect_bootstrap_diagnostics,
     note = note
   )
 }

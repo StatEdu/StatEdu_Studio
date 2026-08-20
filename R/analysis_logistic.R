@@ -26,7 +26,7 @@ logistic_measurement_for <- function(name, variable_info = NULL) {
   measurement
 }
 
-logistic_prepare_data <- function(data, variables, variable_info = NULL, reference_values = character(0)) {
+logistic_prepare_data <- function(data, variables, variable_info = NULL, reference_values = character(0), category_table = NULL) {
   variables <- intersect(as.character(variables %||% character(0)), names(data))
   raw_n <- nrow(data)
   prepared <- prepare_regression_model_data_static(
@@ -35,8 +35,19 @@ logistic_prepare_data <- function(data, variables, variable_info = NULL, referen
     variable_info = variable_info,
     reference_values = reference_values
   )
+  ordered_lookup <- category_value_label_lookup_static(category_table)
+  for (name in variables) {
+    if (!identical(logistic_measurement_for(name, variable_info), "ordered")) next
+    declared_levels <- names(ordered_lookup[[name]] %||% character(0))
+    declared_levels <- declared_levels[nzchar(declared_levels)]
+    if (length(declared_levels) == 0L) next
+    observed <- unique(as.character(prepared[[name]]))
+    observed <- observed[!is.na(observed) & nzchar(observed)]
+    prepared[[name]] <- ordered(as.character(prepared[[name]]), levels = unique(c(declared_levels, setdiff(observed, declared_levels))))
+  }
   complete <- stats::complete.cases(prepared)
-  list(data = prepared[complete, , drop = FALSE], n = sum(complete), excluded = raw_n - sum(complete))
+  analysis_data <- droplevels(prepared[complete, , drop = FALSE])
+  list(data = analysis_data, n = sum(complete), excluded = raw_n - sum(complete))
 }
 
 logistic_auto_reference_notes <- function(data, variables, variable_info = NULL, reference_values = character(0)) {
@@ -143,17 +154,16 @@ logistic_preflight <- function(data, dependent, predictors, measurement, variabl
       variable_info
     )))
   }
-  warnings <- list()
   if (rank < ncol(mm)) {
-    warnings[[length(warnings) + 1L]] <- logistic_guard_row(
+    return(list(ok = FALSE, skipped = logistic_guard_row(
       dependent,
       predictors,
-      "Model matrix is rank deficient; one or more coefficients may be aliased because of perfect multicollinearity.",
+      "Model matrix is rank deficient; coefficients are not uniquely estimable because of perfect multicollinearity.",
       n,
-      variable_info,
-      type = "Warning"
-    )
+      variable_info
+    )))
   }
+  warnings <- list()
   if (identical(measurement, "binary")) {
     tab <- table(y)
     rare <- min(tab) / sum(tab)
@@ -230,14 +240,26 @@ logistic_vif_by_predictor <- function(formula, data, predictors) {
   values
 }
 
-logistic_epv_warning <- function(y, coefficients) {
+logistic_epv_diagnostic <- function(y, parameter_df) {
   tab <- table(y)
-  events <- min(tab)
-  epv <- events / max(1, coefficients)
+  smallest_class <- if (length(tab) > 0L) min(tab) else NA_real_
+  parameter_df <- max(1, as.numeric(parameter_df %||% 1))
+  epv <- smallest_class / parameter_df
+  list(
+    smallest_class = as.numeric(smallest_class),
+    parameter_df = parameter_df,
+    epv = as.numeric(epv)
+  )
+}
+
+logistic_epv_warning <- function(y, parameter_df) {
+  diagnostic <- logistic_epv_diagnostic(y, parameter_df)
+  epv <- diagnostic$epv
+  if (!is.finite(epv)) return(NA_character_)
   if (epv < 5) {
-    sprintf("EPV is %.1f (<5); estimates may be unstable.", epv)
+    sprintf("EPV screening: approximate observations in the smallest outcome class per predictor parameter is %.1f (<5); estimates may be unstable.", epv)
   } else if (epv < 10) {
-    sprintf("EPV is %.1f (<10); interpret estimates cautiously.", epv)
+    sprintf("EPV screening: approximate observations in the smallest outcome class per predictor parameter is %.1f (<10); interpret estimates cautiously.", epv)
   } else {
     NA_character_
   }
@@ -300,6 +322,27 @@ logistic_polr_coef_table <- function(model) {
   )
 }
 
+logistic_clm_coef_table <- function(model) {
+  beta <- as.numeric(model$beta)
+  names(beta) <- names(model$beta)
+  covariance <- stats::vcov(model)
+  se <- sqrt(diag(covariance))[names(beta)]
+  z <- beta / se
+  critical <- stats::qnorm(0.975)
+  data.frame(
+    Outcome = "",
+    Term = names(beta),
+    B = beta,
+    SE = se,
+    p = 2 * stats::pnorm(abs(z), lower.tail = FALSE),
+    OR = exp(beta),
+    LLCI = exp(beta - critical * se),
+    ULCI = exp(beta + critical * se),
+    row.names = NULL,
+    check.names = FALSE
+  )
+}
+
 logistic_multinom_coef_table <- function(model) {
   sm <- summary(model)
   coef <- sm$coefficients
@@ -327,7 +370,129 @@ logistic_multinom_coef_table <- function(model) {
   rows
 }
 
-fit_logistic_model <- function(data, dependent, predictors, measurement) {
+logistic_parallel_odds_test <- function(data, dependent, predictors, model = NULL) {
+  form <- make_formula(dependent, predictors)
+  if (is.null(model)) {
+    model <- ordinal::clm(form, data = data, link = "logit", Hess = TRUE)
+  }
+  nominal_formula <- stats::reformulate(predictors)
+  alternative <- tryCatch(
+    ordinal::clm(form, nominal = nominal_formula, data = data, link = "logit", Hess = TRUE),
+    error = function(e) e
+  )
+  if (inherits(alternative, "error")) {
+    return(list(
+      chisq = NA_real_, df = NA_real_, p = NA_real_, available = FALSE,
+      method = "ordinal::clm nominal-effects LR test",
+      message = conditionMessage(alternative)
+    ))
+  }
+  base_convergence <- logistic_model_convergence(model)
+  alternative_convergence <- logistic_model_convergence(alternative)
+  if (!isTRUE(base_convergence$ok) || !isTRUE(alternative_convergence$ok)) {
+    return(list(
+      chisq = NA_real_, df = NA_real_, p = NA_real_, available = FALSE,
+      method = "ordinal::clm nominal-effects LR test",
+      message = paste("Convergence failure:", paste(c(base_convergence$message, alternative_convergence$message), collapse = "; "))
+    ))
+  }
+  ll_null <- as.numeric(stats::logLik(model))
+  ll_alt <- as.numeric(stats::logLik(alternative))
+  df <- attr(stats::logLik(alternative), "df") - attr(stats::logLik(model), "df")
+  chisq <- max(0, 2 * (ll_alt - ll_null))
+  list(
+    chisq = chisq,
+    df = df,
+    p = if (is.finite(df) && df > 0) stats::pchisq(chisq, df, lower.tail = FALSE) else NA_real_,
+    available = is.finite(df) && df > 0,
+    method = "ordinal::clm nominal-effects LR test",
+    message = ""
+  )
+}
+
+logistic_model_convergence <- function(model) {
+  if (inherits(model, "glm")) {
+    return(list(ok = isTRUE(model$converged), message = if (isTRUE(model$converged)) "Converged" else "GLM did not converge"))
+  }
+  if (inherits(model, "multinom")) {
+    code <- suppressWarnings(as.integer(model$convergence %||% NA_integer_))
+    return(list(ok = identical(code, 0L), message = if (identical(code, 0L)) "Converged" else sprintf("multinom convergence code %s", code)))
+  }
+  if (inherits(model, "clm")) {
+    code <- suppressWarnings(as.integer(model$convergence$code %||% NA_integer_))
+    message <- as.character(model$convergence$messages %||% model$message %||% "")[[1L]]
+    return(list(ok = identical(code, 0L), message = if (identical(code, 0L)) "Converged" else message))
+  }
+  list(ok = FALSE, message = "Unknown model convergence status")
+}
+
+logistic_fit_convergence <- function(fit) {
+  full <- logistic_model_convergence(fit$model)
+  null <- logistic_model_convergence(fit$null_model)
+  list(
+    ok = isTRUE(full$ok) && isTRUE(null$ok),
+    message = paste(c(full$message, if (!isTRUE(null$ok)) paste("Null model:", null$message) else NULL), collapse = "; ")
+  )
+}
+
+logistic_probability_matrix <- function(model, data, levels) {
+  response <- tryCatch(all.vars(stats::formula(model))[[1L]], error = function(e) "")
+  newdata <- data[, setdiff(names(data), response), drop = FALSE]
+  probabilities <- if (inherits(model, "glm")) {
+    event <- as.numeric(stats::predict(model, newdata = newdata, type = "response"))
+    cbind(1 - event, event)
+  } else if (inherits(model, "clm")) {
+    as.matrix(stats::predict(model, newdata = newdata, type = "prob")$fit)
+  } else {
+    as.matrix(stats::predict(model, newdata = newdata, type = "probs"))
+  }
+  if (ncol(probabilities) == length(levels)) colnames(probabilities) <- levels
+  probabilities
+}
+
+logistic_apparent_performance <- function(model, data, dependent, method) {
+  outcome <- droplevels(as.factor(data[[dependent]]))
+  levels <- levels(outcome)
+  probabilities <- tryCatch(logistic_probability_matrix(model, data, levels), error = function(e) NULL)
+  if (is.null(probabilities) || nrow(probabilities) != length(outcome) || ncol(probabilities) != length(levels)) return(NULL)
+  probabilities <- pmin(pmax(probabilities, 1e-15), 1 - 1e-15)
+  observed_index <- match(as.character(outcome), levels)
+  observed_probability <- probabilities[cbind(seq_along(observed_index), observed_index)]
+  log_loss <- -mean(log(observed_probability))
+  if (identical(method, "Binary logistic regression")) {
+    event <- as.integer(observed_index == 2L)
+    event_probability <- probabilities[, 2L]
+    n_event <- sum(event == 1L)
+    n_nonevent <- sum(event == 0L)
+    auc <- if (n_event > 0L && n_nonevent > 0L) {
+      (sum(rank(event_probability, ties.method = "average")[event == 1L]) - n_event * (n_event + 1) / 2) / (n_event * n_nonevent)
+    } else NA_real_
+    return(c(
+      `AUC (apparent)` = auc,
+      `Brier score (apparent)` = mean((event - event_probability)^2),
+      `Tjur R² (apparent)` = mean(event_probability[event == 1L]) - mean(event_probability[event == 0L]),
+      `Log loss (apparent)` = log_loss
+    ))
+  }
+  predicted <- max.col(probabilities, ties.method = "first")
+  metrics <- c(
+    `Accuracy (apparent)` = mean(predicted == observed_index),
+    `Log loss (apparent)` = log_loss
+  )
+  if (identical(method, "Ordinal logistic regression")) {
+    cumulative_probability <- t(apply(probabilities, 1L, cumsum))[, -length(levels), drop = FALSE]
+    cumulative_observed <- vapply(seq_len(length(levels) - 1L), function(index) as.numeric(observed_index <= index), numeric(length(outcome)))
+    metrics <- c(metrics, `Ranked probability score (apparent)` = mean(rowSums((cumulative_probability - cumulative_observed)^2) / (length(levels) - 1L)))
+  } else {
+    observed_matrix <- matrix(0, nrow(probabilities), ncol(probabilities))
+    observed_matrix[cbind(seq_along(observed_index), observed_index)] <- 1
+    metrics <- c(metrics, `Multiclass Brier score (apparent)` = mean(rowSums((probabilities - observed_matrix)^2)))
+  }
+  metrics
+}
+
+fit_logistic_model <- function(data, dependent, predictors, measurement, ordinal_mode = c("auto", "ordinal", "multinomial"), parallel = NULL) {
+  ordinal_mode <- match.arg(ordinal_mode)
   model_data <- data
   form <- make_formula(dependent, predictors)
   null_formula <- stats::reformulate("1", response = dependent)
@@ -341,26 +506,29 @@ fit_logistic_model <- function(data, dependent, predictors, measurement) {
     return(list(model = model, null_model = null_model, method = "Binary logistic regression", coef_table = logistic_binary_coef_table(model), parallel = NULL))
   }
   if (identical(measurement, "ordered")) {
-    ordinal <- MASS::polr(form, data = model_data, Hess = TRUE)
-    ordinal_null <- MASS::polr(null_formula, data = model_data, Hess = TRUE)
-    multi <- nnet::multinom(form, data = model_data, trace = FALSE)
-    multi_null <- nnet::multinom(null_formula, data = model_data, trace = FALSE)
-    ordinal$call$formula <- form
-    ordinal_null$call$formula <- null_formula
-    multi$call$formula <- form
-    multi_null$call$formula <- null_formula
-    ordinal$call$data <- model_data
-    ordinal_null$call$data <- model_data
-    multi$call$data <- model_data
-    multi_null$call$data <- model_data
-    chisq <- 2 * (as.numeric(stats::logLik(multi)) - as.numeric(stats::logLik(ordinal)))
-    df <- attr(stats::logLik(multi), "df") - attr(stats::logLik(ordinal), "df")
-    p <- if (df > 0) stats::pchisq(chisq, df = df, lower.tail = FALSE) else NA_real_
-    parallel <- list(chisq = chisq, df = df, p = p)
-    if (!is.na(p) && p <= .05) {
+    if (identical(ordinal_mode, "multinomial")) {
+      multi <- nnet::multinom(form, data = model_data, trace = FALSE)
+      multi_null <- nnet::multinom(null_formula, data = model_data, trace = FALSE)
+      multi$call$formula <- form
+      multi_null$call$formula <- null_formula
+      multi$call$data <- model_data
+      multi_null$call$data <- model_data
       return(list(model = multi, null_model = multi_null, method = "Multinomial logistic regression", coef_table = logistic_multinom_coef_table(multi), parallel = parallel, ordinal_fallback = TRUE))
     }
-    return(list(model = ordinal, null_model = ordinal_null, method = "Ordinal logistic regression", coef_table = logistic_polr_coef_table(ordinal), parallel = parallel, ordinal_fallback = FALSE))
+    ordinal <- ordinal::clm(form, data = model_data, link = "logit", Hess = TRUE)
+    ordinal_null <- ordinal::clm(null_formula, data = model_data, link = "logit", Hess = TRUE)
+    if (is.null(parallel)) parallel <- logistic_parallel_odds_test(model_data, dependent, predictors, ordinal)
+    use_multinomial <- identical(ordinal_mode, "auto") && !is.na(parallel$p) && parallel$p <= .05
+    if (isTRUE(use_multinomial)) {
+      multi <- nnet::multinom(form, data = model_data, trace = FALSE)
+      multi_null <- nnet::multinom(null_formula, data = model_data, trace = FALSE)
+      multi$call$formula <- form
+      multi_null$call$formula <- null_formula
+      multi$call$data <- model_data
+      multi_null$call$data <- model_data
+      return(list(model = multi, null_model = multi_null, method = "Multinomial logistic regression", coef_table = logistic_multinom_coef_table(multi), parallel = parallel, ordinal_fallback = TRUE))
+    }
+    return(list(model = ordinal, null_model = ordinal_null, method = "Ordinal logistic regression", coef_table = logistic_clm_coef_table(ordinal), parallel = parallel, ordinal_fallback = FALSE))
   }
   model <- nnet::multinom(form, data = model_data, trace = FALSE)
   null_model <- nnet::multinom(null_formula, data = model_data, trace = FALSE)
@@ -378,7 +546,8 @@ prepare_logistic_analysis_results <- function(
   block2 = character(0),
   block3 = character(0),
   variable_info = NULL,
-  reference_values = character(0)
+  reference_values = character(0),
+  category_table = NULL
 ) {
   data_names <- names(data)
   dependents <- intersect(unique(as.character(dependents %||% character(0))), data_names)
@@ -409,18 +578,47 @@ prepare_logistic_analysis_results <- function(
       next
     }
     all_vars <- unique(c(dependent, block1, block2, block3))
-    model_data <- data[stats::complete.cases(data[, all_vars, drop = FALSE]), , drop = FALSE]
+    full_prep <- logistic_prepare_data(data, all_vars, variable_info, reference_values, category_table)
+    model_data <- full_prep$data
+    observed_outcome_levels <- if (is.factor(model_data[[dependent]])) levels(droplevels(model_data[[dependent]])) else unique(stats::na.omit(model_data[[dependent]]))
+    analysis_measurement <- if (length(observed_outcome_levels) == 2L) "binary" else measurement
+    binary_level_note <- if (!identical(measurement, "binary") && identical(analysis_measurement, "binary")) {
+      "Two outcome levels remained in the final complete-case sample; binary logistic regression was used."
+    } else NULL
+    final_predictors <- setdiff(steps[[length(steps)]]$predictors, dependent)
+    ordinal_mode <- "auto"
+    ordinal_parallel <- NULL
+    ordinal_basis_note <- NULL
+    if (identical(analysis_measurement, "ordered") && length(final_predictors) > 0L) {
+      final_preflight <- logistic_preflight(model_data, dependent, final_predictors, analysis_measurement, variable_info)
+      if (isTRUE(final_preflight$ok)) {
+        ordinal_parallel <- tryCatch(
+          logistic_parallel_odds_test(model_data, dependent, final_predictors),
+          error = function(e) list(
+            chisq = NA_real_, df = NA_real_, p = NA_real_, available = FALSE,
+            method = "ordinal::clm nominal-effects LR test", message = conditionMessage(e)
+          )
+        )
+        ordinal_mode <- if (!is.na(ordinal_parallel$p) && ordinal_parallel$p <= .05) "multinomial" else "ordinal"
+        ordinal_parallel$basis <- if (length(steps) > 1L) "Final hierarchical model" else "Specified model"
+        ordinal_basis_note <- if (isTRUE(ordinal_parallel$available)) {
+          sprintf("The proportional-odds decision used an ordinal::clm nominal-effects likelihood-ratio test based on the %s; the same model family was used for every hierarchical step.", tolower(ordinal_parallel$basis))
+        } else {
+          sprintf("The proportional-odds nominal-effects test was unavailable (%s); the cumulative logit model was retained and this assumption requires external review.", ordinal_parallel$message %||% "unknown reason")
+        }
+      }
+    }
     previous <- NULL
     for (step_index in seq_along(steps)) {
       predictors <- setdiff(steps[[step_index]]$predictors, dependent)
       if (length(predictors) == 0) next
-      prep <- logistic_prepare_data(model_data, unique(c(dependent, predictors)), variable_info, reference_values)
+      prep <- logistic_prepare_data(model_data, unique(c(dependent, predictors)), variable_info, reference_values, category_table)
       event_note <- NA_character_
-      if (identical(measurement, "binary") && is.factor(prep$data[[dependent]]) && length(levels(prep$data[[dependent]])) >= 2) {
+      if (identical(analysis_measurement, "binary") && is.factor(prep$data[[dependent]]) && length(levels(prep$data[[dependent]])) >= 2) {
         event_note <- sprintf("Binary event for %s is %s; reference is %s.", dependent, levels(prep$data[[dependent]])[[2]], levels(prep$data[[dependent]])[[1]])
       }
       sparse <- logistic_sparse_cell_check(prep$data, dependent, predictors, variable_info)
-      preflight <- logistic_preflight(prep$data, dependent, predictors, measurement, variable_info)
+      preflight <- logistic_preflight(prep$data, dependent, predictors, analysis_measurement, variable_info)
       if (is.data.frame(preflight$warnings) && nrow(preflight$warnings) > 0) {
         warning_rows[[length(warning_rows) + 1L]] <- preflight$warnings
       }
@@ -428,18 +626,36 @@ prepare_logistic_analysis_results <- function(
         skipped_rows[[length(skipped_rows) + 1L]] <- preflight$skipped
         next
       }
-      fit <- tryCatch(fit_logistic_model(prep$data, dependent, predictors, measurement), error = function(e) e)
+      fit <- tryCatch(
+        fit_logistic_model(prep$data, dependent, predictors, analysis_measurement, ordinal_mode = ordinal_mode, parallel = ordinal_parallel),
+        error = function(e) e
+      )
       if (inherits(fit, "error")) {
         skipped_rows[[length(skipped_rows) + 1L]] <- logistic_guard_row(dependent, predictors, conditionMessage(fit), prep$n, variable_info)
-        next
+        break
+      }
+      convergence <- logistic_fit_convergence(fit)
+      if (!isTRUE(convergence$ok)) {
+        skipped_rows[[length(skipped_rows) + 1L]] <- logistic_guard_row(
+          dependent, predictors, paste("Model convergence gate failed:", convergence$message), prep$n, variable_info
+        )
+        break
       }
       stats <- logistic_fit_stats(fit$model, fit$null_model, prep$n)
-      coef_count <- nrow(fit$coef_table)
-      epv_note <- logistic_epv_warning(prep$data[[dependent]], coef_count)
+      predictor_parameter_df <- max(1, preflight$rank - 1L)
+      epv <- logistic_epv_diagnostic(prep$data[[dependent]], predictor_parameter_df)
+      epv_note <- logistic_epv_warning(prep$data[[dependent]], predictor_parameter_df)
       max_vif <- logistic_vif_summary(make_formula(dependent, predictors), prep$data)
       predictor_vif <- logistic_vif_by_predictor(make_formula(dependent, predictors), prep$data, predictors)
       vif_note <- logistic_vif_warning(max_vif)
       separation_note <- logistic_separation_warning(fit)
+      continuous_predictors <- predictors[vapply(predictors, function(name) identical(logistic_measurement_for(name, variable_info), "continuous"), logical(1))]
+      functional_form_note <- if (length(continuous_predictors) > 0L) {
+        sprintf("Linearity in the logit is not established automatically for continuous predictor(s): %s. Inspect nonlinear terms or spline sensitivity analyses when scientifically plausible.", paste(continuous_predictors, collapse = ", "))
+      } else NA_character_
+      iia_note <- if (identical(fit$method, "Multinomial logistic regression")) {
+        "The independence of irrelevant alternatives (IIA) is not established automatically; justify the outcome categories and consider sensitivity analyses if alternatives may be substitutable."
+      } else NA_character_
       result <- list(
         dependent = dependent,
         predictors = predictors,
@@ -449,15 +665,18 @@ prepare_logistic_analysis_results <- function(
         }),
         formula = make_formula(dependent, predictors),
         n = prep$n,
-        missing_excluded = prep$excluded,
+        missing_excluded = nrow(data) - prep$n,
         method = fit$method,
         coef_table = fit$coef_table,
         fit = stats,
+        convergence = convergence,
+        performance = logistic_apparent_performance(fit$model, prep$data, dependent, fit$method),
+        epv = epv,
         max_vif = max_vif,
         predictor_vif = predictor_vif,
         parallel = fit$parallel,
         ordinal_fallback = isTRUE(fit$ordinal_fallback),
-        notes = unique(stats::na.omit(c(refs$notes, if (length(steps) > 1L) hierarchical_note else NULL, event_note, sparse$warnings, epv_note, vif_note, separation_note))),
+        notes = unique(stats::na.omit(c(refs$notes, if (length(steps) > 1L) hierarchical_note else NULL, binary_level_note, event_note, ordinal_basis_note, sparse$warnings, epv_note, vif_note, separation_note, functional_form_note, iia_note, "Odds-ratio confidence intervals use the large-sample Wald method.", "Performance statistics are apparent (in-sample) diagnostics and do not establish external predictive validity."))),
         hierarchical_step = steps[[step_index]]$name,
         hierarchical_step_index = step_index,
         hierarchical_blocks = steps[[step_index]]$blocks,

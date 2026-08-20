@@ -193,7 +193,13 @@ PCA는 문항이나 변수의 정보를 더 적은 수의 성분으로 축약하
 
 HC3 robust standard errors는 잔차의 이분산성이 있을 때 표준오차와 p 값의 왜곡을 줄이기 위한 보정이다(White, 1980; MacKinnon & White, 1985). Bootstrap confidence interval과 bootstrap p value는 잔차 정규성 가정이 약할 때 보조적인 추론으로 사용한다(Efron & Tibshirani, 1993).
 
+HC3가 적용되면 개별 계수뿐 아니라 전체 모형의 비절편 계수 공동검정도 HC3 공분산 행렬에 기반한 `Robust Wald F`로 계산한다. R²와 adjusted R²는 여전히 OLS 적합도이므로 robust 적합도 지수로 오해하지 않는다. 모형행렬이 rank deficient이면 완전 다중공선성 때문에 계수가 유일하게 식별되지 않으므로 결과를 생성하지 않는다.
+
+잔차 정규성 및 Breusch-Pagan p값에 따른 자동 선택은 진단을 구조화한 휴리스틱이지, 자료가 특정 추정법을 참이라고 증명하는 사전검정 절차가 아니다. 표본이 크면 정규성 검정이 사소한 이탈에도 민감하고, 표본이 작으면 중요한 이탈을 놓칠 수 있다. SCI 보고에서는 연구설계와 사전 분석계획에 근거해 OLS/HC3/bootstrap을 정하고, 자동 선택 결과는 잔차 그림과 민감도 분석으로 확인한다.
+
 Bootstrap 반복 수는 1,000, 5,000, 10,000, 20,000, 50,000 중 선택할 수 있으며, 앱은 50,000회를 권장 옵션으로 표시한다. 1,000회는 빠른 확인용으로 적합하고, 보고서에 사용할 최종 추정에서는 가능한 한 더 큰 반복 수를 사용하는 것이 좋다(Efron & Tibshirani, 1993).
+
+Bootstrap 계수표와 Delta R²에는 요청/유효 반복수와 유효 비율을 함께 제시한다. 80% 이상은 `Adequate`, 50% 이상 80% 미만은 `Caution`, 50% 미만 또는 유효 반복 20회 미만은 `Unreliable`이며, Unreliable에서는 CI와 bootstrap p값을 보고하지 않는다. BC는 기본값이고 percentile을 민감도 분석으로 선택할 수 있지만, BC를 모든 자료에서 우월한 방법으로 간주하지 않는다.
 
 ## 12. 위계적 회귀
 
@@ -205,6 +211,8 @@ Bootstrap 반복 수는 1,000, 5,000, 10,000, 20,000, 50,000 중 선택할 수 �
 
 각 모델은 선형회귀와 같은 진단 및 보정 로직을 사용한다. 핵심 해석은 각 단계의 R², adjusted R², ΔR², nested model comparison p 값이다.
 
+블록 간 비교는 최종모형의 모든 변수에 대한 완전사례로 표본을 먼저 고정한 뒤 수행한다. OLS 모형은 고전적 F-change, HC3 모형은 추가 블록 계수의 Robust Wald F, bootstrap 모형은 각 반복에서 동일한 사례 인덱스를 사용해 짝지은 ΔR² 신뢰구간을 보고한다. 블록 순서는 결과에 맞춰 바꾸지 말고 이론 또는 사전계획으로 정해야 한다.
+
 ## 13. 매개·조절 분석 방법론 노트
 
 매개·조절 분석은 회귀 기반 경로모형이다. X, M, W, Y의 역할을 지정해 직접효과, 간접효과, 상호작용 효과, 조건부 효과를 추정한다. 횡단자료에서도 계산은 가능하지만, 매개효과를 인과효과로 해석하려면 시간적 선후관계, 누락 교란의 부재, 측정 신뢰도, 모형 지정의 타당성이 별도로 필요하다.
@@ -212,6 +220,8 @@ Bootstrap 반복 수는 1,000, 5,000, 10,000, 20,000, 50,000 중 선택할 수 �
 ### 13.1 매개효과
 
 간접효과는 보통 `a * b`로 계산한다. `a`는 X -> M 경로, `b`는 M -> Y 경로다. 간접효과의 표본분포는 비대칭인 경우가 많으므로 bootstrap 신뢰구간을 우선 해석한다. 신뢰구간이 0을 포함하지 않으면 간접효과가 통계적으로 유의하다고 보고할 수 있다.
+
+앱의 기본 신뢰구간은 bias-corrected(BC)이며 percentile을 민감도 분석으로 선택할 수 있다. BC는 관측된 bootstrap 편향을 보정하지만 BCa의 acceleration 보정까지 포함하지 않으며, 모든 표본과 분포에서 percentile보다 항상 우월하다고 해석해서는 안 된다. 효과 표의 bootstrap p값은 0 이하/이상 재표집 비율에 plus-one 보정을 적용한 양측 부호검정형 값이다. 요청 반복 중 유효값이 80% 이상이면 `Adequate`, 50% 이상 80% 미만이면 `Caution`으로 표시하고, 50% 미만이거나 유효 반복이 20회 미만이면 CI와 p값을 억제한다. 최종 논문에는 요청 반복수뿐 아니라 유효 반복수와 비율도 함께 보고한다.
 
 총효과가 유의하지 않아도 간접효과가 유의할 수 있다. 이 경우 효과 방향, 직접효과와 간접효과의 부호, 억제효과 가능성, 이론적 설명을 함께 검토한다.
 
@@ -229,6 +239,7 @@ Bootstrap 반복 수는 1,000, 5,000, 10,000, 20,000, 50,000 중 선택할 수 �
 
 - 사용 모형 번호와 변수 역할을 명시한다.
 - bootstrap 반복 수, 신뢰구간 방법, 평균중심화 여부를 보고한다.
+- bootstrap 요청/유효 반복수와 유효 비율, BC 또는 percentile 선택을 보고하고 Caution 상태에서는 민감도 분석을 확인한다.
 - 공변량을 포함했다면 어떤 방정식에 포함됐는지 설명한다.
 - 간접효과와 조건부 간접효과는 점추정, 신뢰구간, W 기준값을 함께 제시한다.
 - 조절효과는 상호작용 계수만 보고하지 말고 단순기울기 또는 Johnson-Neyman 결과를 함께 보고한다.
@@ -246,9 +257,15 @@ Bootstrap 반복 수는 1,000, 5,000, 10,000, 20,000, 50,000 중 선택할 수 �
 - ordered dependent: ordinal logistic regression.
 - categorical dependent: multinomial logistic regression.
 
+최종 완전사례 표본에서 outcome 수준이 두 개이면 명목형 또는 순서형 메타데이터와 관계없이 binary logit을 적합한다. 순서형 outcome은 `ordinal::clm` cumulative-logit 모형과 중첩된 nominal-effects 우도비 검정으로 비례오즈 가정을 평가한다. 위계적 분석에서는 최종 모형의 판정을 모든 단계에 적용하여 같은 완전사례 표본과 같은 모형군에서 우도비 변화량을 비교한다.
+
 로지스틱 회귀의 계수는 선형회귀의 평균 차이처럼 직접 해석하지 않고, odds ratio 또는 log-odds 변화 관점에서 해석한다(Agresti, 2013).
 
 **StatEdu Studio** 1.2.0 판정 기준: 로지스틱 회귀에서도 VIF 최대값이 `5`를 초과하면 개별 계수 해석 주의, `10`을 초과하면 심각한 다중공선성 경고를 표시한다(O'Brien, 2007). sparse cell과 separation risk가 있는 경우에는 odds ratio가 매우 커지거나 신뢰구간이 넓어질 수 있으므로, p 값보다 빈도 구조와 사건 수를 먼저 확인한다(Agresti, 2013).
+
+완전 다중공선성 또는 비수렴 모형은 추론 결과를 출력하지 않는다. outcome의 최소 수준 사례 수를 예측변수 모수 자유도로 나눈 근사 진단은 불안정성 screen이며 보편적 표본수 규칙이 아니다. OR 신뢰구간은 large-sample Wald 구간이므로 sparse data와 separation에서는 신뢰할 수 없을 수 있다.
+
+이항모형의 AUC, Brier score, Tjur R², log loss와 순서형·다항모형의 accuracy·확률점수는 모두 estimation sample에서 계산한 apparent diagnostic이다. 이를 검증된 예측성능으로 보고하려면 cross-validation, bootstrap optimism correction, 시간적 검증 또는 외부 검증이 별도로 필요하다. 연속형 예측변수의 logit 선형성, 영향점, multinomial IIA, Firth/bias-reduced estimation, partial proportional-odds 모형은 자동화하지 않으므로 연구 맥락에 따라 사전 지정 민감도 분석으로 보완한다.
 
 ## 15. 일반화선형모형(GLM)
 

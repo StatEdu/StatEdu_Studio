@@ -243,6 +243,12 @@ Inference selection:
 
 Bootstrap inference helps with non-normal residuals but does not fix omitted-variable bias, model misspecification, nonlinearity, non-independent observations, or measurement error.
 
+When HC3 is active, the joint test of all non-intercept coefficients is also based on the HC3 covariance matrix and is labelled `Robust Wald F`. R2 and adjusted R2 remain ordinary OLS fit indices. Rank-deficient model matrices are blocked because perfect multicollinearity prevents unique coefficient identification.
+
+Selection from Lilliefors and Breusch-Pagan p values is a diagnostic workflow heuristic, not proof that one estimator is true. Normality tests may detect trivial departures in large samples and miss important departures in small samples. For SCI reporting, select OLS, HC3, or bootstrap from design and a prespecified analysis plan, then use the automatic recommendation, residual plots, and sensitivity results as supporting evidence.
+
+Bootstrap coefficient and Delta R2 output reports requested and valid resamples. At least 80% valid is `Adequate`, 50% to less than 80% is `Caution`, and below 50% or fewer than 20 valid is `Unreliable`; unreliable intervals and bootstrap p values are suppressed. BC is the default and percentile is available for sensitivity analysis, without claiming universal superiority of BC.
+
 ## 12. Hierarchical Regression
 
 Hierarchical regression adds predictors in blocks. Each block should reflect a prespecified conceptual order rather than data-driven selection.
@@ -254,6 +260,8 @@ Outputs include:
 - Delta R2.
 - Nested model comparison p value.
 - Coefficient tables.
+
+All steps use complete cases for the final block. OLS models use the classical F-change test, HC3 models use a Robust Wald F test for the added block, and bootstrap models use the same resampled case indices across steps to form a paired Delta R2 interval. Block order should be theory-driven or prespecified rather than selected from the observed results.
 - Diagnostics and VIF.
 
 Delta R2 should be interpreted in relation to the research question and the variables already entered in previous blocks.
@@ -265,6 +273,8 @@ Mediation/moderation analysis is a regression-based path-model workflow. X, M, W
 ### 13.1 Mediation Effects
 
 An indirect effect is usually computed as `a * b`, where `a` is the X -> M path and `b` is the M -> Y path. The sampling distribution of an indirect effect is often asymmetric, so bootstrap confidence intervals should be interpreted before normal-theory p-values. If the bootstrap CI excludes 0, the indirect effect can be reported as statistically supported.
+
+The default interval is bias-corrected (BC), with percentile available for sensitivity analysis. BC adjusts for observed bootstrap bias but does not include the acceleration correction of BCa and is not claimed to dominate percentile intervals in every sample or distribution. The displayed bootstrap p value is a two-sided sign-count value with a plus-one correction. A result is marked `Adequate` with at least 80% valid resamples and `Caution` with 50% to less than 80%; intervals and p values are suppressed below 50% valid or fewer than 20 valid resamples. Reports should state requested and valid counts and their ratio.
 
 A total effect does not have to be significant for an indirect effect to be present. When this happens, inspect the effect directions, the signs of the direct and indirect effects, possible suppression, and the substantive theory.
 
@@ -282,6 +292,7 @@ Moderated mediation evaluates whether the indirect effect changes across W. Firs
 
 - Report the model number and variable roles.
 - Report bootstrap resamples, CI method, and whether mean-centering was used.
+- Report requested/valid bootstrap counts and their ratio, identify BC or percentile, and check sensitivity when status is Caution.
 - If covariates were included, state which equations included them.
 - For indirect and conditional indirect effects, report the estimate, CI, and W reference values.
 - For moderation, do not report only the interaction coefficient; add simple-slope or Johnson-Neyman output when requested.
@@ -293,7 +304,7 @@ The Mediation / Moderation Custom Model canvas is an input and model-recognition
 
 ## 14. Logistic Regression
 
-Logistic regression supports binary, ordinal, and multinomial outcomes.
+Logistic regression supports binary, ordinal, and multinomial outcomes. Two observed outcome levels are fitted with a binary logit regardless of nominal/ordinal metadata. Ordinal outcomes use `ordinal::clm`; a nested nominal-effects likelihood-ratio test evaluates proportional odds. In hierarchical analyses the test is based on the final model and its decision is applied to every step so that likelihood-ratio changes compare the same model family on the same complete-case sample.
 
 Diagnostics and warnings:
 
@@ -302,6 +313,13 @@ Diagnostics and warnings:
 - Large standard errors.
 - Very wide confidence intervals.
 - High VIF.
+- Nonconvergence and rank deficiency, which block inferential output.
+- Approximate smallest-class observations per predictor parameter; this is a screening diagnostic, not a universal sample-size rule.
+- Continuous-predictor functional form and multinomial IIA limitations.
+
+Binary models report apparent AUC, Brier score, Tjur R-squared, and log loss. Ordinal and multinomial models report apparent accuracy and probability-score diagnostics. All are computed on the estimation sample and are descriptive only; cross-validation, bootstrap optimism correction, temporal validation, or external validation is required for predictive-performance claims.
+
+Odds-ratio confidence intervals are large-sample Wald intervals. Sparse data and separation can invalidate maximum-likelihood Wald inference even when the fitting routine returns estimates. Firth/bias-reduced estimation, exact methods, partial proportional-odds models, nonlinear functional-form modeling, influence diagnostics, and formal predictive validation are not automated in this menu and should be handled as prespecified sensitivity analyses when relevant.
 
 Odds ratios are not risk ratios. When the outcome is common, odds ratios can appear much larger than risk ratios. Interpret odds ratios carefully and report the modeling scale when needed.
 

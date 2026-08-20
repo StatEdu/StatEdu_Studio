@@ -326,7 +326,8 @@ register_logistic_handlers <- function(
           block2 = compacted$block2,
           block3 = compacted$block3,
           variable_info = variable_table_fn(),
-          reference_values = logistic_reference_values_static(category_table_fn())
+          reference_values = logistic_reference_values_static(category_table_fn()),
+          category_table = category_table_fn()
         )
         logistic_results(results)
         showNotification(statedu_t("analysis.status.logistic_finished", statedu_current_language(app_language_fn)), type = "message")

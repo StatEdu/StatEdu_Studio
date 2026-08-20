@@ -221,16 +221,26 @@ hierarchical_bootstrap_delta_r2_ci <- function(previous, current, conf = .95) {
   current_r2 <- as.numeric(current$bootstrap_r_squared %||% numeric(0))
   count <- min(length(previous_r2), length(current_r2))
   if (count == 0) {
-    return(c(lower = NA_real_, upper = NA_real_))
+    out <- c(lower = NA_real_, upper = NA_real_)
+    attr(out, "status") <- "Pending"
+    attr(out, "requested") <- 0L
+    attr(out, "valid") <- 0L
+    return(out)
   }
   delta <- current_r2[seq_len(count)] - previous_r2[seq_len(count)]
   delta <- delta[is.finite(delta)]
-  if (length(delta) == 0) {
-    return(c(lower = NA_real_, upper = NA_real_))
-  }
+  status <- regression_bootstrap_status(length(delta), count)
   point <- current$r_squared - previous$r_squared
   ci_method <- current$bootstrap_ci_method %||% previous$bootstrap_ci_method %||% "bias_corrected"
-  bootstrap_ci(point, delta, conf = conf, method = ci_method)
+  out <- if (identical(status, "Unreliable") || length(delta) == 0L) {
+    c(lower = NA_real_, upper = NA_real_)
+  } else {
+    stats::setNames(bootstrap_ci(point, delta, conf = conf, method = ci_method), c("lower", "upper"))
+  }
+  attr(out, "status") <- status
+  attr(out, "requested") <- count
+  attr(out, "valid") <- length(delta)
+  out
 }
 
 hierarchical_robust_wald_f_p <- function(previous, current) {
@@ -275,13 +285,20 @@ hierarchical_delta_line <- function(previous, current) {
   delta_r2 <- current$r_squared - previous$r_squared
   if (isTRUE(previous$use_bootstrap) || isTRUE(current$use_bootstrap)) {
     ci <- hierarchical_bootstrap_delta_r2_ci(previous, current)
+    status <- as.character(attr(ci, "status", exact = TRUE) %||% "Pending")
+    valid <- as.integer(attr(ci, "valid", exact = TRUE) %||% 0L)
+    requested <- as.integer(attr(ci, "requested", exact = TRUE) %||% 0L)
     if (all(is.finite(ci))) {
       return(sprintf(
-        "Delta R\u00B2[95%% CI]=%s[%s, %s]",
+        "Delta R\u00B2[95%% CI]=%s[%s, %s]%s",
         format_decimal3(delta_r2),
         format_decimal3(ci[[1]]),
-        format_decimal3(ci[[2]])
+        format_decimal3(ci[[2]]),
+        if (identical(status, "Caution")) sprintf("; Caution %s/%s valid", valid, requested) else ""
       ))
+    }
+    if (identical(status, "Unreliable")) {
+      return(sprintf("Delta R\u00B2[95%% CI]=%s[unreliable: %s/%s valid]", format_decimal3(delta_r2), valid, requested))
     }
     return(sprintf("Delta R\u00B2[95%% CI]=%s[pending]", format_decimal3(delta_r2)))
   }
@@ -344,6 +361,8 @@ hierarchical_summary_values <- function(group) {
       ) else ""
     )
   })
+  model_test_labels <- unique(vapply(group, function(result) as.character(result$model_test_label %||% "F")[[1L]], character(1)))
+  attr(values, "f_label") <- if (length(model_test_labels) == 1L) paste0(model_test_labels[[1L]], "(p)") else "F(p) / Robust Wald F(p)"
   attr(values, "delta_label") <- hierarchical_delta_footer_label(group)
   attr(values, "any_residual_diagnostics") <- any(vapply(group, function(result) isTRUE(result$residual_diagnostics), logical(1)))
   values
@@ -355,7 +374,9 @@ hierarchical_coefficient_note_line <- function(result, show_vif = FALSE, show_sr
     if (isTRUE(show_vif)) "Tolerance = 1 - R\u00B2 for each predictor;" else NULL,
     if (isTRUE(show_vif)) "VIF = Variance Inflation Factor;" else NULL,
     if (isTRUE(result$use_hc3)) "HC3 SE = heteroskedasticity-consistent standard error type 3;" else NULL,
+    if (isTRUE(result$use_hc3)) "Robust Wald F is the HC3 covariance-based omnibus test of all non-intercept coefficients;" else NULL,
     if (isTRUE(result$use_bootstrap)) sprintf("Boot SE is the bootstrap standard error; LLCI and ULCI are %s bootstrap confidence limits based on the selected bootstrap resamples and seed number;", ci_label) else NULL,
+    if (isTRUE(result$use_bootstrap)) "Bootstrap status is Adequate with at least 80% valid resamples, Caution with 50% to less than 80%, and Unreliable below 50% or fewer than 20 valid resamples; Unreliable intervals and p values are suppressed;" else NULL,
     if (isTRUE(show_sr2)) "sr\u00B2 = squared semi-partial correlation, unique R\u00B2 contribution for each coefficient;" else NULL,
     if (isTRUE(show_f2)) "f\u00B2 = sr\u00B2 / (1 - model R\u00B2);" else NULL,
     "Delta R\u00B2(F change p) is shown when OLS assumptions are met; Delta R\u00B2(Robust Wald F p) is shown for HC3 models; Delta R\u00B2[95% CI] is shown for bootstrap models;",
@@ -585,7 +606,7 @@ hierarchical_standard_summary_table <- function(table, summary, model_index, sum
   output <- as.data.frame(lapply(table, as.character), stringsAsFactors = FALSE, check.names = FALSE)
   names(output) <- columns
   summary_items <- list(
-    list(label = "F(p)", value = summary$f %||% ""),
+    list(label = attr(summary_values, "f_label", exact = TRUE) %||% "F(p)", value = summary$f %||% ""),
     list(label = "R\u00B2(adj. R\u00B2)", value = summary$r2 %||% "")
   )
   if (length(summary_values) > 1L && isTRUE(include_delta) && model_index > 1L) {
@@ -758,14 +779,15 @@ hierarchical_compact_summary_parts <- function(value) {
   )
 }
 
-hierarchical_compact_summary_row_values <- function(summary, split_rows = FALSE) {
+hierarchical_compact_summary_row_values <- function(summary, split_rows = FALSE, f_label = "F(p)") {
   values <- list(
-    `F(p)` = summary$f,
+    summary$f,
     `R²(adj R²)` = summary$r2,
     d = summary$dw,
     `z(p)` = summary$normality,
     `x²(p)` = summary$homogeneity
   )
+  names(values)[[1L]] <- f_label
   if (!isTRUE(split_rows)) {
     return(lapply(values, hierarchical_compact_summary_cell))
   }
@@ -819,7 +841,8 @@ hierarchical_compact_coefficient_table <- function(model_tables, model_labels, s
   } else {
     "d"
   }
-  summary_columns <- c("F(p)", "R²(adj R²)", residual_columns)
+  f_label <- attr(summary_values, "f_label", exact = TRUE) %||% "F(p)"
+  summary_columns <- c(f_label, "R²(adj R²)", residual_columns)
   columns <- c("Model", "Variable", method_columns, summary_columns)
   rows <- list()
   marker_rows <- list()
@@ -855,7 +878,7 @@ hierarchical_compact_coefficient_table <- function(model_tables, model_labels, s
       sprintf("Model %s", model_index)
     )
     summary <- summary_values[[model_index]]
-    compact_summary <- hierarchical_compact_summary_row_values(summary, split_rows = split_summary_rows)
+    compact_summary <- hierarchical_compact_summary_row_values(summary, split_rows = split_summary_rows, f_label = f_label)
     for (row_index in seq_len(nrow(table))) {
       se_cell <- hierarchical_compact_first_cell(table, row_index, c("Boot SE", "HC3 SE", "SE"))
       p_cell <- hierarchical_compact_first_cell(table, row_index, c("Boot p", "p"))
@@ -923,7 +946,6 @@ hierarchical_compact_coefficient_table <- function(model_tables, model_labels, s
   widths["Model"] <- 7
   widths["Variable"] <- 16
   width_overrides <- c(
-    `F(p)` = 8,
     `R²(adj R²)` = 10,
     d = 10,
     `z(p)` = 8,
@@ -931,6 +953,7 @@ hierarchical_compact_coefficient_table <- function(model_tables, model_labels, s
   )
   matched_widths <- intersect(names(width_overrides), names(widths))
   widths[matched_widths] <- width_overrides[matched_widths]
+  widths[[f_label]] <- if (identical(f_label, "F(p)")) 8 else 14
   attr(output, "compact_column_widths") <- widths / sum(widths, na.rm = TRUE) * 100
   if (length(marker_rows) > 0L) {
     attr(output, "note_markers") <- do.call(rbind, marker_rows)
@@ -942,7 +965,7 @@ hierarchical_compact_coefficient_table <- function(model_tables, model_labels, s
     )
   }
   attr(output, "column_display_labels") <- c(
-    `F(p)` = "F\n(p)",
+    stats::setNames(sub("\\(p\\)$", "\n(p)", f_label), f_label),
     `R²(adj R²)` = "R\u00B2\n(adj R\u00B2)",
     `z(p)` = "z\n(p)",
     `x²(p)` = "x\u00B2\n(p)"
@@ -1101,7 +1124,7 @@ hierarchical_coefficient_html_table <- function(
   })
 
   footer_rows <- list(
-    hierarchical_footer_row("F(p)", lapply(summary_values, `[[`, "f"), model_columns, first = TRUE),
+    hierarchical_footer_row(attr(summary_values, "f_label", exact = TRUE) %||% "F(p)", lapply(summary_values, `[[`, "f"), model_columns, first = TRUE),
     hierarchical_footer_row("R\u00B2(adj. R\u00B2)", lapply(summary_values, `[[`, "r2"), model_columns)
   )
   if (length(model_tables) > 1 && isTRUE(include_delta)) {
@@ -1248,6 +1271,7 @@ hierarchical_results_panel <- function(
       )
     }),
     regression_reference_summary_block(results, variable_table, labels, show_sr2, show_f2),
+    regression_bootstrap_diagnostics_block(results, variable_table, labels),
     regression_assumption_review_block(results, variable_table, labels),
     analysis_diagnostics_section(warnings, skipped, title = "Warnings / skipped models", class = "regression-result-panel"),
     plot_blocks
@@ -1323,6 +1347,64 @@ regression_assumption_review_block <- function(results, variable_table = NULL, l
   )
 }
 
+regression_bootstrap_diagnostics_data_frame <- function(results, variable_table = NULL, labels = character(0)) {
+  rows <- lapply(seq_along(results %||% list()), function(index) {
+    result <- results[[index]]
+    table <- result$boot_table
+    required <- c("Term", "Requested", "Valid", "Valid %", "Status")
+    if (!is.data.frame(table) || nrow(table) == 0L || !all(required %in% names(table))) return(NULL)
+    dependent <- hierarchical_result_dependent_name(result)
+    data.frame(
+      Dependent = display_variable_name_static(dependent, variable_table, labels, label_only = TRUE),
+      Model = as.character(result$hierarchical_step %||% "Regression"),
+      Statistic = as.character(table$Term),
+      Requested = as.integer(table$Requested),
+      Valid = as.integer(table$Valid),
+      `Valid %` = vapply(as.numeric(table[["Valid %"]]), format_decimal3, character(1)),
+      Status = as.character(table$Status),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+  })
+  if (regression_results_are_hierarchical(results)) {
+    for (group in hierarchical_result_groups(results)) {
+      if (length(group) < 2L) next
+      dependent <- hierarchical_result_dependent_name(group[[1L]])
+      dependent_label <- display_variable_name_static(dependent, variable_table, labels, label_only = TRUE)
+      for (index in 2:length(group)) {
+        if (!isTRUE(group[[index - 1L]]$use_bootstrap) && !isTRUE(group[[index]]$use_bootstrap)) next
+        interval <- hierarchical_bootstrap_delta_r2_ci(group[[index - 1L]], group[[index]])
+        status <- as.character(attr(interval, "status", exact = TRUE) %||% "Pending")
+        if (identical(status, "Pending")) next
+        requested <- as.integer(attr(interval, "requested", exact = TRUE) %||% 0L)
+        valid <- as.integer(attr(interval, "valid", exact = TRUE) %||% 0L)
+        rows[[length(rows) + 1L]] <- data.frame(
+          Dependent = dependent_label,
+          Model = hierarchical_step_label(group[[index]], index),
+          Statistic = sprintf("Delta R²: %s vs %s", hierarchical_step_label(group[[index]], index), hierarchical_step_label(group[[index - 1L]], index - 1L)),
+          Requested = requested,
+          Valid = valid,
+          `Valid %` = format_decimal3(if (requested > 0L) 100 * valid / requested else NA_real_),
+          Status = status,
+          stringsAsFactors = FALSE,
+          check.names = FALSE
+        )
+      }
+    }
+  }
+  analysis_bind_rows(rows)
+}
+
+regression_bootstrap_diagnostics_block <- function(results, variable_table = NULL, labels = character(0)) {
+  table <- regression_bootstrap_diagnostics_data_frame(results, variable_table, labels)
+  if (!is.data.frame(table) || nrow(table) == 0L) return(NULL)
+  div(
+    class = "regression-result-panel bootstrap-diagnostics-panel",
+    h3("Bootstrap diagnostics"),
+    model_overview_html_table(table)
+  )
+}
+
 regression_results_panel <- function(
   results,
   variable_table = NULL,
@@ -1378,6 +1460,7 @@ regression_results_panel <- function(
       )
     }),
     regression_reference_summary_block(results, variable_table, labels, show_sr2, show_f2),
+    regression_bootstrap_diagnostics_block(results, variable_table, labels),
     regression_assumption_review_block(results, variable_table, labels),
     analysis_diagnostics_section(warnings, skipped, title = "Warnings / skipped models", class = "regression-result-panel"),
     if (!isTRUE(show_penalized)) {

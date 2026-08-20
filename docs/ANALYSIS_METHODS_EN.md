@@ -384,12 +384,16 @@ Options:
 - Bootstrap sample count: 1,000, 5,000, 10,000, 20,000, or 50,000.
 - Effect-size outputs such as sr2 and f2 where selected.
 - VIF display.
+- When HC3 is active, coefficient inference and the omnibus model test use the HC3 covariance matrix; the latter is reported as Robust Wald F.
+- Bootstrap output includes requested/valid counts, valid percentage, and Adequate/Caution/Unreliable status; unreliable intervals and p values are suppressed.
+- Rank-deficient model matrices are blocked because coefficients are not uniquely estimable.
 
 ## Hierarchical Regression
 
 - Predictors can be entered in blocks.
 - Each step reports R2, adjusted R2, delta R2, and nested model comparison p values.
 - The same diagnostic and robust/bootstrap logic is applied to eligible models.
+- All steps use the final-block complete-case sample. OLS reports F-change p, HC3 reports the added-block Robust Wald F p, and bootstrap models report a paired-resample Delta R2 interval.
 
 ## Mediation / Moderation
 
@@ -423,6 +427,7 @@ The **Mediation / Moderation** menu runs regression-based path models for mediat
 - Model diagram with path coefficient labels.
 - Path coefficients, standard errors, t/F/Wald-style tests, p-values, and confidence intervals.
 - Direct, total, indirect, conditional, and conditional indirect effects.
+- Bootstrap p values for indirect effects plus requested/valid resamples, valid percentage, and status. At least 80% valid is Adequate; 50% to less than 80% is Caution; intervals and p values are suppressed below 50% valid or fewer than 20 valid resamples.
 - PROCESS model summary, interaction R-squared change, simple slopes, and Johnson-Neyman tables.
 - Conditional-effect plots and saved result diagrams.
 - HTML, PDF, figure, Excel, and Result-tab export.
@@ -498,8 +503,10 @@ The Logistic Regression menu supports categorical outcome regression.
 Models:
 
 - Binary logistic regression.
-- Ordinal logistic regression.
+- Ordinal cumulative-logit regression. The proportional-odds assumption is evaluated with the nested `ordinal::clm` nominal-effects likelihood-ratio test.
 - Multinomial logistic regression.
+- Outcomes with only two observed levels in the final complete-case sample are routed to binary logistic regression even when their metadata are nominal or ordinal.
+- Hierarchical steps use the final model's complete-case sample. For ordinal outcomes, the final model's proportional-odds decision determines one model family for every step so likelihood-ratio changes remain comparable.
 
 Outputs:
 
@@ -509,10 +516,15 @@ Outputs:
 - Sparse-cell warning.
 - Separation risk warning.
 - VIF warning.
+- Convergence and rank-deficiency gates.
+- Approximate smallest-outcome-class observations per predictor parameter.
+- Apparent AUC/Brier/Tjur/log-loss diagnostics for binary models and apparent accuracy/probability-score diagnostics for ordinal or multinomial models.
 - Coefficient table.
 - Interpretation notes.
 
 Large odds ratios, wide confidence intervals, large standard errors, or high VIF values should be interpreted cautiously because they often indicate sparse cells, separation, or multicollinearity.
+
+Odds-ratio confidence intervals are large-sample Wald intervals. Apparent performance statistics describe the estimation sample only and must not be reported as validated predictive performance. Continuous-predictor functional form, multinomial IIA, influential observations, separation remedies such as Firth estimation, and partial proportional-odds models remain sensitivity-analysis responsibilities.
 
 ## Longitudinal / Panel Analysis
 

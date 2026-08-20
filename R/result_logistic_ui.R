@@ -28,7 +28,7 @@ logistic_format_ci_parenthetical <- function(lower, upper) {
 logistic_result_notes <- function(result) {
   notes <- as.character(result$notes %||% character(0))
   if (isTRUE(result$ordinal_fallback)) {
-    notes <- c(notes, "The proportional odds assumption was not met; multinomial logistic regression was fitted instead.")
+    notes <- c(notes, "The proportional odds assumption was not met in the nominal-effects likelihood-ratio test; multinomial logistic regression was fitted instead.")
   }
   instability_note <- logistic_instability_note(result)
   if (nzchar(instability_note)) {
@@ -328,7 +328,7 @@ logistic_fit_rows <- function(result, show_mcfadden = FALSE, show_cox_snell = FA
   }
   rows[[length(rows) + 1L]] <- list(type = "fit", values = list(tags$span(style = "display:inline-block;white-space:normal;", sprintf("AIC=%s, BIC=%s", format_decimal3(result$fit$aic), format_decimal3(result$fit$bic)))))
   if (!is.null(result$parallel)) {
-    rows[[length(rows) + 1L]] <- list(type = "fit", values = list(logistic_stat_line(tagList("Parallel lines ", logistic_x2_label()), sprintf("%s (%s)", format_decimal3(result$parallel$chisq), format_p(result$parallel$p)))))
+    rows[[length(rows) + 1L]] <- list(type = "fit", values = list(logistic_stat_line(tagList("Proportional odds ", logistic_x2_label()), sprintf("%s (%s)", format_decimal3(result$parallel$chisq), format_p(result$parallel$p)))))
   }
   rows
 }
@@ -519,7 +519,7 @@ logistic_fit_summary_values <- function(result, show_mcfadden = FALSE, show_cox_
     delta_r2 = if (!is.null(result$delta_r2)) sprintf("Delta R\u00B2 = %s", format_decimal3(result$delta_r2)) else "",
     delta_x2 = if (!is.null(result$delta_chisq)) sprintf("Delta x\u00B2(p) = %s (%s)", format_decimal3(result$delta_chisq), format_p(result$delta_p)) else "",
     aic = sprintf("AIC=%s, BIC=%s", format_decimal3(result$fit$aic), format_decimal3(result$fit$bic)),
-    parallel = if (!is.null(result$parallel)) sprintf("Parallel lines x\u00B2(p) = %s (%s)", format_decimal3(result$parallel$chisq), format_p(result$parallel$p)) else ""
+    parallel = if (!is.null(result$parallel)) sprintf("Proportional odds x\u00B2(p) = %s (%s)", format_decimal3(result$parallel$chisq), format_p(result$parallel$p)) else ""
   )
   keep <- vapply(values, function(value) {
     if (inherits(value, "shiny.tag") || inherits(value, "shiny.tag.list")) {
@@ -543,8 +543,8 @@ logistic_overview_column_label <- function(result, variable_table = NULL, labels
 logistic_package_label <- function(result) {
   method <- as.character(result$method %||% "")
   packages <- c("stats")
-  if (grepl("Ordinal", method)) {
-    packages <- c(packages, "MASS")
+  if (grepl("Ordinal", method) || !is.null(result$parallel)) {
+    packages <- c(packages, "ordinal")
   }
   if (grepl("Multinomial", method)) {
     packages <- c(packages, "nnet")
@@ -563,7 +563,7 @@ logistic_model_overview_data_frame <- function(results, variable_table = NULL, l
     notes <- logistic_result_notes(result)
     parts <- character(0)
     if (!is.null(result$parallel)) {
-      parts <- c(parts, if (!is.na(result$parallel$p) && result$parallel$p > .05) "Proportional odds met" else "Proportional odds not met")
+      parts <- c(parts, if (is.na(result$parallel$p)) "Proportional odds not assessable" else if (result$parallel$p > .05) "Proportional odds met" else "Proportional odds not met")
     }
     if (nzchar(logistic_note_match(notes, "EPV|Sparse|Zero cell|Rare event"))) {
       parts <- c(parts, "EPV/sparse warning")
@@ -621,8 +621,15 @@ logistic_parallel_summary <- function(result) {
     return("")
   }
   p <- result$parallel$p
-  decision <- if (!is.na(p) && p > .05) "Proportional odds assumption met" else "Proportional odds assumption not met"
-  sprintf("x\u00B2=%s(%s)\n%s", format_decimal3(result$parallel$chisq), format_p(p), decision)
+  decision <- if (is.na(p)) "Proportional odds assumption not assessable" else if (p > .05) "Proportional odds assumption met" else "Proportional odds assumption not met"
+  basis <- as.character(result$parallel$basis %||% "")[[1L]]
+  sprintf("x\u00B2=%s(%s)%s\n%s", format_decimal3(result$parallel$chisq), format_p(p), if (nzchar(basis)) paste0("; ", basis) else "", decision)
+}
+
+logistic_convergence_summary <- function(result) {
+  convergence <- result$convergence
+  if (is.null(convergence)) return("")
+  if (isTRUE(convergence$ok)) "Converged" else as.character(convergence$message %||% "Not converged")[[1L]]
 }
 
 logistic_vif_summary_text <- function(result) {
@@ -647,7 +654,7 @@ logistic_assumption_review_data_frame <- function(results, variable_table = NULL
   odds_label <- "Proportional odds"
   separation_label <- "Separation"
   package_label <- "Package"
-  rows <- c(odds_label, "EPV / sparse", separation_label, "VIF", package_label)
+  rows <- c("Convergence", odds_label, "EPV / sparse", separation_label, "VIF", "Functional form", "Multinomial IIA", package_label)
   values <- lapply(results, function(result) {
     notes <- logistic_result_notes(result)
     epv_sparse <- paste(c(
@@ -656,10 +663,13 @@ logistic_assumption_review_data_frame <- function(results, variable_table = NULL
     ), collapse = "\n")
     stats::setNames(
       c(
+        logistic_convergence_summary(result),
         logistic_parallel_summary(result),
         epv_sparse,
         logistic_assumption_note_match(notes, "separation"),
         logistic_vif_summary_text(result),
+        logistic_assumption_note_match(notes, "Linearity in the logit|nonlinear terms|spline"),
+        logistic_assumption_note_match(notes, "independence of irrelevant alternatives|IIA"),
         logistic_package_label(result)
       ),
       rows
@@ -670,6 +680,36 @@ logistic_assumption_review_data_frame <- function(results, variable_table = NULL
     table[[logistic_overview_column_label(results[[index]], variable_table, labels, category_table)]] <- unname(values[[index]][rows])
   }
   table
+}
+
+logistic_performance_data_frame <- function(results, variable_table = NULL, labels = character(0), category_table = NULL) {
+  rows <- lapply(seq_along(results %||% list()), function(index) {
+    result <- results[[index]]
+    metrics <- result$performance
+    if (is.null(metrics) || length(metrics) == 0L) return(NULL)
+    data.frame(
+      Dependent = logistic_dependent_title_label(result$dependent, variable_table, labels, category_table),
+      Model = logistic_model_label(result, index),
+      Method = as.character(result$method %||% ""),
+      Metric = names(metrics),
+      Value = vapply(as.numeric(metrics), format_decimal3, character(1)),
+      Basis = "Apparent (in-sample); descriptive only",
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+  })
+  analysis_bind_rows(rows)
+}
+
+logistic_performance_block <- function(results, variable_table = NULL, labels = character(0), category_table = NULL) {
+  table <- logistic_performance_data_frame(results, variable_table, labels, category_table)
+  if (!is.data.frame(table) || nrow(table) == 0L) return(NULL)
+  div(
+    class = "regression-result-panel logistic-result-panel performance-panel",
+    h3("Apparent model performance"),
+    model_overview_html_table(table),
+    div("These statistics describe the estimation sample and are not a substitute for internal validation, holdout testing, or external validation.", class = "result-note")
+  )
 }
 
 logistic_model_overview_block <- function(results, variable_table = NULL, labels = character(0), category_table = NULL) {
@@ -863,7 +903,7 @@ logistic_hierarchical_result_table <- function(group, variable_table = NULL, lab
     delta_r2 = "Delta R\u00B2",
     delta_x2 = "Delta x\u00B2(p)",
     aic = "AIC, BIC",
-    parallel = "Parallel lines x\u00B2(p)",
+    parallel = "Proportional odds x\u00B2(p)",
     status = "Status"
   )
   footer_rows <- lapply(seq_along(footer_labels), function(index) {
@@ -967,6 +1007,7 @@ logistic_results_panel <- function(results, variable_table = NULL, labels = char
         logistic_result_block(group[[1]], variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci, output_table_style)
       }
     }),
+    logistic_performance_block(results, variable_table, labels, category_table),
     logistic_assumption_review_block(results, variable_table, labels, category_table),
     analysis_diagnostics_section(
       warnings,

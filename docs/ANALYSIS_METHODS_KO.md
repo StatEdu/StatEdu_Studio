@@ -176,12 +176,16 @@ public 1.2는 아래 분석 목록에 평가자간 일치도, 혼합 반복측�
 - 다중공선성은 VIF로 확인한다.
 - 가정 진단 결과에 따라 OLS regression, OLS regression with HC3 robust standard errors, Bootstrap regression, Bootstrap regression with HC3 robust standard errors를 표시한다.
 - Bootstrap 반복 수는 1,000, 5,000, 10,000, 20,000, 50,000 중 선택할 수 있다.
+- HC3 적용 시 계수 검정과 전체 모형 검정에 HC3 공분산 기반 Robust Wald F를 사용한다.
+- Bootstrap 결과는 요청/유효 반복수, 유효 비율과 Adequate/Caution/Unreliable 상태를 함께 표시하며, Unreliable 구간과 p값은 억제한다.
+- 완전 다중공선성으로 모형행렬이 rank deficient이면 계수가 유일하게 식별되지 않으므로 분석을 차단한다.
 
 ## 위계적 회귀
 
 - 예측변수를 블록 단위로 추가한다.
 - 각 단계의 R2, adjusted R2, delta R2, nested model comparison p 값을 제공한다.
 - 각 모델에는 선형회귀와 같은 잔차 진단, VIF, bootstrap, robust standard errors 로직을 적용한다.
+- 모든 단계는 최종 블록 변수까지 포함한 동일 완전사례 표본을 사용한다. OLS는 F-change p값, HC3는 추가 블록의 Robust Wald F p값, bootstrap은 짝지어진 재표집 Delta R2 CI를 제공한다.
 
 ## 매개·조절
 
@@ -215,6 +219,7 @@ public 1.2는 아래 분석 목록에 평가자간 일치도, 혼합 반복측�
 - 모형 그림과 경로계수 라벨.
 - 경로별 회귀계수, 표준오차, t/F/Wald 계열 검정, p값, 신뢰구간.
 - 직접효과, 총효과, 간접효과, 조건부 효과, 조건부 간접효과.
+- 간접효과의 bootstrap p값과 요청/유효 반복수, 유효 비율, 판정 상태. 유효 반복이 80% 이상이면 Adequate, 50% 이상 80% 미만이면 Caution이며, 50% 미만이거나 유효 반복이 20회 미만이면 CI와 p값을 출력하지 않는다.
 - PROCESS model summary, interaction R-squared change, simple slopes, Johnson-Neyman 표.
 - 조건부 효과 그림과 결과 그림 저장.
 - HTML/PDF/그림/Excel 저장 및 Result 탭 추가.
@@ -232,9 +237,13 @@ public 1.2는 아래 분석 목록에 평가자간 일치도, 혼합 반복측�
 ## 로지스틱 회귀
 
 - binary dependent: binary logistic regression.
-- ordered dependent: ordinal logistic regression.
+- ordered dependent: ordinal cumulative-logit regression. 비례오즈 가정은 중첩된 `ordinal::clm` nominal-effects 우도비 검정으로 평가한다.
 - categorical dependent: multinomial logistic regression.
-- odds ratio, confidence interval, model fit, sparse cell, separation risk, VIF 경고를 제공한다.
+- 최종 완전사례 표본에서 결과 수준이 두 개만 남으면 메타데이터가 명목형 또는 순서형이어도 binary logistic regression을 사용한다.
+- 위계적 모형은 최종 모형의 완전사례 표본을 모든 단계에서 공유한다. 순서형 결과는 최종 모형의 비례오즈 판정으로 모든 단계의 모형군을 통일하여 우도비 변화량의 비교 가능성을 유지한다.
+- odds ratio, Wald confidence interval, model fit, sparse cell, separation risk, VIF, 수렴, rank deficiency, 결과 수준별 표본수/예측변수 모수 근사비를 제공한다.
+- 이항모형은 표본내 AUC, Brier score, Tjur R², log loss를, 순서형·다항모형은 표본내 accuracy와 확률점수를 보조 진단으로 제공한다. 이 값은 외부 또는 내부 검증 성능이 아니다.
+- 연속형 예측변수의 logit 선형성, multinomial IIA, 영향점, Firth 같은 separation 보정, partial proportional-odds 모형은 자동 확정하지 않으며 민감도 분석이 필요하다.
 
 ## 일반화선형모형(GLM)
 

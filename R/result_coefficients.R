@@ -178,6 +178,7 @@ coefficient_fit_line <- function(result) {
   } else {
     "R\u00B2(adj. R\u00B2)"
   }
+  test_label <- as.character(result$model_test_label %||% "F")[[1L]]
   paste(
     sprintf(
       "%s = %s (%s)",
@@ -186,7 +187,8 @@ coefficient_fit_line <- function(result) {
       format_decimal3(result$adjusted_r_squared)
     ),
     sprintf(
-      "F(%s, %s) = %s, p %s",
+      "%s(%s, %s) = %s, p %s",
+      test_label,
       result$f_df1,
       result$f_df2,
       format_decimal3(result$f_statistic),
@@ -266,7 +268,9 @@ coefficient_note_line <- function(result, show_vif = FALSE, show_sr2 = FALSE, sh
     if (isTRUE(show_vif)) "Tolerance = 1 - R\u00B2 for each predictor;" else NULL,
     if (isTRUE(show_vif)) "VIF = Variance Inflation Factor;" else NULL,
     if (isTRUE(result$use_hc3)) "HC3 SE = heteroskedasticity-consistent standard error type 3;" else NULL,
+    if (isTRUE(result$use_hc3)) "Robust Wald F is the HC3 covariance-based omnibus test of all non-intercept coefficients;" else NULL,
     if (isTRUE(result$use_bootstrap)) sprintf("Boot SE is the bootstrap standard error; LLCI and ULCI are %s bootstrap confidence limits based on the selected bootstrap resamples and seed number;", ci_label) else NULL,
+    if (isTRUE(result$use_bootstrap)) "Bootstrap status is Adequate with at least 80% valid resamples, Caution with 50% to less than 80%, and Unreliable below 50% or fewer than 20 valid resamples; Unreliable intervals and p values are suppressed;" else NULL,
     if (isTRUE(show_sr2)) "sr\u00B2 = squared semi-partial correlation, unique R\u00B2 contribution for each coefficient;" else NULL,
     if (isTRUE(show_f2)) "f\u00B2 = sr\u00B2 / (1 - model R\u00B2);" else NULL,
     if (isTRUE(result$use_hc3) || isTRUE(result$use_bootstrap)) "OLS R\u00B2 and adjusted R\u00B2 are ordinary least squares model fit indices;" else NULL,

@@ -344,6 +344,10 @@ save_analysis_excel_workbook <- function(
   if (is.data.frame(assumption_review_table) && nrow(assumption_review_table) > 0) {
     used_sheets <- add_excel_table_sheet(workbook, "Assumption review", assumption_review_table, used_sheets, title = "Assumption review")
   }
+  bootstrap_diagnostics <- regression_bootstrap_diagnostics_data_frame(results)
+  if (is.data.frame(bootstrap_diagnostics) && nrow(bootstrap_diagnostics) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Bootstrap diagnostics", bootstrap_diagnostics, used_sheets, title = "Bootstrap diagnostics")
+  }
   warnings <- attr(results, "warnings")
   skipped <- attr(results, "skipped")
   used_sheets <- add_analysis_warning_skipped_sheets(workbook, used_sheets, warnings, skipped, skipped_title = "Skipped models")
@@ -849,7 +853,7 @@ hierarchical_export_table <- function(
   }
 
   summary_values <- hierarchical_summary_values(group)
-  summary_labels <- c("F(p)", "R\u00B2(adj. R\u00B2)")
+  summary_labels <- c(attr(summary_values, "f_label", exact = TRUE) %||% "F(p)", "R\u00B2(adj. R\u00B2)")
   summary_keys <- c("f", "r2")
   if (length(group) > 1) {
     summary_labels <- c(summary_labels, attr(summary_values, "delta_label", exact = TRUE) %||% "Delta R\u00B2(F change p)")
@@ -1032,6 +1036,10 @@ save_hierarchical_excel_file <- function(
   if (is.data.frame(assumption_review) && nrow(assumption_review) > 0) {
     used_sheets <- add_excel_table_sheet(workbook, "Assumption review", assumption_review, used_sheets, title = "Assumption review")
   }
+  bootstrap_diagnostics <- regression_bootstrap_diagnostics_data_frame(results, variable_table, labels)
+  if (is.data.frame(bootstrap_diagnostics) && nrow(bootstrap_diagnostics) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Bootstrap diagnostics", bootstrap_diagnostics, used_sheets, title = "Bootstrap diagnostics")
+  }
   warnings <- attr(results, "warnings")
   skipped <- attr(results, "skipped")
   used_sheets <- add_analysis_warning_skipped_sheets(workbook, used_sheets, warnings, skipped, skipped_title = "Skipped models")
@@ -1073,7 +1081,7 @@ logistic_export_table <- function(
     delta_r2 = "Delta R\u00B2",
     delta_x2 = "Delta x\u00B2(p)",
     aic = "AIC, BIC",
-    parallel = "Parallel lines x\u00B2(p)",
+    parallel = "Proportional odds x\u00B2(p)",
     status = "Status"
   )
   for (key in names(summaries)) {
@@ -1129,6 +1137,10 @@ save_logistic_excel_file <- function(
   assumption_review <- logistic_assumption_review_data_frame(results, variable_table, labels, category_table)
   if (is.data.frame(assumption_review) && nrow(assumption_review) > 0) {
     used_sheets <- add_excel_table_sheet(workbook, "Assumption review", assumption_review, used_sheets, title = "Assumption review")
+  }
+  performance <- logistic_performance_data_frame(results, variable_table, labels, category_table)
+  if (is.data.frame(performance) && nrow(performance) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Apparent performance", performance, used_sheets, title = "Apparent model performance")
   }
   used_sheets <- add_analysis_warning_skipped_sheets(
     workbook,
