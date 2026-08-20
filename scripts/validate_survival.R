@@ -11,17 +11,24 @@ load_app_packages(check = FALSE)
 source_app_modules()
 
 message("Checking Kaplan-Meier analysis...")
-sample_path <- file.path(repo_root, "sample", "survival_examples", "survival_lung.csv")
-if (file.exists(sample_path)) {
-  lung <- read.csv(sample_path, check.names = FALSE)
-} else {
-  lung <- survival::lung
-  lung$status <- ifelse(lung$status == 2, 1, 0)
-  lung$sex <- factor(lung$sex)
-  lung$ph.ecog <- factor(lung$ph.ecog)
-}
+fixture_path <- file.path(repo_root, "scripts", "fixtures", "survival_validation.csv")
+if (!file.exists(fixture_path)) stop("Required survival validation fixture is missing: ", fixture_path)
+survival_fixture <- read.csv(fixture_path, check.names = FALSE)
+required_fixture_columns <- c("id", "time", "status", "sex", "ph.ecog", "age")
+stopifnot(
+  identical(names(survival_fixture), required_fixture_columns),
+  nrow(survival_fixture) == 72L,
+  identical(sort(unique(survival_fixture$status)), c(0L, 1L)),
+  identical(sort(unique(survival_fixture$sex)), c(1L, 2L)),
+  identical(sort(unique(survival_fixture$ph.ecog)), 0:2),
+  identical(survival_fixture$id, seq_len(72L)),
+  sum(survival_fixture$time) == 19176,
+  sum(survival_fixture$status) == 50,
+  sum(survival_fixture$age) == 4318,
+  max(survival_fixture$time) > 400
+)
 km <- prepare_km_analysis_result(
-  data = lung,
+  data = survival_fixture,
   time = "time",
   event = "status",
   group = c("sex", "ph.ecog"),
@@ -61,7 +68,7 @@ stopifnot(grepl("text-align:center !important", km_panel, fixed = TRUE))
 
 message("Checking Kaplan-Meier empty table/plot options...")
 km_empty_options <- prepare_km_analysis_result(
-  data = lung,
+  data = survival_fixture,
   time = "time",
   event = "status",
   group = "sex",
@@ -87,7 +94,7 @@ stopifnot(
   grepl("사건/비사건으로 매핑", event_note_html, fixed = TRUE)
 )
 cox <- prepare_cox_analysis_result(
-  data = lung,
+  data = survival_fixture,
   time = "time",
   event = "status",
   covariates = c("age", "sex"),
@@ -104,7 +111,7 @@ stopifnot(
   identical(names(cox_statistic_table), c("Term", "B", "SE", "z", "p"))
 )
 stopifnot(is.data.frame(survival_ph_table(cox)))
-factor_cox_data <- lung
+factor_cox_data <- survival_fixture
 factor_cox_data$sex <- factor(factor_cox_data$sex)
 factor_cox <- prepare_cox_analysis_result(
   data = factor_cox_data,
@@ -162,6 +169,34 @@ stopifnot(grepl("logistic-result-table", cox_html, fixed = TRUE))
 stopifnot(!grepl("survival-cox-model-subsection", cox_html, fixed = TRUE))
 stopifnot(regexpr("2. Cox proportional hazards model", cox_html, fixed = TRUE) < regexpr("Likelihood-ratio χ²(p)", cox_html, fixed = TRUE))
 stopifnot(regexpr("Likelihood-ratio χ²(p)", cox_html, fixed = TRUE) < regexpr("3. Supplementary statistics and diagnostics", cox_html, fixed = TRUE))
+
+message("Checking survival HTML, PDF, Excel, and Result-collection exports...")
+saved_cox_html <- saved_survival_results_html(cox, language = "en")
+stopifnot(grepl("StatEdu Studio Cox Regression Results", saved_cox_html, fixed = TRUE))
+stopifnot(grepl("data:image/png;base64,", saved_cox_html, fixed = TRUE))
+saved_cox_document <- xml2::read_html(saved_cox_html)
+stopifnot(length(xml2::xml_find_all(saved_cox_document, "//*[contains(concat(' ', normalize-space(@class), ' '), ' shiny-plot-output ')]")) == 0L)
+
+survival_export_dir <- tempfile("survival-result-exports-")
+dir.create(survival_export_dir)
+survival_html_file <- file.path(survival_export_dir, "cox-results.html")
+survival_pdf_file <- file.path(survival_export_dir, "cox-results.pdf")
+survival_excel_file <- file.path(survival_export_dir, "cox-results.xlsx")
+write_survival_results_html(cox, survival_html_file, language = "en")
+write_survival_results_pdf(cox, survival_pdf_file, language = "en")
+save_survival_excel_file(cox, survival_excel_file, language = "en")
+stopifnot(all(file.exists(c(survival_html_file, survival_pdf_file, survival_excel_file))))
+stopifnot(all(file.info(c(survival_html_file, survival_pdf_file, survival_excel_file))$size > 1000))
+stopifnot(identical(readBin(survival_pdf_file, "raw", n = 4L), charToRaw("%PDF")))
+survival_excel_sheets <- openxlsx::getSheetNames(survival_excel_file)
+stopifnot("Report metadata" %in% survival_excel_sheets)
+stopifnot(any(grepl("Cox", survival_excel_sheets, ignore.case = TRUE)))
+
+survival_result_entry <- list(title = "Cox Regression", saved_at = "2026-08-20 12:00:00", html = saved_cox_html)
+stopifnot(length(result_entry_tables(survival_result_entry, 1L)) >= 5L)
+survival_result_images <- result_entry_images(survival_result_entry)
+stopifnot(length(survival_result_images) >= 2L, all(file.exists(vapply(survival_result_images, `[[`, character(1), "path"))))
+unlink(vapply(survival_result_images, `[[`, character(1), "path"))
 
 message("Checking figure DPI policy...")
 stopifnot(analysis_figure_dpi(edition = "pro", public_release = FALSE) == 600L)

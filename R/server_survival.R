@@ -271,11 +271,19 @@ register_survival_handlers <- function(
       start = if (length(cox_start())) cox_start() else isolate(input$survival_cox_start %||% ""),
       stop = if (length(cox_stop())) cox_stop() else isolate(input$survival_cox_stop %||% ""),
       subject_id = if (length(cox_subject_id())) cox_subject_id() else isolate(input$survival_cox_subject_id %||% ""),
+      strata = as.character(input$survival_cox_strata %||% ""),
+      cluster = as.character(input$survival_cox_cluster %||% ""),
+      spline_covariate = as.character(input$survival_cox_spline_covariate %||% ""),
+      spline_df = as.integer(input$survival_cox_spline_df %||% 4L),
+      time_varying_covariate = as.character(input$survival_cox_time_varying_covariate %||% ""),
+      time_varying_times = as.character(input$survival_cox_time_varying_times %||% ""),
+      ties_method = as.character(input$survival_cox_ties_method %||% "efron"),
       event = cox_event(),
       covariates = cox_covariates(),
       event_value = if (transferred_here) transfer$event_value else as.character(input$survival_cox_event_value %||% "1"),
       adjusted_group = as.character(input$survival_cox_adjusted_group %||% ""),
-      adjusted_bootstrap_reps = as.integer(input$survival_cox_adjusted_bootstrap_reps %||% 100L),
+      adjusted_bootstrap_reps = as.integer(input$survival_cox_adjusted_bootstrap_reps %||% 2000L),
+      adjusted_times = as.character(input$survival_cox_adjusted_times %||% ""),
       data_shape = if (transferred_here) transfer$data_shape %||% "single_record" else isolate(input$survival_cox_data_shape %||% "single_record"),
       variable_table = variable_table_fn(),
       labels = labels_fn(),
@@ -302,7 +310,8 @@ register_survival_handlers <- function(
       competing_values = if (transferred_here) transfer$competing_values else isolate(input$survival_competing_event_values %||% "2"),
       rate_times = isolate(input$survival_competing_rate_times %||% ""),
       regression = if (transferred_here) transfer$regression else isolate(input$survival_competing_regression %||% "none"),
-      covariates = if (transferred_here) transfer$covariates else isolate(input$survival_competing_covariates %||% character(0))
+      covariates = if (transferred_here) transfer$covariates else isolate(input$survival_competing_covariates %||% character(0)),
+      censoring_group = isolate(input$survival_competing_censoring_group %||% "")
     ), language = language)
   })
 
@@ -338,6 +347,36 @@ register_survival_handlers <- function(
     print(plot)
   }, res = 160)
 
+  output$survival_cox_ph_plot <- renderPlot({
+    result <- cox_result()
+    shiny::req(!is.null(result), !is.null(result$ph), !is.null(result$ph$y))
+    survival_cox_ph_plot(result)
+  }, res = 160, height = 620)
+
+  output$survival_cox_functional_plot <- renderPlot({
+    result <- cox_result()
+    shiny::req(!is.null(result))
+    plot <- survival_cox_functional_form_ggplot(result)
+    shiny::req(!is.null(plot))
+    print(plot)
+  }, res = 160, height = 500)
+
+  output$survival_cox_spline_plot <- renderPlot({
+    result <- cox_result()
+    shiny::req(!is.null(result), is.data.frame(result$spline_curve), nrow(result$spline_curve) > 0)
+    plot <- survival_cox_spline_ggplot(result)
+    shiny::req(!is.null(plot))
+    print(plot)
+  }, res = 160, height = 500)
+
+  output$survival_cox_time_varying_plot <- renderPlot({
+    result <- cox_result()
+    shiny::req(!is.null(result), is.data.frame(result$time_varying_curve), nrow(result$time_varying_curve) > 0)
+    plot <- survival_cox_time_varying_ggplot(result)
+    shiny::req(!is.null(plot))
+    print(plot)
+  }, res = 160, height = 500)
+
   output$survival_competing_plot <- renderPlot({
     result <- competing_result()
     shiny::req(!is.null(result))
@@ -345,6 +384,28 @@ register_survival_handlers <- function(
     shiny::req(!is.null(plot))
     survival_draw_plot_with_risk_table(plot, survival_competing_risk_table_plot(result))
   }, res = 160, height = 650)
+
+  output$survival_cause_specific_ph_plot <- renderPlot({
+    result <- competing_result()
+    shiny::req(!is.null(result), is.list(result$cause_specific), !is.null(result$cause_specific$ph))
+    survival_cox_ph_plot(result$cause_specific)
+  }, res = 160, height = 620)
+
+  output$survival_cause_specific_functional_plot <- renderPlot({
+    result <- competing_result()
+    shiny::req(!is.null(result), is.list(result$cause_specific))
+    plot <- survival_cox_functional_form_ggplot(result$cause_specific)
+    shiny::req(!is.null(plot))
+    print(plot)
+  }, res = 160, height = 500)
+
+  output$survival_fine_gray_residual_plot <- renderPlot({
+    result <- competing_result()
+    shiny::req(!is.null(result), is.list(result$fine_gray))
+    plot <- survival_fine_gray_residual_ggplot(result)
+    shiny::req(!is.null(plot))
+    print(plot)
+  }, res = 160, height = 520)
 
   plot_survival_km_result <- function(result, plot_type = "survival", plot_version = "color") {
     survival_draw_plot_with_risk_table(survival_km_ggplot(result, plot_type, plot_version), survival_km_risk_table_plot(result, plot_version))
@@ -418,6 +479,11 @@ register_survival_handlers <- function(
     cox_event(character(0))
     cox_covariates(character(0))
     cox_result(NULL)
+    updateSelectInput(session, "survival_cox_strata", selected = "")
+    updateSelectInput(session, "survival_cox_cluster", selected = "")
+    updateSelectInput(session, "survival_cox_spline_covariate", selected = "")
+    updateSelectInput(session, "survival_cox_time_varying_covariate", selected = "")
+    updateSelectInput(session, "survival_cox_ties_method", selected = "efron")
     clear_transfer_selection(c("survival_cox_available", "survival_cox_time", "survival_cox_event", "survival_cox_covariates"))
     mark_settings_dirty()
   }, ignoreInit = TRUE)
@@ -655,6 +721,14 @@ register_survival_handlers <- function(
           reference_values = regression_reference_values_static(category_table_fn()),
           adjusted_group = input$survival_cox_adjusted_group,
           adjusted_bootstrap_reps = input$survival_cox_adjusted_bootstrap_reps,
+          adjusted_times = input$survival_cox_adjusted_times,
+          strata = input$survival_cox_strata,
+          cluster = input$survival_cox_cluster,
+          spline_covariate = input$survival_cox_spline_covariate,
+          spline_df = input$survival_cox_spline_df,
+          time_varying_covariate = input$survival_cox_time_varying_covariate,
+          time_varying_times = input$survival_cox_time_varying_times,
+          ties_method = input$survival_cox_ties_method,
           entry = if (identical(cox_shape, "entry_exit")) input$survival_cox_entry else "",
           start = if (identical(cox_shape, "start_stop")) input$survival_cox_start else "",
           stop = if (identical(cox_shape, "start_stop")) input$survival_cox_stop else "",
@@ -691,7 +765,8 @@ register_survival_handlers <- function(
           variable_info = variable_table_fn(),
           time_origin = contract$time_origin %||% "",
           time_unit = contract$time_unit %||% "",
-          event_map = contract$event_map %||% NULL
+          event_map = contract$event_map %||% NULL,
+          censoring_group = input$survival_competing_censoring_group %||% ""
         )
         competing_result(result)
         showNotification("Competing-risks analysis finished.", type = "message")
@@ -709,21 +784,104 @@ register_survival_handlers <- function(
       return(NULL)
     }
     tagList(
-      analysis_save_buttons(figure_button_id = "save_survival_km_figures_dialog", has_figures = TRUE, included_features = c("figure")),
+      analysis_save_buttons(
+        html_button_id = "save_survival_km_html_dialog",
+        pdf_button_id = "save_survival_km_pdf_dialog",
+        figure_button_id = "save_survival_km_figures_dialog",
+        excel_button_id = "save_survival_km_excel_dialog",
+        add_result_button_id = "add_survival_km_result",
+        has_figures = TRUE,
+        language = statedu_current_language(app_language_fn)
+      ),
       actionButton("save_survival_km_audit_dialog", "Save audit", class = "btn btn-default")
     )
   })
   output$survival_cox_save_control <- renderUI({
     if (is.null(cox_result())) return(NULL)
-    actionButton("save_survival_cox_audit_dialog", "Save audit", class = "btn btn-default")
+    tagList(
+      analysis_save_buttons(
+        html_button_id = "save_survival_cox_html_dialog",
+        pdf_button_id = "save_survival_cox_pdf_dialog",
+        excel_button_id = "save_survival_cox_excel_dialog",
+        add_result_button_id = "add_survival_cox_result",
+        has_figures = FALSE,
+        language = statedu_current_language(app_language_fn)
+      ),
+      actionButton("save_survival_cox_audit_dialog", "Save audit", class = "btn btn-default")
+    )
   })
   output$survival_competing_save_control <- renderUI({
     if (is.null(competing_result())) return(NULL)
     tagList(
-      analysis_save_buttons(figure_button_id = "save_survival_competing_figures_dialog", has_figures = TRUE, included_features = "figure"),
+      analysis_save_buttons(
+        html_button_id = "save_survival_competing_html_dialog",
+        pdf_button_id = "save_survival_competing_pdf_dialog",
+        figure_button_id = "save_survival_competing_figures_dialog",
+        excel_button_id = "save_survival_competing_excel_dialog",
+        add_result_button_id = "add_survival_competing_result",
+        has_figures = TRUE,
+        language = statedu_current_language(app_language_fn)
+      ),
       actionButton("save_survival_competing_audit_dialog", "Save audit", class = "btn btn-default")
     )
   })
+
+  save_survival_result_document <- function(result, format) {
+    shiny::req(!is.null(result))
+    language <- statedu_current_language(app_language_fn)
+    path <- switch(
+      format,
+      html = choose_html_save_path(),
+      pdf = choose_pdf_save_path(),
+      excel = choose_excel_save_path(),
+      character(0)
+    )
+    if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
+    extension <- switch(format, html = ".html", pdf = ".pdf", excel = ".xlsx")
+    pattern <- switch(format, html = "\\.html?$", pdf = "\\.pdf$", excel = "\\.xlsx$")
+    if (!grepl(pattern, path, ignore.case = TRUE)) path <- paste0(path, extension)
+    switch(
+      format,
+      html = write_survival_results_html(result, path, language),
+      pdf = write_survival_results_pdf(result, path, language),
+      excel = save_survival_excel_file(result, path, language)
+    )
+    message_key <- if (identical(format, "html")) "result.html_saved" else if (identical(format, "pdf")) "result.pdf_saved" else "result.analysis_saved"
+    showNotification(sprintf(statedu_t(message_key, language), path), type = "message")
+    invisible(path)
+  }
+
+  register_survival_document_handlers <- function(prefix, result_fn) {
+    for (format in c("html", "pdf", "excel")) {
+      local({
+        current_format <- format
+        button_id <- paste0("save_survival_", prefix, "_", current_format, "_dialog")
+        observeEvent(input[[button_id]], {
+          tryCatch(
+            save_survival_result_document(result_fn(), current_format),
+            error = function(e) showNotification(conditionMessage(e), type = "error", duration = 8)
+          )
+        }, ignoreInit = TRUE)
+      })
+    }
+  }
+
+  register_survival_document_handlers("km", km_result)
+  register_survival_document_handlers("cox", cox_result)
+  register_survival_document_handlers("competing", competing_result)
+
+  register_add_result_snapshot(
+    input, session, "add_survival_km_result", "Kaplan-Meier Survival Analysis",
+    html_fn = function() saved_survival_results_html(km_result(), statedu_current_language(app_language_fn))
+  )
+  register_add_result_snapshot(
+    input, session, "add_survival_cox_result", "Cox Regression",
+    html_fn = function() saved_survival_results_html(cox_result(), statedu_current_language(app_language_fn))
+  )
+  register_add_result_snapshot(
+    input, session, "add_survival_competing_result", "Competing-Risks Analysis",
+    html_fn = function() saved_survival_results_html(competing_result(), statedu_current_language(app_language_fn))
+  )
 
   save_survival_audit <- function(result) {
     shiny::req(!is.null(result))
@@ -749,8 +907,8 @@ register_survival_handlers <- function(
     directory <- choose_figure_save_dir()
     if (length(directory) == 0 || !nzchar(directory[[1]])) return(invisible(NULL))
     tryCatch({
-      file <- save_survival_competing_figure_files(result, directory)
-      showNotification(sprintf("Saved competing-risk figure: %s", file), type = "message")
+      files <- save_survival_competing_figure_files(result, directory)
+      showNotification(sprintf("Saved competing-risk figures: %s", paste(files, collapse = ", ")), type = "message")
     }, error = function(e) showNotification(conditionMessage(e), type = "error", duration = 8))
   }, ignoreInit = TRUE)
 
@@ -798,7 +956,7 @@ register_survival_handlers <- function(
     title = "Cox Regression Data Viewer",
     dataset_fn = dataset_fn,
     selected_names_fn = selected_names_fn,
-    variables_fn = function() unique(c(cox_time(), cox_event(), cox_covariates())),
+    variables_fn = function() unique(c(cox_time(), cox_event(), cox_covariates(), as.character(input$survival_cox_strata %||% ""), as.character(input$survival_cox_cluster %||% ""))),
     variable_table_fn = variable_table_fn,
     labels_fn = labels_fn,
     category_table_fn = category_table_fn,

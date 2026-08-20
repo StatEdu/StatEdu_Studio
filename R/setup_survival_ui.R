@@ -350,6 +350,7 @@ survival_competing_setup_panel <- function(selected_names, values = list(), lang
   selected <- survival_selected_names(selected_names)
   choices <- stats::setNames(selected, selected)
   optional_choices <- c(stats::setNames("", survival_ui_text("No group", language)), choices)
+  censoring_choices <- c(stats::setNames("", if (ko) "사용 안 함" else "None"), choices)
   div(
     class = "survival-competing-setup-grid ttest-anova-setup-grid survival-setup-grid analysis-three-block-setup-grid",
     div(class = "analysis-transfer-column analysis-transfer-panel survival-competing-variable-panel",
@@ -377,6 +378,16 @@ survival_competing_setup_panel <- function(selected_names, values = list(), lang
         selected = values$regression %||% "none"
       ),
       selectInput("survival_competing_covariates", survival_ui_text("Covariates", language), choices = choices, selected = values$covariates %||% character(0), multiple = TRUE),
+      conditionalPanel(
+        "input.survival_competing_regression == 'fine_gray' || input.survival_competing_regression == 'both'",
+        selectInput(
+          "survival_competing_censoring_group",
+          if (ko) "검열분포 층화 변수 (선택)" else "Censoring-distribution strata (optional)",
+          choices = censoring_choices,
+          selected = values$censoring_group %||% ""
+        ),
+        div(class = "result-note", if (ko) "집단별 검열분포가 다르다는 설계 근거가 있을 때만 지정합니다. p값에 따라 자동 선택하지 않습니다." else "Specify only when the design supports different censoring distributions across strata; do not select it from observed p-values.")
+      ),
       div(class = "result-note", if (ko) "모든 사건코드를 명시적으로 지정하세요. 경쟁사건값이 여러 개면 쉼표로 구분합니다." else "Every observed event code must be assigned explicitly. Separate multiple competing-event values with commas.")
     )
   )
@@ -605,11 +616,19 @@ survival_cox_setup_panel <- function(
   start = "",
   stop = "",
   subject_id = "",
+  strata = "",
+  cluster = "",
+  spline_covariate = "",
+  spline_df = 4L,
+  time_varying_covariate = "",
+  time_varying_times = "",
+  ties_method = "efron",
   event = "",
   covariates = character(0),
   event_value = "1",
   adjusted_group = "",
-  adjusted_bootstrap_reps = 100L,
+  adjusted_bootstrap_reps = 2000L,
+  adjusted_times = "",
   data_shape = "single_record",
   variable_table = NULL,
   labels = character(0),
@@ -623,10 +642,12 @@ survival_cox_setup_panel <- function(
   data_shape <- as.character(data_shape %||% "single_record")[[1]]
   if (!data_shape %in% c("single_record", "entry_exit", "start_stop")) data_shape <- "single_record"
   selected <- survival_selected_names(selected_names)
-  assigned <- unique(c(time, entry, start, stop, subject_id, event, covariates))
+  assigned <- unique(c(time, entry, start, stop, subject_id, strata, cluster, event, covariates))
   assigned <- assigned[nzchar(assigned)]
   available <- setdiff(selected, assigned)
   adjusted_choices <- c("None" = "", stats::setNames(covariates, covariates))
+  spline_choices <- c("None" = "", stats::setNames(covariates, covariates))
+  time_varying_choices <- c("None" = "", stats::setNames(covariates, covariates))
   optional_choices <- c(stats::setNames("", if (language == "ko") "선택 안 함" else "None"), stats::setNames(selected, selected))
   optional_selected <- function(value) {
     value <- survival_selected_names(value)
@@ -724,9 +745,83 @@ survival_cox_setup_panel <- function(
               div(class = "analysis-option-subtitle", if (language == "ko") "Schoenfeld 잔차 검정" else "Schoenfeld residual test")
             ),
             div(class = "analysis-option-group",
+              div(class = "analysis-option-title", if (language == "ko") "동률 사건 처리" else "Tied-event handling"),
+              selectInput(
+                "survival_cox_ties_method",
+                if (language == "ko") "부분우도 방식" else "Partial-likelihood method",
+                choices = c("Efron (default)" = "efron", "Breslow" = "breslow", "Exact" = "exact"),
+                selected = if (ties_method %in% c("efron", "breslow", "exact")) ties_method else "efron"
+              ),
+              div(class = "result-note", if (language == "ko") "Efron이 기본값입니다. Exact는 소규모 이산시간 자료의 많은 동률에만 신중히 사용하세요." else "Efron is the default. Use exact partial likelihood cautiously for small discrete-time datasets with substantial ties.")
+            ),
+            div(class = "analysis-option-group",
+              div(class = "analysis-option-title", if (language == "ko") "층화 Cox" else "Stratified Cox"),
+              selectInput(
+                "survival_cox_strata",
+                if (language == "ko") "층화 변수" else "Stratification variable",
+                choices = optional_choices,
+                selected = optional_selected(strata)
+              ),
+              div(class = "result-note", if (language == "ko") "층마다 서로 다른 기저위험을 허용하며, 층화 변수 자체의 HR은 추정하지 않습니다." else "Allows a separate baseline hazard in each stratum; no hazard ratio is estimated for the stratification variable itself.")
+            ),
+            conditionalPanel(
+              "input.survival_cox_data_shape != 'start_stop'",
+              div(class = "analysis-option-group",
+                div(class = "analysis-option-title", if (language == "ko") "군집-강건 분산" else "Cluster-robust variance"),
+                selectInput(
+                  "survival_cox_cluster",
+                  if (language == "ko") "군집 ID 변수" else "Cluster ID variable",
+                  choices = optional_choices,
+                  selected = optional_selected(cluster)
+                ),
+                div(class = "result-note", if (language == "ko") "병원·학교·가구 등 군집 내 상관을 sandwich 표준오차로 반영합니다. 적은 군집 수에서는 별도 검토가 필요합니다." else "Uses sandwich standard errors for within-cluster correlation (for example, hospitals, schools, or households). Few clusters require additional review.")
+              )
+            ),
+            div(class = "analysis-option-group",
+              div(class = "analysis-option-title", if (language == "ko") "연속형 비선형 효과" else "Continuous nonlinear effect"),
+              selectInput(
+                "survival_cox_spline_covariate",
+                if (language == "ko") "Natural cubic spline 공변량" else "Natural cubic spline covariate",
+                choices = spline_choices,
+                selected = if (spline_covariate %in% covariates) spline_covariate else ""
+              ),
+              numericInput(
+                "survival_cox_spline_df",
+                if (language == "ko") "Spline 자유도" else "Spline degrees of freedom",
+                value = as.integer(spline_df %||% 4L),
+                min = 3,
+                max = 5,
+                step = 1
+              ),
+              div(class = "result-note", if (language == "ko") "선형항과 natural cubic spline 모형을 비교하고 중앙값 대비 HR 곡선을 제공합니다. 사전에 계획한 공변량에 사용하세요." else "Compares a linear term with a natural cubic spline and reports an HR curve relative to the median. Use for a prespecified covariate.")
+            ),
+            div(class = "analysis-option-group",
+              div(class = "analysis-option-title", if (language == "ko") "시간가변 계수" else "Time-varying coefficient"),
+              selectInput(
+                "survival_cox_time_varying_covariate",
+                if (language == "ko") "시간에 따라 HR이 변하는 공변량" else "Covariate with time-varying HR",
+                choices = time_varying_choices,
+                selected = if (time_varying_covariate %in% covariates) time_varying_covariate else ""
+              ),
+              textInput(
+                "survival_cox_time_varying_times",
+                if (language == "ko") "HR 보고 시점" else "HR reporting times",
+                value = time_varying_times,
+                placeholder = if (language == "ko") "예: 1, 5, 10 (공란이면 사건시점 사분위수)" else "e.g., 1, 5, 10 (blank uses event-time quartiles)"
+              ),
+              div(class = "result-note", if (language == "ko") "coxph tt()로 공변량 × log(1 + time)을 적합하며 단일 HR 대신 시점별 HR을 보고합니다." else "Fits covariate × log(1 + time) through coxph tt() and reports time-specific HRs instead of one constant HR.")
+            ),
+            div(class = "analysis-option-group",
               div(class = "analysis-option-title", survival_ui_text("Adjusted survival group", language)),
               selectInput("survival_cox_adjusted_group", NULL, choices = adjusted_choices, selected = adjusted_group),
-              numericInput("survival_cox_adjusted_bootstrap_reps", survival_ui_text("Bootstrap repetitions", language), value = adjusted_bootstrap_reps, min = 20, max = 1000, step = 20)
+              textInput(
+                "survival_cox_adjusted_times",
+                if (language == "ko") "보정 생존확률 보고 시점" else "Adjusted-survival reporting times",
+                value = adjusted_times,
+                placeholder = if (language == "ko") "예: 12, 36, 60" else "e.g., 12, 36, 60"
+              ),
+              numericInput("survival_cox_adjusted_bootstrap_reps", survival_ui_text("Bootstrap repetitions", language), value = adjusted_bootstrap_reps, min = 200, max = 5000, step = 200),
+              div(class = "result-note", if (language == "ko") "지정 시점의 집단별 보정 생존확률과 집단 간 차이·비율을 점별 percentile bootstrap 95% 신뢰구간과 함께 보고합니다." else "Reports group-specific adjusted survival and pairwise differences/ratios at the specified times with pointwise percentile-bootstrap 95% confidence intervals.")
             )
           )
         )

@@ -64,7 +64,7 @@ analysis_save_feature_visible <- function(feature, included_features = character
     return(TRUE)
   }
   if (statedu_public_release() && feature %in% c("excel", "word")) {
-    return(TRUE)
+    return(statedu_feature_enabled(paste0(feature, "_export"), FALSE))
   }
   if (feature %in% c("excel", "word") && analysis_save_edition() %in% c("pro", "personal", "institution")) {
     return(TRUE)
@@ -85,7 +85,7 @@ analysis_save_feature_enabled <- function(feature, edition = analysis_save_editi
   included_features <- setdiff(included_features, "__public_exception__")
   if (identical(edition, "free")) {
     return(
-      identical(feature, "html") ||
+      feature %in% c("html", "pdf", "figure", "add_result", "result_history") ||
         isTRUE(free_all) ||
         (statedu_public_release() && isTRUE(public_exception) && feature %in% included_features)
     )

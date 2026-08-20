@@ -856,7 +856,29 @@ save_survival_competing_figure_files <- function(result, directory, dpi = analys
     survival_draw_plot_with_risk_table(survival_competing_ggplot(result), survival_competing_risk_table_plot(result)),
     finally = grDevices::dev.off()
   )
-  file
+  saved <- file
+  if (is.list(result$cause_specific) && !is.null(result$cause_specific$ph)) {
+    ph_file <- file.path(directory, sprintf("Cause-specific-Cox_Schoenfeld-diagnostics_%sdpi.png", dpi))
+    grDevices::png(ph_file, width = 7.2, height = 6.2, units = "in", res = dpi, bg = "white")
+    tryCatch(
+      survival_cox_ph_plot(result$cause_specific),
+      finally = grDevices::dev.off()
+    )
+    saved <- c(saved, ph_file)
+  }
+  functional_plot <- if (is.list(result$cause_specific)) survival_cox_functional_form_ggplot(result$cause_specific) else NULL
+  if (!is.null(functional_plot)) {
+    functional_file <- file.path(directory, sprintf("Cause-specific-Cox_Martingale-functional-form_%sdpi.png", dpi))
+    ggplot2::ggsave(functional_file, functional_plot, width = 7.2, height = 5.8, units = "in", dpi = dpi, bg = "white")
+    saved <- c(saved, functional_file)
+  }
+  residual_plot <- survival_fine_gray_residual_ggplot(result)
+  if (!is.null(residual_plot)) {
+    residual_file <- file.path(directory, sprintf("Fine-Gray_Schoenfeld-like-residuals_%sdpi.png", dpi))
+    ggplot2::ggsave(residual_file, residual_plot, width = 7.2, height = 5.8, units = "in", dpi = dpi, bg = "white")
+    saved <- c(saved, residual_file)
+  }
+  saved
 }
 
 save_survival_reporting_files <- function(result, directory, language = statedu_initial_language()) {
@@ -867,6 +889,7 @@ save_survival_reporting_files <- function(result, directory, language = statedu_
   writeLines(enc2utf8(bundle$method), method_file, useBytes = TRUE)
   files <- c(files, method_file)
   tables <- list(Data_inclusion_audit = bundle$data_flow, Event_code_mapping = bundle$event_map, Excluded_rows_by_reason = bundle$exclusions, Censoring_followup_diagnostics = bundle$followup, Analysis_stability_review = bundle$stability, Reporting_checklist = bundle$checklist, Interpretation_guide = bundle$interpretation)
+  if (length(bundle$diagnostics %||% list())) tables <- c(tables, bundle$diagnostics)
   for (name in names(tables)) {
     table <- tables[[name]]
     if (!is.data.frame(table) || !nrow(table)) next

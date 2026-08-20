@@ -1485,6 +1485,8 @@ result_entry_images <- function(entry) {
     src <- xml2::xml_attr(image_nodes[[index]], "src") %||% ""
     mime <- sub("^data:([^;]+);base64,.*$", "\\1", src)
     payload <- sub("^data:[^;]+;base64,", "", src)
+    payload <- gsub("%0A|%0D", "", payload, ignore.case = TRUE)
+    payload <- gsub("[[:space:]]+", "", payload)
     extension <- switch(mime, "image/jpeg" = ".jpg", "image/webp" = ".webp", ".png")
     path <- tempfile("statedu_result_image_", fileext = extension)
     writeBin(jsonlite::base64_dec(payload), path)

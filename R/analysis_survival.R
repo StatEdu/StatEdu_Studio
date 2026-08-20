@@ -262,6 +262,21 @@ survival_bind_issues <- function(issues) {
   do.call(rbind, issues)
 }
 
+survival_coerce_duration <- function(values) {
+  text <- trimws(as.character(values))
+  missing <- is.na(values) | !nzchar(text)
+  unsupported_class <- inherits(values, c("Date", "POSIXct", "POSIXlt")) || is.logical(values) || is.list(values)
+  numeric_values <- if (unsupported_class) {
+    rep(NA_real_, length(values))
+  } else if (is.factor(values) || is.character(values)) {
+    suppressWarnings(as.numeric(text))
+  } else {
+    suppressWarnings(as.numeric(values))
+  }
+  invalid_encoding <- !missing & (unsupported_class | is.na(numeric_values))
+  list(values = numeric_values, missing = missing, invalid_encoding = invalid_encoding)
+}
+
 survival_legacy_settings <- function(
   time,
   event,
@@ -384,21 +399,34 @@ survival_preflight <- function(data, settings) {
   }
   numeric_roles <- unique(c(time, entry, start, stop))
   numeric_roles <- numeric_roles[nzchar(numeric_roles) & numeric_roles %in% names(frame)]
-  for (name in numeric_roles) frame[[name]] <- suppressWarnings(as.numeric(frame[[name]]))
+  duration_status <- list()
+  for (name in numeric_roles) {
+    duration_status[[name]] <- survival_coerce_duration(frame[[name]])
+    frame[[name]] <- duration_status[[name]]$values
+    invalid_encoding <- duration_status[[name]]$invalid_encoding
+    if (any(invalid_encoding)) {
+      add_reason(invalid_encoding, "invalid_time_encoding")
+      issues[[length(issues) + 1L]] <- survival_issue(
+        "block", "invalid_time_encoding", name, sum(invalid_encoding),
+        "Time-role values must be numeric durations; date/time fields must be converted to elapsed durations before analysis.",
+        "Convert the selected time variable to a numeric elapsed duration and verify its unit."
+      )
+    }
+  }
   if (nzchar(time) && time %in% names(frame)) {
-    add_reason(is.na(frame[[time]]), "missing_time")
+    add_reason(duration_status[[time]]$missing, "missing_time")
     invalid_time <- !is.na(frame[[time]]) & (!is.finite(frame[[time]]) | frame[[time]] < 0)
     add_reason(invalid_time, "invalid_time")
     if (any(invalid_time)) issues[[length(issues) + 1L]] <- survival_issue("block", "invalid_time", time, sum(invalid_time), "Time values must be finite and nonnegative.", "Correct the time values.")
   }
   if (identical(shape, "entry_exit") && all(c(entry, time) %in% names(frame))) {
-    add_reason(is.na(frame[[entry]]), "missing_entry")
+    add_reason(duration_status[[entry]]$missing, "missing_entry")
     invalid_order <- !is.na(frame[[entry]]) & !is.na(frame[[time]]) & frame[[entry]] >= frame[[time]]
     add_reason(invalid_order, "invalid_time_order")
     if (any(invalid_order)) issues[[length(issues) + 1L]] <- survival_issue("block", "entry_not_before_exit", paste(entry, time, sep = ", "), sum(invalid_order), "Entry time must be earlier than exit time.", "Correct entry and exit times.")
   }
   if (identical(shape, "start_stop") && all(c(start, stop) %in% names(frame))) {
-    add_reason(is.na(frame[[start]]) | is.na(frame[[stop]]), "missing_interval")
+    add_reason(duration_status[[start]]$missing | duration_status[[stop]]$missing, "missing_interval")
     invalid_interval <- !is.na(frame[[start]]) & (!is.finite(frame[[start]]) | frame[[start]] < 0) |
       !is.na(frame[[stop]]) & (!is.finite(frame[[stop]]) | frame[[stop]] < 0)
     add_reason(invalid_interval, "invalid_interval_time")
@@ -427,6 +455,26 @@ survival_preflight <- function(data, settings) {
     role_lookup <- stats::setNames(event_map$role, event_map$raw_value)
     event_roles <- unname(role_lookup[trimws(as.character(raw_event))])
     add_reason(event_roles == "exclude", "excluded_event_code")
+    competing_event <- event_roles == "competing_event"
+    competing_workflow <- identical(as.character(settings$objective %||% "")[[1]], "competing") ||
+      identical(as.character(settings$event_structure %||% "")[[1]], "competing")
+    if (any(competing_event, na.rm = TRUE) && !competing_workflow) {
+      add_reason(competing_event, "competing_event_requires_competing_risk")
+      issues[[length(issues) + 1L]] <- survival_issue(
+        "block", "competing_event_requires_competing_risk", event, sum(competing_event, na.rm = TRUE),
+        "Competing-event codes cannot be analyzed as ordinary censoring in the standard Kaplan-Meier or Cox workflow.",
+        "Use the Competing Risks analysis for cumulative incidence, Gray's test, cause-specific Cox, or Fine-Gray regression."
+      )
+    }
+    other_state <- event_roles == "other_state"
+    add_reason(other_state, "unsupported_other_state")
+    if (any(other_state, na.rm = TRUE)) {
+      issues[[length(issues) + 1L]] <- survival_issue(
+        "block", "unsupported_other_state", event, sum(other_state, na.rm = TRUE),
+        "Event codes assigned as other_state require a multi-state survival model, which is not supported in survival v1.",
+        "Use a supported terminal-event definition or a dedicated multi-state analysis."
+      )
+    }
     frame[[paste0(event, "__raw")]] <- raw_event
     frame[[event]] <- event_roles == "event_of_interest"
   } else {
@@ -581,7 +629,18 @@ survival_p <- function(p) {
 survival_parse_times <- function(value) {
   raw <- unlist(strsplit(as.character(value %||% ""), "[,;[:space:]]+"))
   times <- suppressWarnings(as.numeric(raw))
-  sort(unique(times[!is.na(times) & times >= 0]))
+  sort(unique(times[is.finite(times) & times >= 0]))
+}
+
+survival_parse_times_strict <- function(value, label = "Time points") {
+  text <- trimws(as.character(value %||% "")[[1]])
+  if (!nzchar(text)) return(numeric(0))
+  tokens <- unlist(strsplit(text, "[,;[:space:]]+"))
+  values <- suppressWarnings(as.numeric(tokens))
+  if (!length(values) || any(!is.finite(values)) || any(values < 0)) {
+    stop(sprintf("%s must contain only nonnegative finite numbers separated by commas, semicolons, or spaces.", label))
+  }
+  sort(unique(values))
 }
 
 survival_default_risk_times <- function(time) {
@@ -892,6 +951,67 @@ survival_km_posthoc_table <- function(data, time, event, group, formula, test_me
   table
 }
 
+survival_km_crossing_diagnostics <- function(fit, tolerance = 1e-10) {
+  fit_summary <- summary(fit, censored = TRUE)
+  strata <- as.character(fit_summary$strata %||% character(0))
+  strata_levels <- unique(strata[nzchar(strata)])
+  if (length(strata_levels) < 2L) return(data.frame())
+  time <- as.numeric(fit_summary$time)
+  surv <- as.numeric(fit_summary$surv)
+  valid <- is.finite(time) & is.finite(surv) & nzchar(strata)
+  if (!any(valid)) return(data.frame())
+  time <- time[valid]
+  surv <- surv[valid]
+  strata <- strata[valid]
+  grid <- sort(unique(time))
+  if (!length(grid)) return(data.frame())
+  step_survival <- lapply(strata_levels, function(level) {
+    keep <- strata == level
+    level_time <- time[keep]
+    level_surv <- surv[keep]
+    ordered <- order(level_time)
+    level_time <- level_time[ordered]
+    level_surv <- level_surv[ordered]
+    duplicated_time <- duplicated(level_time, fromLast = TRUE)
+    level_time <- level_time[!duplicated_time]
+    level_surv <- level_surv[!duplicated_time]
+    stats::approx(
+      x = c(-Inf, level_time),
+      y = c(1, level_surv),
+      xout = grid,
+      method = "constant",
+      f = 0,
+      rule = 2,
+      ties = "ordered"
+    )$y
+  })
+  names(step_survival) <- strata_levels
+  pairs <- utils::combn(strata_levels, 2, simplify = FALSE)
+  rows <- lapply(pairs, function(pair) {
+    common_followup_end <- min(vapply(pair, function(level) max(time[strata == level]), numeric(1)))
+    pair_grid_indices <- which(grid <= common_followup_end)
+    pair_grid <- grid[pair_grid_indices]
+    difference <- step_survival[[pair[[1]]]][pair_grid_indices] - step_survival[[pair[[2]]]][pair_grid_indices]
+    non_tied <- which(is.finite(difference) & abs(difference) > tolerance)
+    crossing_times <- numeric(0)
+    if (length(non_tied) > 1L) {
+      signs <- sign(difference[non_tied])
+      changes <- which(signs[-1L] != signs[-length(signs)]) + 1L
+      if (length(changes)) crossing_times <- pair_grid[non_tied[changes]]
+    }
+    data.frame(
+      Comparison = paste(pair, collapse = " vs "),
+      Crossings = length(crossing_times),
+      `First crossing time` = if (length(crossing_times)) crossing_times[[1]] else NA_real_,
+      `Common follow-up end` = common_followup_end,
+      `Review signal` = length(crossing_times) > 0L,
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  })
+  do.call(rbind, rows)
+}
+
 prepare_km_single_analysis_result <- function(
   data,
   time,
@@ -945,6 +1065,7 @@ prepare_km_single_analysis_result <- function(
     stats::as.formula(sprintf("%s ~ 1", surv_term))
   }
   fit <- survival::survfit(formula, data = model_data)
+  crossing_table <- survival_km_crossing_diagnostics(fit)
   logrank <- NULL
   if (nzchar(as.character(group %||% "")) && length(unique(model_data[[group]])) > 1L) {
     logrank <- survival_weighted_rank_test(model_data, time, event, group, test_method, entry)
@@ -996,6 +1117,7 @@ prepare_km_single_analysis_result <- function(
     rmst = rmst,
     median_table = survival_km_median_table(fit),
     life_table = survival_life_table(model_data, time, event, group, times),
+    crossing_table = crossing_table,
     logrank = logrank,
     posthoc = survival_km_posthoc_table(model_data, time, event, group, formula, test_method, entry),
     output_tables = output_tables,
@@ -1164,13 +1286,406 @@ survival_km_median_table <- function(fit) {
   result
 }
 
-survival_cox_formula <- function(time, event, covariates, entry = "", start = "", stop = "", subject_id = "") {
-  rhs <- paste(sprintf("`%s`", covariates), collapse = " + ")
-  if (nzchar(as.character(subject_id %||% ""))) rhs <- paste0(rhs, sprintf(" + cluster(`%s`)", subject_id))
+survival_cox_formula <- function(time, event, covariates, entry = "", start = "", stop = "", subject_id = "", strata_variable = "", cluster_variable = "", spline_covariate = "", spline_df = 4L, time_varying_covariate = "") {
+  rhs_terms <- vapply(covariates, function(covariate) {
+    if (nzchar(as.character(spline_covariate %||% "")) && identical(covariate, spline_covariate)) {
+      sprintf("splines::ns(`%s`, df = %d)", covariate, as.integer(spline_df))
+    } else {
+      sprintf("`%s`", covariate)
+    }
+  }, character(1))
+  if (nzchar(as.character(time_varying_covariate %||% ""))) rhs_terms <- c(rhs_terms, sprintf("tt(`%s`)", time_varying_covariate))
+  if (nzchar(as.character(strata_variable %||% ""))) rhs_terms <- c(rhs_terms, sprintf("strata(`%s`)", strata_variable))
+  cluster_name <- if (nzchar(as.character(subject_id %||% ""))) subject_id else cluster_variable
+  if (nzchar(as.character(cluster_name %||% ""))) rhs_terms <- c(rhs_terms, sprintf("cluster(`%s`)", cluster_name))
+  rhs <- paste(rhs_terms, collapse = " + ")
   lhs <- if (nzchar(as.character(start %||% "")) && nzchar(as.character(stop %||% ""))) {
     sprintf("survival::Surv(`%s`, `%s`, `%s`)", start, stop, event)
   } else if (nzchar(as.character(entry %||% ""))) sprintf("survival::Surv(`%s`, `%s`, `%s`)", entry, time, event) else sprintf("survival::Surv(`%s`, `%s`)", time, event)
   stats::as.formula(sprintf("%s ~ %s", lhs, rhs))
+}
+
+survival_cox_time_varying_curve <- function(fit, data, variable, time_name, event_name, selected_times = numeric(0), points = 101L) {
+  coefficient_names <- names(stats::coef(fit))
+  base_candidates <- c(variable, paste0("`", variable, "`"))
+  base_index <- which(coefficient_names %in% base_candidates)
+  time_index <- which(startsWith(coefficient_names, "tt(") & grepl(variable, coefficient_names, fixed = TRUE))
+  if (length(base_index) != 1L || length(time_index) != 1L) stop("Could not identify the base and time-interaction coefficients for the time-varying Cox effect.")
+  observed_time <- as.numeric(data[[time_name]])
+  event_time <- observed_time[as.logical(data[[event_name]]) & is.finite(observed_time) & observed_time >= 0]
+  if (length(event_time) < 2L) event_time <- observed_time[is.finite(observed_time) & observed_time >= 0]
+  limits <- stats::quantile(event_time, probs = c(.05, .95), names = FALSE, type = 7)
+  if (!all(is.finite(limits)) || limits[[1]] >= limits[[2]]) limits <- range(event_time)
+  grid <- sort(unique(c(selected_times, seq(limits[[1]], limits[[2]], length.out = as.integer(points)))))
+  grid <- grid[is.finite(grid) & grid >= 0]
+  contrasts <- matrix(0, nrow = length(grid), ncol = length(coefficient_names), dimnames = list(NULL, coefficient_names))
+  contrasts[, base_index] <- 1
+  contrasts[, time_index] <- log1p(grid)
+  coefficients <- stats::coef(fit)
+  log_hr <- as.numeric(contrasts %*% coefficients)
+  variance <- stats::vcov(fit)
+  standard_error <- sqrt(pmax(0, rowSums((contrasts %*% variance) * contrasts)))
+  critical <- stats::qnorm(.975)
+  data.frame(
+    Variable = variable,
+    Time = grid,
+    `Time function` = "log(1 + time)",
+    HR = exp(log_hr),
+    Lower = exp(log_hr - critical * standard_error),
+    Upper = exp(log_hr + critical * standard_error),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
+survival_cox_spline_curve <- function(fit, data, variable, points = 101L) {
+  values <- as.numeric(data[[variable]])
+  values <- values[is.finite(values)]
+  if (length(values) < 2L) return(data.frame())
+  limits <- stats::quantile(values, probs = c(.05, .95), names = FALSE, type = 7)
+  if (!all(is.finite(limits)) || limits[[1]] >= limits[[2]]) limits <- range(values)
+  reference <- stats::median(values)
+  grid <- sort(unique(c(reference, seq(limits[[1]], limits[[2]], length.out = as.integer(points)))))
+  newdata <- data[rep(1L, length(grid) + 1L), , drop = FALSE]
+  newdata[[variable]] <- c(reference, grid)
+  design <- stats::model.matrix(fit, data = newdata)
+  coefficients <- stats::coef(fit)
+  coefficient_names <- names(coefficients)
+  if (!all(coefficient_names %in% colnames(design))) stop("Could not reconstruct the Cox spline design matrix for effect plotting.")
+  design <- design[, coefficient_names, drop = FALSE]
+  contrasts <- sweep(design[-1L, , drop = FALSE], 2L, design[1L, ], FUN = "-")
+  log_hr <- as.numeric(contrasts %*% coefficients)
+  variance <- stats::vcov(fit)
+  standard_error <- sqrt(pmax(0, rowSums((contrasts %*% variance) * contrasts)))
+  critical <- stats::qnorm(.975)
+  data.frame(
+    Variable = variable,
+    Value = grid,
+    Reference = reference,
+    HR = exp(log_hr),
+    Lower = exp(log_hr - critical * standard_error),
+    Upper = exp(log_hr + critical * standard_error),
+    stringsAsFactors = FALSE
+  )
+}
+
+survival_cox_collinearity <- function(design) {
+  design <- as.matrix(design)
+  if (!nrow(design) || !ncol(design)) return(list(table = data.frame(), condition_number = NA_real_))
+  storage.mode(design) <- "double"
+  column_names <- colnames(design) %||% paste0("X", seq_len(ncol(design)))
+  finite_rows <- apply(design, 1L, function(row) all(is.finite(row)))
+  design <- design[finite_rows, , drop = FALSE]
+  if (nrow(design) < 2L) return(list(table = data.frame(), condition_number = NA_real_))
+  variances <- apply(design, 2L, stats::var)
+  estimable <- is.finite(variances) & variances > 0
+  vif <- rep(NA_real_, ncol(design))
+  if (sum(estimable) == 1L) {
+    vif[estimable] <- 1
+  } else if (sum(estimable) > 1L) {
+    estimable_design <- design[, estimable, drop = FALSE]
+    estimable_indexes <- which(estimable)
+    for (position in seq_along(estimable_indexes)) {
+      target <- estimable_design[, position]
+      others <- estimable_design[, -position, drop = FALSE]
+      fit <- stats::lm.fit(cbind(1, others), target)
+      total <- sum((target - mean(target))^2)
+      residual <- sum(fit$residuals^2)
+      r_squared <- if (total > 0) max(0, min(1, 1 - residual / total)) else NA_real_
+      vif[estimable_indexes[[position]]] <- if (is.finite(r_squared) && r_squared < 1) 1 / (1 - r_squared) else Inf
+    }
+  }
+  condition_number <- if (sum(estimable) > 1L) {
+    scaled <- scale(design[, estimable, drop = FALSE])
+    tryCatch(kappa(scaled, exact = TRUE), error = function(e) NA_real_)
+  } else if (sum(estimable) == 1L) 1 else NA_real_
+  review <- ifelse(!estimable, "Not estimable", ifelse(!is.finite(vif) | vif >= 10, "High", ifelse(vif >= 5, "Review", "No strong signal")))
+  list(
+    table = data.frame(
+      `Design column` = column_names,
+      VIF = vif,
+      Tolerance = ifelse(is.finite(vif) & vif > 0, 1 / vif, 0),
+      Review = review,
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    ),
+    condition_number = as.numeric(condition_number)
+  )
+}
+
+survival_cox_categorical_joint_tests <- function(fit, coefficient_table, data, covariates, variance_label = "Model-based") {
+  factor_covariates <- covariates[vapply(covariates, function(name) is.factor(data[[name]]) && nlevels(data[[name]]) >= 2L, logical(1))]
+  if (!length(factor_covariates)) return(data.frame())
+  coefficients <- stats::coef(fit)
+  covariance <- stats::vcov(fit)
+  rows <- lapply(factor_covariates, function(covariate) {
+    terms <- coefficient_table$Term[
+      coefficient_table$Variable == covariate &
+        !(coefficient_table$Reference %in% TRUE) &
+        is.finite(coefficient_table$B)
+    ]
+    terms <- intersect(terms, names(coefficients))
+    if (!length(terms)) {
+      return(data.frame(Variable = covariate, Levels = nlevels(data[[covariate]]), Parameters = 0L, `Wald chi-square` = NA_real_, df = NA_integer_, p = NA_real_, Estimable = FALSE, Variance = variance_label, check.names = FALSE, stringsAsFactors = FALSE))
+    }
+    beta <- coefficients[terms]
+    variance <- covariance[terms, terms, drop = FALSE]
+    rank <- qr(variance)$rank
+    statistic <- if (rank == length(terms)) tryCatch(as.numeric(crossprod(beta, solve(variance, beta))), error = function(e) NA_real_) else NA_real_
+    estimable <- is.finite(statistic) && rank == length(terms)
+    data.frame(
+      Variable = covariate,
+      Levels = nlevels(data[[covariate]]),
+      Parameters = length(terms),
+      `Wald chi-square` = statistic,
+      df = if (estimable) length(terms) else rank,
+      p = if (estimable) stats::pchisq(statistic, df = length(terms), lower.tail = FALSE) else NA_real_,
+      Estimable = estimable,
+      Variance = variance_label,
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  })
+  do.call(rbind, rows)
+}
+
+survival_categorical_joint_tests_from_design <- function(coefficients, covariance, data, covariates, variance_label) {
+  factor_covariates <- covariates[vapply(covariates, function(name) is.factor(data[[name]]) && nlevels(data[[name]]) >= 2L, logical(1))]
+  if (!length(factor_covariates)) return(data.frame())
+  coefficient_names <- names(coefficients) %||% character(length(coefficients))
+  coefficients <- as.numeric(coefficients)
+  names(coefficients) <- coefficient_names
+  covariance <- as.matrix(covariance)
+  if (length(coefficient_names) != nrow(covariance)) return(data.frame())
+  if (is.null(rownames(covariance)) || is.null(colnames(covariance))) dimnames(covariance) <- list(coefficient_names, coefficient_names)
+  design_formula <- stats::as.formula(paste("~", paste(sprintf("`%s`", covariates), collapse = " + ")))
+  full_design <- stats::model.matrix(design_formula, data = data)
+  design_assign <- attr(full_design, "assign")
+  term_labels <- gsub("`", "", attr(stats::terms(design_formula), "term.labels"), fixed = TRUE)
+  rows <- lapply(factor_covariates, function(covariate) {
+    term_indexes <- which(term_labels == covariate)
+    design_terms <- colnames(full_design)[design_assign %in% term_indexes]
+    coefficient_terms <- intersect(design_terms, coefficient_names)
+    if (!length(coefficient_terms)) {
+      return(data.frame(Variable = covariate, Levels = nlevels(data[[covariate]]), Parameters = 0L, `Wald chi-square` = NA_real_, df = NA_integer_, p = NA_real_, Estimable = FALSE, Variance = variance_label, check.names = FALSE, stringsAsFactors = FALSE))
+    }
+    beta <- coefficients[coefficient_terms]
+    variance <- covariance[coefficient_terms, coefficient_terms, drop = FALSE]
+    finite <- all(is.finite(beta)) && all(is.finite(variance))
+    rank <- if (finite) qr(variance)$rank else NA_integer_
+    statistic <- if (finite && rank == length(coefficient_terms)) tryCatch(as.numeric(crossprod(beta, solve(variance, beta))), error = function(e) NA_real_) else NA_real_
+    estimable <- is.finite(statistic) && is.finite(rank) && rank == length(coefficient_terms)
+    data.frame(
+      Variable = covariate,
+      Levels = nlevels(data[[covariate]]),
+      Parameters = length(coefficient_terms),
+      `Wald chi-square` = statistic,
+      df = if (estimable) length(coefficient_terms) else rank,
+      p = if (estimable) stats::pchisq(statistic, df = length(coefficient_terms), lower.tail = FALSE) else NA_real_,
+      Estimable = estimable,
+      Variance = variance_label,
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  })
+  do.call(rbind, rows)
+}
+
+survival_apply_treatment_contrasts <- function(data, covariates) {
+  for (covariate in covariates) {
+    values <- data[[covariate]]
+    if (!is.factor(values) || nlevels(values) < 2L) next
+    values <- droplevels(values)
+    attr(values, "contrasts") <- NULL
+    data[[covariate]] <- values
+  }
+  data
+}
+
+survival_categorical_reference_table <- function(data, covariates) {
+  factor_covariates <- covariates[vapply(covariates, function(name) is.factor(data[[name]]) && nlevels(data[[name]]) >= 2L, logical(1))]
+  if (!length(factor_covariates)) return(data.frame())
+  do.call(rbind, lapply(factor_covariates, function(covariate) {
+    observed_levels <- levels(data[[covariate]])
+    data.frame(
+      Variable = covariate,
+      `Reference level` = observed_levels[[1]],
+      `Observed levels` = paste(observed_levels, collapse = ", "),
+      Contrast = "Treatment; each non-reference level versus the reference",
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  }))
+}
+
+survival_coefficient_label_table <- function(data, covariates) {
+  if (!length(covariates)) return(data.frame())
+  design_formula <- stats::as.formula(paste("~", paste(sprintf("`%s`", covariates), collapse = " + ")))
+  full_design <- stats::model.matrix(design_formula, data = data)
+  design_assign <- attr(full_design, "assign")
+  term_labels <- gsub("`", "", attr(stats::terms(design_formula), "term.labels"), fixed = TRUE)
+  rows <- list()
+  for (covariate in covariates) {
+    term_indexes <- which(term_labels == covariate)
+    design_terms <- colnames(full_design)[design_assign %in% term_indexes]
+    values <- data[[covariate]]
+    if (is.factor(values) && nlevels(values) >= 2L) {
+      observed_levels <- levels(values)
+      rows[[length(rows) + 1L]] <- data.frame(
+        Term = "",
+        Variable = covariate,
+        Level = observed_levels[[1]],
+        `Reference level` = observed_levels[[1]],
+        Reference = TRUE,
+        `Display term` = paste0(covariate, "=", observed_levels[[1]], " (reference)"),
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+      nonreference_levels <- observed_levels[-1L]
+      for (index in seq_along(design_terms)) {
+        level <- if (index <= length(nonreference_levels)) nonreference_levels[[index]] else design_terms[[index]]
+        rows[[length(rows) + 1L]] <- data.frame(
+          Term = design_terms[[index]],
+          Variable = covariate,
+          Level = level,
+          `Reference level` = observed_levels[[1]],
+          Reference = FALSE,
+          `Display term` = paste0(covariate, "=", level, " vs ", observed_levels[[1]]),
+          check.names = FALSE,
+          stringsAsFactors = FALSE
+        )
+      }
+    } else {
+      for (term in design_terms) {
+        rows[[length(rows) + 1L]] <- data.frame(
+          Term = term,
+          Variable = covariate,
+          Level = "",
+          `Reference level` = "",
+          Reference = FALSE,
+          `Display term` = covariate,
+          check.names = FALSE,
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+  }
+  if (!length(rows)) return(data.frame())
+  do.call(rbind, rows)
+}
+
+survival_cox_functional_form_data <- function(data, covariates, martingale) {
+  martingale <- as.numeric(martingale)
+  if (length(martingale) != nrow(data)) return(data.frame())
+  continuous <- covariates[vapply(covariates, function(name) {
+    values <- data[[name]]
+    is.numeric(values) && !is.factor(values) && length(unique(values[is.finite(values)])) >= 4L
+  }, logical(1))]
+  if (!length(continuous)) return(data.frame())
+  rows <- lapply(continuous, function(name) {
+    values <- as.numeric(data[[name]])
+    keep <- is.finite(values) & is.finite(martingale)
+    data.frame(
+      `Analysis row` = which(keep),
+      Covariate = name,
+      Value = values[keep],
+      `Martingale residual` = martingale[keep],
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  })
+  do.call(rbind, rows)
+}
+
+survival_cox_basic_diagnostics <- function(fit, data, covariates) {
+  ph <- tryCatch(survival::cox.zph(fit), error = function(e) NULL)
+  ph_table <- if (!is.null(ph)) {
+    table <- as.data.frame(ph$table, stringsAsFactors = FALSE)
+    table$Term <- rownames(table)
+    rownames(table) <- NULL
+    table[, c("Term", setdiff(names(table), "Term")), drop = FALSE]
+  } else data.frame()
+  martingale <- tryCatch(stats::residuals(fit, type = "martingale"), error = function(e) numeric(0))
+  deviance <- tryCatch(stats::residuals(fit, type = "deviance"), error = function(e) numeric(0))
+  functional_form_data <- survival_cox_functional_form_data(data, covariates, martingale)
+  residual_summary <- function(values, type) {
+    values <- as.numeric(values)
+    values <- values[is.finite(values)]
+    if (!length(values)) return(NULL)
+    quantiles <- stats::quantile(values, probs = c(0, .25, .5, .75, 1), names = FALSE)
+    data.frame(Type = type, Min = quantiles[[1]], Q1 = quantiles[[2]], Median = quantiles[[3]], Q3 = quantiles[[4]], Max = quantiles[[5]], stringsAsFactors = FALSE)
+  }
+  residual_rows <- Filter(Negate(is.null), list(residual_summary(martingale, "Martingale"), residual_summary(deviance, "Deviance")))
+  residual_table <- if (length(residual_rows)) do.call(rbind, residual_rows) else data.frame()
+  dfbeta <- tryCatch(stats::residuals(fit, type = "dfbeta"), error = function(e) NULL)
+  dfbetas <- tryCatch(stats::residuals(fit, type = "dfbetas"), error = function(e) NULL)
+  influence_table <- data.frame()
+  if (!is.null(dfbeta)) {
+    if (is.null(dim(dfbeta))) dfbeta <- matrix(dfbeta, ncol = 1L, dimnames = list(names(dfbeta), names(stats::coef(fit))[[1]]))
+    if (is.null(colnames(dfbeta))) colnames(dfbeta) <- names(stats::coef(fit))
+    if (!is.null(dfbetas) && is.null(dim(dfbetas))) dfbetas <- matrix(dfbetas, ncol = 1L, dimnames = list(names(dfbetas), names(stats::coef(fit))[[1]]))
+    if (!is.null(dfbetas) && is.null(colnames(dfbetas))) colnames(dfbetas) <- names(stats::coef(fit))
+    threshold <- 2 / sqrt(nrow(data))
+    influence_table <- do.call(rbind, lapply(seq_len(ncol(dfbeta)), function(index) {
+      absolute <- abs(dfbeta[, index])
+      standardized <- if (!is.null(dfbetas) && ncol(dfbetas) >= index) abs(dfbetas[, index]) else rep(NA_real_, length(absolute))
+      maximum <- if (any(is.finite(absolute))) max(absolute, na.rm = TRUE) else NA_real_
+      standardized_maximum <- if (any(is.finite(standardized))) max(standardized, na.rm = TRUE) else NA_real_
+      row_index <- if (is.finite(standardized_maximum)) which.max(standardized) else if (is.finite(maximum)) which.max(absolute) else NA_integer_
+      data.frame(
+        Term = colnames(dfbeta)[[index]],
+        `Maximum absolute DFBETA` = maximum,
+        `Maximum absolute DFBETAS` = standardized_maximum,
+        `Screening threshold` = threshold,
+        `Review signal` = is.finite(standardized_maximum) && standardized_maximum > threshold,
+        `Source row in analysis data` = row_index,
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+    }))
+  }
+  collinearity <- survival_cox_collinearity(fit$x)
+  list(
+    ph = ph,
+    ph_table = ph_table,
+    residual_table = residual_table,
+    functional_form_data = functional_form_data,
+    influence_table = influence_table,
+    collinearity_table = collinearity$table,
+    condition_number = collinearity$condition_number
+  )
+}
+
+survival_cox_omnibus_tests <- function(fit) {
+  fit_summary <- summary(fit)
+  model_test_row <- function(name, value) {
+    value <- as.numeric(value %||% numeric(0))
+    data.frame(
+      Test = name,
+      Statistic = if (length(value) >= 1L) value[[1]] else NA_real_,
+      df = if (length(value) >= 2L) value[[2]] else NA_real_,
+      p = if (length(value) >= 3L) value[[3]] else NA_real_,
+      stringsAsFactors = FALSE
+    )
+  }
+  do.call(rbind, list(
+    model_test_row("Likelihood-ratio", fit_summary$logtest),
+    model_test_row("Wald", fit_summary$waldtest),
+    model_test_row("Score", fit_summary$sctest)
+  ))
+}
+
+survival_fine_gray_omnibus_test <- function(fit) {
+  logtest <- as.numeric(summary(fit)$logtest %||% numeric(0))
+  statistic <- if (length(logtest) >= 1L) logtest[[1]] else NA_real_
+  degrees_freedom <- if (length(logtest) >= 2L) logtest[[2]] else NA_real_
+  data.frame(
+    Test = "Pseudo likelihood-ratio",
+    Statistic = statistic,
+    df = degrees_freedom,
+    p = if (is.finite(statistic) && is.finite(degrees_freedom) && degrees_freedom > 0) stats::pchisq(statistic, df = degrees_freedom, lower.tail = FALSE) else NA_real_,
+    stringsAsFactors = FALSE
+  )
 }
 
 survival_adjusted_curve_once <- function(fit, data, group, times) {
@@ -1188,18 +1703,22 @@ survival_adjusted_curve_once <- function(fit, data, group, times) {
   do.call(rbind, rows)
 }
 
-survival_adjusted_curve <- function(fit, data, group, bootstrap_reps = 100L, seed = 20260815L) {
+survival_adjusted_curve <- function(fit, data, group, bootstrap_reps = 2000L, seed = 20260815L, selected_times = numeric(0)) {
   group <- as.character(group %||% "")[[1]]
   if (!nzchar(group)) return(NULL)
   if (!group %in% names(data)) stop("Adjusted-survival group variable was not found in the analysis data.")
   if (!is.factor(data[[group]])) stop("Adjusted survival requires a categorical group variable included in the Cox model.")
   if (nlevels(data[[group]]) < 2L) stop("Adjusted survival requires at least two observed group levels.")
+  selected_times <- sort(unique(as.numeric(selected_times)))
+  selected_times <- selected_times[is.finite(selected_times) & selected_times >= 0]
   baseline <- survival::basehaz(fit, centered = FALSE)
-  times <- sort(unique(c(0, baseline$time)))
+  times <- sort(unique(c(0, baseline$time, selected_times)))
   estimate <- survival_adjusted_curve_once(fit, data, group, times)
   bootstrap_reps <- as.integer(bootstrap_reps %||% 0L)
   bootstrap_reps <- max(0L, bootstrap_reps)
   successful <- 0L
+  boot_values <- NULL
+  minimum_successful <- if (bootstrap_reps > 0L) max(20L, ceiling(bootstrap_reps * .8)) else 0L
   if (bootstrap_reps > 0L) {
     had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
     if (had_seed) old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
@@ -1225,7 +1744,7 @@ survival_adjusted_curve <- function(fit, data, group, bootstrap_reps = 100L, see
     }
     estimate$Lower <- NA_real_
     estimate$Upper <- NA_real_
-    if (successful >= max(20L, ceiling(bootstrap_reps * .5))) {
+    if (successful >= minimum_successful) {
       for (level in levels) {
         target <- estimate$Level == level
         values <- boot_values[[level]]
@@ -1237,10 +1756,79 @@ survival_adjusted_curve <- function(fit, data, group, bootstrap_reps = 100L, see
     estimate$Lower <- NA_real_
     estimate$Upper <- NA_real_
   }
-  list(method = "Marginal standardization", group = group, curve = estimate, bootstrap_reps = bootstrap_reps, bootstrap_successful = successful, seed = as.integer(seed))
+  effective_ratio <- if (bootstrap_reps > 0L) successful / bootstrap_reps else NA_real_
+  ci_available <- bootstrap_reps > 0L && successful >= minimum_successful
+  time_point_estimates <- if (length(selected_times)) {
+    estimate[estimate$Time %in% selected_times, c("Level", "Time", "Survival", "Lower", "Upper"), drop = FALSE]
+  } else {
+    data.frame()
+  }
+  time_point_contrasts <- data.frame()
+  levels <- levels(data[[group]])
+  if (length(selected_times) && length(levels) >= 2L) {
+    comparisons <- utils::combn(levels, 2L, simplify = FALSE)
+    contrast_rows <- list()
+    for (time_value in selected_times) {
+      time_index <- match(time_value, times)
+      for (comparison in comparisons) {
+        first <- comparison[[1]]
+        second <- comparison[[2]]
+        first_estimate <- estimate$Survival[estimate$Level == first & estimate$Time == time_value][[1]]
+        second_estimate <- estimate$Survival[estimate$Level == second & estimate$Time == time_value][[1]]
+        difference_values <- ratio_values <- numeric(0)
+        if (!is.null(boot_values) && !is.na(time_index)) {
+          first_values <- boot_values[[first]][, time_index]
+          second_values <- boot_values[[second]][, time_index]
+          valid_difference <- is.finite(first_values) & is.finite(second_values)
+          difference_values <- second_values[valid_difference] - first_values[valid_difference]
+          valid_ratio <- valid_difference & first_values > 0
+          ratio_values <- second_values[valid_ratio] / first_values[valid_ratio]
+        }
+        interval <- function(values) {
+          if (!ci_available || length(values) < minimum_successful) return(c(NA_real_, NA_real_))
+          stats::quantile(values, probs = c(.025, .975), na.rm = TRUE, names = FALSE)
+        }
+        difference_ci <- interval(difference_values)
+        ratio_ci <- interval(ratio_values)
+        contrast_rows[[length(contrast_rows) + 1L]] <- data.frame(
+          Time = time_value,
+          `First level` = first,
+          `Second level` = second,
+          Difference = second_estimate - first_estimate,
+          `Difference lower` = difference_ci[[1]],
+          `Difference upper` = difference_ci[[2]],
+          Ratio = if (is.finite(first_estimate) && first_estimate > 0) second_estimate / first_estimate else NA_real_,
+          `Ratio lower` = ratio_ci[[1]],
+          `Ratio upper` = ratio_ci[[2]],
+          `Effective bootstrap draws` = length(difference_values),
+          check.names = FALSE,
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+    time_point_contrasts <- do.call(rbind, contrast_rows)
+  }
+  list(
+    method = "Marginal standardization",
+    group = group,
+    curve = estimate,
+    selected_times = selected_times,
+    time_point_estimates = time_point_estimates,
+    time_point_contrasts = time_point_contrasts,
+    bootstrap_reps = bootstrap_reps,
+    bootstrap_successful = successful,
+    bootstrap_effective_ratio = effective_ratio,
+    minimum_successful = minimum_successful,
+    ci_available = ci_available,
+    ci_method = if (bootstrap_reps > 0L) "Pointwise percentile bootstrap 95% CI" else "Not requested",
+    seed = as.integer(seed)
+  )
 }
 
-prepare_cox_analysis_result <- function(data, time, event, covariates, event_value = "1", variable_info = NULL, reference_values = character(0), adjusted_group = "", adjusted_bootstrap_reps = 100L, entry = "", start = "", stop = "", subject_id = "", time_origin = "", time_unit = "", event_map = NULL) {
+prepare_cox_analysis_result <- function(data, time, event, covariates, event_value = "1", variable_info = NULL, reference_values = character(0), adjusted_group = "", adjusted_bootstrap_reps = 2000L, adjusted_times = "", entry = "", start = "", stop = "", subject_id = "", time_origin = "", time_unit = "", event_map = NULL, strata = "", cluster = "", spline_covariate = "", spline_df = 4L, time_varying_covariate = "", time_varying_times = "", ties_method = "efron") {
+  previous_contrasts <- getOption("contrasts")
+  options(contrasts = c(unordered = "contr.treatment", ordered = "contr.poly"))
+  on.exit(options(contrasts = previous_contrasts), add = TRUE)
   time <- as.character(time %||% character(0))
   event <- as.character(event %||% character(0))
   time <- time[!is.na(time) & nzchar(time)]
@@ -1257,8 +1845,29 @@ prepare_cox_analysis_result <- function(data, time, event, covariates, event_val
   start <- as.character(start %||% "")[[1]]
   stop <- as.character(stop %||% "")[[1]]
   subject_id <- as.character(subject_id %||% "")[[1]]
+  strata <- as.character(strata %||% "")[[1]]
+  cluster <- as.character(cluster %||% "")[[1]]
+  spline_covariate <- as.character(spline_covariate %||% "")[[1]]
+  spline_df <- as.integer(spline_df %||% 4L)
+  time_varying_covariate <- as.character(time_varying_covariate %||% "")[[1]]
+  ties_method <- tolower(as.character(ties_method %||% "efron")[[1]])
+  if (!ties_method %in% c("efron", "breslow", "exact")) stop("Cox ties method must be Efron, Breslow, or exact.")
   if (length(covariates) == 0) stop("Select at least one covariate.")
-  settings <- survival_legacy_settings(time, event, event_value, covariates = covariates, variable_info = variable_info)
+  if (nzchar(strata) && strata %in% covariates) stop("The stratification variable must not also be entered as a Cox covariate because a stratified Cox model does not estimate its hazard ratio.")
+  if (nzchar(cluster) && cluster %in% covariates) stop("The cluster variable must not also be entered as a Cox covariate because it identifies correlated observations rather than an estimated effect.")
+  if (nzchar(cluster) && nzchar(start)) stop("A separate cluster variable is not available for start-stop Cox models. The required subject ID already defines the robust-variance cluster; multiway clustering is not implemented.")
+  if (nzchar(cluster) && identical(cluster, strata)) stop("The same variable cannot be used simultaneously as both the stratification variable and the robust-variance cluster.")
+  if (nzchar(spline_covariate) && !spline_covariate %in% covariates) stop("The spline variable must also be included among the Cox covariates.")
+  if (nzchar(spline_covariate) && (!is.finite(spline_df) || !spline_df %in% 3:5)) stop("Spline degrees of freedom must be 3, 4, or 5.")
+  if (nzchar(spline_covariate) && (nzchar(cluster) || nzchar(subject_id))) stop("Spline nonlinearity testing is not available with cluster-robust Cox variance in survival v1. Use an unclustered model for the partial-likelihood spline comparison or a dedicated robust nonlinear-effect analysis.")
+  if (nzchar(time_varying_covariate) && !time_varying_covariate %in% covariates) stop("The time-varying coefficient variable must also be included among the Cox covariates.")
+  if (nzchar(time_varying_covariate) && nzchar(spline_covariate)) stop("Spline and time-varying coefficient options cannot be applied in the same survival v1 Cox model.")
+  if (nzchar(time_varying_covariate) && (nzchar(cluster) || nzchar(subject_id))) stop("Time-varying coefficient Cox is not available with cluster-robust variance in survival v1.")
+  if (nzchar(time_varying_covariate) && nzchar(start)) stop("Time-varying coefficient Cox is not available for start-stop data in survival v1; the start-stop module is reserved for time-dependent covariate values.")
+  if (identical(ties_method, "exact") && nzchar(start)) stop("Exact partial likelihood is not available for start-stop Cox models in survival v1.")
+  if (identical(ties_method, "exact") && (nzchar(cluster) || nzchar(subject_id))) stop("Exact partial likelihood is not available with cluster-robust Cox variance in survival v1.")
+  if (identical(ties_method, "exact") && nzchar(time_varying_covariate)) stop("Exact partial likelihood is not available with a time-varying coefficient in survival v1.")
+  settings <- survival_legacy_settings(time, event, event_value, covariates = unique(c(covariates, strata, cluster)), variable_info = variable_info)
   if (nzchar(entry)) {
     settings$data_shape <- "entry_exit"
     settings$roles$entry <- entry
@@ -1277,6 +1886,26 @@ prepare_cox_analysis_result <- function(data, time, event, covariates, event_val
   preflight <- survival_preflight(data, settings)
   survival_preflight_stop(preflight)
   model_data <- preflight$analysis_data
+  if (nzchar(strata)) {
+    model_data[[strata]] <- droplevels(factor(model_data[[strata]]))
+    if (nlevels(model_data[[strata]]) < 2L) stop("Stratified Cox regression requires at least two observed strata in the analysis sample.")
+  }
+  effective_cluster <- if (nzchar(subject_id)) subject_id else cluster
+  if (nzchar(effective_cluster)) {
+    cluster_values <- model_data[[effective_cluster]]
+    observed_clusters <- unique(cluster_values[!is.na(cluster_values)])
+    if (length(observed_clusters) < 2L) stop("Cluster-robust Cox regression requires at least two observed clusters in the analysis sample.")
+  }
+  if (nzchar(spline_covariate)) {
+    spline_values <- model_data[[spline_covariate]]
+    if (!is.numeric(spline_values) || is.factor(spline_values)) stop("Cox spline modeling requires a numeric continuous covariate.")
+    if (length(unique(spline_values[is.finite(spline_values)])) < spline_df + 2L) stop("The spline covariate has too few distinct values for the requested degrees of freedom.")
+  }
+  if (nzchar(time_varying_covariate)) {
+    time_varying_values <- model_data[[time_varying_covariate]]
+    if (!is.numeric(time_varying_values) || is.factor(time_varying_values)) stop("Time-varying coefficient Cox requires a numeric continuous covariate.")
+    if (length(unique(time_varying_values[is.finite(time_varying_values)])) < 3L) stop("The time-varying coefficient covariate has too few distinct values.")
+  }
   for (covariate in covariates) {
     if (!is.factor(model_data[[covariate]]) || is.ordered(model_data[[covariate]])) next
     reference <- trimws(named_value(reference_values, covariate, ""))
@@ -1284,23 +1913,36 @@ prepare_cox_analysis_result <- function(data, time, event, covariates, event_val
       model_data[[covariate]] <- stats::relevel(model_data[[covariate]], ref = reference)
     }
   }
-  formula <- survival_cox_formula(time, event, covariates, entry, start, stop, subject_id)
-  fit <- survival::coxph(formula, data = model_data, x = TRUE, y = TRUE, model = TRUE, ties = "efron")
+  model_data <- survival_apply_treatment_contrasts(model_data, covariates)
+  categorical_reference_table <- survival_categorical_reference_table(model_data, covariates)
+  formula <- survival_cox_formula(time, event, covariates, entry, start, stop, subject_id, strata, cluster, spline_covariate, spline_df, time_varying_covariate)
+  fit <- if (nzchar(time_varying_covariate)) {
+    survival::coxph(formula, data = model_data, x = TRUE, y = TRUE, model = FALSE, ties = ties_method, tt = function(x, t, ...) x * log1p(t))
+  } else {
+    survival::coxph(formula, data = model_data, x = TRUE, y = TRUE, model = TRUE, ties = ties_method)
+  }
   fit_summary <- summary(fit)
   coef_summary <- fit_summary$coefficients
-  ci <- fit_summary$conf.int
+  se_column <- if ("robust se" %in% colnames(coef_summary)) "robust se" else "se(coef)"
+  coefficient <- coef_summary[, "coef"]
+  standard_error <- coef_summary[, se_column]
+  z_value <- coefficient / standard_error
+  p_value <- 2 * stats::pnorm(abs(z_value), lower.tail = FALSE)
+  critical_value <- stats::qnorm(.975)
   coef_table <- data.frame(
     Term = rownames(coef_summary),
-    B = coef_summary[, "coef"],
-    SE = coef_summary[, "se(coef)"],
-    HR = ci[, "exp(coef)"],
-    LLCI = ci[, "lower .95"],
-    ULCI = ci[, "upper .95"],
-    z = coef_summary[, "z"],
-    p = coef_summary[, "Pr(>|z|)"],
+    B = coefficient,
+    SE = standard_error,
+    HR = exp(coefficient),
+    LLCI = exp(coefficient - critical_value * standard_error),
+    ULCI = exp(coefficient + critical_value * standard_error),
+    z = z_value,
+    p = p_value,
     row.names = NULL,
     check.names = FALSE
   )
+  coef_table$SplineBasis <- if (nzchar(spline_covariate)) grepl("splines::ns(", coef_table$Term, fixed = TRUE) else FALSE
+  coef_table$TimeVaryingEffect <- if (nzchar(time_varying_covariate)) coef_table$Term %in% c(time_varying_covariate, paste0("`", time_varying_covariate, "`")) | (startsWith(coef_table$Term, "tt(") & grepl(time_varying_covariate, coef_table$Term, fixed = TRUE)) else FALSE
   coef_table$DisplayTerm <- coef_table$Term
   coef_table$Reference <- FALSE
   reference_rows <- list()
@@ -1314,6 +1956,8 @@ prepare_cox_analysis_result <- function(data, time, event, covariates, event_val
       DisplayTerm = paste0(covariate, "=", levels[[1]]),
       Reference = TRUE,
       Variable = covariate,
+      SplineBasis = FALSE,
+      TimeVaryingEffect = FALSE,
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -1346,7 +1990,12 @@ prepare_cox_analysis_result <- function(data, time, event, covariates, event_val
     coef_table <- do.call(rbind, ordered_rows)
     rownames(coef_table) <- NULL
   }
-  ph <- tryCatch(survival::cox.zph(fit), error = function(e) NULL)
+  ph_companion_fit <- NULL
+  if (nzchar(time_varying_covariate)) {
+    ph_companion_formula <- survival_cox_formula(time, event, covariates, entry, start, stop, subject_id, strata, cluster)
+    ph_companion_fit <- survival::coxph(ph_companion_formula, data = model_data, x = TRUE, y = TRUE, model = TRUE, ties = ties_method)
+  }
+  ph <- tryCatch(survival::cox.zph(ph_companion_fit %||% fit), error = function(e) NULL)
   ph_table <- if (!is.null(ph)) {
     table <- as.data.frame(ph$table, stringsAsFactors = FALSE)
     table$Term <- rownames(table)
@@ -1372,6 +2021,7 @@ prepare_cox_analysis_result <- function(data, time, event, covariates, event_val
   ))
   martingale <- tryCatch(stats::residuals(fit, type = "martingale"), error = function(e) numeric(0))
   deviance <- tryCatch(stats::residuals(fit, type = "deviance"), error = function(e) numeric(0))
+  functional_form_data <- survival_cox_functional_form_data(model_data, covariates, martingale)
   residual_summary <- function(values, type) {
     values <- as.numeric(values)
     values <- values[is.finite(values)]
@@ -1382,23 +2032,145 @@ prepare_cox_analysis_result <- function(data, time, event, covariates, event_val
   residual_rows <- Filter(Negate(is.null), list(residual_summary(martingale, "Martingale"), residual_summary(deviance, "Deviance")))
   residual_table <- if (length(residual_rows) > 0) do.call(rbind, residual_rows) else data.frame()
   dfbeta <- tryCatch(stats::residuals(fit, type = "dfbeta"), error = function(e) NULL)
+  dfbetas <- tryCatch(stats::residuals(fit, type = "dfbetas"), error = function(e) NULL)
   if (!is.null(dfbeta)) {
     if (is.null(dim(dfbeta))) dfbeta <- matrix(dfbeta, ncol = 1L, dimnames = list(names(dfbeta), names(stats::coef(fit))[[1]]))
     if (is.null(colnames(dfbeta))) colnames(dfbeta) <- names(stats::coef(fit))
+    if (!is.null(dfbetas) && is.null(dim(dfbetas))) dfbetas <- matrix(dfbetas, ncol = 1L, dimnames = list(names(dfbetas), names(stats::coef(fit))[[1]]))
+    if (!is.null(dfbetas) && is.null(colnames(dfbetas))) colnames(dfbetas) <- names(stats::coef(fit))
+    dfbetas_threshold <- 2 / sqrt(nrow(model_data))
     influence_table <- do.call(rbind, lapply(seq_len(ncol(dfbeta)), function(index) {
       values <- abs(dfbeta[, index])
       maximum <- if (any(is.finite(values))) max(values, na.rm = TRUE) else NA_real_
-      row_index <- if (is.finite(maximum)) which.max(values) else NA_integer_
-      data.frame(Term = colnames(dfbeta)[[index]], `Maximum absolute DFBETA` = maximum, `Source row in analysis data` = row_index, check.names = FALSE, stringsAsFactors = FALSE)
+      standardized <- if (!is.null(dfbetas) && ncol(dfbetas) >= index) abs(dfbetas[, index]) else rep(NA_real_, length(values))
+      standardized_maximum <- if (any(is.finite(standardized))) max(standardized, na.rm = TRUE) else NA_real_
+      row_index <- if (is.finite(standardized_maximum)) which.max(standardized) else if (is.finite(maximum)) which.max(values) else NA_integer_
+      data.frame(
+        Term = colnames(dfbeta)[[index]],
+        `Maximum absolute DFBETA` = maximum,
+        `Maximum absolute DFBETAS` = standardized_maximum,
+        `Screening threshold` = dfbetas_threshold,
+        `Review signal` = is.finite(standardized_maximum) && standardized_maximum > dfbetas_threshold,
+        `Source row in analysis data` = row_index,
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
     }))
   } else {
     influence_table <- data.frame()
   }
+  collinearity <- survival_cox_collinearity(fit$x)
   concordance <- fit_summary$concordance
   parameter_count <- length(stats::coef(fit))
+  strata_table <- if (nzchar(strata)) {
+    strata_levels <- levels(model_data[[strata]])
+    do.call(rbind, lapply(strata_levels, function(level) {
+      selected <- model_data[[strata]] == level
+      data.frame(
+        Stratum = level,
+        Records = sum(selected),
+        Events = sum(model_data[[event]][selected], na.rm = TRUE),
+        stringsAsFactors = FALSE
+      )
+    }))
+  } else {
+    data.frame()
+  }
+  cluster_summary <- if (nzchar(effective_cluster)) {
+    cluster_values <- as.character(model_data[[effective_cluster]])
+    records_by_cluster <- table(cluster_values)
+    events_by_cluster <- tapply(model_data[[event]], cluster_values, sum, na.rm = TRUE)
+    data.frame(
+      `Cluster variable` = effective_cluster,
+      Clusters = length(records_by_cluster),
+      `Minimum records per cluster` = min(as.numeric(records_by_cluster)),
+      `Median records per cluster` = stats::median(as.numeric(records_by_cluster)),
+      `Maximum records per cluster` = max(as.numeric(records_by_cluster)),
+      `Clusters with events` = sum(events_by_cluster > 0),
+      `Clusters without events` = sum(events_by_cluster == 0),
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  } else {
+    data.frame()
+  }
+  spline_test_table <- spline_curve <- data.frame()
+  if (nzchar(spline_covariate)) {
+    linear_formula <- survival_cox_formula(time, event, covariates, entry, start, stop, subject_id, strata, cluster)
+    linear_fit <- survival::coxph(linear_formula, data = model_data, x = TRUE, y = TRUE, model = TRUE, ties = ties_method)
+    full_loglik <- stats::logLik(fit)
+    linear_loglik <- stats::logLik(linear_fit)
+    test_df <- as.integer(attr(full_loglik, "df") - attr(linear_loglik, "df"))
+    statistic <- max(0, 2 * (as.numeric(full_loglik) - as.numeric(linear_loglik)))
+    spline_reference <- stats::median(as.numeric(model_data[[spline_covariate]]), na.rm = TRUE)
+    spline_test_table <- data.frame(
+      Variable = spline_covariate,
+      `Spline df` = spline_df,
+      `Reference value` = spline_reference,
+      `Nonlinearity LR chi-square` = statistic,
+      df = test_df,
+      p = if (test_df > 0L) stats::pchisq(statistic, df = test_df, lower.tail = FALSE) else NA_real_,
+      `Linear-model AIC` = stats::AIC(linear_fit),
+      `Spline-model AIC` = stats::AIC(fit),
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+    spline_curve <- survival_cox_spline_curve(fit, model_data, spline_covariate)
+  }
+  time_varying_test_table <- time_varying_curve <- time_varying_at_times <- data.frame()
+  selected_time_varying_times <- survival_parse_times_strict(time_varying_times, "Time-varying HR reporting times")
+  if (nzchar(time_varying_covariate)) {
+    maximum_followup <- max(as.numeric(model_data[[time]]), na.rm = TRUE)
+    if (length(selected_time_varying_times) && any(selected_time_varying_times > maximum_followup)) stop(sprintf("Time-varying HR reporting times must not exceed the maximum observed follow-up time (%s).", format(maximum_followup, trim = TRUE)))
+    if (!length(selected_time_varying_times)) {
+      event_times <- as.numeric(model_data[[time]][as.logical(model_data[[event]])])
+      selected_time_varying_times <- sort(unique(as.numeric(stats::quantile(event_times, probs = c(.25, .5, .75), na.rm = TRUE, names = FALSE))))
+    }
+    time_varying_curve <- survival_cox_time_varying_curve(fit, model_data, time_varying_covariate, time, event, selected_time_varying_times)
+    time_varying_at_times <- time_varying_curve[time_varying_curve$Time %in% selected_time_varying_times, , drop = FALSE]
+    time_term <- which(coef_table$TimeVaryingEffect & startsWith(coef_table$Term, "tt("))
+    time_varying_test_table <- data.frame(
+      Variable = time_varying_covariate,
+      `Time function` = "log(1 + time)",
+      `Interaction B` = coef_table$B[time_term],
+      SE = coef_table$SE[time_term],
+      z = coef_table$z[time_term],
+      p = coef_table$p[time_term],
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  }
   adjusted_group <- as.character(adjusted_group %||% "")[[1]]
   if (nzchar(start) && nzchar(adjusted_group)) stop("Marginal adjusted survival is not available for start-stop Cox models in survival v1.")
-  adjusted_survival <- if (nzchar(adjusted_group)) survival_adjusted_curve(fit, model_data, adjusted_group, adjusted_bootstrap_reps) else NULL
+  if (nzchar(strata) && nzchar(adjusted_group)) stop("Marginal adjusted survival is not available with stratified Cox regression in survival v1. Report the stratified hazard-ratio model separately or remove stratification before requesting standardized curves.")
+  if (nzchar(cluster) && nzchar(adjusted_group)) stop("Marginal adjusted survival is not available with user-specified clustered Cox regression in survival v1 because valid uncertainty estimation requires cluster-level resampling.")
+  if (nzchar(time_varying_covariate) && nzchar(adjusted_group)) stop("Marginal adjusted survival is not available with a time-varying coefficient Cox model in survival v1.")
+  selected_adjusted_times <- survival_parse_times_strict(adjusted_times, "Adjusted-survival time points")
+  if (nzchar(adjusted_group) && length(selected_adjusted_times)) {
+    followup_name <- if (nzchar(stop)) stop else time
+    maximum_followup <- max(as.numeric(model_data[[followup_name]]), na.rm = TRUE)
+    if (any(selected_adjusted_times > maximum_followup)) {
+      stop(sprintf("Adjusted-survival time points must not exceed the maximum observed follow-up time (%s).", format(maximum_followup, trim = TRUE)))
+    }
+  }
+  adjusted_survival <- if (nzchar(adjusted_group)) survival_adjusted_curve(fit, model_data, adjusted_group, adjusted_bootstrap_reps, selected_times = selected_adjusted_times) else NULL
+  event_time_name <- if (nzchar(stop)) stop else time
+  event_times <- as.numeric(model_data[[event_time_name]][as.logical(model_data[[event]])])
+  event_time_counts <- table(event_times[is.finite(event_times)])
+  tied_counts <- as.numeric(event_time_counts[event_time_counts > 1L])
+  ties_summary <- data.frame(
+    Method = switch(ties_method, efron = "Efron", breslow = "Breslow", exact = "Exact"),
+    Events = length(event_times),
+    `Distinct event times` = length(event_time_counts),
+    `Tied event times` = length(tied_counts),
+    `Events at tied times` = sum(tied_counts),
+    `Maximum events at one time` = if (length(event_time_counts)) max(as.numeric(event_time_counts)) else 0L,
+    `Proportion of events at tied times` = if (length(event_times)) sum(tied_counts) / length(event_times) else NA_real_,
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  variance_label <- if (identical(se_column, "robust se")) if (nzchar(subject_id)) "Subject-cluster robust" else sprintf("Cluster-robust (%s)", effective_cluster) else "Model-based"
+  categorical_joint_tests <- survival_cox_categorical_joint_tests(fit, coef_table, model_data, covariates, variance_label)
   list(
     type = "cox",
     fit = fit,
@@ -1410,6 +2182,20 @@ prepare_cox_analysis_result <- function(data, time, event, covariates, event_val
     start = start,
     stop = stop,
     subject_id = subject_id,
+    cluster = effective_cluster,
+    cluster_summary = cluster_summary,
+    spline_covariate = spline_covariate,
+    spline_df = if (nzchar(spline_covariate)) spline_df else NA_integer_,
+    spline_test_table = spline_test_table,
+    spline_curve = spline_curve,
+    time_varying_covariate = time_varying_covariate,
+    time_varying_function = if (nzchar(time_varying_covariate)) "log(1 + time)" else "",
+    time_varying_test_table = time_varying_test_table,
+    time_varying_curve = time_varying_curve,
+    time_varying_at_times = time_varying_at_times,
+    ph_source = if (nzchar(time_varying_covariate)) "Companion proportional-hazards model before time-varying extension" else "Fitted Cox model",
+    strata = strata,
+    strata_table = strata_table,
     time_origin = as.character(time_origin %||% "")[[1]],
     time_unit = as.character(time_unit %||% "")[[1]],
     event = event,
@@ -1418,14 +2204,22 @@ prepare_cox_analysis_result <- function(data, time, event, covariates, event_val
     n = nrow(model_data),
     events = sum(model_data[[event]], na.rm = TRUE),
     coef_table = coef_table,
+    categorical_reference_table = categorical_reference_table,
+    categorical_joint_tests = categorical_joint_tests,
     ph = ph,
     ph_table = ph_table,
     model_tests = model_tests,
     residual_table = residual_table,
+    functional_form_data = functional_form_data,
     influence_table = influence_table,
+    collinearity_table = collinearity$table,
+    condition_number = collinearity$condition_number,
     parameter_count = parameter_count,
     events_per_parameter = if (parameter_count > 0) sum(model_data[[event]], na.rm = TRUE) / parameter_count else NA_real_,
-    ties = "Efron",
+    ties = switch(ties_method, efron = "Efron", breslow = "Breslow", exact = "Exact"),
+    ties_method = ties_method,
+    ties_summary = ties_summary,
+    variance = variance_label,
     adjusted_survival = adjusted_survival,
     concordance = concordance,
     packages = package_version_label("survival")
@@ -1473,13 +2267,165 @@ survival_cuminc_curve_table <- function(fit, group_present = TRUE) {
   out
 }
 
-survival_gray_test_table <- function(fit) {
+survival_competing_event_count_table <- function(status, group_values, event_map) {
+  cause_map <- rbind(
+    event_map[event_map$role == "event_of_interest", c("raw_value", "role", "label"), drop = FALSE],
+    event_map[event_map$role == "competing_event", c("raw_value", "role", "label"), drop = FALSE]
+  )
+  if (!nrow(cause_map)) return(data.frame())
+  cause_map$CauseCode <- seq_len(nrow(cause_map))
+  groups <- unique(as.character(group_values))
+  rows <- lapply(groups, function(group) {
+    in_group <- as.character(group_values) == group
+    do.call(rbind, lapply(seq_len(nrow(cause_map)), function(index) {
+      events <- sum(status[in_group] == cause_map$CauseCode[[index]], na.rm = TRUE)
+      data.frame(
+        Group = group,
+        CauseCode = cause_map$CauseCode[[index]],
+        `Raw event value` = as.character(cause_map$raw_value[[index]]),
+        `Event role` = as.character(cause_map$role[[index]]),
+        Label = as.character(cause_map$label[[index]]),
+        `Analysis N` = sum(in_group),
+        Events = events,
+        `Event proportion` = if (sum(in_group) > 0L) events / sum(in_group) else NA_real_,
+        `Review signal` = events < 5L,
+        `Review reason` = if (events == 0L) "No events in this group-cause cell" else if (events < 5L) "Fewer than 5 events in this group-cause cell" else "",
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+    }))
+  })
+  do.call(rbind, rows)
+}
+
+survival_competing_estimand_table <- function(event_map, regression = "none", group_present = FALSE) {
+  interest <- event_map[event_map$role == "event_of_interest", , drop = FALSE]
+  competing <- event_map[event_map$role == "competing_event", , drop = FALSE]
+  if (nrow(interest) != 1L) return(data.frame())
+  models <- "Cumulative incidence function"
+  if (isTRUE(group_present)) models <- c(models, "Gray test")
+  if (regression %in% c("cause_specific", "both")) models <- c(models, "Cause-specific Cox")
+  if (regression %in% c("fine_gray", "both")) models <- c(models, "Fine-Gray")
+  measure <- c(
+    "CIF",
+    if (isTRUE(group_present)) "Gray chi-square / p (no effect size)",
+    if (regression %in% c("cause_specific", "both")) "Cause-specific HR",
+    if (regression %in% c("fine_gray", "both")) "Subdistribution HR (sHR)"
+  )
+  handling <- c(
+    "Retained as distinct failure causes in cumulative-incidence estimation",
+    if (isTRUE(group_present)) "Retained as distinct failure causes in cumulative-incidence comparison",
+    if (regression %in% c("cause_specific", "both")) "Removed from the event-free risk set at occurrence",
+    if (regression %in% c("fine_gray", "both")) "Retained in the subdistribution risk set"
+  )
+  interpretation <- c(
+    "Absolute cumulative incidence of the target cause",
+    if (isTRUE(group_present)) "Equality of target-cause CIFs across groups",
+    if (regression %in% c("cause_specific", "both")) "Instantaneous hazard of the target cause among event-free subjects",
+    if (regression %in% c("fine_gray", "both")) "Subdistribution hazard associated with the target-cause CIF"
+  )
+  data.frame(
+    Model = models,
+    `Target event value` = as.character(interest$raw_value[[1]]),
+    `Target event label` = as.character(interest$label[[1]]),
+    `Competing event values` = paste(as.character(competing$raw_value), collapse = ", "),
+    Measure = measure,
+    `Competing-event handling` = handling,
+    `Interpretation target` = interpretation,
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+}
+
+survival_censoring_group_table <- function(status, censoring_values = NULL) {
+  strata <- if (is.null(censoring_values)) rep("All analysis records", length(status)) else as.character(censoring_values)
+  groups <- unique(strata)
+  rows <- lapply(groups, function(group) {
+    keep <- strata == group
+    n <- sum(keep)
+    censored <- sum(status[keep] == 0L, na.rm = TRUE)
+    interest <- sum(status[keep] == 1L, na.rm = TRUE)
+    competing <- sum(status[keep] > 1L, na.rm = TRUE)
+    reasons <- c(if (n < 10L) "Fewer than 10 analysis records", if (censored == 0L) "No censored observations" else if (censored < 5L) "Fewer than 5 censored observations")
+    data.frame(
+      `Censoring stratum` = group,
+      N = n,
+      Censored = censored,
+      `Interest events` = interest,
+      `Competing events` = competing,
+      `Censoring proportion` = if (n > 0L) censored / n else NA_real_,
+      `Review signal` = length(reasons) > 0L,
+      `Review reason` = paste(reasons, collapse = "; "),
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  })
+  do.call(rbind, rows)
+}
+
+survival_fine_gray_numerical_diagnostics <- function(fit, design, gtol = 1e-6, maxiter = 10L) {
+  collinearity <- survival_cox_collinearity(design)
+  coefficients <- as.numeric(fit$coef %||% numeric(0))
+  score <- as.numeric(fit$score %||% numeric(0))
+  log_likelihood <- as.numeric(fit$loglik %||% NA_real_)
+  relative_score <- if (length(coefficients) && length(score) == length(coefficients) && is.finite(log_likelihood)) {
+    max(abs(score) * pmax(abs(coefficients), 1), na.rm = TRUE) / max(abs(log_likelihood), 1)
+  } else NA_real_
+  information <- as.matrix(fit$inf %||% matrix(numeric(0), 0L, 0L))
+  information_finite <- length(information) > 0L && all(is.finite(information))
+  information_rank <- if (information_finite) qr(information)$rank else NA_integer_
+  information_condition <- NA_real_
+  if (information_finite && nrow(information) > 0L && nrow(information) == ncol(information)) {
+    diagonal <- diag(information)
+    if (all(is.finite(diagonal) & diagonal > 0)) {
+      standardized <- information / sqrt(outer(diagonal, diagonal))
+      information_condition <- tryCatch(kappa(standardized, exact = TRUE), error = function(e) NA_real_)
+    }
+  }
+  covariance <- as.matrix(fit$var %||% matrix(numeric(0), 0L, 0L))
+  covariance_finite <- length(covariance) > 0L && all(is.finite(covariance))
+  positive_standard_errors <- covariance_finite && all(diag(covariance) > 0)
+  optimizer_table <- data.frame(
+    Converged = isTRUE(fit$converged),
+    `Log likelihood` = log_likelihood,
+    `Maximum absolute score` = if (length(score) && any(is.finite(score))) max(abs(score), na.rm = TRUE) else NA_real_,
+    `Relative score criterion` = relative_score,
+    `Convergence tolerance` = as.numeric(gtol),
+    `Maximum iterations` = as.integer(maxiter),
+    `Information rank` = information_rank,
+    Parameters = length(coefficients),
+    `Standardized information condition number` = as.numeric(information_condition),
+    `Finite covariance matrix` = covariance_finite,
+    `Positive standard errors` = positive_standard_errors,
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  list(
+    optimizer_table = optimizer_table,
+    collinearity_table = collinearity$table,
+    condition_number = collinearity$condition_number
+  )
+}
+
+survival_gray_test_table <- function(fit, cause_codes = character(0)) {
   tests <- fit$Tests
-  if (is.null(tests) || length(tests) == 0) return(data.frame())
-  tests <- as.data.frame(tests, stringsAsFactors = FALSE)
-  tests$CauseCode <- rownames(tests)
-  rownames(tests) <- NULL
-  data.frame(CauseCode = tests$CauseCode, Statistic = tests$stat, p = tests$pv, df = tests$df, stringsAsFactors = FALSE)
+  table <- if (is.null(tests) || length(tests) == 0) {
+    data.frame(CauseCode = character(0), Statistic = numeric(0), p = numeric(0), df = numeric(0), stringsAsFactors = FALSE)
+  } else {
+    tests <- as.data.frame(tests, stringsAsFactors = FALSE)
+    tests$CauseCode <- rownames(tests)
+    rownames(tests) <- NULL
+    data.frame(CauseCode = tests$CauseCode, Statistic = tests$stat, p = tests$pv, df = tests$df, stringsAsFactors = FALSE)
+  }
+  cause_codes <- unique(as.character(cause_codes))
+  missing_codes <- setdiff(cause_codes, as.character(table$CauseCode))
+  if (length(missing_codes)) {
+    table <- rbind(table, data.frame(CauseCode = missing_codes, Statistic = NA_real_, p = NA_real_, df = NA_real_, stringsAsFactors = FALSE))
+  }
+  if (length(cause_codes) && nrow(table)) table <- table[match(cause_codes, as.character(table$CauseCode)), , drop = FALSE]
+  table$Estimable <- is.finite(table$Statistic) & is.finite(table$p) & is.finite(table$df) & table$df > 0
+  rownames(table) <- NULL
+  table
 }
 
 survival_cif_at_times <- function(curve, times) {
@@ -1489,6 +2435,36 @@ survival_cif_at_times <- function(curve, times) {
     subset <- curve[curve$Group == keys$Group[[index]] & curve$CauseCode == keys$CauseCode[[index]], , drop = FALSE]
     values <- function(column) stats::approx(subset$Time, subset[[column]], xout = times, method = "constant", f = 0, rule = 2, ties = "ordered")$y
     data.frame(Group = keys$Group[[index]], CauseCode = keys$CauseCode[[index]], Time = times, CIF = values("CIF"), Lower = values("Lower"), Upper = values("Upper"), stringsAsFactors = FALSE)
+  })
+  do.call(rbind, rows)
+}
+
+survival_cif_integrity_table <- function(curve, tolerance = 1e-10) {
+  if (!is.data.frame(curve) || !nrow(curve)) return(data.frame())
+  groups <- unique(as.character(curve$Group))
+  rows <- lapply(groups, function(group) {
+    subset <- curve[as.character(curve$Group) == group, , drop = FALSE]
+    times <- sort(unique(as.numeric(subset$Time)))
+    evaluated <- survival_cif_at_times(subset, times)
+    sums <- if (nrow(evaluated)) stats::aggregate(CIF ~ Time, data = evaluated, sum)$CIF else numeric(0)
+    minimum <- suppressWarnings(min(evaluated$CIF, na.rm = TRUE))
+    maximum <- suppressWarnings(max(evaluated$CIF, na.rm = TRUE))
+    maximum_sum <- suppressWarnings(max(sums, na.rm = TRUE))
+    finite <- length(evaluated$CIF) > 0L && all(is.finite(evaluated$CIF))
+    within_bounds <- finite && minimum >= -tolerance && maximum <= 1 + tolerance
+    sum_within_one <- length(sums) > 0L && all(is.finite(sums)) && maximum_sum <= 1 + tolerance
+    data.frame(
+      Group = group,
+      `Minimum CIF` = if (is.finite(minimum)) minimum else NA_real_,
+      `Maximum CIF` = if (is.finite(maximum)) maximum else NA_real_,
+      `Maximum sum of cause-specific CIFs` = if (is.finite(maximum_sum)) maximum_sum else NA_real_,
+      `All CIF values finite` = finite,
+      `CIF values within [0,1]` = within_bounds,
+      `Cause-specific CIF sum <= 1` = sum_within_one,
+      `Integrity passed` = finite && within_bounds && sum_within_one,
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
   })
   do.call(rbind, rows)
 }
@@ -1507,8 +2483,12 @@ prepare_competing_risk_result <- function(
   variable_info = NULL,
   time_origin = "",
   time_unit = "",
-  event_map = NULL
+  event_map = NULL,
+  censoring_group = ""
 ) {
+  previous_contrasts <- getOption("contrasts")
+  options(contrasts = c(unordered = "contr.treatment", ordered = "contr.poly"))
+  on.exit(options(contrasts = previous_contrasts), add = TRUE)
   if (!requireNamespace("cmprsk", quietly = TRUE)) stop("Package 'cmprsk' is required for cumulative incidence and Gray's test.")
   time <- survival_selected_names(time)
   event <- survival_selected_names(event)
@@ -1519,27 +2499,47 @@ prepare_competing_risk_result <- function(
   event <- event[[1]]
   group <- if (length(group) > 0) group[[1]] else ""
   covariates <- survival_selected_names(covariates)
+  censoring_group <- survival_selected_names(censoring_group)
+  censoring_group <- if (length(censoring_group)) censoring_group[[1]] else ""
   regression <- as.character(regression %||% "none")[[1]]
   if (!regression %in% c("none", "cause_specific", "fine_gray", "both")) regression <- "none"
   if (!identical(regression, "none") && length(covariates) == 0) stop("Select at least one covariate for competing-risks regression.")
+  if (nzchar(censoring_group) && !regression %in% c("fine_gray", "both")) stop("Censoring-distribution stratification (cengroup) is available only with Fine-Gray regression.")
+  if (nzchar(censoring_group) && !censoring_group %in% names(data)) stop("The selected censoring-distribution stratification variable was not found.")
+  if (nzchar(censoring_group) && censoring_group %in% c(time, event)) stop("The censoring-distribution stratification variable cannot also be the time or event variable.")
   competing_values <- unlist(strsplit(paste(competing_values, collapse = ","), "[,;[:space:]]+"))
   competing_values <- competing_values[nzchar(competing_values)]
   event_map <- if (is.data.frame(event_map)) survival_normalize_event_map(data[[event]], event_map, event_of_interest) else survival_competing_event_map(data[[event]], censored_value, event_of_interest, competing_values)
+  interest_values <- as.character(event_map$raw_value[event_map$role == "event_of_interest"])
+  if (length(interest_values) != 1L) stop("Select exactly one event-of-interest code for competing-risks analysis.")
+  event_of_interest <- interest_values[[1]]
   settings <- survival_legacy_settings(time, event, event_of_interest, group)
   settings$legacy <- FALSE
   settings$objective <- "competing"
   settings$event_map <- event_map
-  settings$roles$covariates <- covariates
+  settings$roles$covariates <- unique(c(covariates, censoring_group[nzchar(censoring_group)]))
   settings$variable_info <- variable_info
   preflight <- survival_preflight(data, settings)
   survival_preflight_stop(preflight)
   model_data <- preflight$analysis_data
+  model_data <- survival_apply_treatment_contrasts(model_data, covariates)
+  categorical_reference_table <- survival_categorical_reference_table(model_data, covariates)
+  coefficient_label_table <- survival_coefficient_label_table(model_data, covariates)
   raw_event_column <- preflight$transformations$raw_event_column
   status <- survival_competing_status(model_data[[raw_event_column]], event_map)
+  censoring_values <- if (nzchar(censoring_group)) droplevels(as.factor(model_data[[censoring_group]])) else NULL
+  if (!is.null(censoring_values) && nlevels(censoring_values) < 2L) stop("Censoring-distribution stratification requires at least two observed levels.")
+  if (!is.null(censoring_values) && nlevels(censoring_values) > 20L) stop("Censoring-distribution stratification must use a categorical variable with no more than 20 observed levels.")
+  censoring_group_table <- survival_censoring_group_table(status, censoring_values)
   group_values <- if (nzchar(group)) droplevels(as.factor(model_data[[group]])) else rep("All", nrow(model_data))
+  event_count_table <- survival_competing_event_count_table(status, group_values, event_map)
+  estimand_table <- survival_competing_estimand_table(event_map, regression, group_present = nzchar(group))
+  estimand_table$`Censoring distribution` <- if (nzchar(censoring_group)) paste("Estimated separately within", censoring_group) else "Pooled across the analysis sample"
   fit <- cmprsk::cuminc(ftime = model_data[[time]], fstatus = status, group = group_values, cencode = 0)
   curve <- survival_cuminc_curve_table(fit, group_present = nzchar(group))
-  tests <- survival_gray_test_table(fit)
+  cif_integrity <- survival_cif_integrity_table(curve)
+  expected_causes <- if (nzchar(group)) sort(unique(status[is.finite(status) & status > 0L])) else integer(0)
+  tests <- survival_gray_test_table(fit, expected_causes)
   times <- survival_parse_times(rate_times)
   if (length(times) == 0) times <- survival_default_risk_times(model_data[[time]])
   cause_specific <- NULL
@@ -1554,14 +2554,11 @@ prepare_competing_risk_result <- function(
       HR = cs_ci[, "exp(coef)"], LLCI = cs_ci[, "lower .95"], ULCI = cs_ci[, "upper .95"],
       z = cs_coef[, "z"], p = cs_coef[, "Pr(>|z|)"], row.names = NULL, check.names = FALSE
     )
-    cs_ph <- tryCatch(survival::cox.zph(cs_fit), error = function(e) NULL)
-    cs_ph_table <- if (!is.null(cs_ph)) {
-      value <- as.data.frame(cs_ph$table, stringsAsFactors = FALSE)
-      value$Term <- rownames(value)
-      rownames(value) <- NULL
-      value[, c("Term", setdiff(names(value), "Term")), drop = FALSE]
-    } else data.frame()
-    cause_specific <- list(fit = cs_fit, coef_table = cs_table, ph = cs_ph, ph_table = cs_ph_table)
+    cs_diagnostics <- survival_cox_basic_diagnostics(cs_fit, model_data, covariates)
+    cs_model_tests <- survival_cox_omnibus_tests(cs_fit)
+    cs_categorical_joint_tests <- survival_categorical_joint_tests_from_design(stats::coef(cs_fit), stats::vcov(cs_fit), model_data, covariates, "Cause-specific Cox model-based")
+    cs_estimable <- nrow(cs_table) > 0L && all(is.finite(unlist(cs_table[, c("B", "SE", "HR", "LLCI", "ULCI", "z", "p"), drop = FALSE])))
+    cause_specific <- c(list(fit = cs_fit, coef_table = cs_table, model_tests = cs_model_tests, categorical_joint_tests = cs_categorical_joint_tests, estimable = cs_estimable), cs_diagnostics)
   }
   fine_gray <- NULL
   if (regression %in% c("fine_gray", "both")) {
@@ -1569,7 +2566,13 @@ prepare_competing_risk_result <- function(
     design <- stats::model.matrix(design_formula, data = model_data)
     design <- design[, colnames(design) != "(Intercept)", drop = FALSE]
     if (ncol(design) == 0) stop("Fine-Gray regression requires at least one estimable covariate column.")
-    fg_fit <- cmprsk::crr(ftime = model_data[[time]], fstatus = status, cov1 = design, failcode = 1L, cencode = 0L)
+    fg_gtol <- 1e-6
+    fg_maxiter <- 10L
+    fg_fit <- if (is.null(censoring_values)) {
+      cmprsk::crr(ftime = model_data[[time]], fstatus = status, cov1 = design, failcode = 1L, cencode = 0L, gtol = fg_gtol, maxiter = fg_maxiter)
+    } else {
+      cmprsk::crr(ftime = model_data[[time]], fstatus = status, cov1 = design, failcode = 1L, cencode = 0L, cengroup = censoring_values, gtol = fg_gtol, maxiter = fg_maxiter)
+    }
     fg_coef <- as.numeric(fg_fit$coef)
     fg_se <- sqrt(diag(fg_fit$var))
     fg_z <- fg_coef / fg_se
@@ -1578,21 +2581,39 @@ prepare_competing_risk_result <- function(
       LLCI = exp(fg_coef - stats::qnorm(.975) * fg_se), ULCI = exp(fg_coef + stats::qnorm(.975) * fg_se),
       z = fg_z, p = 2 * stats::pnorm(abs(fg_z), lower.tail = FALSE), stringsAsFactors = FALSE
     )
-    fg_residual_review <- if (!is.null(fg_fit$res) && nrow(fg_fit$res) > 2L) {
+    fg_residual_data <- if (!is.null(fg_fit$res) && length(fg_fit$uftime)) {
       residual_matrix <- as.matrix(fg_fit$res)
       if (is.null(colnames(residual_matrix))) colnames(residual_matrix) <- colnames(design)
-      do.call(rbind, lapply(seq_len(ncol(residual_matrix)), function(index) {
-        test <- tryCatch(stats::cor.test(fg_fit$uftime, residual_matrix[, index], method = "spearman", exact = FALSE), error = function(e) NULL)
+      do.call(rbind, lapply(seq_len(ncol(residual_matrix)), function(index) data.frame(
+        `Event time` = as.numeric(fg_fit$uftime),
+        Term = colnames(residual_matrix)[[index]],
+        Residual = as.numeric(residual_matrix[, index]),
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )))
+    } else data.frame()
+    fg_residual_review <- if (is.data.frame(fg_residual_data) && nrow(fg_residual_data) && length(unique(fg_residual_data$`Event time`)) > 2L) {
+      review <- do.call(rbind, lapply(unique(fg_residual_data$Term), function(term) {
+        values <- fg_residual_data[fg_residual_data$Term == term, , drop = FALSE]
+        test <- tryCatch(stats::cor.test(values$`Event time`, values$Residual, method = "spearman", exact = FALSE), error = function(e) NULL)
         data.frame(
-          Term = colnames(residual_matrix)[[index]],
-          `Residual-time correlation` = if (is.null(test)) NA_real_ else unname(test$estimate),
-          p = if (is.null(test)) NA_real_ else test$p.value,
+          Term = term,
+          `Unique target-failure times` = length(unique(values$`Event time`)),
+          `Spearman rho` = if (is.null(test)) NA_real_ else unname(test$estimate),
+          `Exploratory p` = if (is.null(test)) NA_real_ else test$p.value,
           stringsAsFactors = FALSE,
           check.names = FALSE
         )
       }))
+      review$`Holm-adjusted p` <- stats::p.adjust(review$`Exploratory p`, method = "holm")
+      review$`Review signal` <- is.finite(review$`Holm-adjusted p`) & review$`Holm-adjusted p` < .05
+      review
     } else data.frame()
-    fine_gray <- list(fit = fg_fit, design_columns = colnames(design), coef_table = fg_table, residual_review = fg_residual_review, converged = isTRUE(fg_fit$converged))
+    fg_numerical <- survival_fine_gray_numerical_diagnostics(fg_fit, design, fg_gtol, fg_maxiter)
+    fg_model_tests <- survival_fine_gray_omnibus_test(fg_fit)
+    fg_categorical_joint_tests <- survival_categorical_joint_tests_from_design(fg_fit$coef, fg_fit$var, model_data, covariates, "Fine-Gray model-based")
+    fg_estimable <- nrow(fg_table) > 0L && all(is.finite(unlist(fg_table[, c("B", "SE", "sHR", "LLCI", "ULCI", "z", "p"), drop = FALSE])))
+    fine_gray <- c(list(fit = fg_fit, design_columns = colnames(design), coef_table = fg_table, model_tests = fg_model_tests, categorical_joint_tests = fg_categorical_joint_tests, residual_data = fg_residual_data, residual_review = fg_residual_review, converged = isTRUE(fg_fit$converged), estimable = fg_estimable, censoring_group = censoring_group), fg_numerical)
   }
   list(
     type = "competing_risk",
@@ -1605,12 +2626,19 @@ prepare_competing_risk_result <- function(
     event = event,
     group = group,
     event_map = event_map,
-    event_of_interest = trimws(as.character(event_of_interest)[[1]]),
+    event_of_interest = event_of_interest,
     status = status,
     n = nrow(model_data),
     curve = curve,
+    cif_integrity = cif_integrity,
+    event_count_table = event_count_table,
+    estimand_table = estimand_table,
+    censoring_group = censoring_group,
+    censoring_group_table = censoring_group_table,
     gray_tests = tests,
     covariates = covariates,
+    categorical_reference_table = categorical_reference_table,
+    coefficient_label_table = coefficient_label_table,
     regression = regression,
     cause_specific = cause_specific,
     fine_gray = fine_gray,

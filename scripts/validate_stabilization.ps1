@@ -114,6 +114,7 @@ $fullOnlyValidations = @(
   "scripts\validate_sem_unspecified_block.R",
   "scripts\validate_survival_preflight.R",
   "scripts\validate_survival.R",
+  "scripts\validate_survival_ui_smoke.R",
   "scripts\validate_analysis_reference_comparison.R"
 )
 
