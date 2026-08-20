@@ -31,15 +31,23 @@ survival_header_content <- function(name) {
   name
 }
 
+survival_column_class <- function(name) {
+  key <- tolower(gsub("[^A-Za-z0-9]+", "-", as.character(name %||% "")))
+  key <- gsub("(^-+|-+$)", "", key)
+  paste("survival-col", paste0("survival-col-", key))
+}
+
 survival_simple_table <- function(table, class = "survival-result-table") {
   if (!is.data.frame(table) || nrow(table) == 0) return(NULL)
   tags$table(
     class = paste("coefficient-table", class),
     style = result_table_style(font_size = 12, min_width = 0),
     tags$thead(tags$tr(lapply(seq_along(table), function(col_index) {
+      name <- names(table)[[col_index]]
       tags$th(
+        class = survival_column_class(name),
         style = paste0(result_header_cell_style(col_index == 1L), if (col_index == 1L) "" else "text-align:center !important;"),
-        survival_header_content(names(table)[[col_index]])
+        survival_header_content(name)
       )
     }))),
     tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
@@ -49,6 +57,7 @@ survival_simple_table <- function(table, class = "survival-result-table") {
         if (is.numeric(value)) value <- survival_format_number(value)
         marker <- survival_cell_note_marker(table, row_index, column)
         tags$td(
+          class = survival_column_class(column),
           style = paste0(result_body_cell_style(col_index == 1L, row_index == nrow(table)), if (col_index == 1L) "" else "text-align:center !important;"),
           survival_cell_content(value, marker)
         )
@@ -552,12 +561,16 @@ survival_km_level_label <- function(value, group = "") {
 }
 
 survival_median_ci_text <- function(median, lower, upper) {
-  median_text <- survival_format_number(median)
+  median_num <- suppressWarnings(as.numeric(median))
+  median_text <- if (length(median_num) > 0 && is.finite(median_num)) survival_format_number(median_num) else "NR"
   ci_text <- survival_format_ci(lower, upper)
   if (!nzchar(ci_text)) {
     return(median_text)
   }
-  paste0(median_text, "\u00A0", ci_text)
+  if (identical(median_text, "NR") && identical(ci_text, "(NE-NE)")) {
+    return("NR")
+  }
+  paste0(median_text, "\n", ci_text)
 }
 
 survival_km_summary_table <- function(result) {
@@ -634,11 +647,16 @@ survival_km_posthoc_p_matrix <- function(item) {
     if (!nzchar(level)) return(level)
     survival_km_level_label(level, group)
   }
+  has_direct_groups <- all(c("Group1", "Group2") %in% names(posthoc))
   for (row_index in seq_len(nrow(posthoc))) {
-    parts <- trimws(strsplit(as.character(posthoc$Comparison[[row_index]] %||% ""), "\\s+vs\\s+", perl = TRUE)[[1]])
-    if (length(parts) != 2L) next
-    first <- display_level(parts[[1]])
-    second <- display_level(parts[[2]])
+    first <- if (has_direct_groups) display_level(posthoc$Group1[[row_index]]) else character(0)
+    second <- if (has_direct_groups) display_level(posthoc$Group2[[row_index]]) else character(0)
+    if (!nzchar(first) || !nzchar(second)) {
+      parts <- trimws(strsplit(as.character(posthoc$Comparison[[row_index]] %||% ""), "\\s+vs\\s+", perl = TRUE)[[1]])
+      if (length(parts) != 2L) next
+      first <- display_level(parts[[1]])
+      second <- display_level(parts[[2]])
+    }
     if (!all(c(first, second) %in% strata)) next
     p_value <- suppressWarnings(as.numeric(posthoc$p_adjusted[[row_index]] %||% posthoc$p[[row_index]]))
     if (!is.finite(p_value)) next
@@ -1105,9 +1123,27 @@ survival_km_results_panel <- function(result, plot_output_ids = "survival_km_plo
 
 survival_cox_overview_table <- function(result) {
   concordance <- result$concordance
-  c_index <- if (length(concordance) >= 1L) survival_format_number(concordance[[1]]) else ""
+  c_value <- if (length(concordance) >= 1L) suppressWarnings(as.numeric(concordance[[1]])) else NA_real_
+  c_se <- if (length(concordance) >= 2L) suppressWarnings(as.numeric(concordance[[2]])) else NA_real_
+  c_index <- if (is.finite(c_value) && is.finite(c_se)) {
+    lower <- max(0, c_value - 1.96 * c_se)
+    upper <- min(1, c_value + 1.96 * c_se)
+    sprintf("%s %s", survival_format_number(c_value), survival_format_ci(lower, upper))
+  } else if (is.finite(c_value)) {
+    survival_format_number(c_value)
+  } else {
+    ""
+  }
+  model_tests <- result$model_tests
+  likelihood <- if (is.data.frame(model_tests) && nrow(model_tests) > 0) {
+    model_tests[model_tests$Test == "Likelihood-ratio", , drop = FALSE]
+  } else {
+    data.frame()
+  }
+  lr_chisq <- if (nrow(likelihood) > 0) sprintf("%s (%s)", survival_format_number(likelihood$Statistic[[1]]), as.character(likelihood$df[[1]])) else ""
+  lr_p <- if (nrow(likelihood) > 0) survival_p(likelihood$p[[1]]) else ""
   data.frame(
-    Item = c("Time origin", "Time unit", "Entry variable", "Interval start", "Interval stop", "Subject ID", "Stratification variable", "Cluster variable", "Clusters", "Variance", "Source rows", "Analysis rows", "Excluded rows", "Events", "Parameters", "Events / parameter", "Ties", "Concordance", "Package"),
+    Item = c("Time origin", "Time unit", "Entry variable", "Interval start", "Interval stop", "Subject ID", "Stratification variable", "Cluster variable", "Clusters", "Variance", "Source rows", "Analysis rows", "Excluded rows", "Events", "Parameters", "Events / parameter", "Ties", "LR chi-square (df)", "LR p", "Concordance (95% CI)", "Package"),
     Value = c(
       result$time_origin %||% "",
       result$time_unit %||% "",
@@ -1126,6 +1162,8 @@ survival_cox_overview_table <- function(result) {
       result$parameter_count %||% NA_integer_,
       survival_format_number(result$events_per_parameter),
       result$ties %||% "",
+      lr_chisq,
+      lr_p,
       c_index,
       result$packages
     ),
@@ -1628,6 +1666,11 @@ survival_cox_results_panel <- function(result, language = statedu_initial_langua
         survival_table_note("Each Wald chi-square jointly tests all non-reference coefficients for one categorical predictor. Use the omnibus test for the predictor's overall association and the level-specific HRs for direction and magnitude; do not select levels solely from individual p-values.")
       ),
       survival_table_note(if (identical(language, "ko")) "주. 괄호 안은 p값입니다. Likelihood-ratio, Wald 및 Score는 Cox 모형의 전체 효과를 검정합니다. PH는 Schoenfeld 잔차에 근거한 비례위험 가정 검정이며, GLOBAL은 모든 공변량에 대한 전체 검정입니다. 전체 모형 검정은 자동 합격·불합격 기준이 아니며, PH의 작은 p값은 시간가변 효과 가능성을 추가로 검토하라는 신호입니다." else "Note. Values in parentheses are p-values. Likelihood-ratio, Wald, and Score test the overall Cox model effect. PH denotes the Schoenfeld-residual test of the proportional-hazards assumption, and GLOBAL is its omnibus test across covariates. Overall model tests are not automatic pass/fail criteria; a small PH p-value signals review of a possible time-varying effect.")
+    ),
+    if (!is.null(survival_cox_ggplot(result, "color"))) div(
+      class = "result-section regression-result-panel survival-result-panel survival-plot-result-panel",
+      h3("Hazard ratio forest plot"),
+      plotOutput("survival_cox_forest_plot", height = "420px")
     ),
     div(class = "result-section regression-result-panel survival-result-panel",
       h3("3. Supplementary statistics and diagnostics"),
@@ -2163,6 +2206,14 @@ survival_saved_plot_specs <- function(result, km_plot_ids = NULL, language = sta
       }
     }
   } else if (identical(result$type, "cox")) {
+    forest_plot <- survival_cox_ggplot(result, "color")
+    if (!is.null(forest_plot)) add(
+      "survival_cox_forest_plot",
+      "Hazard ratio forest plot",
+      function() print(survival_cox_ggplot(result, "color")),
+      width = 1000,
+      height = 680
+    )
     if (!is.null(result$ph) && !is.null(result$ph$y)) add("survival_cox_ph_plot", "Scaled Schoenfeld-residual plots", function() survival_cox_ph_plot(result), height = 760)
     if (nrow(result$spline_curve %||% data.frame())) add("survival_cox_spline_plot", "Natural cubic spline hazard-ratio curve", function() print(survival_cox_spline_ggplot(result)))
     if (nrow(result$time_varying_curve %||% data.frame())) add("survival_cox_time_varying_plot", "Time-specific hazard-ratio curve", function() print(survival_cox_time_varying_ggplot(result)))

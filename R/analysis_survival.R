@@ -16,6 +16,7 @@ survival_ui_text <- function(text, language = statedu_initial_language()) {
     "time variable" = c(en = "Time variable", ko = "생존시간 변수"),
     "event variable" = c(en = "Event variable", ko = "사건 변수"),
     "event value" = c(en = "Event value", ko = "사건값"),
+    "event value placeholder" = c(en = "Check event coding, e.g., 1 or 2", ko = "사건 코딩 확인: 예 1 또는 2"),
     "group variable" = c(en = "Group variable", ko = "집단 변수"),
     "no group" = c(en = "No group", ko = "집단 없음"),
     "covariates" = c(en = "Covariates", ko = "공변량"),
@@ -593,6 +594,37 @@ survival_parse_event <- function(values, event_value = "1") {
   values_chr == event_chr
 }
 
+survival_example_event_value <- function(file = NULL, event = "", guide_path = file.path("sample", "survival_examples", "survival_examples_guide.csv")) {
+  event <- trimws(as.character(event %||% ""))
+  if (!nzchar(event) || !is.list(file)) {
+    return("")
+  }
+  file_name <- basename(as.character(file$name %||% file$path %||% ""))
+  if (!nzchar(file_name)) {
+    return("")
+  }
+  guide <- if (file.exists(guide_path)) {
+    tryCatch(utils::read.csv(guide_path, stringsAsFactors = FALSE, check.names = FALSE), error = function(e) NULL)
+  } else {
+    NULL
+  }
+  if (is.data.frame(guide) && all(c("file", "event_variable", "event_value") %in% names(guide))) {
+    matched <- guide[tolower(as.character(guide$file)) == tolower(file_name) & as.character(guide$event_variable) == event, , drop = FALSE]
+    if (nrow(matched) > 0) {
+      value <- trimws(as.character(matched$event_value[[1]] %||% ""))
+      if (nzchar(value)) return(value)
+    }
+  }
+  built_in <- c(
+    "survival_lung.csv::status" = "2",
+    "survival_pbc.csv::status" = "2"
+  )
+  key <- paste(tolower(file_name), event, sep = "::")
+  value <- unname(built_in[key])
+  if (length(value) == 0 || is.na(value)) value <- ""
+  if (nzchar(value)) value else ""
+}
+
 survival_analysis_data <- function(data, time, event, event_value = "1", group = "", covariates = character(0), variable_info = NULL) {
   settings <- survival_legacy_settings(time, event, event_value, group, covariates, variable_info)
   preflight <- survival_preflight(data, settings)
@@ -667,7 +699,7 @@ survival_weighted_rank_test <- function(data, time, event, group, method = "logr
   group_values <- droplevels(as.factor(data[[group]]))
   levels <- levels(group_values)
   if (length(levels) < 2L) return(NULL)
-  times <- sort(unique(data[[time]][isTRUE(data[[event]]) | data[[event]]]))
+  times <- sort(unique(data[[time]][data[[event]]]))
   if (length(times) == 0) return(NULL)
   k <- length(levels)
   observed_minus_expected <- numeric(k)
@@ -729,8 +761,12 @@ survival_life_table <- function(data, time, event, group = "", breaks = numeric(
     for (index in seq_len(length(breaks) - 1L)) {
       start <- breaks[[index]]
       end <- breaks[[index + 1L]]
-      in_interval <- group_data[[time]] > start & group_data[[time]] <= end
-      at_risk <- sum(group_data[[time]] > start)
+      in_interval <- if (start == 0) {
+        group_data[[time]] >= 0 & group_data[[time]] <= end
+      } else {
+        group_data[[time]] > start & group_data[[time]] <= end
+      }
+      at_risk <- if (start == 0) sum(group_data[[time]] >= 0) else sum(group_data[[time]] > start)
       events <- sum(in_interval & group_data[[event]], na.rm = TRUE)
       censored <- sum(in_interval & !group_data[[event]], na.rm = TRUE)
       effective <- at_risk - censored / 2
@@ -935,6 +971,8 @@ survival_km_posthoc_table <- function(data, time, event, group, formula, test_me
         if (is.null(test)) return(NULL)
         data.frame(
           Comparison = paste(pair, collapse = " vs "),
+          Group1 = pair[[1]],
+          Group2 = pair[[2]],
           Chisq = unname(test$chisq),
           df = test$df,
           p = test$p,
@@ -1252,21 +1290,22 @@ prepare_km_analysis_result <- function(
 survival_km_median_table <- function(fit) {
   summary_table <- summary(fit)$table
   table <- as.data.frame(summary_table, stringsAsFactors = FALSE)
-  if (is.null(dim(summary_table))) {
+  single_stratum <- is.null(dim(summary_table))
+  if (isTRUE(single_stratum)) {
     table <- as.data.frame(t(summary_table), stringsAsFactors = FALSE)
   }
-  table$Strata <- rownames(table)
+  table$Strata <- if (isTRUE(single_stratum)) rep("All", nrow(table)) else rownames(table)
   rownames(table) <- NULL
   quantiles <- tryCatch(quantile(fit, probs = c(0.25, 0.5, 0.75)), error = function(e) NULL)
   add_quantile <- function(prob_label, column_name) {
     if (is.null(quantiles) || is.null(quantiles$quantile)) return(rep(NA_real_, nrow(table)))
     quantile_values <- quantiles$quantile
     if (is.null(dim(quantile_values))) {
-      value <- quantile_values[[prob_label]] %||% NA_real_
-      return(rep(as.numeric(value), nrow(table)))
+      value <- unname(quantile_values[[prob_label]] %||% NA_real_)
+      return(rep(value, nrow(table)))
     }
     values <- quantile_values[, prob_label]
-    names(values) <- rownames(quantiles$quantile)
+    names(values) <- rownames(quantile_values)
     unname(values[table$Strata])
   }
   result <- data.frame(
@@ -2646,4 +2685,37 @@ prepare_competing_risk_result <- function(
     cif_at_times = survival_cif_at_times(curve, times),
     packages = paste(package_version_label("survival"), package_version_label("cmprsk"), sep = "; ")
   )
+}
+
+survival_cox_ggplot <- function(result, figure_version = "color") {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("Package 'ggplot2' is required for Cox forest plot.")
+  }
+  table <- result$coef_table
+  if (!is.data.frame(table) || nrow(table) == 0) return(NULL)
+  keep <- is.finite(table$HR) & is.finite(table$LLCI) & is.finite(table$ULCI)
+  if ("Reference" %in% names(table)) keep <- keep & !(table$Reference %in% TRUE)
+  if ("SplineBasis" %in% names(table)) keep <- keep & !(table$SplineBasis %in% TRUE)
+  if ("TimeVaryingEffect" %in% names(table)) keep <- keep & !(table$TimeVaryingEffect %in% TRUE)
+  table <- table[keep, , drop = FALSE]
+  if (!nrow(table)) return(NULL)
+  table$PlotTerm <- as.character(table$DisplayTerm %||% table$Term)
+  table$PlotTerm <- factor(table$PlotTerm, levels = rev(unique(table$PlotTerm)))
+  figure_version <- as.character(figure_version %||% "color")[[1]]
+  point_color <- if (identical(figure_version, "bw")) "#111111" else "#1F77B4"
+  p <- ggplot2::ggplot(table, ggplot2::aes(x = HR, y = PlotTerm)) +
+    ggplot2::geom_vline(xintercept = 1, linetype = "dashed", color = "#777777", linewidth = 0.55) +
+    ggplot2::geom_errorbar(ggplot2::aes(xmin = LLCI, xmax = ULCI), orientation = "y", width = 0.2, color = point_color, linewidth = 0.75) +
+    ggplot2::geom_point(size = 3, color = point_color) +
+    ggplot2::scale_x_log10() +
+    ggplot2::labs(x = "Hazard Ratio (95% CI)", y = NULL) +
+    ggplot2::theme_classic(base_size = 12) +
+    ggplot2::theme(
+      axis.line = ggplot2::element_line(linewidth = 0.45, colour = "#111111"),
+      axis.ticks = ggplot2::element_line(linewidth = 0.45, colour = "#111111"),
+      axis.title = ggplot2::element_text(size = 12, colour = "#111111"),
+      axis.text = ggplot2::element_text(size = 10.5, colour = "#111111"),
+      plot.margin = ggplot2::margin(8, 12, 8, 8)
+    )
+  p
 }

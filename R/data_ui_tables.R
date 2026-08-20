@@ -104,7 +104,7 @@ data_preview_table_options <- function() {
     deferRender = TRUE,
     searchDelay = 250,
     scrollX = TRUE,
-    autoWidth = TRUE
+    autoWidth = FALSE
   )
 }
 
@@ -445,22 +445,35 @@ variable_label_input_renderer <- function() {
   )
 }
 
-variable_table_options <- function(language = statedu_initial_language()) {
-  with_datatable_language(list(
-    dom = '<"variable-table-top"lfp>rt<"variable-table-bottom"ip>',
-    pageLength = 20,
-    lengthMenu = c(10, 20, 50, 100),
+variable_table_options <- function(language = statedu_initial_language(), compact = FALSE) {
+  controls <- if (isTRUE(compact)) {
+    list(
+      dom = "t",
+      paging = FALSE,
+      lengthChange = FALSE,
+      searching = FALSE,
+      info = FALSE
+    )
+  } else {
+    list(
+      dom = '<"variable-table-top"lfp>rt<"variable-table-bottom"ip>',
+      pageLength = 20,
+      lengthMenu = c(10, 20, 50, 100)
+    )
+  }
+  base_options <- list(
     deferRender = TRUE,
     searchDelay = 250,
     scrollX = TRUE,
-    autoWidth = TRUE,
+    autoWidth = FALSE,
     order = list(list(1, "asc")),
     columnDefs = list(
       list(orderable = FALSE, targets = 0),
       list(visible = FALSE, targets = 1),
       list(targets = 3, render = variable_label_input_renderer(), orderable = FALSE)
     )
-  ), language)
+  )
+  with_datatable_language(utils::modifyList(base_options, controls), language)
 }
 
 variable_table_callback <- function(
@@ -495,6 +508,7 @@ variable_table_callback_script <- function(language = statedu_initial_language()
   asc_label <- statedu_t("data.table_asc", language)
   desc_label <- statedu_t("data.table_desc", language)
   script <- "
+        var easyflowCallbackStart = window.performance ? window.performance.now() : Date.now();
         var selected = __SELECTED_NAMES__;
         var dependentOnly = __DEPENDENT_ONLY__;
         var singleSelectRole = __SINGLE_SELECT_ROLE__;
@@ -940,6 +954,27 @@ variable_table_callback_script <- function(language = statedu_initial_language()
         refreshVariableChecks();
         scheduleVariableTablePageRestore();
         syncVariableSelection();
+        if (window.Shiny) {
+          var reportVariableTableTiming = function() {
+            var now = window.performance ? window.performance.now() : Date.now();
+            var rowCount = 0;
+            var visibleCount = 0;
+            try { rowCount = table.rows().count(); } catch (e) {}
+            try { visibleCount = table.rows({page: 'current'}).count(); } catch (e) {}
+            Shiny.setInputValue('variable_table_client_timing', {
+              elapsed_ms: Math.max(0, now - easyflowCallbackStart),
+              rows: rowCount,
+              visible_rows: visibleCount,
+              compact: !table.page.info || !table.page.info().pages || table.page.info().pages <= 1,
+              nonce: Date.now() + Math.random()
+            }, {priority: 'event'});
+          };
+          if (window.requestAnimationFrame) {
+            window.requestAnimationFrame(function() { window.setTimeout(reportVariableTableTiming, 0); });
+          } else {
+            window.setTimeout(reportVariableTableTiming, 0);
+          }
+        }
         "
   script <- gsub("__HEADER_LABELS__", header_labels, script, fixed = TRUE)
   script <- gsub("__SELECTED_LABEL__", jsonlite::toJSON(selected_label, auto_unbox = TRUE), script, fixed = TRUE)

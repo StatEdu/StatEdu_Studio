@@ -849,6 +849,39 @@ save_survival_km_figures_to_dir <- function(result, directory) {
   save_survival_km_figure_files(result, directory)
 }
 
+save_survival_cox_figure_files <- function(result, directory, dpi = analysis_figure_dpi(), plot_versions = c("color", "bw")) {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("Package 'ggplot2' is required for Cox figure export.")
+  }
+  saved <- character(0)
+  plot_versions <- unique(as.character(plot_versions %||% "color"))
+  plot_versions <- plot_versions[plot_versions %in% c("color", "bw")]
+  if (length(plot_versions) == 0) {
+    plot_versions <- "color"
+  }
+  for (plot_version in plot_versions) {
+    plot <- survival_cox_ggplot(result, plot_version)
+    if (is.null(plot)) next
+    version_label <- safe_file_stem(survival_plot_version_label(plot_version, "en"))
+    file <- file.path(directory, sprintf("Cox_Hazard_Ratio_Forest_Plot_%s_%sdpi.png", version_label, dpi))
+    ggplot2::ggsave(
+      filename = file,
+      plot = plot,
+      width = 6.4,
+      height = 4.8,
+      units = "in",
+      dpi = dpi,
+      bg = "white"
+    )
+    saved <- c(saved, file)
+  }
+  saved
+}
+
+save_survival_cox_figures_to_dir <- function(result, directory) {
+  save_survival_cox_figure_files(result, directory)
+}
+
 save_survival_competing_figure_files <- function(result, directory, dpi = analysis_figure_dpi()) {
   file <- file.path(directory, sprintf("Competing-risks_CIF_number-at-risk_%sdpi.png", dpi))
   grDevices::png(file, width = 6.4, height = 6.2, units = "in", res = dpi, bg = "white")

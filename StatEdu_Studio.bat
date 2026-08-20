@@ -6,9 +6,11 @@ cd /d "%~dp0"
 echo Starting StatEdu Studio...
 echo.
 
-echo Closing existing StatEdu Studio process on port 7894, if any...
-for /f "tokens=5" %%P in ('netstat -ano ^| findstr /C:":7894" ^| findstr /C:"LISTENING"') do (
-    if not "%%P"=="0" taskkill /F /PID %%P >nul 2>nul
+echo Closing existing StatEdu Studio processes on ports 7894 and 3838, if any...
+for %%A in (7894 3838) do (
+    for /f "tokens=5" %%P in ('netstat -ano ^| findstr /C:":%%A" ^| findstr /C:"LISTENING"') do (
+        if not "%%P"=="0" taskkill /F /PID %%P >nul 2>nul
+    )
 )
 timeout /t 1 /nobreak >nul
 
@@ -42,6 +44,7 @@ echo Using Rscript: "%RSCRIPT%"
 echo Keep this window open while using the app.
 echo.
 
+set "STATEDU_PORT=7894"
 "%RSCRIPT%" run_app.R
 
 echo.

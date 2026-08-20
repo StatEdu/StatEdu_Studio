@@ -160,6 +160,62 @@ stopifnot(!isTRUE(var_factor_warning))
 stopifnot(is.numeric(numeric_factor_result$data$Y))
 stopifnot(is.numeric(numeric_factor_result$data$M))
 
+message("Checking categorical moderators produce conditional and relative indirect effects...")
+set.seed(120)
+categorical_n <- 72L
+categorical_data <- data.frame(
+  X = rep(seq(-1.5, 1.5, length.out = 24L), 3L),
+  W = factor(rep(c("control", "low", "high"), each = 24L), levels = c("control", "low", "high"))
+)
+categorical_data$M <- 0.30 +
+  (0.40 + ifelse(categorical_data$W == "low", 0.25, ifelse(categorical_data$W == "high", 0.55, 0))) * categorical_data$X +
+  ifelse(categorical_data$W == "low", 0.10, ifelse(categorical_data$W == "high", 0.20, 0)) +
+  stats::rnorm(categorical_n, sd = 0.03)
+categorical_data$Y <- 0.20 + 0.70 * categorical_data$M + 0.15 * categorical_data$X + stats::rnorm(categorical_n, sd = 0.03)
+categorical_info <- data.frame(
+  name = c("Y", "X", "M", "W"),
+  var_label = c("Y", "X", "M", "W"),
+  role = c("", "", "", ""),
+  measurement = c("continuous", "continuous", "continuous", "category"),
+  stringsAsFactors = FALSE
+)
+categorical_result <- mediation_moderation_boot_effects(
+  categorical_data,
+  roles = list(y = "Y", x = "X", mediators = "M", w = "W", covariates = character(0)),
+  focal = "X",
+  structure = "single",
+  model = "7",
+  mean_center = FALSE,
+  variable_info = categorical_info,
+  boot_r = 20L,
+  seed = 120L,
+  residual_diagnostics = FALSE,
+  moderated_paths = "xm"
+)
+categorical_effects <- as.character(categorical_result$effect_table$Effect)
+stopifnot(any(startsWith(categorical_effects, "Conditional indirect effect")))
+stopifnot(any(startsWith(categorical_effects, "Relative indirect effect")))
+stopifnot(is.data.frame(categorical_result$simple_slopes_table) || is.null(categorical_result$simple_slopes_table))
+categorical_simple <- mediation_moderation_simple_slopes_table(categorical_result$path_results)
+stopifnot(is.data.frame(categorical_simple), nrow(categorical_simple) >= 3L)
+stopifnot(any(as.character(categorical_simple$Level) == "high"))
+categorical_moderation_result <- mediation_moderation_boot_effects(
+  transform(categorical_data, Y = 0.10 + (0.35 + ifelse(W == "low", 0.20, ifelse(W == "high", 0.45, 0))) * X + stats::rnorm(categorical_n, sd = 0.03)),
+  roles = list(y = "Y", x = "X", mediators = character(0), w = "W", covariates = character(0)),
+  focal = "X",
+  structure = "none",
+  model = "1",
+  mean_center = FALSE,
+  variable_info = categorical_info[c(1, 2, 4), , drop = FALSE],
+  boot_r = 20L,
+  seed = 121L,
+  residual_diagnostics = FALSE,
+  moderated_paths = "xy"
+)
+categorical_moderation_simple <- mediation_moderation_simple_slopes_table(categorical_moderation_result$path_results)
+stopifnot(is.data.frame(categorical_moderation_simple), nrow(categorical_moderation_simple) >= 3L)
+stopifnot(!any(!nzchar(trimws(as.character(categorical_moderation_result$effect_table$Estimate %||% "")))))
+
 message("Checking B5 portrait width metadata survives summary rows...")
 width_table <- data.frame(
   Term = c("(Intercept)", "X"),

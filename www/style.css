@@ -8698,11 +8698,18 @@ pre {
 .survival-result-table td {
   min-width: 72px;
   max-width: 260px;
-  white-space: normal !important;
-  overflow-wrap: anywhere;
   word-break: normal;
   line-height: 1.35;
   vertical-align: middle !important;
+}
+
+.survival-result-table th {
+  white-space: normal !important;
+}
+
+.survival-result-table td {
+  white-space: pre-line !important;
+  overflow-wrap: normal !important;
 }
 
 .survival-cox-target-column,
@@ -8751,6 +8758,17 @@ pre {
 
 .survival-options-column .survival-options-tab-content {
   padding-top: 14px;
+}
+
+.survival-result-table .survival-col-median-95-ci {
+  min-width: 112px !important;
+  max-width: 132px !important;
+  line-height: 1.25 !important;
+}
+
+.survival-result-table .survival-col-m-se {
+  min-width: 92px !important;
+  line-height: 1.25 !important;
 }
 
 .survival-table-note {
