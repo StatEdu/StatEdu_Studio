@@ -196,6 +196,8 @@ Audit trail에는 활성화 여부, 대상 요인, parcel 수, 사용자가 기�
 
 CB-SEM 직접·간접·총효과는 선택적으로 사례 재표집 bias-corrected(BC, 기본값) 또는 percentile bootstrap 95% CI와 양측 bootstrap p 값을 보고한다. BC가 모든 표본·효과크기 조건에서 보편적으로 우월하다고 주장하지 않으며, 논문에서는 선택한 방법과 필요한 민감도 분석을 명시한다. 각 효과별 요청 반복 수, 유효 반복 수, 유효율과 상태를 함께 기록하며 미수렴 또는 부적합 해는 유효 반복에서 제외한다. 유효율이 80% 미만이면 주의, 50% 미만이면 신뢰할 수 없는 결과로 표시한다. 기본 delta-method 구간과 bootstrap 구간을 혼동하지 않도록 bootstrap 실행 시 비표준화 효과의 CI와 p 값을 bootstrap 결과로 교체한다.
 
+앱 UI에서는 이 분석을 `경로·간접·총효과 bootstrap`으로 표시하여 AVE·신뢰도, HTMT, Bollen–Stine 및 PLS 재표집과 구분한다. 모든 재표집 분석은 기본적으로 비활성화되며, 사용자가 `부트스트랩` 탭에서 반복 수를 선택한 경우에만 기본 모형 적합 후 추가로 실행한다. PLS-SEM은 부트스트랩을 실행하지 않아도 점추정값을 표시하지만, CI와 p 값은 보고하지 않는다.
+
 병렬 PLSc bootstrap은 기준 seed에서 L'Ecuyer-CMRG 독립 난수 스트림을 반복별로 사전 할당한다. 작업자 수나 동적 작업 배정 순서와 무관하게 같은 seed의 반복 표본을 재현하며, 호출 전 세션 RNG 상태를 복원한다.
 
 조절된 매개효과에서는 조절경로의 상호작용계수와 나머지 간접경로 계수의 곱으로 index of moderated mediation를 반복마다 다시 계산한다. index의 선택된 BC 또는 percentile CI와 bootstrap p를 유의 여부와 관계없이 보고하며, Johnson-Neyman 결과도 index의 사전 유의성 필터로 숨기지 않는다. Product-indicator 잠재조절모형의 index는 잠재변수·곱지표 척도에 의존하고 유일한 표준화 정의가 없으므로, 비표준화 index와 bootstrap CI를 주 결과로 제공하고 표준화 index는 미보고 사유를 명시한다.

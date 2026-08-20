@@ -89,7 +89,7 @@ stopifnot(
   grepl("bundle$effect_bootstrap_canceled <- TRUE", handler_source, fixed = TRUE),
   grepl("The HTMT bootstrap was stopped by the user. Point estimates and base-model results remain available.", htmt_render_source, fixed = TRUE),
   grepl("The AVE/reliability bootstrap was stopped by the user. Point estimates and base-model results remain available.", reliability_bootstrap_render_source, fixed = TRUE),
-  grepl("The structural-effect bootstrap was stopped by the user. Base-model results and point estimates remain available.", render_source, fixed = TRUE),
+  grepl("The path, indirect, and total-effect bootstrap was stopped by the user. Base-model results and point estimates remain available.", render_source, fixed = TRUE),
   grepl("PLS structural model effects", ui_source, fixed = TRUE),
   grepl("2. PLS/PLSc model fit diagnostics", ui_source, fixed = TRUE),
   grepl('Fit = "saturated"', fit_source, fixed = TRUE),
@@ -100,7 +100,8 @@ stopifnot(
   grepl('"AUTO", "PLS", "PLSC"', ui_source, fixed = TRUE),
   grepl("Rule-based recommendation (confirmation required)", ui_source, fixed = TRUE),
   grepl("estimator_recommendation_confirmed", ui_source, fixed = TRUE),
-  grepl('"5,000 resamples" = "5000"', ui_source, fixed = TRUE),
+  grepl("PLS path/loading/weight/indirect/total-effect bootstrap CI/p", ui_source, fixed = TRUE),
+  grepl("All bootstrap procedures default to 'Do not compute'.", ui_source, fixed = TRUE),
   grepl("PLSpredict predictive assessment", ui_source, fixed = TRUE),
   grepl("PLS-SEM quality checklist", ui_source, fixed = TRUE),
   grepl("repeated PLSpredict boundary conditions", ui_source, fixed = TRUE),
@@ -159,7 +160,7 @@ stopifnot(
   grepl('model_label <- if (identical(analysis_type, "cfa")) "CFA" else "SEM"', handler_source, fixed = TRUE),
   grepl('paste0(prefix, "_effect_bootstrap_stop")', handler_source, fixed = TRUE),
   grepl('paste0(prefix, "-effect-bootstrap-progress")', handler_source, fixed = TRUE),
-  grepl("SEM structural-effect bootstrap progress", handler_source, fixed = TRUE),
+  grepl("SEM path, indirect, and total-effect bootstrap progress", handler_source, fixed = TRUE),
   grepl("Shiny.setInputValue('%s', Date.now(), {priority: 'event'})", handler_source, fixed = TRUE),
   !grepl("Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed", ui_source, fixed = TRUE)
 )
@@ -723,6 +724,10 @@ cbsem_mediation_bundle <- list(
   validity_formula = "standardized"
 )
 cbsem_mediation_bundle$effect_bootstrap_result <- cbsem_effect_bootstrap
+cbsem_mediation_bundle$effect_bootstrap <- 30L
+cbsem_mediation_bundle$effect_bootstrap_seed <- 13579L
+cbsem_mediation_bundle$effect_bootstrap_ci_method <- "bias_corrected"
+cbsem_mediation_bundle$analysis_type <- "cbsem"
 cbsem_mediation_bundle$analysis_data <- mediation_data
 cbsem_mediation_bundle$sampling_design <- "independent_cross_sectional"
 cbsem_mediation_bundle$sampling_design_gate <- structural_canvas_sampling_design_gate("independent_cross_sectional")
@@ -731,6 +736,13 @@ cbsem_mediation_bundle$common_method_marker_variable <- "social_desirability_mar
 cbsem_mediation_bundle$common_method_marker_rationale <- "Theoretically unrelated marker measured with the same response format"
 cbsem_mediation_bundle$analysis_plan_status <- "preregistered"
 cbsem_mediation_bundle$analysis_plan_reference <- "https://osf.io/example"
+cbsem_mediation_result <- function() cbsem_mediation_bundle
+cbsem_mediation_table <- function(kind) structural_canvas_result_table(kind, cbsem_mediation_result, "cbsem", labels_fn, language_fn)
+cbsem_mediation_sheets <- structural_canvas_result_workbook_sheets(cbsem_mediation_bundle, cbsem_mediation_table)
+stopifnot(all(c(
+  "Structural_Paths", "Structural_Path_CI", "Structural_Effects", "Structural_Effect_CI",
+  "Specific_Indirect", "Effect_Bootstrap_Diagnostics"
+) %in% names(cbsem_mediation_sheets)))
 cbsem_mediation_audit <- structural_canvas_audit_manifest(cbsem_mediation_bundle, "cbsem")
 stopifnot(
   identical(cbsem_mediation_audit$schema$version, "1.5"),
@@ -1024,13 +1036,14 @@ stopifnot(is.finite(pls_options$pls_predict_seed))
 stopifnot(pls_options$sampling_design == "independent_cross_sectional")
 undeclared_options <- structural_canvas_execute_settings(settings = list(), input = list(), prefix = "structural_plssem")
 stopifnot(identical(undeclared_options$sampling_design, "not_declared"))
+stopifnot(identical(undeclared_options$pls_bootstrap, 0L))
 stopifnot(identical(undeclared_options$estimator_recommendation_confirmed, FALSE))
 confirmed_options <- structural_canvas_execute_settings(settings = list(estimator_recommendation_confirmed = TRUE), input = list(), prefix = "structural_plssem")
 stopifnot(identical(confirmed_options$estimator_recommendation_confirmed, TRUE))
 cbsem_default_options <- structural_canvas_execute_settings(settings = list(), input = list(), prefix = "structural_cbsem")
 stopifnot(identical(cbsem_default_options$sampling_design, "not_declared"))
-stopifnot(identical(cbsem_default_options$effect_bootstrap, 5000L))
-stopifnot(identical(cbsem_default_options$htmt_bootstrap, 5000L))
+stopifnot(identical(cbsem_default_options$effect_bootstrap, 0L))
+stopifnot(identical(cbsem_default_options$htmt_bootstrap, 0L))
 stopifnot(identical(cbsem_default_options$htmt_ci_method, "bias_corrected"))
 common_method_record_options <- structural_canvas_execute_settings(settings = list(
   common_method_procedural_controls = "Separated predictor and outcome measurement times",
