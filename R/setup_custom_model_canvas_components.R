@@ -72,7 +72,6 @@ custom_model_canvas_tab_panel <- function(title = custom_model_canvas_title(), l
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel custom-model-workspace-panel",
-        style = "min-width:1450px;overflow-x:auto;",
         analysis_workspace_heading(custom_model_canvas_title(language), "custom_model_canvas", language),
         analysis_workspace_body(
           "custom_model_canvas",

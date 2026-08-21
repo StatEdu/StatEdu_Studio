@@ -6987,7 +6987,6 @@ mediation_moderation_tab_panel <- function(title = "Mediation / Moderation", lan
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel mm-workspace-panel",
-        style = "min-width:1700px;overflow-x:auto;",
         analysis_workspace_heading(mediation_moderation_title(language), "mediation_moderation", language),
         analysis_workspace_body(
           "mediation_moderation",

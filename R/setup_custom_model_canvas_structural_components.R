@@ -171,7 +171,7 @@ structural_equation_tab_panel <- function(analysis_type = "cbsem", language = st
     value = paste0("analysis_", prefix),
     div(class = "page-shell",
         div(class = "app-heading", h1(title), div(if (identical(normalize_app_language(language), "ko")) "관측변수와 잠재변수를 배치하여 CFA와 SEM 모형을 작성합니다." else "Build CFA and SEM models with observed and latent variables.", class = "app-subtitle")),
-        div(class = "workspace-panel frequencies-workspace-panel custom-model-workspace-panel structural-equation-workspace-panel", style = "min-width:1450px;overflow-x:auto;",
+        div(class = "workspace-panel frequencies-workspace-panel custom-model-workspace-panel structural-equation-workspace-panel",
             div(
               class = paste("analysis-workspace-heading", paste0(prefix, "-workspace-heading")),
               div(class = "analysis-workspace-heading-main", h3(analysis_ui_text(title, language)))

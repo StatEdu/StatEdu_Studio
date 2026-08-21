@@ -12,6 +12,12 @@
   max-width: 100%;
 }
 
+.custom-model-canvas-root > .custom-model-variable-panel {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
 /* Match the structural workspace to the full-width Step 2 data panel. */
 .structural-equation-canvas-root {
   grid-template-columns: 260px minmax(0, 1fr);
@@ -2221,8 +2227,15 @@
 
 @media (max-width: 1500px) {
   .structural-equation-canvas-root .custom-model-toolbar-panel[data-toolbar-panel="tools"].is-active {
-    zoom: 0.75;
-    width: 133.333%;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .structural-equation-canvas-root .structural-secondary-toolbar-tools,
+  .structural-equation-canvas-root .structural-result-tools {
+    min-width: 0;
+    flex-wrap: wrap;
+    white-space: normal;
   }
 }
 

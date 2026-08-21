@@ -89,23 +89,19 @@ ancova_setup_panel <- function(state) {
     ),
     div(
       class = "ancova-target-column",
-      style = "display:grid !important;grid-template-rows:150px 92px 242px !important;gap:18px !important;height:520px !important;min-height:520px !important;max-height:520px !important;width:326px !important;min-width:326px !important;max-width:326px !important;overflow:hidden !important;",
       div(
         class = "analysis-transfer-column analysis-transfer-panel ancova-dependent-panel",
-        style = "height:150px !important;min-height:0 !important;max-height:150px !important;overflow:hidden !important;",
         analysis_field_label_tag("Dependent variables", c("ordered", "continuous"), language = language),
         analysis_transfer_listbox_input("ancova_dependents", state$dependent_items, selected = state$dependent_selected, size = 3, important_height = TRUE),
         div(class = "analysis-order-actions ttest-anova-order-actions", actionButton("ancova_dependent_up", analysis_ui_text("Up", language), class = "btn-default btn-sm"), actionButton("ancova_dependent_down", analysis_ui_text("Down", language), class = "btn-default btn-sm"))
       ),
       div(
         class = "analysis-transfer-column analysis-transfer-panel ancova-factor-panel",
-        style = "height:92px !important;min-height:0 !important;max-height:92px !important;overflow:hidden !important;",
         analysis_field_label_tag("Independent variable", c("binary", "category", "ordered"), language = language),
         analysis_transfer_listbox_input("ancova_factor", state$factor_items, selected = state$factor_selected, size = 1, important_height = TRUE)
       ),
       div(
         class = "analysis-transfer-column analysis-transfer-panel ancova-covariate-panel",
-        style = "height:242px !important;min-height:0 !important;max-height:242px !important;overflow:hidden !important;",
         analysis_field_label_tag("Covariates", c("binary", "category", "ordered", "continuous"), language = language),
         analysis_transfer_listbox_input("ancova_covariates", state$covariate_items, selected = state$covariate_selected, size = 5, important_height = TRUE),
         div(class = "analysis-order-actions ttest-anova-order-actions", actionButton("ancova_covariate_up", analysis_ui_text("Up", language), class = "btn-default btn-sm"), actionButton("ancova_covariate_down", analysis_ui_text("Down", language), class = "btn-default btn-sm"))

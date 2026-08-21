@@ -13659,3 +13659,179 @@ select[id$="_active_role"]:focus {
 .regression-options.analysis-options-panel .analysis-option-group .checkbox.is-disabled label {
   color: #778899;
 }
+
+/* Laptop analysis workspaces: keep every panel and control inside the CSS viewport. */
+@media (max-width: 1440px) and (min-width: 901px) {
+  body {
+    --se-standard-panel-width: 304px;
+    --se-standard-options-width: 286px;
+    --se-standard-inner-button-width: 280px;
+    --se-standard-options-button-width: 262px;
+    --se-standard-setup-width: 1050px;
+  }
+
+  .analysis-transfer-panel .analysis-transfer-listbox {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .custom-model-workspace-panel,
+  .structural-equation-workspace-panel,
+  .mm-workspace-panel,
+  .longitudinal-workspace-panel,
+  .longitudinal-data-viewer-panel {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  .longitudinal-workspace-heading {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .mm-role-grid {
+    grid-template-areas:
+      "available transfer targets model"
+      "diagram diagram diagram diagram";
+    grid-template-columns: 304px 44px 304px minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mm-available-panel { grid-area: available; }
+  .mm-transfer-controls { grid-area: transfer; }
+  .mm-role-targets-panel { grid-area: targets; }
+  .mm-model-column { grid-area: model; }
+  .mm-diagram-panel { grid-area: diagram; }
+
+  .mm-model-column,
+  .mm-model-panel,
+  .mm-role-targets-panel,
+  .mm-available-panel,
+  .mm-diagram-panel {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .mm-action-row {
+    grid-template-columns: 304px 44px 304px minmax(0, 1fr) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .mm-action-row > #mediation_moderation_save_control {
+    grid-column: 4;
+    width: 100%;
+    min-width: 0;
+    max-width: 304px;
+  }
+
+  .longitudinal-setup-grid,
+  .longitudinal-action-row {
+    grid-template-columns: minmax(220px, 1fr) 36px minmax(220px, 1fr) 36px minmax(220px, 1fr) minmax(250px, 1.15fr) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  .longitudinal-available-panel,
+  .longitudinal-target-block {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .longitudinal-options.analysis-options-panel {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: auto !important;
+    min-height: 570px !important;
+    max-height: none !important;
+  }
+
+  .longitudinal-options .regression-field,
+  .longitudinal-options .form-group,
+  .longitudinal-options .selectize-control,
+  .longitudinal-options .form-control,
+  .longitudinal-options select {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .longitudinal-options .nav-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .longitudinal-options .nav-tabs > li {
+    float: none;
+    flex: 1 1 50%;
+    min-width: 0;
+  }
+
+  .longitudinal-options .nav-tabs > li > a {
+    margin-right: 0;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .longitudinal-action-row > .btn,
+  .longitudinal-action-row > #reset_longitudinal {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  .longitudinal-action-row > #longitudinal_save_control {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .longitudinal-action-row .analysis-run-cell,
+  .longitudinal-action-row .analysis-reset-cell,
+  .longitudinal-action-row .analysis-save-cell,
+  .longitudinal-action-row .analysis-run-cell > .btn,
+  .longitudinal-action-row .analysis-reset-cell .analysis-reset-button {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .ttest-anova-setup-grid.ancova-setup-grid {
+    grid-auto-rows: auto !important;
+  }
+
+  .ttest-anova-setup-grid.ancova-setup-grid > .ancova-target-column {
+    grid-template-rows: 162px 92px 246px !important;
+    align-self: start !important;
+    height: 536px !important;
+    min-height: 536px !important;
+    max-height: none !important;
+  }
+
+  .survival-setup-grid {
+    grid-auto-rows: auto !important;
+  }
+
+  .survival-target-column,
+  .survival-transfer-controls {
+    grid-template-rows: 164px 196px 160px !important;
+    align-self: start !important;
+    height: 556px !important;
+    min-height: 556px !important;
+    max-height: none !important;
+  }
+}
