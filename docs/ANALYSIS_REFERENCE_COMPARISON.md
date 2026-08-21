@@ -9,6 +9,7 @@ This document collects StatEdu Studio validation checks that compare app outputs
 - Sample-size calculations are compared with G*Power-equivalent formulas, public R packages, or literature-based formulas.
 - Effect-size calculations are compared with `effectsize` or equivalent standard formulas.
 - Analysis calculations are compared with base R, contributed R packages, and StatEdu Studio automatic decision rules.
+- Fixed external benchmarks additionally compare the tested workflows with IBM SPSS Statistics, IBM SPSS Amos, and SmartPLS under matched data, models, and options.
 
 ## Analysis Method Validation Summary
 

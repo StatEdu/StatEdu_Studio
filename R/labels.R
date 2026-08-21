@@ -27,7 +27,7 @@ statedu_translation_table <- local({
       doc_method_notes_title = row("Method Notes", "\uBC29\uBC95\uB860 \uB178\uD2B8"),
       doc_method_notes_subtitle = row("Provides notes on method selection, assumptions, warnings, and interpretation.", "\uBD84\uC11D \uBC29\uBC95 \uC120\uD0DD, \uAC00\uC815, \uACBD\uACE0, \uACB0\uACFC \uD574\uC11D\uC5D0 \uB300\uD55C \uB178\uD2B8\uB97C \uC81C\uACF5\uD569\uB2C8\uB2E4."),
       doc_validation_title = row("Validation", "\uAC80\uC99D"),
-      doc_validation_subtitle = row("Provides reference comparisons for public 1.2 calculations and automatic decision paths.", "\uACF5\uAC1C 1.2 \uACC4\uC0B0\uACFC \uC790\uB3D9 \uD310\uB2E8 \uACBD\uB85C\uC758 \uAE30\uC900 \uBE44\uAD50\uB97C \uC81C\uACF5\uD569\uB2C8\uB2E4."),
+      doc_validation_subtitle = row("Provides R-reference and cross-software validation results.", "R \uAE30\uC900\uACFC \uC678\uBD80 \uD504\uB85C\uADF8\uB7A8 \uAD50\uCC28\uAC80\uC99D \uACB0\uACFC\uB97C \uC81C\uACF5\uD569\uB2C8\uB2E4."),
       doc_version_history_title = row("Version History", "\uBC84\uC804 \uAE30\uB85D"),
       doc_version_history_subtitle = row("Provides release notes and version history.", "\uB9B4\uB9AC\uC2A4 \uB178\uD2B8\uC640 \uBC84\uC804 \uAE30\uB85D\uC744 \uC81C\uACF5\uD569\uB2C8\uB2E4."),
 

@@ -650,6 +650,7 @@ markdown <- c(
   "- Sample-size calculations are compared with G*Power-equivalent formulas, public R packages, or literature-based formulas.",
   "- Effect-size calculations are compared with `effectsize` or equivalent standard formulas.",
   "- Analysis calculations are compared with base R, contributed R packages, and StatEdu Studio automatic decision rules.",
+  "- Fixed external benchmarks additionally compare the tested workflows with IBM SPSS Statistics, IBM SPSS Amos, and SmartPLS under matched data, models, and options.",
   "",
   analysis_method_markdown,
   "",
@@ -676,6 +677,15 @@ markdown <- c(
 )
 writeLines(markdown, md_path, useBytes = TRUE)
 writeLines(markdown, docs_path, useBytes = TRUE)
+
+public_en <- paste(readLines(file.path(repo_root, "docs", "ANALYSIS_REFERENCE_COMPARISON_PUBLIC.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+public_ko <- paste(readLines(file.path(repo_root, "docs", "ANALYSIS_REFERENCE_COMPARISON_PUBLIC_KO.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+stopifnot(
+  grepl("Validation Evidence and Cross-Software Agreement", public_en, fixed = TRUE),
+  grepl("66/66 core values pass", public_en, fixed = TRUE),
+  grepl("검증 근거와 교차 프로그램 일치", public_ko, fixed = TRUE),
+  grepl("핵심값 66/66 PASS", public_ko, fixed = TRUE)
+)
 
 cat("Reference comparison passed.\n")
 cat("Rows:", nrow(comparison), "\n")

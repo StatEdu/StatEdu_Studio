@@ -8,6 +8,27 @@
 - 표본수 계산은 G*Power와 동등한 공식, 공개 R 패키지, 또는 문헌 기반 공식과 비교합니다.
 - 효과크기 계산은 `effectsize` 또는 동일한 표준 공식과 비교합니다.
 
+## 검증 근거와 교차 프로그램 일치
+
+StatEdu Studio의 계산 타당성은 두 층으로 확인한다. 첫째, 화면 결과를 base R,
+공개 R 패키지 및 독립적으로 다시 작성한 표준 공식과 대조한다. 이 기준에서 현재
+검증 범위의 계산과 자동 선택 경로는 PASS다. 둘째, 동일 자료·모형·결측 처리·추정
+옵션을 사용해 외부 프로그램의 반올림 전 결과 또는 표시값과 교차검증한다.
+
+| 외부 프로그램 | 검증 범위 | 일치 여부 | 수치 근거 |
+|---|---|---|---|
+| IBM SPSS Statistics 31.0.1.0 | 교차표, 상관, 신뢰도, t/ANOVA, 비모수, 선형·로지스틱 회귀, ANCOVA, 반복측정 | 일치 | 핵심값 66/66 PASS, 최대 절대차 2.19×10^-8 |
+| IBM SPSS Statistics 31.0.1.0 | Kaplan–Meier, log-rank, Cox 회귀 | 일치 | KM 사건시점 50/50 PASS, Cox 최대 절대차 3.81×10^-12 |
+| IBM SPSS Amos 23.0.0.0 | Holzinger–Swineford 3요인 ML-CFA | 일치 | Wishart ML에서 30/30 PASS, 최대 절대차 1.03×10^-6 |
+| SmartPLS 4.1.1.8 | TAM 100행 PLS/PLSc | 일치 | SRMR·d_G·d_ULS 및 7개 구조경로 PASS; 계산 불가 PLSc d_G는 양쪽 모두 N/A |
+| SmartPLS 4.1.1.8 | TAM 100행 ML-CB-SEM | 일치 | 적합도·구조경로 표시값 25/25 PASS |
+
+AMOS의 Normal ML과 Wishart ML, SPSS percentile, Mann–Whitney U 표시처럼 프로그램별
+정의가 다른 항목은 임의로 같은 값으로 만들지 않고 계산 관례를 함께 기록한다.
+따라서 결론은 **검증한 버전·자료·모형·옵션 범위에서 R 기준으로 타당하고 외부
+프로그램의 핵심 결과와도 실질적으로 일치한다**는 것이다. 이는 모든 자료·옵션에서의
+보편적 동일성이나 연구설계 가정·인과해석의 타당성을 자동 보증한다는 뜻은 아니다.
+
 ## 공개 1.2 분석 검증
 
 공개 1.2 검증 범위는 화면에 보이는 Analysis 메뉴의 직접 계산과 자동 선택 경로를 포함합니다. 자동 경로에는 sparse cell에서 Fisher 계열 검정으로 전환, 비정규 상관쌍에서 Spearman 전환, t-test / ANOVA에서 Mann-Whitney, Welch, Kruskal-Wallis 전환, 평가자간 일치도 권장 지표 선택, 혼합 반복측정 ANOVA 가정 검토, GLM family 감지, count model 과분산 선택, 매개·조절 사용자 정의 모델 canvas mapping이 포함됩니다.

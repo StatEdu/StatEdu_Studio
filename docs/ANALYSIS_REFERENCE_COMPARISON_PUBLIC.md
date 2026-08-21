@@ -8,6 +8,30 @@ This public-facing validation summary lists reference checks for features expose
 - Sample-size calculations are compared with G*Power-equivalent formulas, public R packages, or literature-based formulas.
 - Effect-size calculations are compared with `effectsize` or equivalent standard formulas.
 
+## Validation Evidence and Cross-Software Agreement
+
+StatEdu Studio uses two layers of numerical validation. First, displayed results are
+compared with base R, public R packages, and independently reconstructed standard
+formulas. The calculations and automatic decision paths covered by the current suite
+pass those R-based checks. Second, fixed data, models, missing-data handling, and
+estimation options are reproduced in external software and compared before rounding
+or at the documented display precision.
+
+| External software | Validation scope | Agreement | Numerical evidence |
+|---|---|---|---|
+| IBM SPSS Statistics 31.0.1.0 | Crosstabs, correlation, reliability, t/ANOVA, rank tests, linear/logistic regression, ANCOVA, repeated measures | Match | 66/66 core values pass; maximum absolute error 2.19e-8 |
+| IBM SPSS Statistics 31.0.1.0 | Kaplan–Meier, log-rank, Cox regression | Match | 50/50 KM event-time values pass; maximum Cox error 3.81e-12 |
+| IBM SPSS Amos 23.0.0.0 | Holzinger–Swineford three-factor ML-CFA | Match | 30/30 values pass under Wishart ML; maximum absolute error 1.03e-6 |
+| SmartPLS 4.1.1.8 | TAM 100-row PLS/PLSc | Match | SRMR, d_G, d_ULS, and seven structural paths pass; non-estimable PLSc d_G is N/A in both |
+| SmartPLS 4.1.1.8 | TAM 100-row ML-CB-SEM | Match | 25/25 displayed fit and structural-path values pass |
+
+Software-specific conventions—such as Normal versus Wishart ML, SPSS percentile
+algorithms, and Mann–Whitney U display rules—are documented rather than forced to
+produce artificial equality. The supported conclusion is that results are valid against
+the stated R references and materially agree with the external programs for the tested
+versions, data, models, and options. This is not a universal equivalence claim and does
+not establish research-design assumptions or causal validity.
+
 ## Public 1.2 Analysis Reference Checks
 
 The public 1.2 validation set covers direct analysis calculations and automatic decision paths for the visible Analysis menu. Automatic paths include sparse-cell Fisher switching, non-normal correlation switching to Spearman, t-test/ANOVA switching to Mann-Whitney, Welch, or Kruskal-Wallis, inter-rater agreement recommended-index selection, mixed repeated-measures ANOVA assumption checks, GLM family detection, count-model overdispersion selection, and Mediation / Moderation Custom Model canvas mapping.
