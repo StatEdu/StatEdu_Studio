@@ -28,6 +28,12 @@ StatEdu Studio와 SmartPLS 또는 ADANCO의 SRMR, d_G, d_ULS를 비교할 때 �
 - `external_fit_template.csv`: SmartPLS/ADANCO 원값 입력용 템플릿
 - `benchmark_manifest.json`: 자료·모형 SHA-256, 구성개념/경로, StatEdu·R·seminr 버전과 알고리즘 설정
 
+고정 원자료 `sample/HolzingerSwineford1939.csv`는 `lavaan::HolzingerSwineford1939`를
+`utils::write.csv(lavaan::HolzingerSwineford1939, row.names = FALSE)`로 내보낸 뒤
+저장소 표준인 UTF-8/LF로 정규화한 파일이다. `.gitattributes`에서 LF 체크아웃을 강제하며,
+기준 SHA-256은 `140519C3E46920B38191D4CD9415FA33DDC40633294E6D3E30AF82242F7B6204`이다.
+benchmark manifest에는 사용한 `lavaan` 버전, 자료 출처, 생성 명령과 실제 파일 해시를 함께 기록한다.
+
 외부 실행자에게 전달할 완전한 핸드오프 묶음은 다음 명령으로 생성한다.
 
 ```powershell
@@ -53,7 +59,7 @@ StatEdu와 외부 프로그램 결과를 각각 다음 열의 CSV로 준비한�
 
 ```text
 Model,Fit,srmr,d_G,d_ULS
-pls,saturated,0.0840405399973689,0.125566775738875,0.317826556337221
+pls,saturated,0.0920854483723537,0.156085176800799,0.381587841087184
 plsc,saturated,0.0789513151368562,0.119832386033816,0.280498957282763
 ```
 
@@ -71,6 +77,39 @@ plsc,saturated,0.0789513151368562,0.119832386033816,0.280498957282763
 ```
 
 각 지표는 절대오차 또는 상대오차 중 하나가 허용범위 안이면 통과한다. 초과 행이 있으면 스크립트는 실패 종료코드를 반환한다. 차이가 발견되면 먼저 지표 정의, 상관행렬 구성 범위, PLSc 보정 범위, 반올림 전 원값과 saturated/estimated model 설정을 확인한다.
+
+## SmartPLS TAM 교차검증
+
+2026-08-21에 SmartPLS 4.1.1.8의 내장 Technology Acceptance Model(TAM) 예제 중
+첫 100개 사례를 사용하여 StatEdu의 일반 PLS와 PLSc를 별도로 교차검증했다. SmartPLS의
+동일한 5개 구성개념, 22개 지표, 7개 구조경로와 saturated model 기준을 사용했다.
+
+| Estimator | SRMR | d_G | d_ULS |
+|:--|--:|--:|--:|
+| PLS | .077 | .882 | 1.514 |
+| PLSc | .080 | N/A | 1.601 |
+
+StatEdu의 반올림 전 결과는 PLS가 SRMR `0.077364679218131074`, d_G
+`0.88158264086612093`, d_ULS `1.5142792784026535`였고, PLSc가 SRMR
+`0.079540183709681148`, d_G `N/A`, d_ULS `1.6006401286161662`였다. SmartPLS가
+화면에 표시한 세 자리 결과와 모두 일치했다. 일곱 구조경로 역시 PLS
+`.361, .264, .332, .227, .339, .203, .193`, PLSc
+`.388, .306, .352, .229, .380, .200, .253`으로 각각 일치했다.
+
+이 검증은 일반 PLS의 Mode A 점수모형과 PLSc의 일관성 보정을 분리하는 회귀검사다.
+`seminr::reflective()`가 `estimate_pls()` 내부에서 PLSc를 자동 호출하므로, StatEdu는
+일반 PLS를 명시적 Mode A composite로 추정하고 PLSc를 선택한 경우에만 선언된
+공통요인에 선택적 보정을 한 번 적용한다. SmartPLS에서 PLSc d_G가 산출되지 않은
+경우 StatEdu도 임의의 수치를 만들지 않고 `N/A`로 보고한다.
+
+SmartPLS 내장 예제 원자료는 저장소에 포함하지 않는다. 로컬 자료가 있으면 다음
+명령으로 동일한 검증을 실행할 수 있으며, 자료가 없으면 공개 CI에서는 명시적인
+skip 메시지를 남긴다.
+
+```powershell
+& "C:\Program Files\R\R-4.5.3\bin\Rscript.exe" scripts/validate_pls_smartpls_tam.R `
+  --data="C:\StatEdu\SmartPLS_Workspace\Example - TAM 100\Data.txt"
+```
 
 외부 값을 `external_fit.csv`에 입력한 후에는 다음 명령으로 비교표와 증거 해시를 확정한다. `--converged-before-300=true`는 실제 반복기록을 확인한 경우에만 지정한다.
 

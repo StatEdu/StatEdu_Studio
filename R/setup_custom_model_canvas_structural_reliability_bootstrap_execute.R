@@ -1,6 +1,6 @@
 # Structural equation canvas reliability bootstrap execution helpers.
 
-structural_canvas_run_reliability_bootstrap <- function(analysis_type, reliability_bootstrap, result, data, reliability_seed, estimator, missing, std_lv, ordered, validity_formula, reliability_ci_method) {
+structural_canvas_run_reliability_bootstrap <- function(analysis_type, reliability_bootstrap, result, data, reliability_seed, estimator, missing, std_lv, ordered, validity_formula, reliability_ci_method, ml_likelihood = "normal") {
   reliability_bootstrap_result <- NULL
   if (identical(analysis_type, "cfa") && reliability_bootstrap > 0L) {
     structural_canvas_validate_model_based_bootstrap(result$fit, "AVE/reliability bootstrap")
@@ -11,6 +11,7 @@ structural_canvas_run_reliability_bootstrap <- function(analysis_type, reliabili
         estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered, formula_mode = validity_formula,
         original_fit = result$fit,
         ci_method = reliability_ci_method,
+        ml_likelihood = ml_likelihood,
         progress = function(done, total, valid) {
           structural_canvas_set_progress(
             value = .05 + .90 * (as.numeric(done) / max(1, as.numeric(total))),

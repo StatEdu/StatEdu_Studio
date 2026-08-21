@@ -1,0 +1,31 @@
+Section,Item,Value
+fit,CFI,0.93064083973830203
+fit,Chi-square,85.022114720724403
+fit,Chi-square p,9.4549344294635397e-09
+fit,Degrees of freedom,24
+fit,RMSEA,0.092061358404119401
+fit,RMSEA 90% CI lower,0.071314453062593597
+fit,RMSEA 90% CI upper,0.11366128016412499
+fit,SRMR,0.065205056239815679
+fit,TLI,0.89596125960745299
+latent_correlation,speed <-> textual,0.28298481920051899
+latent_correlation,speed <-> visual,0.47053475204732198
+latent_correlation,textual <-> visual,0.45850933807840499
+loading_standardized,speed -> x7,0.56951480638171803
+loading_standardized,speed -> x8,0.72304424789849497
+loading_standardized,speed -> x9,0.66500940597007097
+loading_standardized,textual -> x4,0.85158226584248797
+loading_standardized,textual -> x5,0.855065440305805
+loading_standardized,textual -> x6,0.83801010569998202
+loading_standardized,visual -> x1,0.771880176453828
+loading_standardized,visual -> x2,0.42360064805306502
+loading_standardized,visual -> x3,0.58113235860952295
+loading_unstandardized,speed -> x7,1
+loading_unstandardized,speed -> x8,1.17995021047188
+loading_unstandardized,speed -> x9,1.08153019075599
+loading_unstandardized,textual -> x4,1
+loading_unstandardized,textual -> x5,1.11307651269051
+loading_unstandardized,textual -> x6,0.92614620377488899
+loading_unstandardized,visual -> x1,1
+loading_unstandardized,visual -> x2,0.553500185806027
+loading_unstandardized,visual -> x3,0.72937056122498101

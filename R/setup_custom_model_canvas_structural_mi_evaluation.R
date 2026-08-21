@@ -77,7 +77,7 @@ structural_canvas_allowed_mi <- function(snapshot, fit, mode = "theory") {
   mi[order(-mi$mi), , drop = FALSE]
 }
 
-structural_canvas_mi_refits <- function(snapshot, result, data, analysis_type, estimator, missing, std_lv, mode = "theory", ordered = character(0)) {
+structural_canvas_mi_refits <- function(snapshot, result, data, analysis_type, estimator, missing, std_lv, mode = "theory", ordered = character(0), ml_likelihood = "normal") {
   mi <- structural_canvas_allowed_mi(snapshot, result$fit, mode = mode)
   if (!nrow(mi)) return(mi)
   for (column in c("cfi_after", "tli_after", "rmsea_after", "srmr_after")) mi[[column]] <- NA_real_
@@ -104,11 +104,13 @@ structural_canvas_mi_refits <- function(snapshot, result, data, analysis_type, e
       trial_error <- ""
       parameterization <- if (length(ordered)) "theta" else "delta"
       trial <- tryCatch({
-        if (identical(analysis_type, "cfa")) {
-          lavaan::cfa(trial_syntax, data = data, estimator = estimator, missing = missing, std.lv = std_lv, ordered = ordered, auto.cov.lv.x = FALSE, parameterization = parameterization)
-        } else {
-          lavaan::sem(trial_syntax, data = data, estimator = estimator, missing = missing, std.lv = std_lv, ordered = ordered, auto.cov.lv.x = FALSE, parameterization = parameterization)
-        }
+        arguments <- list(
+          model = trial_syntax, data = data, estimator = estimator, missing = missing,
+          std.lv = std_lv, ordered = ordered, auto.cov.lv.x = FALSE,
+          parameterization = parameterization
+        )
+        if (identical(toupper(as.character(estimator)), "ML")) arguments$likelihood <- ml_likelihood
+        do.call(if (identical(analysis_type, "cfa")) lavaan::cfa else lavaan::sem, arguments)
       }, error = function(error) {
         trial_error <<- conditionMessage(error)
         NULL

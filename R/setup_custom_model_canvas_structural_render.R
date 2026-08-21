@@ -29,6 +29,17 @@ structural_canvas_reporting_lavaan_option <- function(bundle, name, fallback = "
   as.character(options[[name]] %||% fallback)
 }
 
+structural_canvas_ml_likelihood_label <- function(bundle) {
+  estimator <- toupper(as.character(bundle$estimator %||% structural_canvas_reporting_lavaan_option(bundle, "estimator", "")))
+  if (!identical(estimator, "ML")) return("Not applicable to the selected estimator")
+  convention <- tolower(as.character(bundle$ml_likelihood %||% structural_canvas_reporting_lavaan_option(bundle, "likelihood", "normal")))
+  if (identical(convention, "wishart")) {
+    "Wishart ML (unbiased covariance; N-1 chi-square multiplier; AMOS/LISREL/EQS compatible)"
+  } else {
+    "Normal ML (biased covariance; N chi-square multiplier; lavaan default)"
+  }
+}
+
 structural_canvas_reporting_bootstrap_label <- function(bundle, analysis_type) {
   requested <- character(0)
   if (identical(analysis_type, "plssem")) {
@@ -145,13 +156,14 @@ structural_canvas_reporting_context_rows <- function(bundle, analysis_type) {
   syntax_label <- if (nzchar(as.character(bundle$syntax %||% ""))) "Available in analysis bundle" else "Not recorded"
   data.frame(
     Item = c(
-      "Analysis context", "Sampling design", "Analysis engine", "Estimator or algorithm", "Missing-data handling", "Missing-data sensitivity",
+      "Analysis context", "Sampling design", "Analysis engine", "Estimator or algorithm", "ML likelihood convention", "Missing-data handling", "Missing-data sensitivity",
       "Analyzed N", "Ordered indicators", "Latent scaling", "Bootstrap settings",
       "PLSpredict setting", "Group analysis", "Common method diagnostics", "MI holdout", "Syntax availability",
       "Admissibility and convergence"
     ),
     Value = c(
-      context, bundle$sampling_design_gate$label %||% "Not recorded", engine, estimator, missing,
+      context, bundle$sampling_design_gate$label %||% "Not recorded", engine, estimator,
+      if (identical(analysis_type, "plssem")) "Not applicable" else structural_canvas_ml_likelihood_label(bundle), missing,
       if (identical(analysis_type, "plssem")) "Not applicable to the current complete-row PLS workflow" else paste0(structural_canvas_missing_sensitivity_rows(bundle)$`Sensitivity assessment`[[1L]], "; status=", structural_canvas_missing_sensitivity_rows(bundle)$Status[[1L]]),
       structural_canvas_reporting_sample_size(bundle, analysis_type),
       ordered_label, scaling, structural_canvas_reporting_bootstrap_label(bundle, analysis_type),

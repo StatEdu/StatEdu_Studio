@@ -190,7 +190,7 @@ structural_canvas_partial_invariance_status <- function() {
   )
 }
 
-structural_canvas_measurement_invariance <- function(syntax, data, group, estimator = "MLR", missing = "fiml", std_lv = FALSE, ci_level = .90, ordered = character(0)) {
+structural_canvas_measurement_invariance <- function(syntax, data, group, estimator = "MLR", missing = "fiml", std_lv = FALSE, ci_level = .90, ordered = character(0), ml_likelihood = "normal") {
   group <- as.character(group %||% "")
   if (!nzchar(group) || !group %in% names(data)) stop("A valid grouping variable is required for measurement invariance analysis.")
   ordinal <- length(ordered) > 0L
@@ -227,6 +227,7 @@ structural_canvas_measurement_invariance <- function(syntax, data, group, estima
       ordered = ordered, auto.cov.lv.x = FALSE
     )
     if (ordinal) arguments$parameterization <- "theta"
+    if (identical(toupper(as.character(estimator)), "ML")) arguments$likelihood <- ml_likelihood
     do.call(lavaan::cfa, arguments)
   })
   names(fits) <- names(stages)
@@ -280,7 +281,7 @@ structural_canvas_measurement_invariance <- function(syntax, data, group, estima
   )
 }
 
-structural_canvas_structural_path_group_comparison <- function(syntax, data, group, estimator = "MLR", missing = "fiml", std_lv = FALSE, ci_level = .90, ordered = character(0)) {
+structural_canvas_structural_path_group_comparison <- function(syntax, data, group, estimator = "MLR", missing = "fiml", std_lv = FALSE, ci_level = .90, ordered = character(0), ml_likelihood = "normal") {
   group <- as.character(group %||% "")
   if (!nzchar(group) || !group %in% names(data)) stop("A valid grouping variable is required for structural path group comparison.")
   if (length(ordered) || !toupper(estimator) %in% c("ML", "MLR")) {
@@ -295,17 +296,16 @@ structural_canvas_structural_path_group_comparison <- function(syntax, data, gro
   group_syntax <- paste(vapply(group_syntax_lines, function(line) {
     gsub("(^|[=~+])\\s*[A-Za-z.][A-Za-z0-9_.]*\\s*\\*", "\\1 ", line, perl = TRUE)
   }, character(1)), collapse = "\n")
-  unconstrained <- lavaan::sem(
-    group_syntax, data = data, group = group,
+  arguments <- list(
+    model = group_syntax, data = data, group = group,
     estimator = estimator, missing = missing, std.lv = isTRUE(std_lv),
     auto.cov.lv.x = FALSE
   )
+  if (identical(toupper(as.character(estimator)), "ML")) arguments$likelihood <- ml_likelihood
+  unconstrained <- do.call(lavaan::sem, arguments)
   if (group %in% lavaan::lavNames(unconstrained, "ov")) stop("The grouping variable cannot also be an observed model variable.")
-  constrained <- lavaan::sem(
-    group_syntax, data = data, group = group, group.equal = "regressions",
-    estimator = estimator, missing = missing, std.lv = isTRUE(std_lv),
-    auto.cov.lv.x = FALSE
-  )
+  arguments$group.equal <- "regressions"
+  constrained <- do.call(lavaan::sem, arguments)
   fits <- list(`Free structural paths` = unconstrained, `Equal structural paths` = constrained)
   selections <- structural_canvas_common_fit_measures(fits, estimator, ci_level)
   admissibility <- lapply(fits, structural_canvas_fit_admissibility)

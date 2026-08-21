@@ -29,3 +29,16 @@ $env:R_LIBS_USER = "$env:TEMP\statedu-csem-validation-lib"
 ## Interpretation boundary
 
 This test establishes package-level equality of the three matrix discrepancy formulas for a fixed matrix pair. It does not establish equality of PLS/PLSc scores, loadings, consistency corrections, model-implied correlation reconstruction, saturated-versus-estimated model handling, or bootstrap exact-fit inference across StatEdu, SmartPLS, and ADANCO. Those claims require the fixed external benchmark and actual version-recorded output from the proprietary program.
+
+## 2026-08-21 follow-up reproduction
+
+- GitHub base: `2e69ac8`, with the repository-fixture reproducibility correction under review
+- R: 4.5.3
+- cSEM: CRAN 0.6.1
+- Installation: isolated temporary library; system and bundled runtime libraries were not modified
+- Result: SRMR, d_G, and d_ULS matched the cSEM matrix functions within `1e-12`
+
+The first isolated run intentionally exposed only the temporary library and therefore could not load the
+existing Shiny dependency. The successful run supplied both the isolated cSEM library and the existing
+read-only user library through `R_LIBS_USER`; cSEM and its added dependencies remained confined to the
+temporary directory.

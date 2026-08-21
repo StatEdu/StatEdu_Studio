@@ -18,7 +18,7 @@
 | 표본설계 선언, 추정량 선택 근거, CMB 중립 라벨 | 완료 | `a8314d2`; `validate_sem_canvas.R`, `validate_cfa_ui.R` |
 | Mardia·PLSc·PLSpredict 재현성 | 완료 | `27f2659`, `f61f204`, `33a92f8`, `ebba1d0` |
 | 부분불변성 지원 경계 | 제한 명시 완료 | `13bf2a3`, `849224a`; 자동 제약 해제 없이 외부 분석 요건을 Audit에 보존 |
-| PLS 적합도 정의·외부 비교 | 공식 독립검증 완료 / 독점 프로그램 실행 대기 | `91d2480`, `d82fe7a`, `6e31b56`; cSEM 0.6.1의 SRMR·d_G·d_ULS 함수와 1e-12 동등성 통과, 고정 PLS/PLSc saturated benchmark 생성기와 외부 CSV 비교기. SmartPLS/ADANCO 실제 결과·버전은 외부 증거 대기 |
+| PLS 적합도 정의·외부 비교 | 공식 독립검증 및 SmartPLS 실제 비교 완료 / 별도 고정모형 확장 가능 | cSEM 0.6.1의 SRMR·d_G·d_ULS 함수와 1e-12 동등성 통과. SmartPLS 4.1.1.8 TAM 100행에서 PLS/PLSc 적합도와 7개 경로를 실제 비교해 표시 정밀도 기준으로 일치했으며, Holzinger–Swineford 고정모형용 생성기·외부 CSV 비교기는 추가 버전/프로그램 확장에 유지한다. |
 | CMB 설계통제 및 분석계획 provenance | 완료 | `07e530f`, `f673b9e`; 실제 marker 효과 추정은 지원 범위 밖으로 명시 |
 | 전체 회귀검증 편입 | 완료 | `4cf5727`; `scripts/validate_stabilization.ps1 -Full` 통과 |
 
@@ -46,8 +46,8 @@
 - 부분불변성 재적합은 미지원임을 결과와 Audit에 구조화하고, score/EPC가 탐색 후보일 뿐 제약 해제나 gate 우회가 아니라는 경계를 강화했다.
 - 반복 PLSpredict도 기준 seed의 L'Ecuyer-CMRG 독립 스트림을 반복별로 할당하고 Audit에 RNG 방식을 기록한다.
 - PLSpredict Audit 경고를 UI 기본값과 맞춰 5회 미만은 `Major`, 5~9회는 10회 권장 설정 미달 `Advisory`로 구분한다.
-- Audit schema 1.5에 재현성 정책을 추가해 자동 생성 seed를 포함한 재분석은 기록된 seed·RNG 설정과 자료·명세·코드 fingerprint 등을 일치시켜야 함을 구조화했다.
-- 설계 규칙을 혼합 PLSc 블록별 보정, 구조효과 BC 기본값, 단일지표 완전측정 경고, Audit schema 1.5에 맞게 갱신했다.
+- Audit schema 1.6에 재현성 정책을 추가해 자동 생성 seed를 포함한 재분석은 기록된 seed·RNG 설정과 자료·명세·코드 fingerprint 등을 일치시켜야 함을 구조화했다.
+- 설계 규칙을 혼합 PLSc 블록별 보정, 구조효과 BC 기본값, 단일지표 완전측정 경고, Audit schema 1.6에 맞게 갱신했다.
 
 아래 본문은 수정 전 발견 근거이므로 당시 코드상태에 대한 서술로 읽어야 한다. SmartPLS식 PLS exact-fit 동등성은 별도 잔여 검증항목이다.
 

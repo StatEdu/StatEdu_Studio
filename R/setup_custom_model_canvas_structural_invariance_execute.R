@@ -25,7 +25,7 @@ structural_canvas_metric_invariance_gate <- function(invariance) {
   ))
 }
 
-structural_canvas_run_measurement_invariance <- function(analysis_type, invariance_enabled, result, data, invariance_group, estimator, missing, std_lv, rmsea_ci, ordered, snapshot = NULL, micom_permutations = 500L, micom_seed = 20260816L) {
+structural_canvas_run_measurement_invariance <- function(analysis_type, invariance_enabled, result, data, invariance_group, estimator, missing, std_lv, rmsea_ci, ordered, snapshot = NULL, micom_permutations = 500L, micom_seed = 20260816L, ml_likelihood = "normal") {
   invariance_result <- NULL
   if (identical(analysis_type, "cfa") && invariance_enabled) {
     if (!length(ordered) && !toupper(estimator) %in% c("ML", "MLR")) stop("Continuous-indicator measurement invariance requires ML or MLR.")
@@ -36,7 +36,7 @@ structural_canvas_run_measurement_invariance <- function(analysis_type, invarian
     if (group_count < 2L || group_count > 20L) stop("The grouping variable must contain between 2 and 20 non-empty groups.")
     invariance_result <- structural_canvas_with_progress(message = "Estimating measurement-invariance models", value = 0, {
       structural_canvas_inc_progress(.15, detail = "Configural, metric, scalar, and strict models")
-      value <- structural_canvas_measurement_invariance(result$syntax, data, invariance_group, estimator, missing, std_lv, rmsea_ci, ordered)
+      value <- structural_canvas_measurement_invariance(result$syntax, data, invariance_group, estimator, missing, std_lv, rmsea_ci, ordered, ml_likelihood)
       structural_canvas_inc_progress(.85, detail = "Preparing robust comparisons")
       value
     })
@@ -47,11 +47,11 @@ structural_canvas_run_measurement_invariance <- function(analysis_type, invarian
     if (length(result$moderation_definitions %||% list())) stop("Structural path group comparison with latent product-indicator interactions requires a dedicated invariance workflow and is not supported by the current gate.")
     invariance_result <- structural_canvas_with_progress(message = "Testing measurement invariance before structural path comparison", value = 0, {
       structural_canvas_inc_progress(.10, detail = "Configural and metric measurement models")
-      measurement <- structural_canvas_measurement_invariance(structural_canvas_measurement_only_syntax(result$syntax), data, invariance_group, estimator, missing, std_lv, rmsea_ci, ordered)
+      measurement <- structural_canvas_measurement_invariance(structural_canvas_measurement_only_syntax(result$syntax), data, invariance_group, estimator, missing, std_lv, rmsea_ci, ordered, ml_likelihood)
       gate <- structural_canvas_metric_invariance_gate(measurement)
       if (!isTRUE(gate$passed)) stop(paste0(gate$reason, " Structural path equality tests were not run. Automatic or user-specified partial-invariance refitting is not implemented in this release; score/EPC diagnostics do not override the gate."))
       structural_canvas_inc_progress(.45, detail = "Metric gate passed; fitting free and equal structural paths")
-      value <- structural_canvas_structural_path_group_comparison(result$syntax, data, invariance_group, estimator, missing, std_lv, rmsea_ci, ordered)
+      value <- structural_canvas_structural_path_group_comparison(result$syntax, data, invariance_group, estimator, missing, std_lv, rmsea_ci, ordered, ml_likelihood)
       value$measurement_invariance <- measurement
       value$measurement_gate <- gate
       structural_canvas_inc_progress(.45, detail = "Preparing group-specific path comparisons")

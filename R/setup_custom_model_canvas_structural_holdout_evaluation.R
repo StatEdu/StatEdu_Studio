@@ -71,12 +71,16 @@ structural_canvas_mi_validation_gate <- function(modified = FALSE, holdout_enabl
   )
 }
 
-structural_canvas_holdout_model_comparison <- function(original_syntax, modified_syntax, validation_data, estimator = "MLR", missing = "fiml", std_lv = FALSE, ci_level = .90) {
+structural_canvas_holdout_model_comparison <- function(original_syntax, modified_syntax, validation_data, estimator = "MLR", missing = "fiml", std_lv = FALSE, ci_level = .90, ml_likelihood = "normal") {
   if (!toupper(estimator) %in% c("ML", "MLR")) stop("MI holdout validation currently supports continuous indicators estimated with ML or MLR.")
-  fit_model <- function(syntax) lavaan::cfa(
-    syntax, data = validation_data, estimator = estimator, missing = missing,
-    std.lv = isTRUE(std_lv), auto.cov.lv.x = FALSE
-  )
+  fit_model <- function(syntax) {
+    arguments <- list(
+      model = syntax, data = validation_data, estimator = estimator, missing = missing,
+      std.lv = isTRUE(std_lv), auto.cov.lv.x = FALSE
+    )
+    if (identical(toupper(as.character(estimator)), "ML")) arguments$likelihood <- ml_likelihood
+    do.call(lavaan::cfa, arguments)
+  }
   original_fit <- fit_model(original_syntax)
   modified_fit <- fit_model(modified_syntax)
   fits <- list(`Original model` = original_fit, `Modified model` = modified_fit)

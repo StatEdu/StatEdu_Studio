@@ -136,7 +136,7 @@ structural_canvas_audit_manifest <- function(bundle, analysis_type = NULL, gener
   residual_diagnostics <- if (inherits(bundle$fit, "lavaan")) structural_canvas_residual_diagnostics(bundle$fit) else list(available = FALSE)
   factor_score_quality <- if (inherits(bundle$fit, "lavaan")) structural_canvas_factor_score_quality(bundle$fit) else data.frame()
   list(
-    schema = list(name = "StatEdu SEM audit manifest", version = "1.5"),
+    schema = list(name = "StatEdu SEM audit manifest", version = "1.6"),
     generated = list(
       timestamp = format(generated_at, "%Y-%m-%dT%H:%M:%S%z"),
       timezone = format(generated_at, "%Z"),
@@ -166,6 +166,7 @@ structural_canvas_audit_manifest <- function(bundle, analysis_type = NULL, gener
       analysis_plan = list(status = bundle$analysis_plan_status %||% "not_recorded", reference = bundle$analysis_plan_reference %||% ""),
       selected_method = bundle$selected_method %||% "not recorded",
       estimator = bundle$estimator %||% "not recorded",
+      ml_likelihood_convention = if (identical(analysis_type, "plssem")) "not applicable" else structural_canvas_ml_likelihood_label(bundle),
       parameterization = if (nzchar(parameterization)) parameterization else "not applicable",
       missing = bundle$missing %||% "not recorded",
       missing_sensitivity = structural_canvas_missing_sensitivity_rows(bundle),
@@ -288,6 +289,7 @@ structural_canvas_reproducibility_record <- function(bundle, generated_at = Sys.
     paste0("lavaan version: ", as.character(utils::packageVersion("lavaan"))),
     paste0("Analysis context: ", structural_canvas_analysis_context(bundle)),
     paste0("Estimator: ", bundle$estimator %||% options$estimator %||% ""),
+    paste0("ML likelihood convention: ", structural_canvas_ml_likelihood_label(bundle)),
     paste0("Primary analysis objective: ", bundle$objective %||% "not recorded"),
     paste0("Recommended method candidate: ", recommendation$primary %||% "not available"),
     paste0("Selected method: ", bundle$selected_method %||% "not recorded"),
@@ -388,15 +390,16 @@ structural_canvas_report_summary <- function(bundle) {
   estimator <- bundle$estimator %||% lavaan::lavInspect(fit, "options")$estimator %||% ""
   fit_values <- structural_canvas_fit_measures(fit, estimator, bundle$rmsea_ci %||% .90)$values
   data.frame(
-    Section = c(rep("Analysis", 6L), rep("Model fit", 8L), "Interpretation"),
+    Section = c(rep("Analysis", 7L), rep("Model fit", 8L), "Interpretation"),
     Item = c(
-      "Analysis context", "Estimator", "N used", "Observed variables", "Latent variables", "Free parameters",
+      "Analysis context", "Estimator", "ML likelihood convention", "N used", "Observed variables", "Latent variables", "Free parameters",
       "Chi-square", "df", "p", "CFI", "TLI", "SRMR", "RMSEA", paste0(round(100 * as.numeric(bundle$rmsea_ci %||% .90)), "% RMSEA CI"),
       "Reporting caution"
     ),
     Value = c(
       structural_canvas_analysis_context(bundle),
       as.character(estimator),
+      structural_canvas_ml_likelihood_label(bundle),
       as.character(lavaan::lavInspect(fit, "ntotal")),
       as.character(length(lavaan::lavNames(fit, "ov"))),
       as.character(length(lavaan::lavNames(fit, "lv"))),

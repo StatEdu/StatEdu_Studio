@@ -30,6 +30,7 @@ structural_canvas_cfa_bootstrap_job_value <- function(args, progress_file) {
       seed = args$reliability_seed, estimator = args$estimator, missing = args$missing,
       std_lv = args$std_lv, ordered = args$ordered, formula_mode = args$validity_formula,
       original_fit = fit, ci_method = args$reliability_ci_method,
+      ml_likelihood = args$ml_likelihood %||% "normal",
       progress = function(done, phase_total, valid) report("reliability", done, phase_total, valid)
     )
     if (nrow(value)) {
@@ -84,6 +85,7 @@ structural_canvas_start_cfa_bootstrap_job <- function(bundle) {
   args <- list(
     fit = bundle$fit, syntax = bundle$syntax, data = bundle$analysis_data,
     estimator = bundle$estimator, missing = bundle$missing, std_lv = bundle$std_lv,
+    ml_likelihood = bundle$ml_likelihood %||% "normal",
     ordered = bundle$ordered, validity_formula = bundle$validity_formula,
     reliability_bootstrap = as.integer(bundle$reliability_bootstrap %||% 0L),
     reliability_seed = bundle$reliability_seed, reliability_ci_method = bundle$reliability_ci_method,

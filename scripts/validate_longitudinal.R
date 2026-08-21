@@ -169,33 +169,37 @@ if (abs(mi_pool_result$p[[1]] - mi_expected_p) > 1e-12 ||
 
 validate_model("gee")
 
-ohio_binary_path <- file.path("sample", "longitudinal_examples", "longitudinal_gee_ohio_binary.csv")
-if (file.exists(ohio_binary_path)) {
-  ohio_binary <- utils::read.csv(ohio_binary_path, stringsAsFactors = FALSE)
-  ohio_variable_info <- data.frame(
-    name = names(ohio_binary),
-    var_label = names(ohio_binary),
-    role = "",
-    measurement = c("binary", "category", "ordered", "binary"),
-    stringsAsFactors = FALSE
-  )
-  ohio_results <- prepare_longitudinal_analysis_result(
-    data = ohio_binary,
-    outcome = "resp",
-    id = "id",
-    time = "age",
-    predictors = "smoke",
-    model_type = "gee",
-    family = "auto",
-    variable_info = ohio_variable_info
-  )
-  if (!is.list(ohio_results) || length(ohio_results) != 1) {
-    print(attr(ohio_results, "skipped"))
-    stop("Expected the Ohio binary GEE example to fit one model.")
-  }
-  if (!identical(ohio_results[[1]]$family, "binomial")) {
-    stop("Expected the Ohio binary GEE example to resolve to a binomial family.")
-  }
+message("Checking the geepack::ohio binary GEE reference dataset...")
+ohio_environment <- new.env(parent = emptyenv())
+utils::data(list = "ohio", package = "geepack", envir = ohio_environment)
+if (!exists("ohio", envir = ohio_environment, inherits = FALSE)) {
+  stop("Required geepack::ohio reference dataset was not available.")
+}
+ohio_binary <- as.data.frame(get("ohio", envir = ohio_environment, inherits = FALSE))
+ohio_binary <- ohio_binary[, c("resp", "id", "age", "smoke"), drop = FALSE]
+ohio_variable_info <- data.frame(
+  name = names(ohio_binary),
+  var_label = names(ohio_binary),
+  role = "",
+  measurement = c("binary", "category", "ordered", "binary"),
+  stringsAsFactors = FALSE
+)
+ohio_results <- prepare_longitudinal_analysis_result(
+  data = ohio_binary,
+  outcome = "resp",
+  id = "id",
+  time = "age",
+  predictors = "smoke",
+  model_type = "gee",
+  family = "auto",
+  variable_info = ohio_variable_info
+)
+if (!is.list(ohio_results) || length(ohio_results) != 1) {
+  print(attr(ohio_results, "skipped"))
+  stop("Expected the Ohio binary GEE example to fit one model.")
+}
+if (!identical(ohio_results[[1]]$family, "binomial")) {
+  stop("Expected the Ohio binary GEE example to resolve to a binomial family.")
 }
 
 validate_model("lmm")

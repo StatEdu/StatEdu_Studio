@@ -1,2 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+sample/HolzingerSwineford1939.csv text eol=lf
+sample/amos23_holzinger_cfa_results.csv text eol=lf
+sample/smartpls4118_cbsem_tam100_results.csv text eol=lf
+sample/spss31_survival_results.csv text eol=lf
+sample/spss31_classical_results.csv text eol=lf
+sample/spss31_analysis_cells.csv text eol=lf

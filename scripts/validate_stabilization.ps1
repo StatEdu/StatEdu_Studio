@@ -61,6 +61,7 @@ $coreValidations = @(
   "scripts\validate_sem_release_promotion.R",
   "scripts\validate_sem_public_claims.R",
   "scripts\validate_document_encoding.R",
+  "scripts\validate_repository_fixtures.R",
   "scripts\validate_brand_metadata.R",
   "scripts\validate_i18n_contract.R",
   "scripts\validate_settings_dialogs.R",
@@ -83,6 +84,8 @@ $coreValidations = @(
 
 $fullOnlyValidations = @(
   "scripts\validate_ancova.R",
+  "scripts\validate_amos_external_comparator.R",
+  "scripts\validate_amos23_cfa_results.R",
   "scripts\validate_calculators.R",
   "scripts\validate_cfa_all.R",
   "scripts\validate_correlation_auto.R",
@@ -95,6 +98,8 @@ $fullOnlyValidations = @(
   "scripts\validate_paired_guards.R",
   "scripts\validate_pls_external_comparator.R",
   "scripts\validate_pls_fit_csem.R",
+  "scripts\validate_pls_smartpls_tam.R",
+  "scripts\validate_smartpls_cbsem_tam.R",
   "scripts\validate_penalized.R",
   "scripts\validate_p_formatting.R",
   "scripts\validate_reliability.R",
@@ -117,6 +122,9 @@ $fullOnlyValidations = @(
   "scripts\validate_sem_unspecified_block.R",
   "scripts\validate_survival_preflight.R",
   "scripts\validate_survival.R",
+  "scripts\validate_spss31_survival_results.R",
+  "scripts\validate_spss31_classical_results.R",
+  "scripts\validate_spss31_analysis_results.R",
   "scripts\validate_survival_ui_smoke.R",
   "scripts\validate_analysis_reference_comparison.R"
 )

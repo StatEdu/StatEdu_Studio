@@ -10,6 +10,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   if (nrow(identification_warnings)) structural_canvas_notify_identification_warnings(identification_warnings, statedu_current_language(app_language_fn))
   options <- structural_canvas_execute_settings(settings, input, prefix)
   estimator <- options$estimator
+  ml_likelihood <- options$ml_likelihood
   estimator_recommendation_confirmed <- options$estimator_recommendation_confirmed
   if (identical(analysis_type, "plssem") && identical(toupper(as.character(estimator)), "AUTO") && !isTRUE(estimator_recommendation_confirmed)) {
     recommendation <- structural_canvas_select_pls_estimator(snapshot, estimator)
@@ -88,6 +89,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     if (toupper(estimator) %in% c("ML", "MLR")) estimator <- "WLSMV"
     if (identical(missing, "fiml")) missing <- "pairwise"
   }
+  if (!identical(toupper(as.character(estimator)), "ML")) ml_likelihood <- "normal"
   structural_canvas_validate_holdout_options(
     mi_holdout_enabled, analysis_type, estimator, ordered,
     invariance_enabled, residual_variance_fixes
@@ -110,7 +112,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   }
   missing_covariances <- structural_canvas_missing_exogenous_covariances(snapshot)
   structural_canvas_notify_missing_covariances(missing_covariances, analysis_type, statedu_current_language(app_language_fn))
-  result <- run_structural_canvas_analysis(snapshot, data, analysis_type, estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered, nominal = nominal, residual_variance_fixes = residual_variance_fixes)
+  result <- run_structural_canvas_analysis(snapshot, data, analysis_type, estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered, nominal = nominal, residual_variance_fixes = residual_variance_fixes, ml_likelihood = ml_likelihood)
   original_item_level_snapshot <- snapshot
   original_item_level_result <- result
   parcel_result <- if (identical(analysis_type, "cfa")) {
@@ -121,7 +123,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   if (isTRUE(parcel_result$available)) {
     parcel_snapshot <- structural_canvas_parcel_item_level_snapshot(snapshot, parcel_result)
     parcel_fit <- tryCatch(
-      run_structural_canvas_analysis(parcel_snapshot, data, analysis_type, estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered, nominal = nominal, residual_variance_fixes = residual_variance_fixes),
+      run_structural_canvas_analysis(parcel_snapshot, data, analysis_type, estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered, nominal = nominal, residual_variance_fixes = residual_variance_fixes, ml_likelihood = ml_likelihood),
       error = identity
     )
     if (inherits(parcel_fit, "error")) {
@@ -139,7 +141,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     }
   }
   covariate_research_fit <- if (analysis_type %in% c("cfa", "cbsem", "sem")) {
-    structural_canvas_fit_research_model(result, data, analysis_type, estimator, missing, std_lv, ordered)
+    structural_canvas_fit_research_model(result, data, analysis_type, estimator, missing, std_lv, ordered, ml_likelihood)
   } else NULL
   covariate_fit_comparison <- structural_canvas_covariate_fit_comparison(covariate_research_fit, result$fit)
   missing_diagnostics <- if (!identical(analysis_type, "plssem")) {
@@ -157,20 +159,20 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   }
   invariance_result <- structural_canvas_run_measurement_invariance(
     analysis_type, invariance_enabled, result, data, invariance_group,
-    estimator, missing, std_lv, rmsea_ci, ordered, snapshot, micom_permutations, micom_seed
+    estimator, missing, std_lv, rmsea_ci, ordered, snapshot, micom_permutations, micom_seed, ml_likelihood
   )
   cfa_bootstrap_pending <- isTRUE(defer_cfa_bootstrap) && analysis_type %in% c("cfa", "cbsem", "sem") && any(c(reliability_bootstrap, bollen_stine_bootstrap, htmt_bootstrap) > 0L)
   if (cfa_bootstrap_pending && reliability_bootstrap > 0L) structural_canvas_validate_model_based_bootstrap(result$fit, "AVE/reliability bootstrap")
   reliability_bootstrap_result <- if (cfa_bootstrap_pending) NULL else structural_canvas_run_reliability_bootstrap(
     analysis_type, reliability_bootstrap, result, data, reliability_seed,
-    estimator, missing, std_lv, ordered, validity_formula, reliability_ci_method
+    estimator, missing, std_lv, ordered, validity_formula, reliability_ci_method, ml_likelihood
   )
   bollen_stine_result <- if (cfa_bootstrap_pending) NULL else structural_canvas_run_bollen_stine_bootstrap(
     analysis_type, bollen_stine_bootstrap, result, bollen_stine_seed
   )
   mi <- if (analysis_type %in% c("cfa", "cbsem", "sem")) {
     tryCatch(
-      structural_canvas_mi_refits(snapshot, result, data, analysis_type, estimator, missing, std_lv, mode = mi_mode, ordered = ordered),
+      structural_canvas_mi_refits(snapshot, result, data, analysis_type, estimator, missing, std_lv, mode = mi_mode, ordered = ordered, ml_likelihood = ml_likelihood),
       error = function(error) {
         structural_canvas_show_notification(
           structural_canvas_error_message(error, statedu_current_language(app_language_fn)),
@@ -197,7 +199,8 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   effect_bootstrap_result <- if (isTRUE(defer_effect_bootstrap)) NULL else {
     structural_canvas_effect_bootstrap(
       snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal,
-      residual_variance_fixes, effect_bootstrap, effect_bootstrap_seed, effect_bootstrap_ci_method
+      residual_variance_fixes, effect_bootstrap, effect_bootstrap_seed, effect_bootstrap_ci_method,
+      ml_likelihood = ml_likelihood
     )
   }
   redundancy_result <- if (identical(analysis_type, "plssem")) {
@@ -208,7 +211,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   common_method_result <- if (isTRUE(common_method_enabled) && analysis_type %in% c("cfa", "cbsem", "sem")) {
     tryCatch(
       structural_canvas_run_common_method_diagnostics(
-        result, data, analysis_type, estimator, missing, std_lv, ordered, common_method_methods
+        result, data, analysis_type, estimator, missing, std_lv, ordered, common_method_methods, ml_likelihood
       ) %||% structural_canvas_common_method_unavailable_result(common_method_methods),
       error = function(error) {
         structural_canvas_show_notification(
@@ -229,7 +232,8 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   if (mi_holdout_enabled && identical(settings$comparison_type %||% "", "mi") && !is.null(validation_data)) {
     holdout_comparison <- structural_canvas_holdout_model_comparison(
       baseline_syntax, result$syntax, validation_data,
-      estimator = estimator, missing = missing, std_lv = std_lv, ci_level = rmsea_ci
+      estimator = estimator, missing = missing, std_lv = std_lv, ci_level = rmsea_ci,
+      ml_likelihood = ml_likelihood
     )
   }
   mi_validation_gate <- structural_canvas_mi_validation_gate(
@@ -286,6 +290,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     missing = missing, missing_diagnostics = missing_diagnostics,
     missing_sensitivity_method = missing_sensitivity_method, missing_sensitivity_details = missing_sensitivity_details,
     normality_diagnostics = normality_diagnostics, std_lv = std_lv, ordered = ordered,
+    ml_likelihood = ml_likelihood,
     parameterization = result$parameterization %||% if (length(ordered)) "theta" else "delta",
     result_coefficient = result_coefficient, result_measurement_coefficient = result_measurement_coefficient, diagnostics = result,
     baseline_fit = baseline_fit, modified_from_baseline = is_mi_refit || isTRUE(settings$modified_from_baseline),

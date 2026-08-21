@@ -188,7 +188,7 @@ common_method_export_bundle$common_method_result <- structural_canvas_run_common
 common_method_sheets <- structural_canvas_result_workbook_sheets(common_method_export_bundle, table_fn)
 sheet_snapshots <- list(
   Overview = list(names = c("Table", "Value"), rows = 1L),
-  Report_Summary = list(names = c("Section", "Item", "Value"), rows = 15L),
+  Report_Summary = list(names = c("Section", "Item", "Value"), rows = 16L),
   Fit_Numeric = list(names = c(
     "Model", "Chi-square", "df", "p", "Q", "CFI", "TLI", "SRMR", "RMSEA",
     "RMSEA CI lower", "RMSEA CI upper", "RMSEA CI level",
@@ -224,6 +224,7 @@ required_integrated_sheets <- c(
 )
 stopifnot(
   grepl("Analysis context: Prespecified/original model.", record, fixed = TRUE),
+  grepl("ML likelihood convention: Normal ML", record, fixed = TRUE),
   grepl("Construct specification (construct | declared type", record, fixed = TRUE),
   all(c("Declared type", "Effective weighting", "Engine representation", "Estimand", "Migration") %in% names(integrated_sheets$Construct_Specification)),
   identical(names(integrated_sheets)[[1L]], "Contents"),
@@ -231,6 +232,7 @@ stopifnot(
   all(vapply(integrated_sheets[required_integrated_sheets], is.data.frame, logical(1))),
   all(c("Sheet", "Description") %in% names(integrated_sheets$Contents)),
   any(integrated_sheets$Report_Summary$Item == "Analysis context"),
+  any(integrated_sheets$Report_Summary$Item == "ML likelihood convention" & grepl("Normal ML", integrated_sheets$Report_Summary$Value, fixed = TRUE)),
   identical(integrated_sheets$Bollen_Stine$`Model context`[[1L]], "Prespecified/original model"),
   any(integrated_sheets$Contents$Sheet == "Fit_Numeric" & grepl("Numeric model-fit", integrated_sheets$Contents$Description, fixed = TRUE)),
   any(integrated_sheets$Contents$Sheet == "Validity" & grepl("Formatted reporting", integrated_sheets$Contents$Description, fixed = TRUE)),

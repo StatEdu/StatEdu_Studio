@@ -69,11 +69,14 @@ generate_pls_external_benchmark <- function(output_dir) {
   statedu = list(
     version = trimws(readLines("VERSION", warn = FALSE, n = 1L)),
     R = R.version.string,
-    seminr = as.character(utils::packageVersion("seminr"))
+    seminr = as.character(utils::packageVersion("seminr")),
+    lavaan = as.character(utils::packageVersion("lavaan"))
   ),
   data = list(
     file = gsub("\\\\", "/", data_path), sha256 = benchmark_sha256(data_path),
     rows = nrow(analysis_data), indicators = indicators, missing_cells = sum(is.na(analysis_data)),
+    source = "lavaan::HolzingerSwineford1939",
+    export = "utils::write.csv(lavaan::HolzingerSwineford1939, row.names = FALSE)",
     preprocessing = "seminr default mean replacement with standardized PLS results"
   ),
   model = list(

@@ -5,7 +5,15 @@
 renv/library/
 renv/staging/
 results/
-sample/
+sample/*
+!sample/HolzingerSwineford1939.csv
+!sample/amos23_holzinger_cfa_results.csv
+!sample/smartpls4118_cbsem_tam100_results.csv
+!sample/spss31_survival_results.csv
+!sample/spss31_classical_results.csv
+!sample/spss31_analysis_cells.csv
+!sample/cfa_higher_order.stmodel
+!sample/pls_external_benchmark.stmodel
 settings/*.local.json
 data/*.sav
 data/*.spe

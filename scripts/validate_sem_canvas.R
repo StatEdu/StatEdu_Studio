@@ -136,7 +136,9 @@ stopifnot(
   grepl("structural_canvas_show_notification <- function", ui_source, fixed = TRUE),
   grepl("Estimating PLS-SEM bootstrap intervals", pls_engine_source, fixed = TRUE),
   grepl("seminr bootstrap resamples", pls_engine_source, fixed = TRUE),
-  grepl("seminr::PLSc", pls_engine_source, fixed = TRUE),
+  grepl("seminr::composite(latent_name, indicator_names, weights = seminr::mode_A)", pls_engine_source, fixed = TRUE),
+  grepl("structural_canvas_apply_plsc(fit, selection$common_factors)", pls_engine_source, fixed = TRUE),
+  !grepl("seminr::reflective(latent_name, indicator_names)", pls_engine_source, fixed = TRUE),
   grepl("parallel::makePSOCKcluster", pls_engine_source, fixed = TRUE),
   grepl("setTimeLimit(cpu = Inf, elapsed = 60", pls_engine_source, fixed = TRUE),
   grepl("align_bootstrap_signs", pls_engine_source, fixed = TRUE),
@@ -249,7 +251,7 @@ stopifnot(
 cbsem_result <- function() cbsem_bundle
 cbsem_reporting <- structural_canvas_reporting_context_rows(cbsem_bundle, "cbsem")
 cbsem_construct_reporting <- structural_canvas_construct_reporting_rows(cbsem_bundle, "cbsem", FALSE)
-stopifnot(nrow(cbsem_reporting) == 16L)
+stopifnot(nrow(cbsem_reporting) == 17L)
 stopifnot(
   nrow(cbsem_construct_reporting) == 2L,
   all(c("Declared type", "Effective weighting", "Engine representation", "Estimand", "Migration") %in% names(cbsem_construct_reporting)),
@@ -258,6 +260,7 @@ stopifnot(
 )
 stopifnot(grepl("lavaan", cbsem_reporting$Value[cbsem_reporting$Item == "Analysis engine"], fixed = TRUE))
 stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Estimator or algorithm"] == "ML")
+stopifnot(grepl("Normal ML", cbsem_reporting$Value[cbsem_reporting$Item == "ML likelihood convention"], fixed = TRUE))
 stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Missing-data handling"] == "fiml")
 stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Analysis context"] == "Original/prespecified model")
 stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Common method diagnostics"] == "Not enabled")
@@ -745,7 +748,7 @@ stopifnot(all(c(
 ) %in% names(cbsem_mediation_sheets)))
 cbsem_mediation_audit <- structural_canvas_audit_manifest(cbsem_mediation_bundle, "cbsem")
 stopifnot(
-  identical(cbsem_mediation_audit$schema$version, "1.5"),
+  identical(cbsem_mediation_audit$schema$version, "1.6"),
   grepl("recorded seed", cbsem_mediation_audit$resampling$reproducibility_policy$requirement, fixed = TRUE),
   grepl("data and model fingerprints", cbsem_mediation_audit$resampling$reproducibility_policy$additional_conditions, fixed = TRUE),
   identical(cbsem_mediation_audit$decision$causal_interpretation$status, "Causal identification not established"),
@@ -769,7 +772,7 @@ on.exit(unlink(audit_file), add = TRUE)
 structural_canvas_write_audit_manifest(cbsem_mediation_bundle, audit_file, "cbsem")
 audit_roundtrip <- jsonlite::read_json(audit_file, simplifyVector = TRUE)
 stopifnot(
-  identical(audit_roundtrip$schema$version, "1.5"),
+  identical(audit_roundtrip$schema$version, "1.6"),
   grepl("recorded seed", audit_roundtrip$resampling$reproducibility_policy$requirement, fixed = TRUE),
   identical(audit_roundtrip$data_fingerprints$analysis$content_sha256, cbsem_mediation_audit$data_fingerprints$analysis$content_sha256)
 )
@@ -866,6 +869,10 @@ stopifnot(length(pls$observed) == 6L)
 plsc <- run_structural_canvas_analysis(snapshot, data, "plssem", estimator = "PLSc")
 stopifnot(inherits(plsc$fit, "pls_model"))
 stopifnot(identical(plsc$estimator, "PLSc"))
+stopifnot(
+  !length(seminr:::all_constructs_of_mode(pls$fit$mmMatrix, "C")),
+  any(abs(pls$fit$path_coef - plsc$fit$path_coef) > 1e-8)
+)
 automatic_plsc <- run_structural_canvas_analysis(snapshot, data, "plssem", estimator = "AUTO")
 stopifnot(
   identical(automatic_plsc$estimator, "PLSc"),
@@ -899,9 +906,10 @@ pls_bundle <- list(
 )
 pls_result <- function() pls_bundle
 pls_reporting <- structural_canvas_reporting_context_rows(pls_bundle, "plssem")
-stopifnot(nrow(pls_reporting) == 16L)
+stopifnot(nrow(pls_reporting) == 17L)
 stopifnot(grepl("seminr", pls_reporting$Value[pls_reporting$Item == "Analysis engine"], fixed = TRUE))
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Estimator or algorithm"] == "PLS path modeling (Composite PLS model)")
+stopifnot(pls_reporting$Value[pls_reporting$Item == "ML likelihood convention"] == "Not applicable")
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Missing-data handling"] == "Valid rows used by seminr; no FIML/pairwise option")
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Latent scaling"] == "Composite scores")
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Common method diagnostics"] == "Not enabled")

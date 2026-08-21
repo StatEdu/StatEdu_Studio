@@ -1,18 +1,20 @@
 # Structural equation canvas nested model comparison helpers.
 
-structural_canvas_fit_research_model <- function(result, data, analysis_type, estimator, missing, std_lv, ordered) {
+structural_canvas_fit_research_model <- function(result, data, analysis_type, estimator, missing, std_lv, ordered, ml_likelihood = "normal") {
   covariates <- result$covariates %||% character(0)
   if (!length(covariates) || !length(result$covariate_effect_lines %||% character(0))) return(NULL)
   syntax <- as.character(result$research_syntax %||% "")
   if (!nzchar(syntax)) return(NULL)
   fit_function <- if (identical(analysis_type, "cfa")) lavaan::cfa else lavaan::sem
   parameterization <- if (length(ordered)) "theta" else "delta"
+  arguments <- list(
+    model = syntax, data = data, estimator = estimator, missing = missing,
+    std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE,
+    parameterization = parameterization
+  )
+  if (identical(toupper(as.character(estimator)), "ML")) arguments$likelihood <- ml_likelihood
   tryCatch(
-    fit_function(
-      syntax, data = data, estimator = estimator, missing = missing,
-      std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE,
-      parameterization = parameterization
-    ),
+    do.call(fit_function, arguments),
     error = function(error) NULL
   )
 }
@@ -124,6 +126,7 @@ structural_canvas_nested_comparison_eligibility <- function(first_fit, second_fi
       data = analyzed_data,
       groups = as.integer(lavaan::lavInspect(fit, "ngroups")),
       family = if (estimator %in% c("ML", "MLR")) "ML" else estimator,
+      likelihood = tolower(as.character(options$likelihood %||% "normal")),
       df = unname(lavaan::fitMeasures(fit, "df")),
       free = unique(keys[parameter_table$free > 0L]),
       admissibility = structural_canvas_fit_admissibility(fit)
@@ -142,6 +145,7 @@ structural_canvas_nested_comparison_eligibility <- function(first_fit, second_fi
   if (!isTRUE(all.equal(metadata[[1L]]$data, metadata[[2L]]$data, check.attributes = FALSE))) return(list(available = FALSE, reason = "Models do not use the same analyzed observations and values."))
   if (metadata[[1L]]$groups != metadata[[2L]]$groups) return(list(available = FALSE, reason = "Models use different group structures."))
   if (!identical(metadata[[1L]]$family, metadata[[2L]]$family)) return(list(available = FALSE, reason = "Models use incompatible estimator families."))
+  if (!identical(metadata[[1L]]$likelihood, metadata[[2L]]$likelihood)) return(list(available = FALSE, reason = "Models use different ML likelihood conventions."))
   if (!all(is.finite(c(metadata[[1L]]$df, metadata[[2L]]$df))) || metadata[[1L]]$df == metadata[[2L]]$df) return(list(available = FALSE, reason = "Models do not have different finite degrees of freedom."))
   first_within_second <- all(metadata[[1L]]$free %in% metadata[[2L]]$free)
   second_within_first <- all(metadata[[2L]]$free %in% metadata[[1L]]$free)

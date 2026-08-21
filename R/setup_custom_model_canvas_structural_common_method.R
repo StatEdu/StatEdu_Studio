@@ -284,7 +284,7 @@ structural_canvas_common_method_conclusion_guidance_label <- function(value) {
   paste(translated, collapse = " ")
 }
 
-structural_canvas_common_method_single_factor <- function(data, indicators, estimator, missing, std_lv, ordered) {
+structural_canvas_common_method_single_factor <- function(data, indicators, estimator, missing, std_lv, ordered, ml_likelihood = "normal") {
   indicators <- intersect(indicators, names(data))
   if (length(indicators) < 3L) {
     return(list(fit = NULL, status = "Not available", note = "Single-factor CFA requires at least three indicators."))
@@ -292,8 +292,10 @@ structural_canvas_common_method_single_factor <- function(data, indicators, esti
   syntax <- paste("CMB_SINGLE =~", paste(indicators, collapse = " + "))
   ordered <- intersect(as.character(ordered %||% character(0)), indicators)
   parameterization <- if (length(ordered)) "theta" else "delta"
+  arguments <- list(model = syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE, parameterization = parameterization)
+  if (identical(toupper(as.character(estimator)), "ML")) arguments$likelihood <- ml_likelihood
   fit <- tryCatch(
-    lavaan::cfa(syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE, parameterization = parameterization),
+    do.call(lavaan::cfa, arguments),
     error = function(error) error
   )
   if (inherits(fit, "error")) {
@@ -340,7 +342,7 @@ structural_canvas_common_method_loading_change <- function(original_fit, method_
   list(max_change = max_change, mean_method_loading = mean_method_loading, table = rows)
 }
 
-structural_canvas_common_method_clf <- function(original_fit, syntax, data, indicators, estimator, missing, std_lv, ordered) {
+structural_canvas_common_method_clf <- function(original_fit, syntax, data, indicators, estimator, missing, std_lv, ordered, ml_likelihood = "normal") {
   indicators <- intersect(indicators, names(data))
   if (length(indicators) < 3L) {
     return(list(fit = NULL, status = "Not available", note = "Common latent factor screening requires at least three indicators."))
@@ -353,8 +355,10 @@ structural_canvas_common_method_clf <- function(original_fit, syntax, data, indi
   method_syntax <- paste(c(syntax, method_line, paste(method_factor, "~~ 1*", method_factor), orthogonal_lines), collapse = "\n")
   ordered <- intersect(as.character(ordered %||% character(0)), indicators)
   parameterization <- if (length(ordered)) "theta" else "delta"
+  arguments <- list(model = method_syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE, parameterization = parameterization)
+  if (identical(toupper(as.character(estimator)), "ML")) arguments$likelihood <- ml_likelihood
   fit <- tryCatch(
-    lavaan::sem(method_syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE, parameterization = parameterization),
+    do.call(lavaan::sem, arguments),
     error = function(error) error
   )
   if (inherits(fit, "error")) {
@@ -392,7 +396,7 @@ structural_canvas_common_method_clf <- function(original_fit, syntax, data, indi
 }
 
 structural_canvas_run_common_method_diagnostics <- function(
-  result, data, analysis_type, estimator, missing, std_lv, ordered, methods = NULL
+  result, data, analysis_type, estimator, missing, std_lv, ordered, methods = NULL, ml_likelihood = "normal"
 ) {
   if (is.null(result$fit) || !inherits(result$fit, "lavaan") || !analysis_type %in% c("cfa", "cbsem", "sem")) {
     return(NULL)
@@ -419,7 +423,7 @@ structural_canvas_run_common_method_diagnostics <- function(
   }
   if ("single_factor_cfa" %in% methods) {
     single <- tryCatch(
-      structural_canvas_common_method_single_factor(data, indicators, estimator, missing, std_lv, ordered),
+      structural_canvas_common_method_single_factor(data, indicators, estimator, missing, std_lv, ordered, ml_likelihood),
       error = function(error) list(fit = NULL, status = "Not available", note = conditionMessage(error))
     )
     single_fit <- single$fit
@@ -435,7 +439,7 @@ structural_canvas_run_common_method_diagnostics <- function(
   }
   if ("common_latent_factor" %in% methods) {
     clf <- tryCatch(
-      structural_canvas_common_method_clf(result$fit, result$syntax, data, indicators, estimator, missing, std_lv, ordered),
+      structural_canvas_common_method_clf(result$fit, result$syntax, data, indicators, estimator, missing, std_lv, ordered, ml_likelihood),
       error = function(error) list(fit = NULL, status = "Not available", note = conditionMessage(error), loading_change = data.frame())
     )
     rows[[length(rows) + 1L]] <- data.frame(

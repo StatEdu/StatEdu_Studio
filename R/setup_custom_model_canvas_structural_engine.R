@@ -127,7 +127,7 @@ structural_canvas_resolve_construct_specification <- function(snapshot, analysis
       }
       if (identical(measurement_mode, "reflective")) {
         corrected_common_factor <- identical(estimator, "PLSC") && identical(construct_type, "commonFactor")
-        engine_representation <- if (corrected_common_factor) "seminr reflective block with PLSc correction" else "seminr reflective Mode A score proxy"
+        engine_representation <- if (corrected_common_factor) "seminr Mode A score model with selective PLSc correction" else "seminr Mode A composite score proxy"
         estimand <- if (identical(construct_type, "commonFactor")) {
           if (corrected_common_factor) "Consistency-corrected reflective common factor" else "Common-factor construct represented by a Mode A composite score proxy"
         } else "Reflective Mode A composite"
@@ -303,7 +303,7 @@ structural_canvas_validate_structural_effects <- function(snapshot, analysis_typ
   invisible(plan)
 }
 
-run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0), nominal = character(0), residual_variance_fixes = numeric(0)) {
+run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0), nominal = character(0), residual_variance_fixes = numeric(0), ml_likelihood = "normal") {
   nodes <- snapshot$nodes %||% list()
   edges <- snapshot$edges %||% list()
   estimator_selection <- if (identical(analysis_type, "plssem")) structural_canvas_select_pls_estimator(snapshot, estimator) else NULL
@@ -341,6 +341,11 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
     syntax <- lavaan_syntax$syntax
     if (!nzchar(syntax)) stop("The model does not contain estimable paths.")
     estimator <- toupper(as.character(estimator %||% "ML"))
+    ml_likelihood <- tolower(as.character(ml_likelihood %||% "normal"))
+    if (!ml_likelihood %in% c("normal", "wishart")) stop("ML likelihood convention must be 'normal' or 'wishart'.")
+    if (!identical(estimator, "ML") && !identical(ml_likelihood, "normal")) {
+      stop("Wishart likelihood compatibility mode is available only with conventional ML estimation.")
+    }
     missing <- as.character(missing %||% "fiml")
     if (identical(estimator, "WLSMV") && identical(missing, "fiml")) missing <- "pairwise"
     ordered <- intersect(unique(as.character(ordered %||% character(0))), names(data))
@@ -363,11 +368,13 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
       stop("WLSMV requires at least one binary, categorical, or ordinal indicator.")
     }
     parameterization <- if (length(ordered)) "theta" else "delta"
-    fit <- if (identical(analysis_type, "cfa")) {
-      lavaan::cfa(syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE, parameterization = parameterization)
-    } else {
-      lavaan::sem(syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE, parameterization = parameterization)
-    }
+    fit_arguments <- list(
+      model = syntax, data = data, estimator = estimator, missing = missing,
+      std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE,
+      parameterization = parameterization
+    )
+    if (identical(estimator, "ML")) fit_arguments$likelihood <- ml_likelihood
+    fit <- do.call(if (identical(analysis_type, "cfa")) lavaan::cfa else lavaan::sem, fit_arguments)
     converged <- isTRUE(lavaan::lavInspect(fit, "converged"))
     post_check <- isTRUE(lavaan::lavInspect(fit, "post.check"))
     model_df <- tryCatch(
@@ -403,7 +410,7 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
     shared_admissibility <- structural_canvas_fit_admissibility(fit)
     return(list(
       fit = fit, syntax = syntax, research_syntax = lavaan_syntax$research_syntax %||% syntax,
-      estimator = estimator, parameterization = parameterization,
+      estimator = estimator, ml_likelihood = ml_likelihood, parameterization = parameterization,
       covariates = lavaan_syntax$covariates %||% character(0),
       covariate_effect_lines = lavaan_syntax$covariate_effect_lines %||% character(0),
       converged = converged, post_check = post_check,

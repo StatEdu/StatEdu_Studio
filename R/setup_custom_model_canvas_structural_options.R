@@ -145,6 +145,25 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
     ),
     textAreaInput(input_id("_power_details"), if (ko) "검정력 근거 상세" else "Power-basis details", rows = 2, placeholder = if (ko) "가정한 효과크기·모수, 목표 검정력, alpha, 결측/탈락, 사용 도구 또는 문헌을 기록하십시오." else "Record assumed effects/parameters, target power, alpha, attrition/missingness allowance, and software or source."),
     tags$p(class = "structural-option-note", if (ko) "N/모수 비율이나 PLS 10배 규칙은 사전 검정력 근거가 아닙니다." else "N-to-parameter ratios and the PLS 10-times rule are not a-priori power evidence."),
+    if (!identical(analysis_type, "plssem")) conditionalPanel(
+      sprintf("input['%s'] == 'ML'", input_id("_estimator")),
+      selectInput(
+        input_id("_ml_likelihood"), if (ko) "ML likelihood 관례" else "ML likelihood convention",
+        choices = stats::setNames(
+          c("normal", "wishart"),
+          c(
+            if (ko) "Normal ML (lavaan 기본; N 배율)" else "Normal ML (lavaan default; N multiplier)",
+            if (ko) "Wishart ML (AMOS/LISREL/EQS 호환; N-1 배율)" else "Wishart ML (AMOS/LISREL/EQS compatible; N-1 multiplier)"
+          )
+        ),
+        selected = "normal"
+      ),
+      tags$p(
+        class = "structural-option-note",
+        if (ko) "기본값은 lavaan의 Normal ML입니다. AMOS 등과 수치 교차검증할 때만 동일 모형·자료·결측 처리와 함께 Wishart ML을 선택하십시오. 카이제곱만 사후 보정하지 않고 전체 모형을 해당 관례로 다시 적합합니다."
+        else "Normal ML is the lavaan default. Select Wishart ML only for a matched numerical comparison with AMOS or similar software, while also matching the model, data, and missing-data handling. The full model is refitted under that convention; chi-square is not adjusted post hoc."
+      )
+    ),
     if (!identical(analysis_type, "plssem")) selectInput(
       input_id("_missing_sensitivity_method"), if (ko) "결측 민감도 검토" else "Missing-data sensitivity assessment",
       choices = stats::setNames(

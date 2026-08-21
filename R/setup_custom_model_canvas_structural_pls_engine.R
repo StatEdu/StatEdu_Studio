@@ -64,14 +64,6 @@ structural_canvas_apply_plsc <- function(fit, common_factor_constructs = charact
   common_factor_constructs <- intersect(as.character(common_factor_constructs), score_names)
   if (!length(common_factor_constructs)) stop("PLSc requires at least one reflective common-factor construct.")
   all_constructs <- seminr:::constructs_in_model(fit)$construct_names
-  if (setequal(common_factor_constructs, all_constructs)) {
-    corrected <- seminr::PLSc(fit)
-    corrected$statedu_common_factor_constructs <- common_factor_constructs
-    corrected$statedu_plsc_mode <- "all_common_factors"
-    corrected$statedu_plsc_correction_status <- "complete"
-    corrected$statedu_plsc_corrected_endogenous <- seminr:::all_endogenous(corrected$smMatrix)
-    return(corrected)
-  }
   sm_matrix <- fit$smMatrix
   mm_matrix <- fit$mmMatrix
   path_coef <- fit$path_coef
@@ -103,8 +95,7 @@ structural_canvas_apply_plsc <- function(fit, common_factor_constructs = charact
     path_coef[antecedents, endogenous] <- coefficients
     corrected_endogenous <- c(corrected_endogenous, endogenous)
   }
-  reflectives <- intersect(seminr:::all_reflective(mm_matrix), common_factor_constructs)
-  for (construct in reflectives) {
+  for (construct in common_factor_constructs) {
     indicators <- seminr:::construct_items(mm_matrix, construct)
     available <- intersect(indicators, rownames(loadings))
     if (length(available)) {
@@ -118,7 +109,7 @@ structural_canvas_apply_plsc <- function(fit, common_factor_constructs = charact
     fit$data, construct_scores, sm_matrix, seminr:::all_endogenous(sm_matrix), adjusted_correlations
   )
   fit$statedu_common_factor_constructs <- common_factor_constructs
-  fit$statedu_plsc_mode <- "mixed_common_factors_and_composites"
+  fit$statedu_plsc_mode <- if (setequal(common_factor_constructs, all_constructs)) "all_common_factors" else "mixed_common_factors_and_composites"
   fit$statedu_plsc_correction_status <- "complete"
   fit$statedu_plsc_corrected_endogenous <- unique(corrected_endogenous)
   fit
@@ -150,7 +141,11 @@ structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges, e
     if (identical(resolved$effective_weighting[[1L]], "Mode B")) {
       seminr::composite(latent_name, indicator_names, weights = seminr::mode_B)
     } else {
-      seminr::reflective(latent_name, indicator_names)
+      # seminr::reflective() triggers PLSc automatically inside estimate_pls().
+      # Build the uncorrected Mode A score model first so PLS and PLSc remain
+      # distinct estimators; declared common factors are corrected explicitly
+      # and selectively below only when PLSc is requested.
+      seminr::composite(latent_name, indicator_names, weights = seminr::mode_A)
     }
   })
   path_specs <- lapply(Filter(function(edge) {

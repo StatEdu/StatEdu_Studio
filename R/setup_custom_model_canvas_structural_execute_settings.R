@@ -57,9 +57,13 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
   common_method_methods <- settings$common_method_methods %||% input[[paste0(prefix, "_common_method_methods")]] %||% character(0)
   common_method_methods <- structural_canvas_common_method_methods(common_method_methods)
 
+  ml_likelihood <- tolower(as.character(settings$ml_likelihood %||% input[[paste0(prefix, "_ml_likelihood")]] %||% "normal"))
+  if (!ml_likelihood %in% c("normal", "wishart")) ml_likelihood <- "normal"
+
   list(
     estimator = settings$estimator %||% input[[paste0(prefix, "_estimator")]] %||% if (identical(prefix, "structural_plssem")) "AUTO" else "ML",
     estimator_recommendation_confirmed = isTRUE(settings$estimator_recommendation_confirmed %||% input[[paste0(prefix, "_estimator_recommendation_confirmed")]] %||% FALSE),
+    ml_likelihood = ml_likelihood,
     objective = settings$objective %||% input[[paste0(prefix, "_objective")]] %||% "confirmatory",
     analysis_plan_status = {
       value <- as.character(settings$analysis_plan_status %||% input[[paste0(prefix, "_analysis_plan_status")]] %||% "not_recorded")

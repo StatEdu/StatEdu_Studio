@@ -158,7 +158,8 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
             bundle$snapshot, bundle$analysis_data, analysis_type, bundle$estimator,
             bundle$missing, bundle$std_lv, bundle$ordered, character(0),
             bundle$residual_variance_fixes, bundle$effect_bootstrap, bundle$effect_bootstrap_seed,
-            bundle$effect_bootstrap_ci_method %||% "bias_corrected"
+            bundle$effect_bootstrap_ci_method %||% "bias_corrected",
+            bundle$ml_likelihood %||% "normal"
           )
           effect_bootstrap_job(job)
           ko <- identical(statedu_current_language(app_language_fn), "ko")

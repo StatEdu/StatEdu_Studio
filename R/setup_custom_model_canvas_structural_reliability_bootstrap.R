@@ -8,21 +8,31 @@ structural_canvas_normalize_missing_option <- function(value) {
   value
 }
 
-structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, confidence = .95, seed = default_seed(), estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0), formula_mode = "standardized", original_fit = NULL, ci_method = "bias_corrected", progress = NULL, cancel = NULL) {
+structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, confidence = .95, seed = default_seed(), estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0), formula_mode = "standardized", original_fit = NULL, ci_method = "bias_corrected", progress = NULL, cancel = NULL, ml_likelihood = "normal") {
   reps <- as.integer(reps)
   ci_method <- structural_canvas_bootstrap_ci_method(ci_method)
   if (!is.finite(reps) || reps < 1L) stop("Reliability bootstrap requires at least one resample.")
   parameterization <- if (length(ordered)) "theta" else "delta"
-  if (is.null(original_fit)) original_fit <- tryCatch(lavaan::cfa(
-      syntax, data = data, estimator = estimator, missing = missing,
+  fit_arguments <- function(model, frame, parameterization_value) {
+    arguments <- list(
+      model = model, data = frame, estimator = estimator, missing = missing,
       std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE,
-      parameterization = parameterization
-    ), error = function(error) stop(paste0("AVE/reliability bootstrap could not fit the original CFA model: ", conditionMessage(error))))
+      parameterization = parameterization_value
+    )
+    if (identical(toupper(as.character(estimator)), "ML")) arguments$likelihood <- ml_likelihood
+    arguments
+  }
+  if (is.null(original_fit)) original_fit <- tryCatch(
+    do.call(lavaan::cfa, fit_arguments(syntax, data, parameterization)),
+    error = function(error) stop(paste0("AVE/reliability bootstrap could not fit the original CFA model: ", conditionMessage(error)))
+  )
   if (!inherits(original_fit, "lavaan")) stop("AVE/reliability bootstrap original_fit must be a fitted lavaan object.")
   if (as.integer(lavaan::lavInspect(original_fit, "ngroups")) != 1L) stop("AVE/reliability bootstrap currently supports only single-group CFA models.")
   original_options <- lavaan::lavInspect(original_fit, "options")
   original_estimator <- original_options$estimator.orig %||% original_options$estimator
   if (!identical(toupper(as.character(original_estimator)), toupper(as.character(estimator)))) stop("AVE/reliability bootstrap original_fit estimator does not match the requested estimator.")
+  fitted_likelihood <- tolower(as.character(original_options$likelihood %||% "normal"))
+  if (identical(toupper(as.character(estimator)), "ML") && !identical(fitted_likelihood, tolower(as.character(ml_likelihood)))) stop("AVE/reliability bootstrap original_fit likelihood convention does not match the requested ML likelihood convention.")
   fitted_missing <- structural_canvas_normalize_missing_option(original_options$missing)
   requested_missing <- structural_canvas_normalize_missing_option(missing)
   if (!identical(fitted_missing, requested_missing)) stop("AVE/reliability bootstrap original_fit missing-data option does not match the requested missing-data option.")
@@ -67,11 +77,7 @@ structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, c
   if (!isTRUE(all.equal(fitted_data, supplied_matrix, check.attributes = FALSE))) stop("AVE/reliability bootstrap original_fit does not use the same analyzed observations and values as the supplied data.")
   structural_canvas_validate_model_based_bootstrap(original_fit, "AVE/reliability bootstrap")
   fit_reliability <- function(frame) {
-    fit <- tryCatch(lavaan::cfa(
-      syntax, data = frame, estimator = estimator, missing = missing,
-      std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE,
-      parameterization = original_parameterization
-    ), error = function(error) NULL)
+    fit <- tryCatch(do.call(lavaan::cfa, fit_arguments(syntax, frame, original_parameterization)), error = function(error) NULL)
     if (is.null(fit) || !isTRUE(structural_canvas_fit_admissibility(fit)$admissible)) return(NULL)
     tryCatch(structural_canvas_reliability_estimates(fit, formula_mode), error = function(error) NULL)
   }

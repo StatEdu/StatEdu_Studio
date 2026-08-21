@@ -209,11 +209,11 @@ structural_canvas_moderated_mediation_indices <- function(result) {
   unique(do.call(rbind, rows))
 }
 
-structural_canvas_effect_bootstrap <- function(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes, reps = 0L, seed = default_seed(), ci_method = "bias_corrected", progress = NULL, cancel = NULL) {
+structural_canvas_effect_bootstrap <- function(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes, reps = 0L, seed = default_seed(), ci_method = "bias_corrected", progress = NULL, cancel = NULL, ml_likelihood = "normal") {
   reps <- suppressWarnings(as.integer(reps))
   ci_method <- if (identical(as.character(ci_method %||% "bias_corrected"), "percentile")) "percentile" else "bias_corrected"
   if (!analysis_type %in% c("cbsem", "sem") || !is.data.frame(data) || nrow(data) < 3L || !is.finite(reps) || reps < 2L) return(NULL)
-  original <- run_structural_canvas_analysis(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes)
+  original <- run_structural_canvas_analysis(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes, ml_likelihood)
   raw_original <- lavaan::parameterEstimates(original$fit)
   raw_original <- raw_original[raw_original$op %in% c("~", ":="), c("lhs", "op", "rhs", "est"), drop = FALSE]
   moderated_original <- structural_canvas_moderated_mediation_indices(original)
@@ -242,7 +242,7 @@ structural_canvas_effect_bootstrap <- function(snapshot, data, analysis_type, es
     if (is.function(cancel) && isTRUE(cancel())) stop("Structural-effect bootstrap canceled.")
     sampled <- data[sample.int(nrow(data), nrow(data), replace = TRUE), , drop = FALSE]
     fit <- suppressWarnings(tryCatch(
-      run_structural_canvas_analysis(snapshot, sampled, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes),
+      run_structural_canvas_analysis(snapshot, sampled, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes, ml_likelihood),
       error = function(error) NULL
     ))
     if (is.null(fit) || !isTRUE(fit$converged) || !isTRUE(fit$admissible)) {
@@ -289,7 +289,7 @@ structural_canvas_write_effect_bootstrap_progress <- function(progress_file, com
   invisible(NULL)
 }
 
-structural_canvas_start_effect_bootstrap_job <- function(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes, reps = 0L, seed = default_seed(), ci_method = "bias_corrected") {
+structural_canvas_start_effect_bootstrap_job <- function(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes, reps = 0L, seed = default_seed(), ci_method = "bias_corrected", ml_likelihood = "normal") {
   stopifnot(requireNamespace("callr", quietly = TRUE))
   job_dir <- tempfile("statedu-effect-bootstrap-")
   dir.create(job_dir, recursive = TRUE, showWarnings = FALSE)
@@ -303,7 +303,8 @@ structural_canvas_start_effect_bootstrap_job <- function(snapshot, data, analysi
       estimator = estimator, missing = missing, std_lv = std_lv,
       ordered = ordered, nominal = nominal,
       residual_variance_fixes = residual_variance_fixes,
-      reps = as.integer(reps), seed = as.integer(seed), ci_method = ci_method
+      reps = as.integer(reps), seed = as.integer(seed), ci_method = ci_method,
+      ml_likelihood = ml_likelihood
     ),
     input_file
   )
@@ -320,7 +321,8 @@ structural_canvas_start_effect_bootstrap_job <- function(snapshot, data, analysi
           args$snapshot, args$data, args$analysis_type, args$estimator, args$missing,
           args$std_lv, args$ordered, args$nominal, args$residual_variance_fixes,
           args$reps, args$seed, args$ci_method,
-          progress = function(done, total, valid) structural_canvas_write_effect_bootstrap_progress(progress_file, done, total, valid, "resampling")
+          progress = function(done, total, valid) structural_canvas_write_effect_bootstrap_progress(progress_file, done, total, valid, "resampling"),
+          ml_likelihood = args$ml_likelihood
         )
         saveRDS(value, result_file)
         valid_values <- if (is.data.frame(value) && "valid" %in% names(value)) suppressWarnings(as.integer(value$valid)) else integer(0)

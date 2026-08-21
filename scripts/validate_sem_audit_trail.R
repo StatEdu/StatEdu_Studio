@@ -5,7 +5,7 @@ spec_source <- paste(readLines(file.path("docs", "SEM_DECISION_RULES_V1_KO.md"),
 
 stopifnot(
   grepl("structural_canvas_audit_manifest <- function", report_source, fixed = TRUE),
-  grepl('version = "1.5"', report_source, fixed = TRUE),
+  grepl('version = "1.6"', report_source, fixed = TRUE),
   grepl("specification_sha256", report_source, fixed = TRUE),
   grepl("raw_data_included = FALSE", report_source, fixed = TRUE),
   grepl("structural_effect_plan", report_source, fixed = TRUE),
