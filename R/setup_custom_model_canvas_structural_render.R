@@ -386,13 +386,13 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
     covariates <- bundle$covariates %||% character(0)
     if (!length(covariates)) return(NULL)
     labels <- labels_fn() %||% character(0)
-    display_name <- function(name) {
-      name <- as.character(name %||% "")
-      node <- Filter(function(item) identical(structural_canvas_name(item), name), bundle$snapshot$nodes %||% list())
-      label <- if (length(node)) as.character(node[[1]]$canvasLabel %||% node[[1]]$dataLabel %||% "") else ""
-      if (!nzchar(label) && !is.null(names(labels)) && name %in% names(labels)) label <- as.character(labels[[name]] %||% "")
-      if (nzchar(label)) label else name
-    }
+    display_name <- structural_canvas_display_name_resolver(
+      snapshot = bundle$snapshot %||% list(),
+      variable_table = variable_table_fn(),
+      labels = labels,
+      moderation_definitions = bundle$diagnostics$moderation_definitions %||% bundle$moderation_definitions %||% list(),
+      language = statedu_current_language(app_language_fn)
+    )
     effects <- structural_canvas_covariate_effect_table(bundle$fit, covariates, display_name)
     comparison <- bundle$covariate_fit_comparison %||% data.frame()
     format_table <- function(table) {
@@ -469,13 +469,14 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
     output, prefix, analysis_type, fit_result, manuscript_result_table, dataset_fn, app_language_fn
   )
   structural_canvas_register_validity_outputs(
-    output, prefix, analysis_type, fit_result, manuscript_result_table, app_language_fn
+    output, prefix, analysis_type, fit_result, manuscript_result_table, app_language_fn,
+    variable_table_fn, labels_fn
   )
   if (analysis_type != "plssem") structural_canvas_register_local_fit_outputs(
-    output, prefix, fit_result, app_language_fn
+    output, prefix, fit_result, app_language_fn, variable_table_fn, labels_fn
   )
   if (analysis_type %in% c("cbsem", "sem")) structural_canvas_register_moderation_outputs(
-    output, prefix, fit_result, app_language_fn
+    output, prefix, fit_result, app_language_fn, variable_table_fn, labels_fn
   )
 
   for (kind in c("overview")) local({

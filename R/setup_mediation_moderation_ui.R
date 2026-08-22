@@ -7571,9 +7571,7 @@ register_mediation_moderation_setup_output <- function(
   mm_bootstrap_job <- reactiveVal(NULL)
   cancel_mediation_moderation_bootstrap <- function() {
     job <- shiny::isolate(mm_bootstrap_job())
-    if (!is.null(job$process) && isTRUE(job$process$is_alive())) {
-      try(job$process$kill(), silent = TRUE)
-    }
+    statedu_stop_background_process_tree(job$process)
     mediation_moderation_cleanup_bootstrap_job(job)
     mm_bootstrap_job(NULL)
     shiny::removeNotification("mediation-moderation-bootstrap-progress")

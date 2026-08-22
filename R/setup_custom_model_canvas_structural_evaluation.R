@@ -17,18 +17,20 @@ structural_canvas_fit_admissibility <- function(fit) {
   } else "overall"
   matrix_status <- function(values, floor_scale = TRUE) {
     statuses <- lapply(values, function(value) {
-      minimum <- structural_canvas_minimum_eigenvalue(value)
+      eigenvalues <- if (length(value) && nrow(value) == ncol(value) && all(is.finite(value))) {
+        suppressWarnings(eigen((value + t(value)) / 2, symmetric = TRUE, only.values = TRUE)$values)
+      } else numeric(0)
+      minimum <- if (length(eigenvalues)) min(eigenvalues) else NA_real_
       scale <- if (length(value)) max(abs(diag(value)), na.rm = TRUE) else NA_real_
       tolerance <- if (is.finite(scale)) sqrt(.Machine$double.eps) * if (floor_scale) max(1, scale) else scale else NA_real_
-      eigenvalues <- if (length(value) && nrow(value) == ncol(value) && all(is.finite(value))) {
-        tryCatch(eigen((value + t(value)) / 2, symmetric = TRUE, only.values = TRUE)$values, error = function(error) numeric(0))
-      } else numeric(0)
+      absolute_eigenvalues <- abs(eigenvalues)
+      condition_number <- if (!length(absolute_eigenvalues)) NA_real_ else if (max(absolute_eigenvalues) == 0 || min(absolute_eigenvalues) == 0) Inf else max(absolute_eigenvalues) / min(absolute_eigenvalues)
       list(
         minimum = minimum,
         non_psd = is.finite(minimum) && is.finite(tolerance) && minimum < -tolerance,
         boundary = is.finite(minimum) && is.finite(tolerance) && minimum >= -tolerance && minimum <= tolerance,
         boundary_count = if (length(eigenvalues) && is.finite(tolerance)) sum(abs(eigenvalues) <= tolerance) else 0L,
-        condition_number = structural_canvas_symmetric_condition_number(value)
+        condition_number = condition_number
       )
     })
     list(

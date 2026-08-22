@@ -30,6 +30,151 @@ structural_canvas_name <- function(node) {
   as.character(node$name %||% node$variableId %||% node$dataLabel %||% "")
 }
 
+# Build one display-only name resolver for every SEM result surface.  Model
+# syntax, lavaan parameter keys, and product-indicator names must stay raw so
+# that fitted objects remain reproducible; this resolver is deliberately used
+# only after the calculations are complete.
+structural_canvas_display_name_resolver <- function(snapshot = list(), variable_table = NULL,
+                                                    labels = character(0), moderation_definitions = list(),
+                                                    language = "en") {
+  snapshot <- snapshot %||% list()
+  labels <- labels %||% character(0)
+  nodes <- snapshot$nodes %||% list()
+  clean_scalar <- function(value) {
+    value <- as.character(value %||% "")
+    if (!length(value) || is.na(value[[1L]])) return("")
+    trimws(value[[1L]])
+  }
+  named_label <- function(name) {
+    if (is.null(names(labels))) return("")
+    index <- match(name, names(labels))
+    if (is.na(index)) return("")
+    clean_scalar(labels[[index]])
+  }
+  table_label <- function(name) {
+    if (!is.data.frame(variable_table) || !all(c("name", "var_label") %in% names(variable_table))) return("")
+    index <- match(name, as.character(variable_table$name))
+    if (is.na(index)) return("")
+    clean_scalar(variable_table$var_label[[index]])
+  }
+  matching_node <- function(name) {
+    matched <- Filter(function(node) identical(structural_canvas_name(node), name), nodes)
+    if (length(matched)) matched[[1L]] else NULL
+  }
+  base_name <- function(name) {
+    name <- clean_scalar(name)
+    if (!nzchar(name)) return("")
+    # A non-empty user label is authoritative.  Blank overrides mean that no
+    # override exists and therefore continue to the imported variable label.
+    label <- named_label(name)
+    if (!nzchar(label)) label <- table_label(name)
+    node <- matching_node(name)
+    observed_node <- !is.null(node) && as.character(node$role %||% "") %in%
+      c("indicator", "moderator", "covariate", "observed")
+    node_data_label <- if (!is.null(node)) clean_scalar(node$dataLabel) else ""
+    node_canvas_label <- if (!is.null(node)) clean_scalar(node$canvasLabel) else ""
+    # The canvas serializes raw names into dataLabel/canvasLabel when no label
+    # exists.  Treat those copies as fallbacks, not as real labels, so that a
+    # genuine custom canvas label cannot be shadowed by the raw key.
+    if (identical(node_data_label, name)) node_data_label <- ""
+    if (identical(node_canvas_label, name)) node_canvas_label <- ""
+    if (!nzchar(label) && isTRUE(observed_node)) label <- node_data_label
+    if (!nzchar(label)) label <- node_canvas_label
+    if (!nzchar(label)) label <- node_data_label
+    if (!nzchar(label)) label <- name
+    if (!identical(normalize_app_language(language), "ko") && grepl("^잠재변수\\s*[0-9]+$", label)) {
+      label <- sub("^잠재변수\\s*", "Latent variable ", label)
+    }
+    label
+  }
+
+  interaction_names <- character(0)
+  product_names <- character(0)
+  for (definition in moderation_definitions %||% list()) {
+    predictor <- clean_scalar(definition$predictor)
+    moderator <- clean_scalar(definition$moderator)
+    interaction_factor <- clean_scalar(definition$interaction_factor)
+    if (nzchar(interaction_factor) && nzchar(predictor) && nzchar(moderator)) {
+      interaction_names[[interaction_factor]] <- paste(base_name(predictor), base_name(moderator), sep = " × ")
+    }
+    pairs <- definition$product_indicator_pairs %||% NULL
+    if (is.data.frame(pairs) && all(c("name", "predictor_indicator", "moderator_indicator") %in% names(pairs))) {
+      for (index in seq_len(nrow(pairs))) {
+        product_name <- clean_scalar(pairs$name[[index]])
+        if (!nzchar(product_name)) next
+        product_names[[product_name]] <- paste(
+          base_name(pairs$predictor_indicator[[index]]),
+          base_name(pairs$moderator_indicator[[index]]),
+          sep = " × "
+        )
+      }
+    }
+  }
+
+  resolve_one <- function(name) {
+    name <- clean_scalar(name)
+    if (!nzchar(name)) return("")
+    if (name %in% names(product_names)) return(unname(product_names[[name]]))
+    if (name %in% names(interaction_names)) return(unname(interaction_names[[name]]))
+    if (grepl("*", name, fixed = TRUE)) {
+      terms <- strsplit(name, "*", fixed = TRUE)[[1L]]
+      if (length(terms) > 1L && all(nzchar(trimws(terms)))) {
+        return(paste(vapply(terms, base_name, character(1)), collapse = " × "))
+      }
+    }
+    base_name(name)
+  }
+  function(name) {
+    values <- as.character(name %||% character(0))
+    if (!length(values)) return(character(0))
+    vapply(values, resolve_one, character(1), USE.NAMES = FALSE)
+  }
+}
+
+structural_canvas_display_path <- function(path, display_name = identity) {
+  path <- as.character(path %||% "")
+  if (!length(path)) return(character(0))
+  vapply(path, function(value) {
+    if (is.na(value) || !nzchar(trimws(value))) return("")
+    terms <- strsplit(value, "\\s*(?:->|→)\\s*", perl = TRUE)[[1L]]
+    if (length(terms) < 2L) return(as.character(display_name(trimws(value))))
+    paste(vapply(trimws(terms), function(term) as.character(display_name(term)), character(1)), collapse = " → ")
+  }, character(1), USE.NAMES = FALSE)
+}
+
+structural_canvas_display_matrix_names <- function(value, display_name = identity) {
+  value <- as.matrix(value)
+  if (!is.null(rownames(value))) rownames(value) <- as.character(display_name(rownames(value)))
+  if (!is.null(colnames(value))) colnames(value) <- as.character(display_name(colnames(value)))
+  value
+}
+
+structural_canvas_display_identifier_table <- function(table, display_name = identity) {
+  if (!is.data.frame(table) || !nrow(table)) return(table)
+  identifier_columns <- intersect(
+    c(
+      "Indicator", "Indicator1", "Indicator2", "Factor", "Factor1", "Factor2",
+      "Factor 1", "Factor 2", "Construct", "Latent", "Predictor", "Outcome",
+      "Moderator", "Covariate", "Variable", "Row", "Column", "lhs", "rhs",
+      "Higher-order factor", "Lower-order factor"
+    ),
+    names(table)
+  )
+  for (column in identifier_columns) {
+    values <- as.character(table[[column]])
+    nonmissing <- !is.na(values)
+    values[nonmissing] <- as.character(display_name(values[nonmissing]))
+    table[[column]] <- values
+  }
+  for (column in intersect(c("Path", "path"), names(table))) {
+    values <- as.character(table[[column]])
+    nonmissing <- !is.na(values)
+    values[nonmissing] <- structural_canvas_display_path(values[nonmissing], display_name)
+    table[[column]] <- values
+  }
+  table
+}
+
 structural_canvas_parameter_term <- function(edge, target_name) {
   target_name <- as.character(target_name)
   free <- edge$free

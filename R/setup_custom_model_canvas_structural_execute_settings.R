@@ -1,20 +1,20 @@
 structural_canvas_execute_settings <- function(settings, input, prefix) {
   settings <- settings %||% list()
+  bootstrap_replicate_choices <- structural_canvas_bootstrap_replicate_values()
 
   reliability_bootstrap <- suppressWarnings(as.integer(settings$reliability_bootstrap %||% input[[paste0(prefix, "_reliability_bootstrap")]] %||% 0L))
-  if (is.na(reliability_bootstrap) || !reliability_bootstrap %in% c(0L, 500L, 1000L, 2000L)) reliability_bootstrap <- 0L
+  if (is.na(reliability_bootstrap) || !reliability_bootstrap %in% bootstrap_replicate_choices) reliability_bootstrap <- 0L
 
   reliability_seed <- suppressWarnings(as.integer(settings$reliability_seed %||% input[[paste0(prefix, "_reliability_seed")]] %||% default_seed()))
   if (is.na(reliability_seed) || reliability_seed < 1L) reliability_seed <- default_seed()
 
   bollen_stine_bootstrap <- suppressWarnings(as.integer(settings$bollen_stine_bootstrap %||% input[[paste0(prefix, "_bollen_stine_bootstrap")]] %||% 0L))
-  if (is.na(bollen_stine_bootstrap) || !bollen_stine_bootstrap %in% c(0L, 500L, 1000L, 2000L)) bollen_stine_bootstrap <- 0L
+  if (is.na(bollen_stine_bootstrap) || !bollen_stine_bootstrap %in% bootstrap_replicate_choices) bollen_stine_bootstrap <- 0L
 
   bollen_stine_seed <- suppressWarnings(as.integer(settings$bollen_stine_seed %||% input[[paste0(prefix, "_bollen_stine_seed")]] %||% default_seed()))
   if (is.na(bollen_stine_seed) || bollen_stine_seed < 1L) bollen_stine_seed <- default_seed()
 
-  bootstrap_replicate_choices <- c(0L, 1000L, 5000L, 10000L, 20000L, 50000L)
-  default_effect_bootstrap <- 0L
+  default_effect_bootstrap <- if (prefix %in% c("structural_cbsem", "structural_sem")) 5000L else 0L
   effect_bootstrap <- suppressWarnings(as.integer(settings$effect_bootstrap %||% input[[paste0(prefix, "_effect_bootstrap")]] %||% default_effect_bootstrap))
   if (is.na(effect_bootstrap) || !effect_bootstrap %in% bootstrap_replicate_choices) effect_bootstrap <- default_effect_bootstrap
   effect_bootstrap_seed <- suppressWarnings(as.integer(settings$effect_bootstrap_seed %||% input[[paste0(prefix, "_effect_bootstrap_seed")]] %||% default_seed()))
@@ -32,7 +32,7 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
 
   default_pls_bootstrap <- 0L
   pls_bootstrap <- suppressWarnings(as.integer(settings$pls_bootstrap %||% input[[paste0(prefix, "_pls_bootstrap")]] %||% default_pls_bootstrap))
-  if (is.na(pls_bootstrap) || !pls_bootstrap %in% c(0L, 1000L, 5000L, 10000L, 50000L)) pls_bootstrap <- default_pls_bootstrap
+  if (is.na(pls_bootstrap) || !pls_bootstrap %in% bootstrap_replicate_choices) pls_bootstrap <- default_pls_bootstrap
 
   pls_seed <- suppressWarnings(as.integer(settings$pls_seed %||% input[[paste0(prefix, "_pls_seed")]] %||% default_seed()))
   if (is.na(pls_seed) || pls_seed < 1L) pls_seed <- default_seed()
@@ -71,8 +71,8 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
     },
     analysis_plan_reference = trimws(as.character(settings$analysis_plan_reference %||% input[[paste0(prefix, "_analysis_plan_reference")]] %||% "")),
     sampling_design = {
-      value <- as.character(settings$sampling_design %||% input[[paste0(prefix, "_sampling_design")]] %||% "not_declared")
-      if (value %in% c("not_declared", "independent_cross_sectional", "clustered", "complex_survey", "longitudinal_repeated")) value else "not_declared"
+      value <- as.character(settings$sampling_design %||% input[[paste0(prefix, "_sampling_design")]] %||% "independent_cross_sectional")
+      if (value %in% c("not_declared", "independent_cross_sectional", "clustered", "complex_survey", "longitudinal_repeated")) value else "independent_cross_sectional"
     },
     power_basis = {
       value <- as.character(settings$power_basis %||% input[[paste0(prefix, "_power_basis")]] %||% "not_recorded")

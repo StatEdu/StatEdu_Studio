@@ -51,9 +51,14 @@ stopifnot(
   identical(resolved, normalizePath(upload_path, winslash = "/", mustWork = TRUE)),
   identical(dataset_id, "tiny-upload"),
   identical(output_root, latent_env$latent_default_output_root(repo_root)),
-  identical(recursive_scan_calls, 0L),
-  elapsed < 2
+  identical(recursive_scan_calls, 0L)
 )
+if (!is.finite(elapsed) || elapsed >= 2) {
+  stop(sprintf(
+    "Temp upload path resolution exceeded 2.000s: %d iterations took %.3fs.",
+    iterations, elapsed
+  ), call. = FALSE)
+}
 message(sprintf("Temp upload path resolution: %d iterations in %.3fs; recursive scans: %d", iterations, elapsed, recursive_scan_calls))
 
 expired_upload <- uploaded_file

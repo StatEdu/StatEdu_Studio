@@ -1,4 +1,7 @@
-structural_canvas_register_validity_outputs <- function(output, prefix, analysis_type, fit_result, result_table, app_language_fn = NULL) {
+structural_canvas_register_validity_outputs <- function(output, prefix, analysis_type, fit_result, result_table,
+                                                        app_language_fn = NULL,
+                                                        variable_table_fn = function() NULL,
+                                                        labels_fn = function() character(0)) {
   if (identical(analysis_type, "plssem")) {
     output[[paste0(prefix, "_result_htmt")]] <- renderUI({
       table <- result_table("pls_htmt")
@@ -29,9 +32,16 @@ structural_canvas_register_validity_outputs <- function(output, prefix, analysis
     })
     return(invisible(TRUE))
   }
-  structural_canvas_register_latent_correlation_outputs(output, prefix, fit_result, app_language_fn)
+  display_name_for <- function(bundle) structural_canvas_display_name_resolver(
+    snapshot = bundle$snapshot %||% list(),
+    variable_table = if (is.function(variable_table_fn)) variable_table_fn() else variable_table_fn,
+    labels = if (is.function(labels_fn)) labels_fn() %||% character(0) else labels_fn %||% character(0),
+    moderation_definitions = bundle$diagnostics$moderation_definitions %||% bundle$moderation_definitions %||% list(),
+    language = statedu_current_language(app_language_fn)
+  )
+  structural_canvas_register_latent_correlation_outputs(output, prefix, fit_result, app_language_fn, display_name_for)
   structural_canvas_register_validity_note_outputs(output, prefix, fit_result, result_table, app_language_fn)
-  structural_canvas_register_factor_score_outputs(output, prefix, fit_result, app_language_fn)
+  structural_canvas_register_factor_score_outputs(output, prefix, fit_result, app_language_fn, display_name_for)
   structural_canvas_register_reliability_bootstrap_outputs(output, prefix, fit_result, app_language_fn)
   structural_canvas_register_htmt_outputs(output, prefix, fit_result, result_table, app_language_fn)
   invisible(TRUE)

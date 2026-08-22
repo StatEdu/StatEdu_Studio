@@ -62,9 +62,7 @@ register_custom_model_canvas_handlers <- function(
 
   cancel_custom_model_canvas_bootstrap <- function() {
     job <- shiny::isolate(custom_model_canvas_bootstrap_job())
-    if (!is.null(job$process) && isTRUE(job$process$is_alive())) {
-      try(job$process$kill(), silent = TRUE)
-    }
+    statedu_stop_background_process_tree(job$process)
     mediation_moderation_cleanup_bootstrap_job(job)
     custom_model_canvas_bootstrap_job(NULL)
     shiny::removeNotification("custom-model-canvas-bootstrap-progress")

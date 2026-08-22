@@ -129,10 +129,10 @@ stopifnot(
   grepl("_reliability_ci_method", ui_source, fixed = TRUE),
   grepl('selected = "bias_corrected"', ui_source, fixed = TRUE),
   grepl("_htmt_ci_method", ui_source, fixed = TRUE),
-  grepl("structural_canvas_register_validity_outputs(\n    output, prefix, analysis_type, fit_result, manuscript_result_table, app_language_fn", ui_source, fixed = TRUE),
-  grepl("structural_canvas_register_latent_correlation_outputs(output, prefix, fit_result, app_language_fn)", ui_source, fixed = TRUE),
+  grepl("structural_canvas_register_validity_outputs(\n    output, prefix, analysis_type, fit_result, manuscript_result_table, app_language_fn,\n    variable_table_fn, labels_fn", ui_source, fixed = TRUE),
+  grepl("structural_canvas_register_latent_correlation_outputs(output, prefix, fit_result, app_language_fn, display_name_for)", ui_source, fixed = TRUE),
   grepl("structural_canvas_register_validity_note_outputs(output, prefix, fit_result, result_table, app_language_fn)", ui_source, fixed = TRUE),
-  grepl("structural_canvas_register_factor_score_outputs(output, prefix, fit_result, app_language_fn)", ui_source, fixed = TRUE),
+  grepl("structural_canvas_register_factor_score_outputs(output, prefix, fit_result, app_language_fn, display_name_for)", ui_source, fixed = TRUE),
   grepl("structural_canvas_register_reliability_bootstrap_outputs(output, prefix, fit_result, app_language_fn)", ui_source, fixed = TRUE),
   grepl("_cfa_bootstrap_stop", ui_source, fixed = TRUE),
   grepl("structural_canvas_start_cfa_bootstrap_job", ui_source, fixed = TRUE),
@@ -220,6 +220,15 @@ stopifnot(
 )
 
 cfa_toolbar <- htmltools::renderTags(structural_equation_toolbar("cfa", "en"))$html
+cfa_select_option_values <- function(html, input_id) {
+  escaped_input_id <- gsub("([][{}()+*^$|\\?.])", "\\\\\\1", input_id)
+  select_match <- regexec(sprintf('(?s)<select id="%s"[^>]*>(.*?)</select>', escaped_input_id), html, perl = TRUE)
+  select_parts <- regmatches(html, select_match)[[1L]]
+  if (length(select_parts) < 2L) return(integer(0))
+  option_tags <- regmatches(select_parts[[2L]], gregexpr('<option value="[^"]+"', select_parts[[2L]], perl = TRUE))[[1L]]
+  suppressWarnings(as.integer(sub('.*value="([^"]+)".*', '\\1', option_tags, perl = TRUE)))
+}
+cfa_default_settings <- structural_canvas_execute_settings(settings = list(), input = list(), prefix = "structural_cfa")
 cfa_ids <- regmatches(cfa_toolbar, gregexpr('(^|[[:space:]])id="[^"]+"', cfa_toolbar, perl = TRUE))[[1L]]
 cfa_ids <- sub('^.*id="([^"]+)".*$', "\\1", cfa_ids)
 cfa_option_tab_links <- regmatches(
@@ -247,8 +256,18 @@ stopifnot(
   grepl("Estimation", cfa_toolbar, fixed = TRUE),
   grepl("Bootstrap", cfa_toolbar, fixed = TRUE),
   grepl("Advanced Options", cfa_toolbar, fixed = TRUE),
-  grepl("All bootstrap procedures default to 'Do not compute'.", ui_source, fixed = TRUE),
-  grepl('selected = "not_declared"', ui_source, fixed = TRUE),
+  grepl("All bootstrap procedures default to 'Do not compute'.", cfa_toolbar, fixed = TRUE),
+  identical(cfa_select_option_values(cfa_toolbar, "structural_cfa_reliability_bootstrap"), c(0L, 1000L, 5000L, 10000L, 20000L, 50000L)),
+  identical(cfa_select_option_values(cfa_toolbar, "structural_cfa_bollen_stine_bootstrap"), c(0L, 1000L, 5000L, 10000L, 20000L, 50000L)),
+  identical(cfa_select_option_values(cfa_toolbar, "structural_cfa_htmt_bootstrap"), c(0L, 1000L, 5000L, 10000L, 20000L, 50000L)),
+  !grepl('value="30000"', cfa_toolbar, fixed = TRUE),
+  identical(cfa_default_settings$sampling_design, "independent_cross_sectional"),
+  identical(cfa_default_settings$effect_bootstrap, 0L),
+  identical(cfa_default_settings$reliability_bootstrap, 0L),
+  identical(cfa_default_settings$bollen_stine_bootstrap, 0L),
+  identical(cfa_default_settings$htmt_bootstrap, 0L),
+  grepl('<option value="independent_cross_sectional" selected>Independent cross-sectional observations</option>', cfa_toolbar, fixed = TRUE),
+  grepl('selected = "independent_cross_sectional"', ui_source, fixed = TRUE),
   grepl("분석 전에 표집구조를 명시적으로 확인하십시오", ui_source, fixed = TRUE),
   grepl("Validity", cfa_toolbar, fixed = TRUE),
   grepl("Diagnostics", cfa_toolbar, fixed = TRUE),

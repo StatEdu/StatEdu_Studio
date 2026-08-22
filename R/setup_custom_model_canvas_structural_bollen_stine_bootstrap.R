@@ -6,6 +6,7 @@ structural_canvas_bollen_stine <- function(fit, reps = 500L, seed = default_seed
   eligibility <- structural_canvas_bollen_stine_eligibility(fit)
   if (!isTRUE(eligibility$available)) stop(eligibility$reason)
   observed <- unname(lavaan::fitMeasures(fit, "chisq"))
+  evaluations <- 0L
   completed <- 0L
   valid <- 0L
   progress_step <- max(1L, floor(reps / 100L))
@@ -14,15 +15,21 @@ structural_canvas_bollen_stine <- function(fit, reps = 500L, seed = default_seed
     fit, R = reps, type = "bollen.stine", iseed = as.integer(seed),
     FUN = function(candidate) {
       if (is.function(cancel) && isTRUE(cancel())) stop("Bollen-Stine bootstrap canceled.")
-      completed <<- completed + 1L
+      evaluations <<- evaluations + 1L
       value <- if (isTRUE(structural_canvas_fit_admissibility(candidate)$admissible)) {
         unname(lavaan::fitMeasures(candidate, "chisq"))
       } else {
         NA_real_
       }
-      if (is.finite(value)) valid <<- valid + 1L
-      if (is.function(progress) && (completed == 1L || completed == reps || completed %% progress_step == 0L)) {
-        progress(completed, reps, valid)
+      # lavaan evaluates FUN once on the original fit to establish the result
+      # shape (t0) before evaluating the requested bootstrap samples.  Do not
+      # count that sizing call as a resample or progress briefly exceeds 100%.
+      if (evaluations > 1L) {
+        completed <<- completed + 1L
+        if (is.finite(value)) valid <<- valid + 1L
+        if (is.function(progress) && (completed == 1L || completed == reps || completed %% progress_step == 0L)) {
+          progress(completed, reps, valid)
+        }
       }
       value
     }

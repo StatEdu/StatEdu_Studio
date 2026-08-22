@@ -8,7 +8,130 @@ structural_canvas_normalize_missing_option <- function(value) {
   value
 }
 
-structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, confidence = .95, seed = default_seed(), estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0), formula_mode = "standardized", original_fit = NULL, ci_method = "bias_corrected", progress = NULL, cancel = NULL, ml_likelihood = "normal") {
+# Reliability bootstraps run in the isolated CFA callr worker.  Keep a single
+# PSOCK pool alive for all resampling (and BCa jackknife) chunks, and generate
+# every row index in the master process so worker count and scheduling cannot
+# change the statistical sample or the seed contract.
+structural_canvas_reliability_bootstrap_workers <- function(value = NULL, reps = 0L) {
+  if (is.null(value)) value <- Sys.getenv("STATEDU_CFA_BOOTSTRAP_WORKERS", "")
+  text <- trimws(as.character(value %||% ""))
+  automatic <- !length(text) || !nzchar(text[[1L]])
+  requested <- suppressWarnings(as.integer(if (automatic) NA_character_ else text[[1L]]))
+  available <- suppressWarnings(parallel::detectCores(logical = FALSE))
+  if (!is.finite(available) || available < 1L) {
+    available <- suppressWarnings(parallel::detectCores(logical = TRUE))
+  }
+  if (!is.finite(available) || available < 1L) available <- 1L
+  reps <- suppressWarnings(as.integer(reps))
+  if (!is.finite(reps) || reps < 1L) reps <- 1L
+  if (automatic) {
+    # Small validation and interactive jobs finish sooner without Windows
+    # PSOCK startup.  The normal 1,000+ release profiles use the reusable pool.
+    requested <- if (available <= 2L || reps < 250L) {
+      1L
+    } else {
+      min(8L, max(1L, available - 1L), max(2L, ceiling(reps / 100L)))
+    }
+  } else if (!is.finite(requested) || requested < 1L) {
+    stop("STATEDU_CFA_BOOTSTRAP_WORKERS/workers must be a positive integer.")
+  }
+  max(1L, min(as.integer(requested), as.integer(available), reps))
+}
+
+structural_canvas_reliability_bootstrap_chunk_size <- function(value = NULL, reps, workers) {
+  reps <- suppressWarnings(as.integer(reps))
+  workers <- suppressWarnings(as.integer(workers))
+  if (is.null(value)) {
+    value <- if (workers <= 1L) {
+      min(250L, max(20L, ceiling(reps / 20L)))
+    } else {
+      max(workers * 4L, min(250L, ceiling(reps / 40L)))
+    }
+  }
+  value <- suppressWarnings(as.integer(value))
+  if (!is.finite(value) || value < 1L) {
+    stop("CFA reliability bootstrap chunk_size must be a positive integer.")
+  }
+  max(1L, min(value, reps))
+}
+
+# Classify one reusable-pool callback without conflating a scientifically
+# rejected fit with an unreadable worker result. Only an explicit rejection
+# from the full fused/public strict gate is known-invalid. Callback exceptions,
+# malformed results, and extractor error paths are unknown and must be retried
+# by the unchanged serial full-SE path on the same master-generated sample.
+structural_canvas_reliability_bootstrap_callback_result <- function(screening, value_call) {
+  unknown <- function() list(status = "unknown", value = NULL)
+  if (!is.list(screening)) return(unknown())
+  valid <- tryCatch(screening$valid, error = function(error) NULL)
+  path <- tryCatch(as.character(screening$screening_path), error = function(error) character(0))
+  trusted_path <- length(path) == 1L && !is.na(path) &&
+    path %in% c("fused_0_7_2", "public_fallback")
+  if (isFALSE(valid)) {
+    if (trusted_path) return(list(status = "known_invalid", value = NULL))
+    return(unknown())
+  }
+  if (!isTRUE(valid) || !is.function(value_call)) return(unknown())
+  value <- tryCatch(value_call(), error = function(error) NULL)
+  if (!is.data.frame(value)) return(unknown())
+  list(status = "valid", value = value)
+}
+
+# A lavaanList call that fails as a whole remains distinguishable from a valid
+# call whose individual callback entries are NULL. NULL here tells the caller
+# to fall back for the entire chunk; short funList results are padded with NULL
+# so only the missing positions are retried.
+structural_canvas_reliability_bootstrap_fast_call <- function(call, expected) {
+  expected <- suppressWarnings(as.integer(expected))
+  if (!is.function(call) || !is.finite(expected) || expected < 0L) {
+    stop("CFA reliability fast call requires a callable and a non-negative expected result count.")
+  }
+  fit_list <- tryCatch(call(), error = function(error) NULL)
+  if (is.null(fit_list) || !inherits(fit_list, "lavaanList")) return(NULL)
+  slot_names <- tryCatch(methods::slotNames(fit_list), error = function(error) character(0))
+  if (!"funList" %in% slot_names) return(NULL)
+  values <- tryCatch(methods::slot(fit_list, "funList"), error = function(error) NULL)
+  if (!is.list(values)) return(NULL)
+  if (length(values) < expected) length(values) <- expected
+  if (length(values) > expected) values <- values[seq_len(expected)]
+  values
+}
+
+# Preserve replicate order while retrying unknown callback positions only.
+# `frames[[i]]` is passed through unchanged, so the retry uses the exact same
+# master sample indices and never resamples or advances the seed contract.
+structural_canvas_reliability_bootstrap_resolve_fast_items <- function(items, frames, retry) {
+  if (!is.list(frames) || !is.function(retry)) {
+    stop("CFA reliability fast-item resolution requires frames and a retry function.")
+  }
+  count <- length(frames)
+  if (!is.list(items)) items <- list()
+  if (length(items) < count) length(items) <- count
+  if (length(items) > count) items <- items[seq_len(count)]
+  values <- vector("list", count)
+  states <- rep("unknown", count)
+  for (index in seq_len(count)) {
+    item <- items[[index]]
+    status <- if (is.list(item)) {
+      tryCatch(as.character(item$status), error = function(error) character(0))
+    } else character(0)
+    status <- if (length(status) == 1L && !is.na(status)) status else "unknown"
+    if (identical(status, "known_invalid")) {
+      states[[index]] <- "known_invalid"
+      next
+    }
+    value <- if (identical(status, "valid") && is.data.frame(item$value)) item$value else NULL
+    if (!is.null(value)) {
+      states[[index]] <- "valid"
+      values[index] <- list(value)
+      next
+    }
+    values[index] <- list(retry(frames[[index]], index))
+  }
+  list(values = values, states = states, retry_indices = which(states == "unknown"))
+}
+
+structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, confidence = .95, seed = default_seed(), estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0), formula_mode = "standardized", original_fit = NULL, ci_method = "bias_corrected", progress = NULL, cancel = NULL, ml_likelihood = "normal", workers = NULL, chunk_size = NULL, return_draws = FALSE) {
   reps <- as.integer(reps)
   ci_method <- structural_canvas_bootstrap_ci_method(ci_method)
   if (!is.finite(reps) || reps < 1L) stop("Reliability bootstrap requires at least one resample.")
@@ -76,10 +199,116 @@ structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, c
   if (missing_option %in% c("listwise", "default") && nrow(fitted_data) != nrow(supplied_matrix)) supplied_matrix <- supplied_matrix[stats::complete.cases(supplied_matrix), , drop = FALSE]
   if (!isTRUE(all.equal(fitted_data, supplied_matrix, check.attributes = FALSE))) stop("AVE/reliability bootstrap original_fit does not use the same analyzed observations and values as the supplied data.")
   structural_canvas_validate_model_based_bootstrap(original_fit, "AVE/reliability bootstrap")
+  bootstrap_model_df <- tryCatch(
+    suppressWarnings(as.numeric(lavaan::fitMeasures(original_fit, "df")[[1L]])),
+    error = function(error) NA_real_
+  )
+  use_isolated_fast_screen <-
+    isTRUE(getOption("statedu.isolated_lavaan_bootstrap_worker", FALSE)) &&
+    is.function(get0("structural_canvas_effect_bootstrap_extract_fit", mode = "function")) &&
+    is.function(get0("structural_canvas_reliability_estimates_bootstrap_fast", mode = "function")) &&
+    is.finite(bootstrap_model_df) && bootstrap_model_df >= 0
   fit_reliability <- function(frame) {
     fit <- tryCatch(do.call(lavaan::cfa, fit_arguments(syntax, frame, original_parameterization)), error = function(error) NULL)
-    if (is.null(fit) || !isTRUE(structural_canvas_fit_admissibility(fit)$admissible)) return(NULL)
-    tryCatch(structural_canvas_reliability_estimates(fit, formula_mode), error = function(error) NULL)
+    if (is.null(fit)) return(NULL)
+    admissible <- if (use_isolated_fast_screen) {
+      isTRUE(structural_canvas_effect_bootstrap_extract_fit(
+        fit, character(0), list(), bootstrap_model_df
+      )$valid)
+    } else {
+      isTRUE(structural_canvas_fit_admissibility(fit)$admissible)
+    }
+    if (!admissible) return(NULL)
+    tryCatch(
+      if (use_isolated_fast_screen) {
+        structural_canvas_reliability_estimates_bootstrap_fast(fit, formula_mode)
+      } else {
+        structural_canvas_reliability_estimates(fit, formula_mode)
+      },
+      error = function(error) NULL
+    )
+  }
+  total_iterations <- reps + if (identical(ci_method, "bca")) nrow(data) else 0L
+  selected_workers <- if (use_isolated_fast_screen) {
+    structural_canvas_reliability_bootstrap_workers(workers, reps)
+  } else 1L
+  selected_chunk_size <- structural_canvas_reliability_bootstrap_chunk_size(
+    chunk_size, max(reps, if (identical(ci_method, "bca")) nrow(data) else 1L),
+    selected_workers
+  )
+  make_chunks <- function(count, first = 1L) {
+    count <- suppressWarnings(as.integer(count))
+    first <- suppressWarnings(as.integer(first))
+    if (!is.finite(count) || !is.finite(first) || count < first || first < 1L) return(list())
+    starts <- seq.int(first, count, by = selected_chunk_size)
+    lapply(starts, function(start) {
+      seq.int(start, min(count, start + selected_chunk_size - 1L))
+    })
+  }
+  fit_template <- original_fit
+  # Keep the original full-SE template. The unchanged strict CFA gate includes
+  # the free-parameter vcov PSD/boundary check; a lean se="none" fit would omit
+  # that scientific acceptance criterion even though AVE/CR themselves do not
+  # consume standard errors.
+  fast_callback <- if (use_isolated_fast_screen) local({
+    extract_fit <- structural_canvas_effect_bootstrap_extract_fit
+    reliability_fast <- structural_canvas_reliability_estimates_bootstrap_fast
+    classify_result <- structural_canvas_reliability_bootstrap_callback_result
+    model_df <- bootstrap_model_df
+    formula <- formula_mode
+    function(fit) {
+      screening <- tryCatch(
+        extract_fit(fit, character(0), list(), model_df),
+        error = function(error) error
+      )
+      classify_result(screening, function() reliability_fast(fit, formula))
+    }
+  }) else NULL
+  cluster <- NULL
+  cluster_metadata_fast_path <- list()
+  worker_startup_seconds <- 0
+  fast_chunk_failures <- 0L
+  fast_item_retries <- 0L
+  fit_fast_frames <- function(frames, first_position) {
+    seed_value <- as.integer((abs(as.numeric(seed)) + as.numeric(first_position)) %% .Machine$integer.max)
+    if (!is.finite(seed_value) || seed_value < 1L) seed_value <- 1L
+    values <- structural_canvas_reliability_bootstrap_fast_call(
+      function() suppressWarnings(lavaan::lavaanList(
+        model = fit_template, data_list = frames, cmd = "cfa",
+        store_slots = character(0), fun = fast_callback,
+        parallel = if (selected_workers > 1L) "snow" else "no",
+        ncpus = selected_workers, cl = cluster, iseed = seed_value
+      )),
+      length(frames)
+    )
+    if (is.null(values)) {
+      fast_chunk_failures <<- fast_chunk_failures + 1L
+      return(NULL)
+    }
+    values
+  }
+  fit_frames <- function(frames, first_position) {
+    # A one-worker lavaanList adds more setup than it saves for small jobs. The
+    # low-core path deliberately retains the legacy full-SE cfa-per-draw fit.
+    values <- if (use_isolated_fast_screen && selected_workers > 1L) {
+      fit_fast_frames(frames, first_position)
+    } else NULL
+    if (is.null(values)) {
+      lapply(frames, function(frame) {
+        if (is.function(cancel) && isTRUE(cancel())) stop("AVE/reliability bootstrap canceled.")
+        fit_reliability(frame)
+      })
+    } else {
+      resolved <- structural_canvas_reliability_bootstrap_resolve_fast_items(
+        values, frames,
+        function(frame, index) {
+          if (is.function(cancel) && isTRUE(cancel())) stop("AVE/reliability bootstrap canceled.")
+          fit_reliability(frame)
+        }
+      )
+      fast_item_retries <<- fast_item_retries + length(resolved$retry_indices)
+      resolved$values
+    }
   }
   old_seed_exists <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
   if (old_seed_exists) old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
@@ -89,39 +318,105 @@ structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, c
   }, add = TRUE)
   set.seed(as.integer(seed))
   n <- nrow(data)
+  sample_indices <- replicate(
+    reps, sample.int(n, n, replace = TRUE), simplify = FALSE
+  )
   estimates <- vector("list", reps)
-  total_iterations <- reps + if (identical(ci_method, "bca")) n else 0L
-  progress_step <- max(1L, floor(total_iterations / 100L))
   if (is.function(progress)) progress(0L, total_iterations, 0L)
-  for (index in seq_len(reps)) {
+  if (is.function(cancel) && isTRUE(cancel())) stop("AVE/reliability bootstrap canceled.")
+  # Fit the first deterministic draw in the callr process before starting the
+  # PSOCK pool. This is a real full-SE/strict result, not synthetic progress,
+  # and removes worker startup from the user's time-to-first-completion.
+  warmup_started <- Sys.time()
+  first_value <- fit_reliability(data[sample_indices[[1L]], , drop = FALSE])
+  estimates[[1L]] <- first_value
+  valid_count <- as.integer(!is.null(first_value) && is.data.frame(first_value) && nrow(first_value) > 0L)
+  warmup_seconds <- as.numeric(difftime(Sys.time(), warmup_started, units = "secs"))
+  if (is.function(progress)) progress(1L, total_iterations, valid_count)
+
+  worker_startup_started <- Sys.time()
+  if (use_isolated_fast_screen && selected_workers > 1L && reps > 1L) {
     if (is.function(cancel) && isTRUE(cancel())) stop("AVE/reliability bootstrap canceled.")
-    sampled <- data[sample.int(n, n, replace = TRUE), , drop = FALSE]
-    estimates[[index]] <- fit_reliability(sampled)
-    if (is.function(progress) && (index == 1L || index == total_iterations || index %% progress_step == 0L)) {
-      progress(index, total_iterations, length(Filter(function(value) !is.null(value) && nrow(value), estimates[seq_len(index)])))
-    }
+    cluster <- parallel::makePSOCKcluster(rep("localhost", selected_workers))
+    on.exit({
+      try(parallel::clusterCall(cluster, function() {
+        if (exists(".statedu_cfa_lavaan_metadata_fast_path_state", envir = .GlobalEnv, inherits = FALSE)) {
+          state <- get(".statedu_cfa_lavaan_metadata_fast_path_state", envir = .GlobalEnv, inherits = FALSE)
+          if (is.function(state$restore)) state$restore()
+          rm(".statedu_cfa_lavaan_metadata_fast_path_state", envir = .GlobalEnv)
+        }
+        TRUE
+      }), silent = TRUE)
+      try(parallel::stopCluster(cluster), silent = TRUE)
+    }, add = TRUE)
+    installer <- get0("structural_canvas_lavaan_worker_metadata_fast_path_install", mode = "function")
+    cluster_metadata_fast_path <- parallel::clusterCall(
+      cluster,
+      function(extract_fit, reliability_fast, reliability_public, alpha_function, install_fast_path) {
+        options(statedu.isolated_lavaan_bootstrap_worker = TRUE)
+        suppressPackageStartupMessages(requireNamespace("lavaan", quietly = TRUE))
+        assign("structural_canvas_effect_bootstrap_extract_fit", extract_fit, envir = .GlobalEnv)
+        assign("structural_canvas_reliability_estimates_bootstrap_fast", reliability_fast, envir = .GlobalEnv)
+        assign("structural_canvas_reliability_estimates", reliability_public, envir = .GlobalEnv)
+        assign("structural_canvas_cronbach_alpha", alpha_function, envir = .GlobalEnv)
+        state <- if (is.function(install_fast_path)) install_fast_path() else list(
+          applied = FALSE, reason = "metadata fast path unavailable",
+          restore = function() invisible(FALSE)
+        )
+        assign(".statedu_cfa_lavaan_metadata_fast_path_state", state, envir = .GlobalEnv)
+        reason <- if (is.null(state$reason)) "" else as.character(state$reason)
+        list(applied = isTRUE(state$applied), reason = reason)
+      },
+      structural_canvas_effect_bootstrap_extract_fit,
+      structural_canvas_reliability_estimates_bootstrap_fast,
+      structural_canvas_reliability_estimates,
+      structural_canvas_cronbach_alpha,
+      installer
+    )
   }
+  worker_startup_seconds <- as.numeric(difftime(Sys.time(), worker_startup_started, units = "secs"))
+
+  remaining_started <- Sys.time()
+  for (positions in make_chunks(reps, first = 2L)) {
+    if (is.function(cancel) && isTRUE(cancel())) stop("AVE/reliability bootstrap canceled.")
+    frames <- lapply(positions, function(index) data[sample_indices[[index]], , drop = FALSE])
+    values <- fit_frames(frames, positions[[1L]])
+    estimates[positions] <- values
+    valid_count <- valid_count + sum(vapply(values, function(value) {
+      !is.null(value) && is.data.frame(value) && nrow(value) > 0L
+    }, logical(1)))
+    completed <- max(positions)
+    if (is.function(progress)) progress(completed, total_iterations, valid_count)
+  }
+  remaining_seconds <- as.numeric(difftime(Sys.time(), remaining_started, units = "secs"))
+  resampling_seconds <- warmup_seconds + remaining_seconds
   valid <- Filter(function(value) !is.null(value) && nrow(value), estimates)
-  if (!length(valid)) return(data.frame())
-  combined <- do.call(rbind, lapply(seq_along(valid), function(index) transform(valid[[index]], Replicate = index)))
-  original_estimates <- structural_canvas_reliability_estimates(original_fit, formula_mode)
+  combined <- if (length(valid)) {
+    do.call(rbind, lapply(seq_along(valid), function(index) transform(valid[[index]], Replicate = index)))
+  } else data.frame()
+  original_estimates <- if (use_isolated_fast_screen) {
+    structural_canvas_reliability_estimates_bootstrap_fast(original_fit, formula_mode)
+  } else structural_canvas_reliability_estimates(original_fit, formula_mode)
   jackknife <- data.frame()
+  jackknife_values <- list()
+  jackknife_seconds <- 0
   if (identical(ci_method, "bca")) {
     jackknife_values <- vector("list", n)
-    for (index in seq_len(n)) {
+    jackknife_started <- Sys.time()
+    for (positions in make_chunks(n)) {
       if (is.function(cancel) && isTRUE(cancel())) stop("AVE/reliability bootstrap canceled.")
-      jackknife_values[[index]] <- fit_reliability(data[-index, , drop = FALSE])
-      completed <- reps + index
-      if (is.function(progress) && (completed == total_iterations || completed %% progress_step == 0L)) {
-        progress(completed, total_iterations, length(valid))
-      }
+      frames <- lapply(positions, function(index) data[-index, , drop = FALSE])
+      jackknife_values[positions] <- fit_frames(frames, reps + positions[[1L]])
+      completed <- reps + max(positions)
+      if (is.function(progress)) progress(completed, total_iterations, length(valid))
     }
-    jackknife_values <- Filter(function(value) !is.null(value) && nrow(value), jackknife_values)
-    if (length(jackknife_values)) jackknife <- do.call(rbind, lapply(seq_along(jackknife_values), function(index) transform(jackknife_values[[index]], Replicate = index)))
+    jackknife_seconds <- as.numeric(difftime(Sys.time(), jackknife_started, units = "secs"))
+    valid_jackknife <- Filter(function(value) !is.null(value) && nrow(value), jackknife_values)
+    if (length(valid_jackknife)) jackknife <- do.call(rbind, lapply(seq_along(valid_jackknife), function(index) transform(valid_jackknife[[index]], Replicate = index)))
   }
   alpha <- (1 - confidence) / 2
   factors <- unique(combined$Factor)
-  do.call(rbind, lapply(factors, function(factor) {
+  summary <- if (length(factors)) do.call(rbind, lapply(factors, function(factor) {
     values <- combined[combined$Factor == factor, , drop = FALSE]
     do.call(rbind, lapply(c("AVE", "CR", "Alpha", "Omega"), function(statistic) {
       finite <- values[[statistic]][is.finite(values[[statistic]])]
@@ -151,7 +446,28 @@ structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, c
         Status = structural_canvas_bootstrap_status(length(finite), reps),
         check.names = FALSE)
     }))
-  }))
+  })) else data.frame()
+  timing <- list(
+    worker_startup = worker_startup_seconds,
+    first_resample = warmup_seconds,
+    resampling = resampling_seconds,
+    jackknife = jackknife_seconds,
+    workers = selected_workers,
+    chunk_size = selected_chunk_size,
+    fast_path = use_isolated_fast_screen,
+    fast_chunk_fallbacks = fast_chunk_failures,
+    fast_item_retries = fast_item_retries,
+    worker_metadata_fast_path = cluster_metadata_fast_path
+  )
+  attr(summary, "timings") <- timing
+  if (isTRUE(return_draws)) {
+    return(list(
+      summary = summary, estimates = estimates,
+      jackknife = jackknife_values, sample_indices = sample_indices,
+      timings = timing
+    ))
+  }
+  summary
 }
 
 structural_canvas_validate_model_based_bootstrap <- function(fit, label = "Model-based bootstrap") {

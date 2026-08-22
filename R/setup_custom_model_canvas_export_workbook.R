@@ -173,13 +173,18 @@ structural_canvas_workbook_contents <- function(sheet_names) {
   )
 }
 
-structural_canvas_result_workbook_sheets <- function(bundle, table_fn) {
+structural_canvas_result_workbook_sheets <- function(bundle, table_fn, display_name = identity) {
   analysis_type <- as.character(bundle$analysis_type %||% if (inherits(bundle$fit, "lavaan")) "cfa" else "plssem")
   sheets <- list(
     Overview = table_fn("overview"), Report_Summary = structural_canvas_report_summary(bundle), Fit = table_fn("fit"),
     Validity = table_fn("validity"), Measurement = table_fn("measurement"),
     Construct_Specification = structural_canvas_construct_reporting_rows(bundle, analysis_type, FALSE)
   )
+  # table_fn() and the explicitly display-mapped helpers below already return
+  # user-facing names.  Keep their sheet names so the final pass maps only raw
+  # result objects; applying the resolver twice can corrupt a legitimate label
+  # that happens to equal another variable's raw key (for example x1 -> "x2").
+  display_mapped_sheets <- c("Overview", "Fit", "Validity", "Measurement")
   if (analysis_type %in% c("cbsem", "sem")) {
     structural_tables <- list(
       Structural_Paths = table_fn("structural"),
@@ -190,10 +195,19 @@ structural_canvas_result_workbook_sheets <- function(bundle, table_fn) {
     )
     for (name in names(structural_tables)) {
       table <- structural_tables[[name]]
-      if (is.data.frame(table) && nrow(table)) sheets[[name]] <- table
+      if (is.data.frame(table) && nrow(table)) {
+        sheets[[name]] <- table
+        display_mapped_sheets <- c(display_mapped_sheets, name)
+      }
+    }
+    moderation_jn <- structural_canvas_moderation_jn_table(bundle, display_name = display_name)
+    if (is.data.frame(moderation_jn) && nrow(moderation_jn)) {
+      sheets$Johnson_Neyman <- moderation_jn
+      display_mapped_sheets <- c(display_mapped_sheets, "Johnson_Neyman")
     }
     if (is.data.frame(bundle$effect_bootstrap_result) && nrow(bundle$effect_bootstrap_result)) {
-      sheets$Effect_Bootstrap_Diagnostics <- bundle$effect_bootstrap_result
+      sheets$Effect_Bootstrap_Diagnostics <- structural_canvas_display_identifier_table(bundle$effect_bootstrap_result, display_name)
+      display_mapped_sheets <- c(display_mapped_sheets, "Effect_Bootstrap_Diagnostics")
     }
   }
   if (!is.null(bundle$invariance_result) && nrow(bundle$invariance_result$table)) {
@@ -205,10 +219,19 @@ structural_canvas_result_workbook_sheets <- function(bundle, table_fn) {
     if (!is.null(bundle$invariance_result$group_htmt) && nrow(bundle$invariance_result$group_htmt)) {
       sheets$Invariance_HTMT <- bundle$invariance_result$group_htmt
     }
-    group_residuals <- bundle$invariance_result$group_residuals %||% list()
+    group_residuals <- structural_canvas_display_residual_diagnostics(
+      bundle$invariance_result$group_residuals %||% list(),
+      display_name
+    )
     if (isTRUE(group_residuals$available)) {
-      if (nrow(group_residuals$group_summary %||% data.frame())) sheets$Invariance_Residual_Summary <- group_residuals$group_summary
-      if (nrow(group_residuals$group_pairs %||% data.frame())) sheets$Invariance_Residual_Pairs <- group_residuals$group_pairs
+      if (nrow(group_residuals$group_summary %||% data.frame())) {
+        sheets$Invariance_Residual_Summary <- group_residuals$group_summary
+        display_mapped_sheets <- c(display_mapped_sheets, "Invariance_Residual_Summary")
+      }
+      if (nrow(group_residuals$group_pairs %||% data.frame())) {
+        sheets$Invariance_Residual_Pairs <- group_residuals$group_pairs
+        display_mapped_sheets <- c(display_mapped_sheets, "Invariance_Residual_Pairs")
+      }
     }
     score_tables <- bundle$invariance_result$score_diagnostics %||% list()
     for (stage in names(score_tables)) if (nrow(score_tables[[stage]])) sheets[[paste0("Inv_Score_", stage)]] <- score_tables[[stage]]
@@ -241,8 +264,11 @@ structural_canvas_result_workbook_sheets <- function(bundle, table_fn) {
     }
   }
   if (length(bundle$covariates %||% character(0))) {
-    covariate_effects <- structural_canvas_covariate_effect_table(bundle$fit, bundle$covariates)
-    if (nrow(covariate_effects)) sheets$Covariate_Effects <- covariate_effects
+    covariate_effects <- structural_canvas_covariate_effect_table(bundle$fit, bundle$covariates, display_name)
+    if (nrow(covariate_effects)) {
+      sheets$Covariate_Effects <- covariate_effects
+      display_mapped_sheets <- c(display_mapped_sheets, "Covariate_Effects")
+    }
     if (nrow(bundle$covariate_fit_comparison %||% data.frame())) sheets$Covariate_Fit_Comparison <- bundle$covariate_fit_comparison
   }
   common_method <- bundle$common_method_result %||% NULL
@@ -259,7 +285,10 @@ structural_canvas_result_workbook_sheets <- function(bundle, table_fn) {
     sheets$MI_Holdout_Change <- bundle$holdout_comparison$changes
   }
   if (isTRUE(bundle$modified_from_baseline) && !is.null(bundle$baseline_fit)) sheets$Model_Difference <- structural_canvas_model_difference_report(bundle)
-  residuals <- structural_canvas_residual_diagnostics(bundle$fit)
+  residuals <- structural_canvas_display_residual_diagnostics(
+    structural_canvas_residual_diagnostics(bundle$fit),
+    display_name
+  )
   matrix_sheet <- function(value) {
     value <- as.matrix(value)
     data.frame(Indicator = rownames(value), value, check.names = FALSE)
@@ -267,7 +296,11 @@ structural_canvas_result_workbook_sheets <- function(bundle, table_fn) {
   if (isTRUE(residuals$available)) {
     sheets$Residual_Z <- matrix_sheet(residuals$standardized)
     sheets$Residual_Correlation <- matrix_sheet(residuals$correlation)
-    if (nrow(residuals$largest)) sheets$Large_Residuals <- residuals$largest
+    display_mapped_sheets <- c(display_mapped_sheets, "Residual_Z", "Residual_Correlation")
+    if (nrow(residuals$largest)) {
+      sheets$Large_Residuals <- residuals$largest
+      display_mapped_sheets <- c(display_mapped_sheets, "Large_Residuals")
+    }
   }
   latent_intervals <- structural_canvas_latent_correlation_intervals(bundle$fit, level = .95)
   if (nrow(latent_intervals)) sheets$Latent_Correlation_CI <- latent_intervals
@@ -290,5 +323,13 @@ structural_canvas_result_workbook_sheets <- function(bundle, table_fn) {
   if (nrow(sample_statistics$Covariance)) sheets$Sample_Covariance <- sample_statistics$Covariance
   if (nrow(sample_statistics$Thresholds)) sheets$Thresholds <- sample_statistics$Thresholds
   sheets$Notes <- structural_canvas_export_notes(bundle)
+  raw_sheet_names <- setdiff(names(sheets), unique(display_mapped_sheets))
+  sheets[raw_sheet_names] <- lapply(
+    sheets[raw_sheet_names], structural_canvas_display_identifier_table,
+    display_name = display_name
+  )
+  if (is.data.frame(sheets$Latent_Correlations) && ncol(sheets$Latent_Correlations) > 1L) {
+    names(sheets$Latent_Correlations)[-1L] <- as.character(display_name(names(sheets$Latent_Correlations)[-1L]))
+  }
   c(list(Contents = structural_canvas_workbook_contents(c("Contents", names(sheets)))), sheets)
 }

@@ -1,18 +1,26 @@
 # StatEdu Studio Release Readiness Status
 
-Last reviewed: 2026-08-19
+Last reviewed: 2026-08-23
 
 Current version: 1.2.0
 
-Current release candidate source version: 1.2.0
+Current development source version: 1.2.4-dev
 
-Release-line note: public 1.2.0 was published on 2026-08-08 and is retained below as historical release evidence. Current SEM/CFA work targets 1.2.3 and is governed separately by `docs/RELEASE_1_2_3_DECISION_LOG.md` and `docs/RELEASE_1_2_3_PROMOTION_CHECKLIST.md`; it is not approved for public promotion.
+Release-line note: public 1.2.0 was published on 2026-08-08 and is retained below as historical release evidence. The 1.2.3 development package and promotion records are also retained as historical evidence. Current source work proceeds on `1.2.4-dev`; no public 1.2.4 promotion is approved.
 
-The 1.2.3 fail-closed promotion validator is armed in `scripts/validate_sem_release_promotion.R`. It independently recomputes the fixed external PLS/PLSc comparison and requires evidence hashes, final package hashes, manual packaged QA, and explicit human approval before a public 1.2.3 build can pass.
+The 1.2.3 fail-closed promotion validator remains scoped to the historical 1.2.3 promotion line. Its evidence and approval requirements must not be reused as proof for a future public 1.2.4 build.
 
 The external-program handoff is automated by `scripts/prepare_pls_external_handoff.R` and `scripts/finalize_pls_external_evidence.R`: the first packages the fixed data/model/specification and result template, and the second accepts only versioned, dated, convergence-confirmed SmartPLS/ADANCO results, recomputes all six comparisons, records actual output precision, and seals the evidence hashes. Actual proprietary-program values remain pending.
 
 `scripts/package_pls_external_handoff.ps1` creates the transfer ZIP from a fresh temporary staging directory, verifies its required contents, embeds per-file SHA-256 values, and emits a checksum sidecar for the archive. This closes the evidence-transfer integrity step but does not substitute for the pending proprietary-program run.
+
+## Current 1.2.4-dev Development Snapshot
+
+- Source version: `1.2.4-dev`.
+- Branch: `codex/external-validation-stabilization`.
+- The development line adds exact, fail-open bootstrap execution control around lavaan for CFA, SEM, and latent-product moderation, while retaining public full-SE lavaan fits as the final numerical authority.
+- Same-index regression gates require the optimized and prior lavaan paths to match in sample order, validity decisions, raw estimates, standardized estimates, and final result tables with tolerance 0.
+- A new 1.2.4-dev installer has not yet been packaged or assigned release checksums. Historical 1.2.3-dev package evidence below is not 1.2.4 evidence.
 
 ## Current 1.2.0 Public Release Snapshot
 
@@ -40,7 +48,7 @@ The external-program handoff is automated by `scripts/prepare_pls_external_hando
   - `docs/RELEASE_1_2_MANUAL_QA_RECORD.md`
 - Remaining before public deployment: upload/publish steps.
 
-## Current 1.2.3-dev Development Snapshot
+## Historical 1.2.3-dev Development Snapshot
 
 - Source version: `1.2.3-dev`.
 - Branch: `codex/sem-model-canvas`.

@@ -1,11 +1,14 @@
 # Structural equation canvas factor-score render outputs.
 
-structural_canvas_register_factor_score_outputs <- function(output, prefix, fit_result, app_language_fn = NULL) {
+structural_canvas_register_factor_score_outputs <- function(output, prefix, fit_result, app_language_fn = NULL,
+                                                             display_name_for = function(bundle) identity) {
 output[[paste0(prefix, "_result_factor_scores")]] <- renderUI({
   bundle <- fit_result()
   ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
   values <- structural_canvas_factor_score_quality(bundle$fit)
   if (!nrow(values)) return(NULL)
+  display_name <- display_name_for(bundle)
+  values <- structural_canvas_display_identifier_table(values, display_name)
   values$Determinacy <- vapply(values$Determinacy, format_decimal3, character(1))
   values[["Score reliability"]] <- vapply(values[["Score reliability"]], format_decimal3, character(1))
   tagList(

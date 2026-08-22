@@ -11,6 +11,11 @@ structural_canvas_measurement_coefficient_choices <- function(language = statedu
   stats::setNames(c("measurement_value", "measurement_p"), c("loading / weight", "loading(p) / weight(p)"))
 }
 
+structural_canvas_bootstrap_replicate_values <- function(include_disabled = TRUE) {
+  values <- c(1000L, 5000L, 10000L, 20000L, 50000L)
+  if (isTRUE(include_disabled)) c(0L, values) else values
+}
+
 structural_analysis_options_panel <- function(analysis_type = "cbsem", language = statedu_initial_language()) {
   ko <- identical(normalize_app_language(language), "ko")
   prefix <- structural_analysis_prefix(analysis_type)
@@ -24,8 +29,11 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
     }
     stats::setNames(as.character(values), labels)
   }
-  bootstrap_select <- function(suffix, label_ko, label_en, values) {
-    selectInput(input_id(suffix), if (ko) label_ko else label_en, choices = bootstrap_choices(values), selected = "0")
+  bootstrap_select <- function(suffix, label_ko, label_en, values, selected = "0") {
+    values <- as.integer(values)
+    selected <- as.character(selected)
+    if (!selected %in% as.character(values)) selected <- as.character(values[[1L]])
+    selectInput(input_id(suffix), if (ko) label_ko else label_en, choices = bootstrap_choices(values), selected = selected)
   }
   bootstrap_details <- function(suffix, ...) {
     conditionalPanel(sprintf("input['%s'] != '0'", input_id(suffix)), ...)
@@ -76,7 +84,7 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
           if (ko) "가중치·층화·PSU가 있는 복합표본" else "Complex survey (weights/strata/PSU)",
           if (ko) "종단·반복측정자료" else "Longitudinal or repeated measures"
         )
-      ), selected = "not_declared"
+      ), selected = "independent_cross_sectional"
     ),
     tags$p(class = "structural-option-note", if (ko) "분석 전에 표집구조를 명시적으로 확인하십시오. 현재 캔버스 엔진은 군집, 복합표본 또는 종단·반복측정의 의존구조를 무시한 분석을 실행하지 않습니다." else "Confirm the sampling structure explicitly before analysis. The current canvas engine will not fit a model that ignores clustered, complex-survey, longitudinal, or repeated-measures dependence."),
     if (!identical(analysis_type, "plssem")) selectInput(input_id("_missing"), if (ko) "결측치 처리" else "Missing data", choices = stats::setNames(c("fiml", "listwise"), c("FIML", if (ko) "목록 삭제" else "Listwise deletion"))),
@@ -86,10 +94,17 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
 
   bootstrap_tab <- tabPanel(
     if (ko) "부트스트랩" else "Bootstrap",
-    tags$p(class = "structural-option-note", if (ko) "기본 모형을 먼저 적합하고, 선택한 재표집 분석만 추가로 실행합니다. 모든 부트스트랩의 기본값은 '계산하지 않음'입니다." else "The base model is fitted first, and only selected resampling analyses are added. All bootstrap procedures default to 'Do not compute'."),
+    tags$p(
+      class = "structural-option-note",
+      if (analysis_type %in% c("cbsem", "sem")) {
+        if (ko) "기본 모형을 먼저 적합하며, 경로·간접·총효과 bootstrap은 기본 5,000회입니다. 그 밖의 재표집 분석은 선택한 경우에만 추가로 실행합니다." else "The base model is fitted first. Path, indirect, and total-effect bootstrap defaults to 5,000 resamples; other resampling analyses run only when selected."
+      } else {
+        if (ko) "기본 모형을 먼저 적합하고, 선택한 재표집 분석만 추가로 실행합니다. 모든 부트스트랩의 기본값은 '계산하지 않음'입니다." else "The base model is fitted first, and only selected resampling analyses are added. All bootstrap procedures default to 'Do not compute'."
+      }
+    ),
     if (analysis_type %in% c("cbsem", "sem")) tagList(
       tags$h5(if (ko) "경로·간접·총효과" else "Path, indirect, and total effects"),
-      bootstrap_select("_effect_bootstrap", "경로·간접·총효과 bootstrap CI/p", "Path, indirect, and total-effect bootstrap CI/p", c(0L, 1000L, 5000L, 10000L, 20000L, 50000L)),
+      bootstrap_select("_effect_bootstrap", "경로·간접·총효과 bootstrap CI/p", "Path, indirect, and total-effect bootstrap CI/p", structural_canvas_bootstrap_replicate_values(), selected = "5000"),
       bootstrap_details(
         "_effect_bootstrap",
         numericInput(input_id("_effect_bootstrap_seed"), if (ko) "경로·간접·총효과 seed" else "Path/indirect/total-effect seed", value = default_seed(), min = 1L, step = 1L),
@@ -99,14 +114,14 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
     ),
     if (identical(analysis_type, "cfa")) tagList(
       tags$h5(if (ko) "측정모형 신뢰도" else "Measurement-model reliability"),
-      bootstrap_select("_reliability_bootstrap", "AVE·신뢰도 bootstrap CI", "AVE/reliability bootstrap CI", c(0L, 500L, 1000L, 2000L)),
+      bootstrap_select("_reliability_bootstrap", "AVE·신뢰도 bootstrap CI", "AVE/reliability bootstrap CI", structural_canvas_bootstrap_replicate_values()),
       bootstrap_details(
         "_reliability_bootstrap",
         numericInput(input_id("_reliability_seed"), if (ko) "AVE·신뢰도 seed" else "AVE/reliability seed", value = default_seed(), min = 1L, step = 1L),
         selectInput(input_id("_reliability_ci_method"), if (ko) "AVE·신뢰도 CI 방법" else "AVE/reliability CI method", choices = c("Bias-corrected (BC)" = "bias_corrected", "Percentile" = "percentile", "BCa (slower)" = "bca"), selected = "bias_corrected")
       ),
       tags$h5(if (ko) "전체 모형 적합도" else "Global model fit"),
-      bootstrap_select("_bollen_stine_bootstrap", "Bollen-Stine 전체 적합도 bootstrap", "Bollen-Stine global-fit bootstrap", c(0L, 500L, 1000L, 2000L)),
+      bootstrap_select("_bollen_stine_bootstrap", "Bollen-Stine 전체 적합도 bootstrap", "Bollen-Stine global-fit bootstrap", structural_canvas_bootstrap_replicate_values()),
       bootstrap_details(
         "_bollen_stine_bootstrap",
         numericInput(input_id("_bollen_stine_seed"), "Bollen-Stine seed", value = default_seed(), min = 1L, step = 1L),
@@ -115,7 +130,7 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
     ),
     if (!identical(analysis_type, "plssem")) tagList(
       tags$h5(if (ko) "판별타당도" else "Discriminant validity"),
-      bootstrap_select("_htmt_bootstrap", "HTMT bootstrap CI", "HTMT bootstrap CI", c(0L, 1000L, 5000L, 10000L, 20000L, 50000L)),
+      bootstrap_select("_htmt_bootstrap", "HTMT bootstrap CI", "HTMT bootstrap CI", structural_canvas_bootstrap_replicate_values()),
       bootstrap_details(
         "_htmt_bootstrap",
         numericInput(input_id("_htmt_seed"), "HTMT seed", value = default_seed(), min = 1L, step = 1L),
@@ -124,7 +139,7 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
     ),
     if (identical(analysis_type, "plssem")) tagList(
       tags$h5(if (ko) "PLS 모수 및 구조효과" else "PLS parameters and structural effects"),
-      bootstrap_select("_pls_bootstrap", "PLS 경로·loading·weight·간접·총효과 bootstrap CI/p", "PLS path/loading/weight/indirect/total-effect bootstrap CI/p", c(0L, 1000L, 5000L, 10000L, 50000L)),
+      bootstrap_select("_pls_bootstrap", "PLS 경로·loading·weight·간접·총효과 bootstrap CI/p", "PLS path/loading/weight/indirect/total-effect bootstrap CI/p", structural_canvas_bootstrap_replicate_values()),
       bootstrap_details(
         "_pls_bootstrap",
         numericInput(input_id("_pls_seed"), "PLS bootstrap seed", value = default_seed(), min = 1L, step = 1L),

@@ -123,6 +123,29 @@ structural_canvas_residual_diagnostics <- function(fit, cutoff = 2.58, top_n = 2
   )
 }
 
+structural_canvas_display_residual_diagnostics <- function(diagnostics, display_name = identity) {
+  if (!is.list(diagnostics) || !isTRUE(diagnostics$available)) return(diagnostics)
+  result <- diagnostics
+  for (name in intersect(c("standardized", "correlation"), names(result))) {
+    result[[name]] <- structural_canvas_display_matrix_names(result[[name]], display_name)
+  }
+  for (name in intersect(c("largest", "group_summary", "group_largest", "group_pairs"), names(result))) {
+    result[[name]] <- structural_canvas_display_identifier_table(result[[name]], display_name)
+  }
+  if (is.list(result$by_group)) {
+    result$by_group <- lapply(result$by_group, function(group) {
+      for (name in intersect(c("standardized", "correlation"), names(group))) {
+        group[[name]] <- structural_canvas_display_matrix_names(group[[name]], display_name)
+      }
+      for (name in intersect(c("pairs", "largest"), names(group))) {
+        group[[name]] <- structural_canvas_display_identifier_table(group[[name]], display_name)
+      }
+      group
+    })
+  }
+  result
+}
+
 structural_canvas_factor_correlation_diagnostics <- function(fit) {
   correlations <- as.matrix(lavaan::lavInspect(fit, "cor.lv"))
   if (nrow(correlations) < 2L) return(data.frame())

@@ -7,6 +7,11 @@ if (!requireNamespace("seminr", quietly = TRUE)) {
   stop("seminr is required for PLS-SEM validation.")
 }
 
+holzinger_swineford <- utils::read.csv(
+  file.path("sample", "HolzingerSwineford1939.csv"),
+  check.names = FALSE, stringsAsFactors = FALSE
+)
+
 set.seed(20260813)
 n <- 180L
 eta1 <- stats::rnorm(n)
@@ -46,6 +51,127 @@ labels_fn <- function() character(0)
 language_fn <- function() "en"
 ko_language_fn <- function() "ko"
 variable_table <- data.frame(name = names(data), measurement = "scale", stringsAsFactors = FALSE)
+
+# Every result surface uses one display-only resolver.  These checks protect
+# the precedence rule and ensure that computation-only interaction/product
+# keys never leak into tables or residual diagnostics.
+display_test_snapshot <- list(nodes = list(
+  list(id = "display_x", role = "indicator", name = "x1", dataLabel = "x1", canvasLabel = "Observed canvas label"),
+  list(id = "display_w", role = "indicator", name = "w1", dataLabel = "w1", canvasLabel = "Canvas moderator item"),
+  list(id = "display_y", role = "indicator", name = "y1", dataLabel = "Imported outcome item", canvasLabel = "Canvas outcome item"),
+  list(id = "display_eta1", role = "latent", name = "eta1", dataLabel = "eta1", canvasLabel = "Exposure construct"),
+  list(id = "display_eta2", role = "latent", name = "eta2", dataLabel = "eta2", canvasLabel = "Outcome construct")
+))
+display_test_product <- "statedu_pi_eta1_eta2_x1_w1"
+display_test_interaction <- "statedu_int_eta1_eta2"
+display_test_definitions <- list(list(
+  predictor = "eta1", moderator = "eta2", interaction_factor = display_test_interaction,
+  product_indicator_pairs = data.frame(
+    name = display_test_product,
+    predictor_indicator = "x1",
+    moderator_indicator = "w1",
+    stringsAsFactors = FALSE
+  )
+))
+display_test_table <- data.frame(
+  name = c("x1", "w1", "y1"),
+  var_label = c("Imported predictor item", "Imported moderator item", ""),
+  stringsAsFactors = FALSE
+)
+display_test_labels <- c(x1 = "Edited predictor item", w1 = "")
+display_test_name <- structural_canvas_display_name_resolver(
+  display_test_snapshot, display_test_table, display_test_labels,
+  display_test_definitions, "en"
+)
+stopifnot(
+  identical(display_test_name("x1"), "Edited predictor item"),
+  identical(display_test_name("w1"), "Imported moderator item"),
+  identical(display_test_name("y1"), "Imported outcome item"),
+  identical(display_test_name("eta1"), "Exposure construct"),
+  identical(display_test_name("eta2"), "Outcome construct"),
+  identical(display_test_name("unknown"), "unknown"),
+  identical(display_test_name(display_test_interaction), "Exposure construct × Outcome construct"),
+  identical(display_test_name(display_test_product), "Edited predictor item × Imported moderator item"),
+  identical(display_test_name("eta1*eta2"), "Exposure construct × Outcome construct"),
+  identical(
+    structural_canvas_display_path(paste("eta1", display_test_interaction, "eta2", sep = " -> "), display_test_name),
+    "Exposure construct → Exposure construct × Outcome construct → Outcome construct"
+  )
+)
+display_test_identifiers <- data.frame(
+  lhs = display_test_product,
+  rhs = "x1",
+  Path = paste("eta1", display_test_interaction, "eta2", sep = " -> "),
+  Indicator1 = display_test_product,
+  Indicator2 = "y1",
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+display_test_identifiers_shown <- structural_canvas_display_identifier_table(
+  display_test_identifiers, display_test_name
+)
+stopifnot(
+  !any(grepl("statedu_pi_", unlist(display_test_identifiers_shown, use.names = FALSE), fixed = TRUE)),
+  identical(display_test_identifiers_shown$lhs[[1L]], "Edited predictor item × Imported moderator item"),
+  identical(display_test_identifiers_shown$rhs[[1L]], "Edited predictor item"),
+  grepl("Exposure construct × Outcome construct", display_test_identifiers_shown$Path[[1L]], fixed = TRUE),
+  identical(display_test_identifiers$lhs[[1L]], display_test_product)
+)
+display_test_matrix <- matrix(
+  c(NA_real_, 1.2, NA_real_, NA_real_), nrow = 2L,
+  dimnames = list(c(display_test_product, "y1"), c(display_test_product, "y1"))
+)
+display_test_pairs <- data.frame(
+  Indicator1 = display_test_product,
+  Indicator2 = "y1",
+  `Standardized residual` = 1.2,
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+display_test_residuals <- list(
+  available = TRUE,
+  standardized = display_test_matrix,
+  correlation = display_test_matrix,
+  largest = display_test_pairs,
+  group_summary = display_test_pairs,
+  group_largest = display_test_pairs,
+  group_pairs = display_test_pairs,
+  by_group = list(Overall = list(
+    standardized = display_test_matrix,
+    correlation = display_test_matrix,
+    pairs = display_test_pairs,
+    largest = display_test_pairs
+  ))
+)
+display_test_residuals_shown <- structural_canvas_display_residual_diagnostics(
+  display_test_residuals, display_test_name
+)
+stopifnot(
+  !any(grepl("statedu_pi_", rownames(display_test_residuals_shown$standardized), fixed = TRUE)),
+  !any(grepl("statedu_pi_", colnames(display_test_residuals_shown$correlation), fixed = TRUE)),
+  !any(grepl("statedu_pi_", unlist(display_test_residuals_shown$largest, use.names = FALSE), fixed = TRUE)),
+  !any(grepl("statedu_pi_", rownames(display_test_residuals_shown$by_group$Overall$standardized), fixed = TRUE)),
+  any(grepl("statedu_pi_", rownames(display_test_residuals$standardized), fixed = TRUE))
+)
+labeled_result_snapshot <- snapshot
+labeled_result_snapshot$nodes <- lapply(labeled_result_snapshot$nodes, function(node) {
+  name <- structural_canvas_name(node)
+  node$dataLabel <- name
+  if (identical(name, "eta1")) node$canvasLabel <- "Exposure construct"
+  if (identical(name, "eta2")) node$canvasLabel <- "Outcome construct"
+  node
+})
+labeled_result_variable_table <- data.frame(
+  name = names(data),
+  var_label = ifelse(names(data) == "x1", "Imported predictor item 1",
+    ifelse(names(data) == "y1", "Imported outcome item 1", "")
+  ),
+  measurement = "scale",
+  stringsAsFactors = FALSE
+)
+labeled_result_labels <- c(x1 = "Edited predictor item 1")
+labeled_result_labels_fn <- function() labeled_result_labels
+labeled_result_variable_table_fn <- function() labeled_result_variable_table
 notification_source <- readLines(file.path("R", "setup_custom_model_canvas_structural_execute_notifications.R"), warn = FALSE, encoding = "UTF-8")
 pls_engine_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_pls_engine.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 handler_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_handlers.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -53,6 +179,33 @@ htmt_render_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_
 reliability_bootstrap_render_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_render_reliability_bootstrap.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 fit_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_render_fit.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 render_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_render.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+tree_stop_probe <- new.env(parent = emptyenv())
+tree_stop_probe$tree <- 0L
+tree_stop_probe$parent <- 0L
+tree_stop_process <- list(
+  is_alive = function() TRUE,
+  kill_tree = function() tree_stop_probe$tree <- tree_stop_probe$tree + 1L,
+  kill = function() tree_stop_probe$parent <- tree_stop_probe$parent + 1L
+)
+stopifnot(
+  isTRUE(statedu_stop_background_process_tree(tree_stop_process)),
+  identical(tree_stop_probe$tree, 1L),
+  identical(tree_stop_probe$parent, 0L)
+)
+structural_select_option_values <- function(html, input_id) {
+  escaped_input_id <- gsub("([][{}()+*^$|\\?.])", "\\\\\\1", input_id)
+  select_pattern <- sprintf('(?s)<select id="%s"[^>]*>(.*?)</select>', escaped_input_id)
+  select_match <- regexec(select_pattern, html, perl = TRUE)
+  select_parts <- regmatches(html, select_match)[[1L]]
+  if (length(select_parts) < 2L) return(integer(0))
+  option_tags <- regmatches(select_parts[[2L]], gregexpr('<option value="[^"]+"', select_parts[[2L]], perl = TRUE))[[1L]]
+  suppressWarnings(as.integer(sub('.*value="([^"]+)".*', '\\1', option_tags, perl = TRUE)))
+}
+cfa_options_html <- htmltools::renderTags(structural_analysis_options_panel("cfa", "en"))[["html"]]
+sem_options_html <- htmltools::renderTags(structural_analysis_options_panel("sem", "en"))[["html"]]
+cbsem_options_html <- htmltools::renderTags(structural_analysis_options_panel("cbsem", "en"))[["html"]]
+plssem_options_html <- htmltools::renderTags(structural_analysis_options_panel("plssem", "en"))[["html"]]
+common_bootstrap_values <- c(0L, 1000L, 5000L, 10000L, 20000L, 50000L)
 fit_benchmark_observed <- matrix(c(1, .4, .2, .4, 1, .3, .2, .3, 1), 3L, 3L)
 fit_benchmark_implied <- matrix(c(1, .35, .15, .35, 1, .25, .15, .25, 1), 3L, 3L)
 fit_benchmark <- structural_canvas_pls_matrix_fit_indices(fit_benchmark_observed, fit_benchmark_implied)
@@ -101,7 +254,24 @@ stopifnot(
   grepl("Rule-based recommendation (confirmation required)", ui_source, fixed = TRUE),
   grepl("estimator_recommendation_confirmed", ui_source, fixed = TRUE),
   grepl("PLS path/loading/weight/indirect/total-effect bootstrap CI/p", ui_source, fixed = TRUE),
-  grepl("All bootstrap procedures default to 'Do not compute'.", ui_source, fixed = TRUE),
+  identical(structural_canvas_bootstrap_replicate_values(FALSE), c(1000L, 5000L, 10000L, 20000L, 50000L)),
+  identical(structural_select_option_values(cfa_options_html, "structural_cfa_reliability_bootstrap"), common_bootstrap_values),
+  identical(structural_select_option_values(cfa_options_html, "structural_cfa_bollen_stine_bootstrap"), common_bootstrap_values),
+  identical(structural_select_option_values(cfa_options_html, "structural_cfa_htmt_bootstrap"), common_bootstrap_values),
+  identical(structural_select_option_values(sem_options_html, "structural_sem_effect_bootstrap"), common_bootstrap_values),
+  identical(structural_select_option_values(sem_options_html, "structural_sem_htmt_bootstrap"), common_bootstrap_values),
+  identical(structural_select_option_values(cbsem_options_html, "structural_cbsem_effect_bootstrap"), common_bootstrap_values),
+  identical(structural_select_option_values(cbsem_options_html, "structural_cbsem_htmt_bootstrap"), common_bootstrap_values),
+  identical(structural_select_option_values(plssem_options_html, "structural_plssem_pls_bootstrap"), common_bootstrap_values),
+  !grepl('value="30000"', paste(cfa_options_html, sem_options_html, cbsem_options_html, plssem_options_html), fixed = TRUE),
+  grepl('<option value="0" selected>Do not compute</option>', cfa_options_html, fixed = TRUE),
+  grepl("Path, indirect, and total-effect bootstrap defaults to 5,000 resamples", cbsem_options_html, fixed = TRUE),
+  grepl('<option value="independent_cross_sectional" selected>Independent cross-sectional observations</option>', cbsem_options_html, fixed = TRUE),
+  grepl('<option value="5000" selected>5,000 resamples</option>', cbsem_options_html, fixed = TRUE),
+  grepl('<option value="20000">20,000 resamples</option>', cbsem_options_html, fixed = TRUE),
+  grepl("All bootstrap procedures default to 'Do not compute'.", plssem_options_html, fixed = TRUE),
+  grepl('<option value="0" selected>Do not compute</option>', plssem_options_html, fixed = TRUE),
+  grepl('<option value="20000">20,000 resamples</option>', plssem_options_html, fixed = TRUE),
   grepl("PLSpredict predictive assessment", ui_source, fixed = TRUE),
   grepl("PLS-SEM quality checklist", ui_source, fixed = TRUE),
   grepl("repeated PLSpredict boundary conditions", ui_source, fixed = TRUE),
@@ -163,6 +333,10 @@ stopifnot(
   grepl('paste0(prefix, "_effect_bootstrap_stop")', handler_source, fixed = TRUE),
   grepl('paste0(prefix, "-effect-bootstrap-progress")', handler_source, fixed = TRUE),
   grepl("SEM path, indirect, and total-effect bootstrap progress", handler_source, fixed = TRUE),
+  grepl("effect_is_queued", handler_source, fixed = TRUE),
+  grepl("start_cfa_bootstrap(queued_bundle)", handler_source, fixed = TRUE),
+  grepl("The Stop action applies to the one queued SEM bootstrap operation", handler_source, fixed = TRUE),
+  !grepl("process$kill()", handler_source, fixed = TRUE),
   any(grepl("Shiny.setInputValue('%s', Date.now(), {priority: 'event'})", notification_source, fixed = TRUE)),
   grepl("statedu_bootstrap_status_ui(", handler_source, fixed = TRUE),
   !grepl("Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed", ui_source, fixed = TRUE)
@@ -193,11 +367,11 @@ covariate_adjusted_syntax <- paste(
   sep = "\n"
 )
 covariate_research_fit <- lavaan::sem(
-  covariate_research_syntax, data = lavaan::HolzingerSwineford1939,
+  covariate_research_syntax, data = holzinger_swineford,
   estimator = "MLR", fixed.x = FALSE
 )
 covariate_adjusted_fit <- lavaan::sem(
-  covariate_adjusted_syntax, data = lavaan::HolzingerSwineford1939,
+  covariate_adjusted_syntax, data = holzinger_swineford,
   estimator = "MLR", fixed.x = FALSE
 )
 covariate_fit_comparison <- structural_canvas_covariate_fit_comparison(
@@ -347,6 +521,50 @@ stopifnot(
   all(c("Std. residual variance", "Cross-loading", "Guidance") %in% names(cbsem_measurement_diagnostics)),
   !any(grepl("95% CI", names(cbsem_measurement_diagnostics), fixed = TRUE))
 )
+labeled_cbsem_bundle <- cbsem_bundle
+labeled_cbsem_bundle$snapshot <- labeled_result_snapshot
+labeled_cbsem_result <- function() labeled_cbsem_bundle
+labeled_cbsem_validity <- structural_canvas_result_table(
+  "validity", labeled_cbsem_result, "cbsem", labeled_result_labels_fn,
+  language_fn, labeled_result_variable_table_fn
+)
+labeled_cbsem_measurement <- structural_canvas_result_table(
+  "measurement", labeled_cbsem_result, "cbsem", labeled_result_labels_fn,
+  language_fn, labeled_result_variable_table_fn
+)
+labeled_cbsem_structural <- structural_canvas_result_table(
+  "structural", labeled_cbsem_result, "cbsem", labeled_result_labels_fn,
+  language_fn, labeled_result_variable_table_fn
+)
+# CFA and SEM share the same result mapper; exercising CFA separately guards
+# against a later analysis-type branch bypassing the label-first pipeline.
+labeled_cfa_measurement <- structural_canvas_result_table(
+  "measurement", labeled_cbsem_result, "cfa", labeled_result_labels_fn,
+  language_fn, labeled_result_variable_table_fn
+)
+labeled_display_name <- structural_canvas_display_name_resolver(
+  labeled_result_snapshot, labeled_result_variable_table, labeled_result_labels,
+  list(), "en"
+)
+labeled_latent_correlation_ci <- structural_canvas_display_identifier_table(
+  structural_canvas_latent_correlation_intervals(cbsem$fit), labeled_display_name
+)
+labeled_factor_scores <- structural_canvas_display_identifier_table(
+  structural_canvas_factor_score_quality(cbsem$fit), labeled_display_name
+)
+stopifnot(
+  all(c("Exposure construct", "Outcome construct") %in% names(labeled_cbsem_validity)),
+  all(c("Exposure construct", "Outcome construct") %in% labeled_cbsem_validity$Latent),
+  "Edited predictor item 1" %in% labeled_cbsem_measurement$Indicator,
+  "Imported outcome item 1" %in% labeled_cbsem_measurement$Indicator,
+  all(c("Exposure construct", "Outcome construct") %in% labeled_cbsem_measurement$Latent),
+  identical(labeled_cbsem_structural$Predictor[[1L]], "Exposure construct"),
+  identical(labeled_cbsem_structural$Outcome[[1L]], "Outcome construct"),
+  identical(labeled_cfa_measurement$Indicator, labeled_cbsem_measurement$Indicator),
+  all(labeled_latent_correlation_ci[["Factor 1"]] %in% c("Exposure construct", "Outcome construct")),
+  all(labeled_latent_correlation_ci[["Factor 2"]] %in% c("Exposure construct", "Outcome construct")),
+  all(labeled_factor_scores$Factor %in% c("Exposure construct", "Outcome construct"))
+)
 result_layout_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_render.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 stopifnot(
   grepl('uiOutput(paste0(prefix, "_result_htmt"))', result_layout_source, fixed = TRUE),
@@ -408,7 +626,7 @@ cbsem_moderation_snapshot <- structural_canvas_result_snapshot(moderation_snapsh
 stopifnot(
   length(cbsem_moderation$moderation_definitions) == 1L,
   grepl("statedu_int", cbsem_moderation$syntax, fixed = TRUE),
-  any(cbsem_moderation_table$Predictor == "eta1*W"),
+  any(cbsem_moderation_table$Predictor == "eta1 × W"),
   !any(grepl("^statedu_int", cbsem_moderation_table$Predictor)),
   length(cbsem_moderation_snapshot$moderations) == 1L,
   isTRUE(cbsem_moderation_snapshot$moderations[[1L]]$resultMatched),
@@ -546,10 +764,198 @@ stopifnot(
   identical(cbsem_latent_moderation$moderation_definitions[[1L]]$moderator_role, "latent"),
   identical(cbsem_latent_moderation$moderation_definitions[[1L]]$product_indicator_method, "all_pairs_dmc"),
   cbsem_latent_moderation$moderation_definitions[[1L]]$product_indicator_count == 9L,
+  is.data.frame(cbsem_latent_moderation$moderation_definitions[[1L]]$product_indicator_pairs),
+  nrow(cbsem_latent_moderation$moderation_definitions[[1L]]$product_indicator_pairs) == 9L,
   grepl("statedu_int", cbsem_latent_moderation$syntax, fixed = TRUE),
   grepl("statedu_pi_etaX_etaW_x1_w1", cbsem_latent_moderation$syntax, fixed = TRUE),
   is.data.frame(cbsem_latent_moderation_jn),
   all(c("Direct", "Indirect") %in% cbsem_latent_moderation_jn$Effect)
+)
+labeled_latent_moderation_snapshot <- latent_moderation_snapshot
+labeled_latent_moderation_snapshot$nodes <- lapply(labeled_latent_moderation_snapshot$nodes, function(node) {
+  name <- structural_canvas_name(node)
+  node$dataLabel <- name
+  latent_labels <- c(
+    etaX = "Exposure construct", etaW = "Moderator construct",
+    etaM = "Mediator construct", etaY = "Outcome construct"
+  )
+  if (name %in% names(latent_labels)) node$canvasLabel <- unname(latent_labels[[name]])
+  node
+})
+labeled_latent_moderation_table <- data.frame(
+  name = names(latent_moderation_data),
+  var_label = ifelse(names(latent_moderation_data) == "w1", "Moderator item 1", ""),
+  measurement = "scale",
+  stringsAsFactors = FALSE
+)
+labeled_latent_moderation_labels <- c(x1 = "Exposure item 1")
+labeled_latent_moderation_name <- structural_canvas_display_name_resolver(
+  labeled_latent_moderation_snapshot,
+  labeled_latent_moderation_table,
+  labeled_latent_moderation_labels,
+  cbsem_latent_moderation$moderation_definitions,
+  "en"
+)
+latent_moderation_definition <- cbsem_latent_moderation$moderation_definitions[[1L]]
+latent_product_names <- latent_moderation_definition$product_indicators
+latent_product_display_names <- labeled_latent_moderation_name(latent_product_names)
+labeled_latent_moderation_bundle <- list(
+  fit = cbsem_latent_moderation$fit,
+  syntax = cbsem_latent_moderation$syntax,
+  snapshot = labeled_latent_moderation_snapshot,
+  diagnostics = cbsem_latent_moderation,
+  moderation_definitions = cbsem_latent_moderation$moderation_definitions,
+  effect_definitions = cbsem_latent_moderation$effect_definitions,
+  estimator = "MLR",
+  missing = "fiml",
+  rmsea_ci = .90,
+  validity_formula = "standardized",
+  analysis_type = "cbsem"
+)
+labeled_latent_moderation_result <- function() labeled_latent_moderation_bundle
+labeled_latent_labels_fn <- function() labeled_latent_moderation_labels
+labeled_latent_variable_table_fn <- function() labeled_latent_moderation_table
+labeled_latent_structural <- structural_canvas_result_table(
+  "structural", labeled_latent_moderation_result, "cbsem",
+  labeled_latent_labels_fn, language_fn, labeled_latent_variable_table_fn
+)
+labeled_latent_measurement <- structural_canvas_result_table(
+  "measurement", labeled_latent_moderation_result, "cbsem",
+  labeled_latent_labels_fn, language_fn, labeled_latent_variable_table_fn
+)
+labeled_latent_jn <- structural_canvas_moderation_jn_table(
+  labeled_latent_moderation_bundle,
+  display_name = labeled_latent_moderation_name
+)
+latent_residuals_raw <- structural_canvas_residual_diagnostics(cbsem_latent_moderation$fit)
+latent_residuals_shown <- structural_canvas_display_residual_diagnostics(
+  latent_residuals_raw, labeled_latent_moderation_name
+)
+stopifnot(
+  length(latent_product_display_names) == 9L,
+  !any(grepl("statedu_pi_", latent_product_display_names, fixed = TRUE)),
+  "Exposure item 1 × Moderator item 1" %in% latent_product_display_names,
+  identical(
+    labeled_latent_moderation_name(latent_moderation_definition$interaction_factor),
+    "Exposure construct × Moderator construct"
+  ),
+  "Exposure construct × Moderator construct" %in% labeled_latent_structural$Predictor,
+  !"Exposure construct × Moderator construct" %in% labeled_latent_measurement$Latent,
+  !any(grepl("statedu_pi_", unlist(labeled_latent_structural, use.names = FALSE), fixed = TRUE)),
+  !any(grepl("statedu_pi_", unlist(labeled_latent_measurement, use.names = FALSE), fixed = TRUE)),
+  !any(grepl("statedu_pi_", unlist(labeled_latent_jn, use.names = FALSE), fixed = TRUE)),
+  !any(grepl("statedu_pi_", rownames(latent_residuals_shown$standardized), fixed = TRUE)),
+  !any(grepl("statedu_pi_", colnames(latent_residuals_shown$correlation), fixed = TRUE)),
+  !any(grepl("statedu_pi_", unlist(latent_residuals_shown$largest, use.names = FALSE), fixed = TRUE)),
+  any(grepl("statedu_pi_", rownames(latent_residuals_raw$standardized), fixed = TRUE))
+)
+
+# Workbook labels are display-only.  Parameter keys and syntax stay raw in the
+# fitted object/model-syntax sheet, while every user-facing result sheet maps
+# factors, indicators, interactions, product indicators, MI, residuals and JN.
+labeled_latent_moderation_bundle$mi <- data.frame(
+  step = 1L,
+  lhs = latent_product_names[[1L]],
+  op = "~~",
+  rhs = "y1",
+  mi = 4,
+  `MI p` = .04,
+  `BH-adjusted p` = .04,
+  `Multiplicity family size` = 1L,
+  epc = .1,
+  sepc.lv = .1,
+  sepc.all = .1,
+  stringsAsFactors = FALSE,
+  check.names = FALSE
+)
+labeled_latent_moderation_result <- function() labeled_latent_moderation_bundle
+labeled_latent_table_fn <- function(kind) structural_canvas_result_table(
+  kind, labeled_latent_moderation_result, "cbsem",
+  labeled_latent_labels_fn, language_fn, labeled_latent_variable_table_fn
+)
+labeled_latent_sheets <- structural_canvas_result_workbook_sheets(
+  labeled_latent_moderation_bundle,
+  labeled_latent_table_fn,
+  labeled_latent_moderation_name
+)
+workbook_display_sheets <- labeled_latent_sheets[setdiff(
+  names(labeled_latent_sheets), c("Model_Syntax", "Analysis_Record")
+)]
+workbook_display_values <- unlist(lapply(workbook_display_sheets, function(value) {
+  c(names(as.data.frame(value, check.names = FALSE)), unlist(value, use.names = FALSE))
+}), use.names = FALSE)
+stopifnot(
+  "Parameter_Estimates" %in% names(labeled_latent_sheets),
+  "MI_Candidates" %in% names(labeled_latent_sheets),
+  "Latent_Correlations" %in% names(labeled_latent_sheets),
+  "Residual_Z" %in% names(labeled_latent_sheets),
+  "Johnson_Neyman" %in% names(labeled_latent_sheets),
+  !any(grepl("statedu_pi_", workbook_display_values, fixed = TRUE)),
+  any(grepl("statedu_pi_", labeled_latent_sheets$Model_Syntax$Line, fixed = TRUE)),
+  "Exposure item 1 × Moderator item 1" %in% labeled_latent_sheets$Parameter_Estimates$rhs,
+  identical(labeled_latent_sheets$MI_Candidates$lhs[[1L]], "Exposure item 1 × Moderator item 1"),
+  "Exposure construct × Moderator construct" %in% labeled_latent_sheets$Latent_Correlations$Factor,
+  "Exposure item 1 × Moderator item 1" %in% labeled_latent_sheets$Residual_Z$Indicator
+)
+
+# Workbook tables must never run an already-displayed label through the
+# resolver a second time.  These deliberately colliding labels reproduce the
+# ambiguous case where one variable's label is another variable's raw key.
+collision_snapshot <- labeled_latent_moderation_snapshot
+collision_snapshot$nodes <- lapply(collision_snapshot$nodes, function(node) {
+  name <- structural_canvas_name(node)
+  if (identical(name, "etaX")) node$canvasLabel <- "etaW"
+  if (identical(name, "etaW")) node$canvasLabel <- "Moderator construct"
+  node
+})
+collision_labels <- c(x1 = "x2", x2 = "Outcome item 2")
+collision_variable_table <- labeled_latent_moderation_table
+collision_variable_table$var_label <- ""
+collision_bundle <- labeled_latent_moderation_bundle
+collision_bundle$snapshot <- collision_snapshot
+collision_result <- function() collision_bundle
+collision_labels_fn <- function() collision_labels
+collision_variable_table_fn <- function() collision_variable_table
+collision_display_name <- structural_canvas_display_name_resolver(
+  collision_snapshot,
+  collision_variable_table,
+  collision_labels,
+  collision_bundle$moderation_definitions,
+  "en"
+)
+collision_table_fn <- function(kind) structural_canvas_result_table(
+  kind, collision_result, "cbsem",
+  collision_labels_fn, language_fn, collision_variable_table_fn
+)
+collision_expected_measurement <- collision_table_fn("measurement")
+collision_expected_jn <- structural_canvas_moderation_jn_table(
+  collision_bundle, display_name = collision_display_name
+)
+collision_expected_residuals <- structural_canvas_display_residual_diagnostics(
+  structural_canvas_residual_diagnostics(collision_bundle$fit),
+  collision_display_name
+)
+collision_sheets <- structural_canvas_result_workbook_sheets(
+  collision_bundle, collision_table_fn, collision_display_name
+)
+stopifnot(
+  identical(collision_display_name(c("x1", "x2")), c("x2", "Outcome item 2")),
+  identical(collision_display_name(c("etaX", "etaW")), c("etaW", "Moderator construct")),
+  identical(collision_sheets$Measurement, collision_expected_measurement),
+  all(c("x2", "Outcome item 2") %in% collision_sheets$Measurement$Indicator),
+  is.data.frame(collision_expected_jn),
+  nrow(collision_expected_jn) > 0L,
+  identical(collision_sheets$Johnson_Neyman, collision_expected_jn),
+  identical(
+    collision_sheets$Residual_Z$Indicator,
+    rownames(collision_expected_residuals$standardized)
+  ),
+  identical(
+    names(collision_sheets$Residual_Z)[-1L],
+    colnames(collision_expected_residuals$standardized)
+  ),
+  "x2" %in% collision_sheets$Residual_Z$Indicator,
+  "x2" %in% names(collision_sheets$Residual_Z)
 )
 matched_latent_moderation_snapshot <- latent_moderation_snapshot
 matched_latent_moderation_snapshot$moderationMethod <- "matched_pair_dmc"
@@ -583,9 +989,26 @@ sem_result <- function() sem_bundle
 stopifnot(nrow(structural_canvas_result_table("overview", sem_result, "sem", labels_fn, language_fn)) > 0L)
 sem_structural <- structural_canvas_result_table("structural", sem_result, "sem", labels_fn, language_fn)
 stopifnot(nrow(sem_structural) == 1L)
-stopifnot(sem_structural$Effect[[1L]] == "Direct")
+stopifnot(!"Effect" %in% names(sem_structural))
 stopifnot(sem_structural$Outcome[[1L]] == "eta2")
 stopifnot(sem_structural$Predictor[[1L]] == "eta1")
+labeled_sem_bundle <- sem_bundle
+labeled_sem_bundle$snapshot <- labeled_result_snapshot
+labeled_sem_result <- function() labeled_sem_bundle
+labeled_sem_measurement <- structural_canvas_result_table(
+  "measurement", labeled_sem_result, "sem", labeled_result_labels_fn,
+  language_fn, labeled_result_variable_table_fn
+)
+labeled_sem_structural <- structural_canvas_result_table(
+  "structural", labeled_sem_result, "sem", labeled_result_labels_fn,
+  language_fn, labeled_result_variable_table_fn
+)
+stopifnot(
+  "Edited predictor item 1" %in% labeled_sem_measurement$Indicator,
+  "Imported outcome item 1" %in% labeled_sem_measurement$Indicator,
+  identical(labeled_sem_structural$Predictor[[1L]], "Exposure construct"),
+  identical(labeled_sem_structural$Outcome[[1L]], "Outcome construct")
+)
 sem_recommendation <- structural_canvas_estimator_recommendation(snapshot, data, variable_table, "sem", "ML")
 stopifnot(is.logical(sem_recommendation$recommend), !is.null(sem_recommendation$diagnosis))
 sem_htmt_bootstrap <- structural_canvas_run_htmt_bootstrap("sem", 8L, sem, data, 20260818L, character(0), .85, "percentile")
@@ -712,7 +1135,7 @@ if (requireNamespace("callr", quietly = TRUE)) {
     identical(effect_initial_progress$phase, "starting"),
     identical(effect_initial_progress$total, 100L)
   )
-  cancellable_effect_job$process$kill()
+  structural_canvas_stop_effect_bootstrap_job(cancellable_effect_job)
   structural_canvas_cleanup_effect_bootstrap_job(cancellable_effect_job)
   stopifnot(!dir.exists(cancellable_effect_directory))
 }
@@ -988,6 +1411,36 @@ stopifnot(all(c("Construct", "Indicator", "Loading", "Weight", "Item VIF", "Max 
 stopifnot(any(nzchar(pls_measurement_guide[["Item VIF"]])))
 stopifnot(nrow(pls_mi) == 0L)
 
+labeled_pls_bundle <- pls_bundle
+labeled_pls_bundle$snapshot <- labeled_result_snapshot
+labeled_pls_result <- function() labeled_pls_bundle
+labeled_pls_fit <- structural_canvas_result_table(
+  "fit", labeled_pls_result, "plssem", labeled_result_labels_fn,
+  language_fn, labeled_result_variable_table_fn
+)
+labeled_pls_validity <- structural_canvas_result_table(
+  "validity", labeled_pls_result, "plssem", labeled_result_labels_fn,
+  language_fn, labeled_result_variable_table_fn
+)
+labeled_pls_measurement <- structural_canvas_result_table(
+  "measurement", labeled_pls_result, "plssem", labeled_result_labels_fn,
+  language_fn, labeled_result_variable_table_fn
+)
+labeled_pls_htmt <- structural_canvas_result_table(
+  "pls_htmt", labeled_pls_result, "plssem", labeled_result_labels_fn,
+  language_fn, labeled_result_variable_table_fn
+)
+stopifnot(
+  "Exposure construct → Outcome construct" %in% labeled_pls_fit$Path,
+  all(c("Exposure construct", "Outcome construct") %in% labeled_pls_validity$Construct),
+  all(c("Exposure construct", "Outcome construct") %in% labeled_pls_measurement$Construct),
+  "Edited predictor item 1" %in% labeled_pls_measurement$Indicator,
+  "Imported outcome item 1" %in% labeled_pls_measurement$Indicator,
+  "Exposure construct" %in% labeled_pls_htmt$Construct,
+  !any(grepl("statedu_pi_", unlist(labeled_pls_fit, use.names = FALSE), fixed = TRUE)),
+  !any(grepl("statedu_pi_", unlist(labeled_pls_measurement, use.names = FALSE), fixed = TRUE))
+)
+
 pls_snapshot <- structural_canvas_result_snapshot(snapshot, pls$fit, "beta")
 stopifnot(any(vapply(pls_snapshot$nodes, function(node) {
   identical(node$role, "latent") && is.list(node$resultStatsValues) && length(node$resultStatsValues) > 0L
@@ -1043,17 +1496,74 @@ stopifnot(pls_options$pls_predict_folds == 5L)
 stopifnot(pls_options$pls_predict_reps == 1L)
 stopifnot(is.finite(pls_options$pls_predict_seed))
 stopifnot(pls_options$sampling_design == "independent_cross_sectional")
-undeclared_options <- structural_canvas_execute_settings(settings = list(), input = list(), prefix = "structural_plssem")
-stopifnot(identical(undeclared_options$sampling_design, "not_declared"))
-stopifnot(identical(undeclared_options$pls_bootstrap, 0L))
-stopifnot(identical(undeclared_options$estimator_recommendation_confirmed, FALSE))
+pls_default_options <- structural_canvas_execute_settings(settings = list(), input = list(), prefix = "structural_plssem")
+stopifnot(identical(pls_default_options$sampling_design, "independent_cross_sectional"))
+stopifnot(identical(pls_default_options$pls_bootstrap, 0L))
+stopifnot(identical(pls_default_options$estimator_recommendation_confirmed, FALSE))
+pls_common_bootstrap_options <- structural_canvas_execute_settings(settings = list(pls_bootstrap = 20000L), input = list(), prefix = "structural_plssem")
+stopifnot(identical(pls_common_bootstrap_options$pls_bootstrap, 20000L))
 confirmed_options <- structural_canvas_execute_settings(settings = list(estimator_recommendation_confirmed = TRUE), input = list(), prefix = "structural_plssem")
 stopifnot(identical(confirmed_options$estimator_recommendation_confirmed, TRUE))
+cfa_default_options <- structural_canvas_execute_settings(settings = list(), input = list(), prefix = "structural_cfa")
+stopifnot(identical(cfa_default_options$sampling_design, "independent_cross_sectional"))
+stopifnot(identical(cfa_default_options$effect_bootstrap, 0L))
+stopifnot(identical(cfa_default_options$reliability_bootstrap, 0L))
+stopifnot(identical(cfa_default_options$bollen_stine_bootstrap, 0L))
+stopifnot(identical(cfa_default_options$htmt_bootstrap, 0L))
+cfa_common_bootstrap_options <- structural_canvas_execute_settings(
+  settings = list(reliability_bootstrap = 20000L, bollen_stine_bootstrap = 20000L, htmt_bootstrap = 20000L),
+  input = list(),
+  prefix = "structural_cfa"
+)
+stopifnot(
+  identical(cfa_common_bootstrap_options$reliability_bootstrap, 20000L),
+  identical(cfa_common_bootstrap_options$bollen_stine_bootstrap, 20000L),
+  identical(cfa_common_bootstrap_options$htmt_bootstrap, 20000L)
+)
+cfa_legacy_bootstrap_options <- structural_canvas_execute_settings(
+  settings = list(reliability_bootstrap = 500L, bollen_stine_bootstrap = 2000L),
+  input = list(),
+  prefix = "structural_cfa"
+)
+stopifnot(
+  identical(cfa_legacy_bootstrap_options$reliability_bootstrap, 0L),
+  identical(cfa_legacy_bootstrap_options$bollen_stine_bootstrap, 0L)
+)
+sem_default_options <- structural_canvas_execute_settings(settings = list(), input = list(), prefix = "structural_sem")
+stopifnot(identical(sem_default_options$sampling_design, "independent_cross_sectional"))
+stopifnot(identical(sem_default_options$effect_bootstrap, 5000L))
+stopifnot(identical(sem_default_options$htmt_bootstrap, 0L))
 cbsem_default_options <- structural_canvas_execute_settings(settings = list(), input = list(), prefix = "structural_cbsem")
-stopifnot(identical(cbsem_default_options$sampling_design, "not_declared"))
-stopifnot(identical(cbsem_default_options$effect_bootstrap, 0L))
+stopifnot(identical(cbsem_default_options$sampling_design, "independent_cross_sectional"))
+stopifnot(identical(cbsem_default_options$effect_bootstrap, 5000L))
 stopifnot(identical(cbsem_default_options$htmt_bootstrap, 0L))
 stopifnot(identical(cbsem_default_options$htmt_ci_method, "bias_corrected"))
+restored_cbsem_options <- structural_canvas_execute_settings(
+  settings = list(sampling_design = "not_declared", effect_bootstrap = 0L, htmt_bootstrap = 20000L),
+  input = list(
+    structural_cbsem_sampling_design = "clustered",
+    structural_cbsem_effect_bootstrap = "20000",
+    structural_cbsem_htmt_bootstrap = "10000"
+  ),
+  prefix = "structural_cbsem"
+)
+stopifnot(
+  identical(restored_cbsem_options$sampling_design, "not_declared"),
+  identical(restored_cbsem_options$effect_bootstrap, 0L),
+  identical(restored_cbsem_options$htmt_bootstrap, 20000L)
+)
+input_cbsem_options <- structural_canvas_execute_settings(
+  settings = list(),
+  input = list(
+    structural_cbsem_sampling_design = "clustered",
+    structural_cbsem_effect_bootstrap = "20000"
+  ),
+  prefix = "structural_cbsem"
+)
+stopifnot(
+  identical(input_cbsem_options$sampling_design, "clustered"),
+  identical(input_cbsem_options$effect_bootstrap, 20000L)
+)
 common_method_record_options <- structural_canvas_execute_settings(settings = list(
   common_method_procedural_controls = "Separated predictor and outcome measurement times",
   common_method_marker_variable = "social_desirability_marker",

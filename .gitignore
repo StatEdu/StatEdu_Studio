@@ -29,6 +29,7 @@ dist/
 output/
 outputs/
 scratch/
+tmp/
 data/output/
 modules/latent_mplus/app/output/
 modules/latent_mplus/app/outputs/

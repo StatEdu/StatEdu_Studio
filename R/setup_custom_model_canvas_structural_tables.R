@@ -713,39 +713,23 @@ structural_canvas_specific_indirect_table <- function(structural_table) {
   )
 }
 
-structural_canvas_result_table <- function(kind, fit_result, analysis_type, labels_fn, app_language_fn = NULL) {
+structural_canvas_result_table <- function(kind, fit_result, analysis_type, labels_fn, app_language_fn = NULL,
+                                           variable_table_fn = function() NULL) {
   bundle <- fit_result()
   shiny::req(!is.null(bundle))
   fit <- bundle$fit
   snapshot <- bundle$snapshot %||% list()
   labels <- labels_fn() %||% character(0)
+  variable_table <- if (is.function(variable_table_fn)) variable_table_fn() else variable_table_fn
   ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
   moderation_definitions <- bundle$diagnostics$moderation_definitions %||% bundle$moderation_definitions %||% list()
-  interaction_display_names <- vapply(moderation_definitions, function(item) {
-    predictor <- as.character(item$predictor %||% "")
-    moderator <- as.character(item$moderator %||% "")
-    if (nzchar(predictor) && nzchar(moderator)) paste0(predictor, "*", moderator) else ""
-  }, character(1))
-  names(interaction_display_names) <- vapply(
-    moderation_definitions,
-    function(item) as.character(item$interaction_factor %||% ""),
-    character(1)
+  display_name <- structural_canvas_display_name_resolver(
+    snapshot = snapshot,
+    variable_table = variable_table,
+    labels = labels,
+    moderation_definitions = moderation_definitions,
+    language = statedu_current_language(app_language_fn)
   )
-  interaction_display_names <- interaction_display_names[
-    nzchar(names(interaction_display_names)) & nzchar(interaction_display_names)
-  ]
-  display_name <- function(name) {
-    name <- as.character(name %||% "")
-    if (name %in% names(interaction_display_names)) return(unname(interaction_display_names[[name]]))
-    node <- Filter(function(item) identical(structural_canvas_name(item), name), snapshot$nodes %||% list())
-    label <- if (length(node)) as.character(node[[1]]$canvasLabel %||% "") else ""
-    if (!nzchar(label) && !is.null(names(labels)) && name %in% names(labels)) label <- as.character(labels[[name]] %||% "")
-    if (!nzchar(label) && length(node)) label <- as.character(node[[1]]$dataLabel %||% "")
-    if (!ko && grepl("^잠재변수\\s*[0-9]+$", label)) {
-      label <- sub("^잠재변수\\s*", "Latent variable ", label)
-    }
-    if (nzchar(label)) label else name
-  }
   residual_name <- function(name) {
     target <- Filter(function(item) identical(structural_canvas_name(item), as.character(name)), snapshot$nodes %||% list())
     if (!length(target)) return(display_name(name))
@@ -780,7 +764,15 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
       moderation_factors <- vapply(moderation_definitions, function(item) as.character(item$interaction_factor %||% ""), character(1))
       moderation_factors <- moderation_factors[nzchar(moderation_factors)]
       if (length(moderation_factors) && "Latent" %in% names(measurement_table)) {
-        measurement_table <- measurement_table[!measurement_table$Latent %in% moderation_factors, , drop = FALSE]
+        # The measurement table is already display-mapped at this point.  Keep
+        # the existing rule that internal product-indicator constructs are not
+        # reported, but compare against their mapped names as well as the raw
+        # keys so label-first output cannot accidentally bypass the filter.
+        moderation_display_factors <- as.character(display_name(moderation_factors))
+        measurement_table <- measurement_table[
+          !measurement_table$Latent %in% unique(c(moderation_factors, moderation_display_factors)),
+          , drop = FALSE
+        ]
       }
       return(measurement_table)
     }

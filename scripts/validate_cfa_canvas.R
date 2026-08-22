@@ -119,7 +119,8 @@ stopifnot(
   isTRUE(structural_canvas_validate_model_based_bootstrap(ml$fit)),
   identical(structural_canvas_bootstrap_status(c(80, 79, 50, 49, 0), 100), c("Adequate", "Caution", "Caution", "Unreliable", "Unreliable")),
   identical(structural_canvas_bootstrap_ci_method("BCa (slower)"), "bca"),
-  grepl('progress(index, total_iterations, length(Filter(function(value) !is.null(value) && nrow(value), estimates[seq_len(index)])))', bootstrap_source, fixed = TRUE)
+  grepl("progress(1L, total_iterations, valid_count)", bootstrap_source, fixed = TRUE),
+  grepl("progress(completed, total_iterations, valid_count)", bootstrap_source, fixed = TRUE)
 )
 bca_bootstrap_values <- seq(.10, 1.10, length.out = 100L)^2
 bca_jackknife_values <- vapply(seq_len(30L), function(index) mean((seq_len(30L)[-index])^1.2), numeric(1))

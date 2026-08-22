@@ -1,7 +1,19 @@
-structural_canvas_register_local_fit_outputs <- function(output, prefix, fit_result, app_language_fn = NULL) {
+structural_canvas_register_local_fit_outputs <- function(output, prefix, fit_result, app_language_fn = NULL,
+                                                         variable_table_fn = function() NULL,
+                                                         labels_fn = function() character(0)) {
+  display_name_for <- function(bundle) structural_canvas_display_name_resolver(
+    snapshot = bundle$snapshot %||% list(),
+    variable_table = if (is.function(variable_table_fn)) variable_table_fn() else variable_table_fn,
+    labels = if (is.function(labels_fn)) labels_fn() %||% character(0) else labels_fn %||% character(0),
+    moderation_definitions = bundle$diagnostics$moderation_definitions %||% bundle$moderation_definitions %||% list(),
+    language = statedu_current_language(app_language_fn)
+  )
 output[[paste0(prefix, "_result_residuals")]] <- renderUI({
   bundle <- fit_result()
-  diagnostics <- structural_canvas_residual_diagnostics(bundle$fit)
+  diagnostics <- structural_canvas_display_residual_diagnostics(
+    structural_canvas_residual_diagnostics(bundle$fit),
+    display_name_for(bundle)
+  )
   if (!isTRUE(diagnostics$available)) return(NULL)
   matrix_table <- function(matrix_value, title) {
     values <- matrix("", nrow(matrix_value), ncol(matrix_value) + 1L)
@@ -42,14 +54,15 @@ output[[paste0(prefix, "_result_higher_order")]] <- renderUI({
   higher <- structural_canvas_higher_order_results(bundle$snapshot %||% list(), bundle$fit)
   if (!isTRUE(higher$available)) return(NULL)
   table <- higher$table
+  display_name <- display_name_for(bundle)
   fixed <- !is.na(table$SE) & table$SE == 0 & is.na(table$z) & is.na(table$p)
   residual_abnormal <- !is.finite(table$ResidualVariance) | table$ResidualVariance < 0 | table$ResidualVariance > 1
   residual_display <- paste0(vapply(table$ResidualVariance, format_decimal3, character(1)), ifelse(residual_abnormal, "†", ""))
   r2_interval_abnormal <- !is.finite(table$R2CILower) | !is.finite(table$R2CIUpper) | table$R2CILower < 0 | table$R2CIUpper > 1
   loading_guidance <- vapply(table$Beta, structural_canvas_higher_order_loading_guidance, character(1))
   display <- data.frame(
-    `Higher-order factor` = table$HigherOrderFactor,
-    `Lower-order factor` = table$LowerOrderFactor,
+    `Higher-order factor` = display_name(table$HigherOrderFactor),
+    `Lower-order factor` = display_name(table$LowerOrderFactor),
     B = vapply(table$B, format_decimal3, character(1)),
     `B 95% CI lower` = vapply(table$BCILower, format_decimal3, character(1)),
     `B 95% CI upper` = vapply(table$BCIUpper, format_decimal3, character(1)),
@@ -118,7 +131,7 @@ output[[paste0(prefix, "_result_higher_order")]] <- renderUI({
     if (isTRUE(omega_h$available)) tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
       tags$thead(tags$tr(tags$th(if (ko) "고차요인" else "Higher-order factor"), tags$th(if (ko) "지표 수" else "Indicators"), tags$th(if (ko) "위계적 omega (omega-h)" else "Hierarchical omega (ωh)"), tags$th(if (ko) "해석" else "Guidance"))),
       tags$tbody(tags$tr(
-        tags$td(omega_h$higher_order_factor), tags$td(omega_h$indicators),
+        tags$td(display_name(omega_h$higher_order_factor)), tags$td(omega_h$indicators),
         tags$td(paste0(format_decimal3(omega_h$omega_h), if (!is.finite(omega_h$omega_h) || omega_h$omega_h < 0 || omega_h$omega_h > 1) "†" else "")),
         tags$td(omega_h_guidance)
       ))

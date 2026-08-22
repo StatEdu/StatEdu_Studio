@@ -1,11 +1,14 @@
 # Structural equation canvas latent correlation render outputs.
 
-structural_canvas_register_latent_correlation_outputs <- function(output, prefix, fit_result, app_language_fn = NULL) {
+structural_canvas_register_latent_correlation_outputs <- function(output, prefix, fit_result, app_language_fn = NULL,
+                                                                  display_name_for = function(bundle) identity) {
 output[[paste0(prefix, "_result_latent_correlation_ci")]] <- renderUI({
   bundle <- fit_result()
   ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
   values <- structural_canvas_latent_correlation_intervals(bundle$fit, level = .95)
   if (!nrow(values)) return(NULL)
+  display_name <- display_name_for(bundle)
+  values <- structural_canvas_display_identifier_table(values, display_name)
   values$r <- vapply(values$r, format_decimal3, character(1))
   values[["CI lower"]] <- vapply(values[["CI lower"]], format_decimal3, character(1))
   values[["CI upper"]] <- vapply(values[["CI upper"]], format_decimal3, character(1))

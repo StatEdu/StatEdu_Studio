@@ -41,6 +41,40 @@
 | 결과 전환 | 계산 완료 뒤 결과표·결과 모형이 20초 이상 늦거나 표시되지 않음 | 반복 설정 I/O, 불필요한 worker 모듈, 결과/원본 snapshot 연결 누락 | `validate_mediation_moderation_runtime.R`: 결과 RDS 읽기 1초 이내, 사용자 캔버스용 결과 HTML 생성 5초 이내, 임시 job 폴더 정리 확인; `validate_custom_model_canvas.R`: 결과 snapshot·UI 전환 계약 |
 | Delta R² | 값이 있는데 비어 있거나 값이 없는데 빈 행 출력 | 행 생성이 실제 값이 아니라 모형 순서에 의존 | `validate_custom_model_canvas.R`: 유효값이면 값과 행 출력, `NULL`·빈 문자열·`NA`면 행 자체 제거, combined Y 검증 |
 | 공통 UI | CFA·SEM·PLS-SEM·사용자 모델의 툴바 줄 수·위치·폰트가 달라짐 | 화면별 별도 레이아웃과 재마운트 | `validate_ui_layout_contract.R` 및 `validate_custom_model_canvas.R`: 공통 레이아웃·아이콘 toolbar·사용자 모델 기본 글꼴 13px 계약 |
+| 구조모형 기본 설정 | 새 CFA·SEM·PLS-SEM에서 표집구조가 미선언으로 시작하거나 SEM 간접효과 bootstrap이 꺼져 있음 | 공통 설정 UI와 실행 시 fallback의 기본값 불일치 | `validate_cfa_ui.R`·`validate_sem_canvas.R`: 기본 표집구조는 `독립 관측 횡단자료`, SEM 경로·간접·총효과 기본값은 5,000회, 선택지는 1,000 / 5,000 / 10,000 / 20,000 / 50,000이며 30,000은 없음. CFA·PLS-SEM의 기존 비활성 기본값은 유지 |
+| 구조모형 결과 라벨 | 표·잔차행렬·Johnson-Neyman·Excel에서 변수명/라벨이 혼용되거나 `statedu_pi_*` 내부명이 노출됨 | 결과 화면별 별도 이름 변환 및 product-indicator 표시 변환 누락 | `validate_cfa_ui.R`·`validate_sem_canvas.R`: CFA·SEM·PLS-SEM 화면/내보내기 모두 유효 라벨 우선, 라벨이 없을 때만 원 변수명 사용, 내부 product-indicator 이름 비노출 |
+| 구조모형 bootstrap 성능 | 작은 CFA·SEM·PLS-SEM 모형도 준비 단계가 길고 반복 속도가 비정상적으로 낮음 | worker 전체 모듈 로드, 반복마다 고정 구문·진단을 재생성하거나 local PSOCK callback이 controller의 표본 목록을 캡처 | `validate_structural_bootstrap_performance.R`: 일상 core에서 대표 fixture의 DMC 재표집 동등성·원/표준화 추정치·엄격 적합 판정·진행 단조성·동일 seed 재현성을 검사한다. 고정 비제품 default-normal 분기와 complete/no-NA FIML+meanstructure product-aware 분기는 각각 legacy full-SE와 tolerance 0으로 비교한다. product gate는 worker 2/4·chunk 변경 시 sample index/valid mask/raw/std 순서 동일성, deferred refit와 단일-position full batch, screen/full whole-batch fail-open 및 actual-NA 비활성화를 실제 실행한다. 비제품 gate는 single-worker guard·강제 item/block 오류·전송 callback 10 KB 미만을 확인한다. 설치 전 focused gate에서는 CFA 1,000회·SEM 5,000회·PLS-SEM 1,000회를 실제 background 경로로 실행하고 실측 JSON을 다시 읽어 검증한다. 잠재 product 실행 엔진은 별도 opt-in 5,000회 3-fixture benchmark에서 새 경로와 직전 two-stage `lavaanList`의 sample index/valid mask/raw/std/결과표를 tolerance 0으로 비교한다. 보고서가 없거나 시간 상한·진행·반복수·결과 계약 중 하나라도 어기면 패키징 중단 |
+
+### 자동 구조모형 bootstrap 실측 증거
+
+집중 회귀 게이트는 `STATEDU_STRUCTURAL_BOOTSTRAP_MODE=installer`를 강제하고 `STATEDU_STRUCTURAL_BOOTSTRAP_REPORT`에 JSON 실측 기록을 남긴다. 보고서에는 CFA 1,000회, SEM 5,000회, PLS-SEM 1,000회의 준비·첫 완료·전체 시간과 SEM worker 수·재표집·요약 시간을 포함한다. PowerShell 게이트가 이 파일을 다시 읽어 `passed=true`와 정확한 실제 반복수를 확인하기 전에는 성공 메시지를 출력하지 않는다. CFA·PLS-SEM 제품 기본값 0은 유지하되, 성능 회귀 검증에서는 충분한 실제 반복을 수행한다.
+
+시간 상한은 느린 검증 PC에서 명시적으로 조정할 수 있지만 무제한 우회는 허용하지 않는다. `STATEDU_STRUCTURAL_SEM_MAX_SECONDS`(기본 360초), `STATEDU_STRUCTURAL_CFA_MAX_SECONDS`(180초), `STATEDU_STRUCTURAL_PLS_MAX_SECONDS`(240초), `STATEDU_STRUCTURAL_PREPARE_MAX_SECONDS`(3초), `STATEDU_STRUCTURAL_FIRST_COMPLETION_MAX_SECONDS`(15초), `STATEDU_STRUCTURAL_SUMMARIZE_MAX_SECONDS`(2초)를 사용한다. 숫자가 아니거나 0 이하이거나 코드에 정한 최대 상한을 넘는 override는 즉시 실패한다. 자동 실측값이 없으면 수동 점검이 양호해도 설치본을 만들지 않는다.
+
+2026-08-22 19:36 KST 번들 R 4.5.3/lavaan 0.7-2 기준 승인 후보 baseline은 CFA 1,000회 86.960초, SEM 5,000회 106.127초, PLS-SEM 1,000회 7.223초다. 모든 첫 실제 완료는 15초 이내였고(CFA 10.965초, SEM 13.214초, PLS-SEM 5.445초), SEM은 준비 0.060초, worker 시작 7.524초, 1차 재표집 88.414초, 선별 후보 105개 full-SE 검증 5.038초, 결과 요약 0.009초였다. 같은 SEM stress fixture의 최적화 전 284.842초보다 62.7% 단축됐지만, 다음 설치본이 이 baseline보다 25% 이상 느려지면 상한 안이더라도 원인을 확인하고 승인하지 않는다.
+
+### 잠재 product SEM 5,000회 실행 엔진 기준선
+
+2026-08-22 23:30~23:43 KST에 같은 번들 R/lavaan, worker 12개, chunk 250으로
+`fast_product_index`와 직전 `prior_two_stage_lavaanList`를 fixture별 순차 비교했다.
+
+| fixture | 새 경로 | 직전 2단계 경로 | 배속 / 단축률 | strict valid | exact / fallback |
+|---|---:|---:|---:|---:|---:|
+| PoliticalDemocracy all-pairs DMC, 75행·product 6개 | 42.954초 | 112.144초 | 2.61배 / 61.7% | 122 / 5,000 | tolerance 0 / 0건 |
+| 결정적 안정 matched-pair DMC, 240행·product 3개 | 78.987초 | 196.057초 | 2.48배 / 59.7% | 5,000 / 5,000 | tolerance 0 / 0건 |
+| 결정적 안정 all-pairs DMC, 240행·product 9개 | 122.158초 | 208.503초 | 1.71배 / 41.4% | 5,000 / 5,000 | tolerance 0 / 0건 |
+
+원본 보고서는 `tmp/sem_product_bootstrap_5000_20260822_multifixture.json`이다. 세 사례
+모두 sample indices, valid mask, raw/standardized draw와 결과표가 정확히 같았다. 다음
+설치본 생성 전에는 번들 runtime에서 `STATEDU_RUN_5000_BENCHMARK=1`을 명시하고
+`scripts/benchmark_sem_product_bootstrap_5000.R`를 다시 실행한다. 최종 보고서의
+`status = "passed"`, 실제 5,000회, 세 fixture 완료,
+`all_exact_tolerance_zero = true`, clean-active product-aware 경로, fallback 0건과
+양쪽 valid 수 일치를 모두 확인한다. 같은 승인 PC에서 새 경로 시간이 위 기준보다
+25% 이상 느린 fixture가 하나라도 있으면 원인을 확인하고 승인하지 않는다. 다른 PC는
+하드웨어·Windows·R/lavaan·worker 수를 기록하고 같은 PC의 직전 승인 설치본과 비교한다.
+강제 오류 whole-batch fallback은 이 장기 실측의 fallback 0건과 별도로 일상 core에서
+반드시 통과해야 한다.
 
 ## 설치본 수동 성능 점검
 
@@ -54,6 +88,10 @@
 | `.studio` 설정 불러오기: 클릭부터 변수표·모형 복원까지 | 5초 초과 또는 원본/temp 파일을 중복 적용 |
 | 매개·조절 사용자 모델 메뉴: 클릭부터 toolbar와 격자 조작 가능까지 | 3초 초과 |
 | 75행, focal X 2개, X당 bootstrap 5,000회 | 전체 20초 초과 |
+| CFA·SEM·PLS-SEM 분석 설정을 새로 열기 | 기본 표집구조가 `독립 관측 횡단자료`가 아니거나 SEM 효과 bootstrap 기본값이 5,000회가 아님 |
+| CFA·SEM·PLS-SEM bootstrap 선택지 | 해당 공통 선택지가 1,000 / 5,000 / 10,000 / 20,000 / 50,000과 다르거나 30,000이 다시 나타남 |
+| CFA·SEM·PLS-SEM 대표 모형의 bootstrap 준비/실행 | 준비 단계가 전체 시간의 대부분을 차지하거나 직전 승인 설치본 대비 25% 이상 느려짐 |
+| 잠재 product SEM 5,000회 3-fixture 실행 엔진 비교 | 보고서가 없거나 세 사례 중 하나라도 tolerance 0 불일치, clean-active 실패, fallback 발생, valid 수 불일치 또는 같은 승인 PC 기준 25% 이상 회귀 |
 | bootstrap 100%부터 결과표와 결과 모형 표시까지 | 5초 초과 |
 | Electron `startup.log` | 5 MiB를 넘고도 rotation되지 않거나 정상 모드에서 DOM snapshot이 반복 기록됨 |
 
@@ -68,6 +106,10 @@
 - [ ] 분석 완료 후 원 모형과 결과 모형을 모두 다시 볼 수 있고, 탭 왕복·언어 변경·설정 적용 뒤에도 노드와 경로가 유지된다.
 - [ ] 분석 실행 후 toolbar 아이콘이 사라지거나 빈 공간만 남지 않는다.
 - [ ] CFA, SEM, PLS-SEM, 매개·조절 사용자 모델에서 공통 상태바와 캔버스 스타일을 확인한다.
+- [ ] 새 CFA·SEM·PLS-SEM 분석 설정의 표집구조가 `독립 관측 횡단자료`이며, SEM 경로·간접·총효과 bootstrap은 기본 5,000회이다.
+- [ ] 공통 재표집 선택지는 1,000 / 5,000 / 10,000 / 20,000 / 50,000이고 30,000은 표시되지 않는다.
+- [ ] CFA·SEM·PLS-SEM 결과 화면과 Excel 내보내기에서 라벨이 있으면 라벨만 우선 표시하고, 라벨이 없을 때만 변수명을 표시한다.
+- [ ] 잔차행렬, 큰 잔차 쌍, 구조경로, 간접효과, Johnson-Neyman, product-indicator 결과에 `statedu_pi_*` 같은 내부 변수명이 노출되지 않는다.
 - [ ] CFA·SEM·PLS-SEM toolbar 아이콘은 최대 두 줄 안에 배치되고, PLS-SEM이 다시 4줄로 밀리지 않으며, 편집 관련 아이콘은 오른쪽 그룹에 있다.
 - [ ] 매개·조절 사용자 모델의 기본 글꼴 크기는 13px이다.
 - [ ] Delta R² 값이 있는 계층 모형은 값이 보이고, 값이 없는 모형에는 `Delta R²` 행 자체가 없다.
@@ -93,11 +135,21 @@ BAT/브라우저 런처 재호출 시간·PID 재사용 여부:
 설정 복원 시간:
 사용자 캔버스 표시 시간:
 bootstrap 모형/반복 수와 총 시간:
+CFA bootstrap 준비/실행 시간:
+SEM bootstrap 준비/실행 시간:
+PLS-SEM bootstrap 준비/실행 시간:
+구조모형 bootstrap 자동 실측 JSON 경로:
+자동 실측 반복수(CFA/SEM/PLS-SEM): 1,000 / 5,000 / 1,000
+잠재 product SEM 5,000회 3-fixture JSON 경로:
+잠재 product fast/prior 시간·배속(Political / matched / all-pairs):
+잠재 product exact tolerance 0·fallback 0건: Pass / Fail
 100% 이후 결과 표시 시간:
 
 상태바 단일성·단조성: Pass / Fail
 모형·toolbar 보존: Pass / Fail
 Delta R² 조건부 행: Pass / Fail
+구조모형 기본 설정·20,000 선택지: Pass / Fail
+CFA·SEM·PLS-SEM 라벨 우선·내부명 비노출: Pass / Fail
 로그 rotation 및 종료 후 잔여 프로세스: Pass / Fail
 
 실패 증상과 재현 순서:

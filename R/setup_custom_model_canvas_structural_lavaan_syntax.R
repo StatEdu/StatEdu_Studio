@@ -153,6 +153,13 @@ structural_canvas_structural_moderation_terms <- function(snapshot, data, edges,
     interaction_factor <- structural_canvas_structural_effect_label("statedu_int", edge_info$predictor, moderator)
     moderator_label <- structural_canvas_structural_effect_label("statedu_mod", moderator, edge_info$outcome)
     interaction_label <- structural_canvas_structural_effect_label("statedu_jn", edge_info$predictor, moderator)
+    product_indicator_pairs <- data.frame(
+      name = product_names,
+      predictor_indicator = vapply(product_specs, function(item) as.character(item$predictor_indicator %||% ""), character(1)),
+      moderator_indicator = vapply(product_specs, function(item) as.character(item$moderator_indicator %||% ""), character(1)),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
     measurement_lines <- c(measurement_lines, paste(interaction_factor, "=~", paste(product_names, collapse = " + ")))
     structural_lines <- c(structural_lines, paste(edge_info$outcome, "~", paste0(moderator_label, "*", moderator), "+", paste0(interaction_label, "*", interaction_factor)))
     definitions[[length(definitions) + 1L]] <- list(
@@ -164,6 +171,7 @@ structural_canvas_structural_moderation_terms <- function(snapshot, data, edges,
       interaction_label = interaction_label,
       interaction_factor = interaction_factor,
       product_indicators = product_names,
+      product_indicator_pairs = product_indicator_pairs,
       product_indicator_method = method,
       product_indicator_count = length(product_names),
       moderator_role = source$role,

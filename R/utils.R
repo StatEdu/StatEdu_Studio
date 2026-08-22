@@ -4,6 +4,21 @@
   if (is.null(x)) y else x
 }
 
+# Stop a supervised callr job together with any PSOCK workers it created.
+# A parent-only kill can leave child R processes consuming CPU after the user
+# presses Stop, changes models, closes the session, or a release gate times out.
+statedu_stop_background_process_tree <- function(process) {
+  if (is.null(process)) return(invisible(FALSE))
+  alive <- tryCatch(isTRUE(process$is_alive()), error = function(error) FALSE)
+  if (!alive) return(invisible(FALSE))
+  kill_tree <- tryCatch(process$kill_tree, error = function(error) NULL)
+  stopped <- tryCatch({
+    if (is.function(kill_tree)) kill_tree() else process$kill()
+    TRUE
+  }, error = function(error) FALSE)
+  invisible(stopped)
+}
+
 normalize_app_language <- function(language) {
   value <- tolower(as.character(language %||% "ko")[[1]])
   aliases <- unlist(unname(lapply(statedu_language_registry(), function(spec) {

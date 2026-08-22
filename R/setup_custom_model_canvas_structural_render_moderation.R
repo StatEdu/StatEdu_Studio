@@ -217,7 +217,7 @@ structural_canvas_moderation_update_factor_score_ranges <- function(definitions,
   })
 }
 
-structural_canvas_moderation_jn_table <- function(bundle, alpha = .05) {
+structural_canvas_moderation_jn_table <- function(bundle, alpha = .05, display_name = identity) {
   definitions <- bundle$diagnostics$moderation_definitions %||% bundle$moderation_definitions %||% list()
   if (!length(definitions) || !inherits(bundle$fit, "lavaan")) return(data.frame())
   definitions <- structural_canvas_moderation_update_factor_score_ranges(definitions, bundle$fit)
@@ -235,12 +235,22 @@ structural_canvas_moderation_jn_table <- function(bundle, alpha = .05) {
   rows <- c(rows, list(indirect_rows))
   rows <- Filter(function(row) is.data.frame(row) && nrow(row), rows)
   if (!length(rows)) return(data.frame())
-  do.call(rbind, rows)
+  structural_canvas_display_identifier_table(do.call(rbind, rows), display_name)
 }
 
-structural_canvas_register_moderation_outputs <- function(output, prefix, fit_result, app_language_fn = NULL) {
+structural_canvas_register_moderation_outputs <- function(output, prefix, fit_result, app_language_fn = NULL,
+                                                          variable_table_fn = function() NULL,
+                                                          labels_fn = function() character(0)) {
   output[[paste0(prefix, "_result_moderation_jn")]] <- renderUI({
-    table <- structural_canvas_moderation_jn_table(fit_result())
+    bundle <- fit_result()
+    display_name <- structural_canvas_display_name_resolver(
+      snapshot = bundle$snapshot %||% list(),
+      variable_table = if (is.function(variable_table_fn)) variable_table_fn() else variable_table_fn,
+      labels = if (is.function(labels_fn)) labels_fn() %||% character(0) else labels_fn %||% character(0),
+      moderation_definitions = bundle$diagnostics$moderation_definitions %||% bundle$moderation_definitions %||% list(),
+      language = statedu_current_language(app_language_fn)
+    )
+    table <- structural_canvas_moderation_jn_table(bundle, display_name = display_name)
     if (!is.data.frame(table) || !nrow(table)) return(NULL)
     ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
     div(class = "result-section regression-result-panel structural-moderation-jn-result",

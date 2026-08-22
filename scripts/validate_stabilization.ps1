@@ -84,7 +84,8 @@ $coreValidations = @(
   "scripts\validate_release_hygiene.R",
   "scripts\validate_data_io.R",
   "scripts\validate_data_upload_performance.R",
-  "scripts\validate_startup_performance_contract.R"
+  "scripts\validate_startup_performance_contract.R",
+  "scripts\validate_structural_bootstrap_performance.R"
 )
 
 $fullOnlyValidations = @(
@@ -124,6 +125,7 @@ $fullOnlyValidations = @(
   "scripts\validate_sem_plsc_scope.R",
   "scripts\validate_sem_sci_gap_audit.R",
   "scripts\validate_sem_structure_effects.R",
+  "scripts\validate_sem_product_index_small.R",
   "scripts\validate_sem_unspecified_block.R",
   "scripts\validate_survival_preflight.R",
   "scripts\validate_survival.R",
