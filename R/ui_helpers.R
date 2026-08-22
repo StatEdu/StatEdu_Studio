@@ -188,8 +188,8 @@ app_brand_title <- function(version) {
 
 app_stylesheet_link <- function(version) {
   tagList(
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-ci-group-header-center-20260816a")),
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-decoupled-cfa-canvas-20260818a"))
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-bootstrap-status-unified-20260821a")),
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-canvas-variable-settings-20260821g"))
   )
 }
 
@@ -198,7 +198,7 @@ app_script_link <- function(version) {
     tags$script(src = paste0("easyflow.js?v=", version, "-structural-menu-20260816a")),
     tags$script(src = paste0("model-canvas/state.js?v=", version, "-paper-view-zoom-20260818a")),
     tags$script(src = paste0("model-canvas/layout.js?v=", version, "-custom-model-canvas-balanced-multi-role-layout-20260729a")),
-    tags$script(src = paste0("model-canvas/shiny-bridge.js?v=", version, "-movable-latent-stats-20260817b")),
+    tags$script(src = paste0("model-canvas/shiny-bridge.js?v=", version, "-persistent-unified-toolbar-20260821a")),
     tags$script(src = paste0("model-canvas/edges.js?v=", version, "-covariance-depth-20260818a")),
     tags$script(src = paste0("model-canvas/nodes.js?v=", version, "-structural-selection-move-policy-20260818a")),
     tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-paper-view-zoom-20260818a")),

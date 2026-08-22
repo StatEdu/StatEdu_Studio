@@ -568,6 +568,18 @@ statedu_time_expr <- function(label, expr, detail = "") {
   force(expr)
 }
 
+register_visible_ui_output <- function(output, session, output_id, ui_fn) {
+  force(output_id)
+  force(ui_fn)
+  output[[output_id]] <- shiny::renderUI({
+    hidden <- session$clientData[[paste0("output_", output_id, "_hidden")]]
+    shiny::req(identical(hidden, FALSE))
+    ui_fn()
+  })
+  shiny::outputOptions(output, output_id, suspendWhenHidden = TRUE)
+  invisible(TRUE)
+}
+
 named_value <- function(x, name, default = "") {
   name <- as.character(name %||% "")
   name <- if (length(name) == 0 || is.na(name[[1]])) "" else name[[1]]

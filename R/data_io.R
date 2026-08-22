@@ -171,31 +171,8 @@ csv_trim_sample_chunk <- function(bytes, trim_start = FALSE, trim_end = FALSE) {
   bytes
 }
 
-csv_encoding_candidates <- function(path) {
+csv_encoding_candidates_from_bytes <- function(bytes) {
   default_encodings <- c("UTF-8", "CP949", "EUC-KR", "latin1")
-  file_size <- suppressWarnings(file.info(path)$size)
-  if (!is.finite(file_size) || file_size <= 0) {
-    return(default_encodings)
-  }
-  chunk_size <- min(file_size, 256L * 1024L)
-  positions <- unique(pmax(0, c(
-    0,
-    floor(file_size / 2) - floor(chunk_size / 2),
-    file_size - chunk_size
-  )))
-  bytes <- tryCatch({
-    connection <- file(path, "rb")
-    on.exit(close(connection), add = TRUE)
-    chunks <- lapply(positions, function(position) {
-      seek(connection, where = position, origin = "start")
-      csv_trim_sample_chunk(
-        readBin(connection, what = "raw", n = chunk_size),
-        trim_start = position > 0,
-        trim_end = position + chunk_size < file_size
-      )
-    })
-    do.call(c, c(chunks, list(as.raw(0x0A))))
-  }, error = function(e) raw(0))
   if (length(bytes) == 0) {
     return(default_encodings)
   }
@@ -224,23 +201,78 @@ csv_encoding_candidates <- function(path) {
   unique(c(ranked, default_encodings))
 }
 
+csv_encoding_candidates <- function(path) {
+  default_encodings <- c("UTF-8", "CP949", "EUC-KR", "latin1")
+  file_size <- suppressWarnings(file.info(path)$size)
+  if (!is.finite(file_size) || file_size <= 0) {
+    return(default_encodings)
+  }
+  chunk_size <- min(file_size, 256L * 1024L)
+  positions <- unique(pmax(0, c(
+    0,
+    floor(file_size / 2) - floor(chunk_size / 2),
+    file_size - chunk_size
+  )))
+  bytes <- tryCatch({
+    connection <- file(path, "rb")
+    on.exit(close(connection), add = TRUE)
+    chunks <- lapply(positions, function(position) {
+      seek(connection, where = position, origin = "start")
+      csv_trim_sample_chunk(
+        readBin(connection, what = "raw", n = chunk_size),
+        trim_start = position > 0,
+        trim_end = position + chunk_size < file_size
+      )
+    })
+    do.call(c, c(chunks, list(as.raw(0x0A))))
+  }, error = function(e) raw(0))
+  csv_encoding_candidates_from_bytes(bytes)
+}
+
 read_csv_robust <- function(path, csv_header = TRUE) {
-  encodings <- csv_encoding_candidates(path)
   best_result <- NULL
   best_score <- -Inf
   errors <- character(0)
+  file_size <- suppressWarnings(file.info(path)$size)
+  use_base_reader <- is.finite(file_size) && file_size <= 10L * 1024L * 1024L
+  small_csv_bytes <- if (isTRUE(use_base_reader)) {
+    tryCatch(readBin(path, what = "raw", n = file_size), error = function(e) raw(0))
+  } else {
+    raw(0)
+  }
+  small_csv_text <- tryCatch(rawToChar(small_csv_bytes), error = function(e) "")
+  use_base_reader <- isTRUE(use_base_reader) && nzchar(small_csv_text)
+  encodings <- if (isTRUE(use_base_reader)) {
+    csv_encoding_candidates_from_bytes(small_csv_bytes)
+  } else {
+    csv_encoding_candidates(path)
+  }
 
   for (encoding in encodings) {
     result <- tryCatch(
       suppressWarnings(
         {
-          readr::read_csv(
-            path,
-            col_names = csv_header,
-            locale = readr::locale(encoding = encoding),
-            show_col_types = FALSE,
-            progress = FALSE
-          )
+          if (isTRUE(use_base_reader)) {
+            converted <- iconv(small_csv_text, from = encoding, to = "UTF-8")
+            if (length(converted) == 0 || is.na(converted[[1]])) {
+              stop(sprintf("could not convert %s text", encoding), call. = FALSE)
+            }
+            converted <- sub("^\ufeff", "", converted)
+            utils::read.csv(
+              text = converted,
+              header = csv_header,
+              stringsAsFactors = FALSE,
+              check.names = FALSE
+            )
+          } else {
+            readr::read_csv(
+              path,
+              col_names = csv_header,
+              locale = readr::locale(encoding = encoding),
+              show_col_types = FALSE,
+              progress = FALSE
+            )
+          }
         }
       ),
       error = function(e) {
@@ -273,6 +305,38 @@ read_csv_robust <- function(path, csv_header = TRUE) {
       paste(utils::tail(errors, 3), collapse = " | ")
     ),
     call. = FALSE
+  )
+}
+
+read_data_direct_with_fallback <- function(path, original_name, reader) {
+  source_path <- normalizePath(path, winslash = "/", mustWork = TRUE)
+  direct_error <- NULL
+  direct_result <- tryCatch(
+    reader(source_path),
+    error = function(error) {
+      direct_error <<- error
+      NULL
+    }
+  )
+  if (!is.null(direct_result)) {
+    return(direct_result)
+  }
+
+  fallback_path <- copy_data_file_for_reading(source_path, original_name)
+  on.exit(unlink(fallback_path), add = TRUE)
+  tryCatch(
+    reader(fallback_path),
+    error = function(fallback_error) {
+      stop(
+        paste0(
+          "Could not read the data file directly or from a local temporary copy. Direct read: ",
+          conditionMessage(direct_error),
+          " | Local copy: ",
+          conditionMessage(fallback_error)
+        ),
+        call. = FALSE
+      )
+    }
   )
 }
 
@@ -384,15 +448,17 @@ read_input_data <- function(
   excel_col_names = TRUE
 ) {
   ext <- tolower(tools::file_ext(original_name))
-  read_path <- copy_data_file_for_reading(path, original_name)
-  on.exit(unlink(read_path), add = TRUE)
 
   if (identical(ext, "sav")) {
-    return(normalize_text_encoding(read_sav_robust(read_path, copy_to_ascii = FALSE)))
+    return(normalize_text_encoding(read_sav_robust(path, copy_to_ascii = TRUE)))
   }
 
   if (identical(ext, "csv")) {
-    return(read_csv_robust(read_path, csv_header = csv_header))
+    return(read_data_direct_with_fallback(
+      path,
+      original_name,
+      function(read_path) read_csv_robust(read_path, csv_header = csv_header)
+    ))
   }
 
   if (identical(ext, "xlsx") && (is.null(excel_sheet) || (!nzchar(excel_sheet))) && identical(normalize_excel_start_cell(excel_start_cell), "A1") && isTRUE(excel_col_names)) {
@@ -402,29 +468,39 @@ read_input_data <- function(
         call. = FALSE
       )
     }
-    return(normalize_text_encoding(openxlsx::read.xlsx(read_path, detectDates = TRUE)))
+    return(read_data_direct_with_fallback(
+      path,
+      original_name,
+      function(read_path) normalize_text_encoding(openxlsx::read.xlsx(read_path, detectDates = TRUE))
+    ))
   }
 
   if (ext %in% c("xlsx", "xls")) {
-    return(read_excel_configured(read_path, sheet = excel_sheet, start_cell = excel_start_cell, col_names = excel_col_names))
+    return(read_data_direct_with_fallback(
+      path,
+      original_name,
+      function(read_path) read_excel_configured(read_path, sheet = excel_sheet, start_cell = excel_start_cell, col_names = excel_col_names)
+    ))
   }
 
   if (ext %in% c("sas7bdat", "xpt")) {
-    return(read_sas_robust(read_path, ext = ext))
+    return(read_data_direct_with_fallback(path, original_name, function(read_path) read_sas_robust(read_path, ext = ext)))
   }
 
   if (identical(ext, "dta")) {
-    return(read_stata_robust(read_path))
+    return(read_data_direct_with_fallback(path, original_name, read_stata_robust))
   }
 
   if (identical(ext, "dat")) {
-    if (identical(dat_delimiter, "comma")) {
-      return(readr::read_delim(read_path, delim = ",", col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
-    }
-    if (identical(dat_delimiter, "tab")) {
-      return(readr::read_tsv(read_path, col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
-    }
-    return(readr::read_table(read_path, col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
+    return(read_data_direct_with_fallback(path, original_name, function(read_path) {
+      if (identical(dat_delimiter, "comma")) {
+        return(readr::read_delim(read_path, delim = ",", col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
+      }
+      if (identical(dat_delimiter, "tab")) {
+        return(readr::read_tsv(read_path, col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
+      }
+      readr::read_table(read_path, col_names = dat_has_names, show_col_types = FALSE, progress = FALSE)
+    }))
   }
 
   stop("Unsupported file type: .", ext, call. = FALSE)
@@ -480,13 +556,28 @@ read_current_data_file <- function(file, input) {
   if (!valid_data_file_value(file)) {
     stop("No supported data file is available. Use a SAV, SAS, Stata, Excel, CSV, or DAT file.", call. = FALSE)
   }
-  csv_header <- if (!is.null(file$csv_header)) isTRUE(file$csv_header) else isTRUE(input$header)
+  extension <- tolower(tools::file_ext(as.character(file$name %||% file$path %||% "")))
+  csv_header <- if (identical(extension, "csv")) {
+    if (!is.null(file$csv_header)) isTRUE(file$csv_header) else isTRUE(input$header)
+  } else {
+    TRUE
+  }
+  dat_delimiter <- if (identical(extension, "dat")) {
+    if (!is.null(file$dat_delimiter)) as.character(file$dat_delimiter) else input$dat_delimiter %||% "whitespace"
+  } else {
+    "whitespace"
+  }
+  dat_has_names <- if (identical(extension, "dat")) {
+    if (!is.null(file$dat_has_names)) isTRUE(file$dat_has_names) else isTRUE(input$dat_has_names)
+  } else {
+    FALSE
+  }
   read_input_data(
     file$path,
     file$name,
     csv_header = csv_header,
-    dat_delimiter = input$dat_delimiter %||% "whitespace",
-    dat_has_names = isTRUE(input$dat_has_names),
+    dat_delimiter = dat_delimiter,
+    dat_has_names = dat_has_names,
     excel_sheet = file$excel_sheet %||% NULL,
     excel_start_cell = file$excel_start_cell %||% "A1",
     excel_col_names = isTRUE(file$excel_col_names %||% TRUE)

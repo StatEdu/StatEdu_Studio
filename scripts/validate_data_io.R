@@ -31,6 +31,7 @@ stopifnot(
   identical(unname(collectors$collect_measurement_inputs()[["x"]]), "ordered"),
   identical(unname(collectors$collect_var_label_inputs()[["x"]]), "X label")
 )
+source(file.path(repo_root, "R", "settings_io.R"))
 
 ko_sex <- statedu_utf8("ec84b1ebb384")
 ko_grade <- statedu_utf8("ed9599eb8584")
@@ -59,6 +60,24 @@ csv_data <- read_input_data(csv_path, "source.csv", csv_header = TRUE)
 stopifnot(nrow(csv_data) == 2)
 stopifnot(identical(names(csv_data), c("x", "y")))
 stopifnot(identical(csv_encoding_candidates(csv_path)[[1]], "UTF-8"))
+
+message("Checking restored CSV import options are fixed before the first read...")
+legacy_csv_file <- settings_apply_data_file_options(
+  list(path = csv_path, name = "source.csv", restored = TRUE),
+  list(data_file_options = list())
+)
+stopifnot(isTRUE(legacy_csv_file$csv_header))
+legacy_csv_data <- read_current_data_file(
+  legacy_csv_file,
+  list(header = FALSE, dat_delimiter = "whitespace", dat_has_names = FALSE)
+)
+stopifnot(nrow(legacy_csv_data) == 2)
+stopifnot(identical(names(legacy_csv_data), c("x", "y")))
+headerless_csv_file <- settings_apply_data_file_options(
+  list(path = csv_path, name = "source.csv", restored = TRUE),
+  list(data_file_options = list(csv_header = FALSE))
+)
+stopifnot(!isTRUE(headerless_csv_file$csv_header))
 
 message("Checking CP949 Korean CSV reads...")
 cp949_path <- tempfile(pattern = "statedu cp949 csv ", fileext = ".csv")

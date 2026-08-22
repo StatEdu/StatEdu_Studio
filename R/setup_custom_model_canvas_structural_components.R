@@ -7,6 +7,10 @@ structural_equation_variable_panel <- function(items, language = statedu_initial
     list_ui,
     div(
       class = "structural-selection-settings",
+      div(
+        class = "structural-selection-settings-title",
+        if (identical(normalize_app_language(language), "ko")) "환경 설정" else "Variable settings"
+      ),
       div(class = "structural-selection-settings-body", if (identical(normalize_app_language(language), "ko")) "캔버스의 변수를 선택하세요." else "Select a variable on the canvas.")
     )
   )

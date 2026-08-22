@@ -23,6 +23,15 @@ source(file.path(repo_root, "R", "setup_custom_model_canvas_toolbar.R"))
 source(file.path(repo_root, "R", "setup_custom_model_canvas_result_snapshot.R"))
 source(file.path(repo_root, "R", "setup_custom_model_canvas_ui.R"))
 
+bridge_source <- paste(
+  readLines(file.path(repo_root, "www", "model-canvas", "shiny-bridge.js"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+stopifnot(
+  grepl('root.querySelector(\'.custom-model-toolbar-panel[data-toolbar-panel="result"]\')', bridge_source, fixed = TRUE),
+  grepl('window.StatEduModelCanvas.canvas.showResult(instance);', bridge_source, fixed = TRUE)
+)
+
 message("Checking custom model canvas snapshot-to-analysis maps...")
 
 node <- function(id, variable, role, x, y) {

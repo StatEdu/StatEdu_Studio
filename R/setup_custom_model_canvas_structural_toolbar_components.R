@@ -132,23 +132,26 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
               })
             )
           ),
-          if (analysis_type %in% c("cbsem", "sem", "plssem")) tagList(
-            custom_model_canvas_button("latentStats", if (ko) "잠재변수 통계" else "Latent statistics", title = if (ko) "표시할 잠재변수 통계량 선택" else "Choose latent-variable statistics to display", mode = TRUE),
-            div(
-              class = "structural-latent-stats-popover",
-              div(class = "structural-latent-stats-title", if (ko) "표시할 통계량" else "Statistics to display"),
-              Map(function(key, label) {
-                tags$label(class = "structural-latent-stats-option",
-                  tags$input(type = "radio", name = paste0(prefix, "_latent_stat"), `data-latent-stat` = key, checked = if (identical(key, "r2")) "checked" else NULL),
-                  as.character(label)
-                )
-              }, c("r2", "ave", "cr", "none"), c("R²", "AVE", "CR", if (ko) "없음" else "None"))
-            )
-          ),
-          custom_model_canvas_button("resultView", if (ko) "결과 모형" else "Result diagram"),
-          custom_model_canvas_button("resultEdit", if (ko) "결과 편집" else "Edit result", mode = TRUE),
-          custom_model_canvas_button("dashNonsignificant", if (ko) "비유의 점선" else "Non-significant dashed", mode = TRUE),
-          custom_model_canvas_button("style", if (ko) "스타일" else "Style")
+          div(
+            class = "structural-result-icon-grid",
+            if (analysis_type %in% c("cbsem", "sem", "plssem")) tagList(
+              custom_model_canvas_button("latentStats", if (ko) "잠재변수 통계" else "Latent statistics", title = if (ko) "표시할 잠재변수 통계량 선택" else "Choose latent-variable statistics to display", mode = TRUE),
+              div(
+                class = "structural-latent-stats-popover",
+                div(class = "structural-latent-stats-title", if (ko) "표시할 통계량" else "Statistics to display"),
+                Map(function(key, label) {
+                  tags$label(class = "structural-latent-stats-option",
+                    tags$input(type = "radio", name = paste0(prefix, "_latent_stat"), `data-latent-stat` = key, checked = if (identical(key, "r2")) "checked" else NULL),
+                    as.character(label)
+                  )
+                }, c("r2", "ave", "cr", "none"), c("R²", "AVE", "CR", if (ko) "없음" else "None"))
+              )
+            ) else span(class = "structural-result-icon-placeholder", `aria-hidden` = "true"),
+            custom_model_canvas_button("resultView", if (ko) "결과 모형" else "Result diagram"),
+            custom_model_canvas_button("resultEdit", if (ko) "결과 편집" else "Edit result", mode = TRUE),
+            custom_model_canvas_button("dashNonsignificant", if (ko) "비유의 점선" else "Non-significant dashed", mode = TRUE),
+            custom_model_canvas_button("style", if (ko) "스타일" else "Style")
+          )
         )
       ),
       div(class = "structural-disturbance-toolbar", `aria-live` = "polite")

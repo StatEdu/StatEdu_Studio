@@ -136,11 +136,33 @@ settings_embedded_data_file <- function(settings) {
   }
   restored_path <- tempfile("statedu_data_", fileext = if (nzchar(extension)) paste0(".", extension) else "")
   writeBin(jsonlite::base64_dec(settings_scalar(embedded)), restored_path)
-  file <- list(path = restored_path, name = file_name, restored = TRUE)
-  if (excel_data_file_extension(file_name) && is.list(settings$data_file_options)) {
-    file$excel_sheet <- settings_scalar(settings$data_file_options$excel_sheet %||% "")
-    file$excel_start_cell <- settings_scalar(settings$data_file_options$excel_start_cell %||% "A1")
-    file$excel_col_names <- isTRUE(settings$data_file_options$excel_col_names %||% TRUE)
+  settings_apply_data_file_options(
+    list(path = restored_path, name = file_name, restored = TRUE),
+    settings
+  )
+}
+
+settings_apply_data_file_options <- function(file, settings) {
+  if (is.null(file)) {
+    return(NULL)
+  }
+  options <- settings$data_file_options
+  if (!is.list(options)) {
+    options <- list()
+  }
+  extension <- tolower(tools::file_ext(as.character(file$name %||% file$path %||% "")))
+  if (identical(extension, "csv")) {
+    # Older settings files did not persist this option. Their UI default was
+    # always TRUE, so pin it on the restored file before the first reactive
+    # data read instead of initially parsing the header as a data row.
+    file$csv_header <- isTRUE(options$csv_header %||% TRUE)
+  } else if (identical(extension, "dat")) {
+    file$dat_delimiter <- settings_scalar(options$dat_delimiter %||% "whitespace")
+    file$dat_has_names <- isTRUE(options$dat_has_names %||% FALSE)
+  } else if (extension %in% c("xlsx", "xls")) {
+    file$excel_sheet <- settings_scalar(options$excel_sheet %||% "")
+    file$excel_start_cell <- settings_scalar(options$excel_start_cell %||% "A1")
+    file$excel_col_names <- isTRUE(options$excel_col_names %||% TRUE)
   }
   file
 }
@@ -150,13 +172,10 @@ settings_external_data_file <- function(settings, settings_path = NULL) {
   if (!nzchar(path)) {
     return(NULL)
   }
-  file <- list(path = path, name = basename(path), restored = TRUE)
-  if (excel_data_file_extension(file$name) && is.list(settings$data_file_options)) {
-    file$excel_sheet <- settings_scalar(settings$data_file_options$excel_sheet %||% "")
-    file$excel_start_cell <- settings_scalar(settings$data_file_options$excel_start_cell %||% "A1")
-    file$excel_col_names <- isTRUE(settings$data_file_options$excel_col_names %||% TRUE)
-  }
-  file
+  settings_apply_data_file_options(
+    list(path = path, name = basename(path), restored = TRUE),
+    settings
+  )
 }
 
 settings_external_data_switch <- function(settings, settings_path = NULL, current_data_file = NULL) {
@@ -173,13 +192,10 @@ settings_external_data_switch <- function(settings, settings_path = NULL, curren
     return(NULL)
   }
 
-  file <- list(path = settings_data_path, name = basename(settings_data_path), restored = TRUE)
-  if (excel_data_file_extension(file$name) && is.list(settings$data_file_options)) {
-    file$excel_sheet <- settings_scalar(settings$data_file_options$excel_sheet %||% "")
-    file$excel_start_cell <- settings_scalar(settings$data_file_options$excel_start_cell %||% "A1")
-    file$excel_col_names <- isTRUE(settings$data_file_options$excel_col_names %||% TRUE)
-  }
-  file
+  settings_apply_data_file_options(
+    list(path = settings_data_path, name = basename(settings_data_path), restored = TRUE),
+    settings
+  )
 }
 
 settings_restored_data_file <- function(settings, settings_path = NULL) {
@@ -631,11 +647,19 @@ create_current_settings_fn <- function(
 ) {
   function() {
     file <- current_data_file_fn()
-    data_file_options <- if (!is.null(file) && excel_data_file_extension(file$name %||% file$path)) {
+    file_extension <- if (is.null(file)) "" else tolower(tools::file_ext(as.character(file$name %||% file$path %||% "")))
+    data_file_options <- if (file_extension %in% c("xlsx", "xls")) {
       list(
         excel_sheet = file$excel_sheet %||% "",
         excel_start_cell = file$excel_start_cell %||% "A1",
         excel_col_names = isTRUE(file$excel_col_names %||% TRUE)
+      )
+    } else if (identical(file_extension, "csv")) {
+      list(csv_header = if (!is.null(file$csv_header)) isTRUE(file$csv_header) else isTRUE(input$header %||% TRUE))
+    } else if (identical(file_extension, "dat")) {
+      list(
+        dat_delimiter = file$dat_delimiter %||% input$dat_delimiter %||% "whitespace",
+        dat_has_names = if (!is.null(file$dat_has_names)) isTRUE(file$dat_has_names) else isTRUE(input$dat_has_names)
       )
     } else {
       NULL

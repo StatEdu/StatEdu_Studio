@@ -207,14 +207,35 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
   })
 
   observeEvent(input$header, {
+    file <- active_data_file()
+    extension <- if (is.null(file)) "" else tolower(tools::file_ext(as.character(file$name %||% file$path %||% "")))
+    value <- isTRUE(input$header)
+    if (identical(extension, "csv") && !identical(file$csv_header, value)) {
+      file$csv_header <- value
+      active_data_file(file)
+    }
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
   observeEvent(input$dat_delimiter, {
+    file <- active_data_file()
+    extension <- if (is.null(file)) "" else tolower(tools::file_ext(as.character(file$name %||% file$path %||% "")))
+    value <- as.character(input$dat_delimiter %||% "whitespace")
+    if (identical(extension, "dat") && !identical(file$dat_delimiter, value)) {
+      file$dat_delimiter <- value
+      active_data_file(file)
+    }
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
   observeEvent(input$dat_has_names, {
+    file <- active_data_file()
+    extension <- if (is.null(file)) "" else tolower(tools::file_ext(as.character(file$name %||% file$path %||% "")))
+    value <- isTRUE(input$dat_has_names)
+    if (identical(extension, "dat") && !identical(file$dat_has_names, value)) {
+      file$dat_has_names <- value
+      active_data_file(file)
+    }
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 

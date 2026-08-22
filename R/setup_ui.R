@@ -566,6 +566,18 @@ reset_setup_inputs <- function(session) {
 }
 
 restore_setup_inputs <- function(session, settings) {
+  data_file_options <- settings$data_file_options
+  if (is.list(data_file_options)) {
+    if (!is.null(data_file_options$csv_header)) {
+      updateCheckboxInput(session, "header", value = isTRUE(data_file_options$csv_header))
+    }
+    if (!is.null(data_file_options$dat_delimiter)) {
+      updateSelectInput(session, "dat_delimiter", selected = as.character(data_file_options$dat_delimiter))
+    }
+    if (!is.null(data_file_options$dat_has_names)) {
+      updateCheckboxInput(session, "dat_has_names", value = isTRUE(data_file_options$dat_has_names))
+    }
+  }
   if (!is.null(settings$bootstrap_resamples)) {
     updateSelectInput(session, "boot_r", selected = as.character(settings$bootstrap_resamples))
   }

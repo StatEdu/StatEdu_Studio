@@ -50,7 +50,7 @@ custom_model_canvas_edge_anchor_tools <- function(language = statedu_initial_lan
   )
 }
 
-custom_model_canvas_toolbar <- function(input = NULL, language = statedu_initial_language()) {
+custom_model_canvas_legacy_toolbar <- function(input = NULL, language = statedu_initial_language()) {
   group_tab <- function(group, label, active = FALSE) {
     tags$button(
       type = "button",
@@ -141,6 +141,74 @@ custom_model_canvas_toolbar <- function(input = NULL, language = statedu_initial
         custom_model_canvas_button("style", custom_model_canvas_text(language, "Style", "\uc2a4\ud0c0\uc77c")),
         custom_model_canvas_edge_shape_tools(language),
         custom_model_canvas_edge_anchor_tools(language)
+      )
+    )
+  )
+}
+
+# SEM-style icon toolbar for the mediation/moderation custom model canvas.
+custom_model_canvas_toolbar <- function(input = NULL, language = statedu_initial_language(), analysis_options_ui = NULL) {
+  canvas_text <- function(en, ko) custom_model_canvas_text(language, en, ko)
+  if (is.null(analysis_options_ui)) {
+    analysis_options_ui <- custom_model_canvas_analysis_options(input, language)
+  }
+
+  div(
+    class = "custom-model-toolbar",
+    div(
+      class = "custom-model-toolbar-panel is-active mediation-moderation-toolbar-panel",
+      `data-toolbar-panel` = "tools",
+      div(
+        class = "mediation-moderation-primary-tools",
+        custom_model_canvas_button("load", canvas_text("Load", "\ubd88\ub7ec\uc624\uae30"), icon = structural_file_icon("load")),
+        custom_model_canvas_button("save", canvas_text("Save", "\uc800\uc7a5"), icon = structural_file_icon("save")),
+        custom_model_canvas_button("export", canvas_text("Export", "\ub0b4\ubcf4\ub0b4\uae30")),
+        custom_model_canvas_button("select", canvas_text("Select", "\uc120\ud0dd"), mode = TRUE),
+        custom_model_canvas_button("connect", canvas_text("Connect", "\uc5f0\uacb0"), mode = TRUE),
+        custom_model_canvas_button("properties", canvas_text("Properties", "\uc18d\uc131"), mode = TRUE),
+        custom_model_canvas_button("delete", canvas_text("Delete", "\uc0ad\uc81c"), mode = TRUE, extra_class = "custom-model-delete-button"),
+        custom_model_canvas_button("autoAlign", canvas_text("Auto align", "\uc790\ub3d9 \ub9de\ucda4"), mode = TRUE),
+        custom_model_canvas_button("run", canvas_text("Run", "\uc2e4\ud589")),
+        div(
+          class = "custom-model-run-options-popover",
+          div(class = "custom-model-run-options-title", canvas_text("Analysis options", "\ubd84\uc11d \uc635\uc158")),
+          analysis_options_ui,
+          div(
+            class = "custom-model-run-options-actions",
+            tags$button(type = "button", class = "btn btn-default btn-sm custom-model-run-options-cancel", `data-action` = "runCancel", canvas_text("Cancel", "\ucde8\uc18c")),
+            tags$button(type = "button", class = "btn btn-primary btn-sm custom-model-run-options-confirm", `data-action` = "runConfirm", canvas_text("Run", "\uc2e4\ud589"))
+          )
+        ),
+        custom_model_canvas_button("undo", canvas_text("Undo", "\uc2e4\ud589\ucde8\uc18c")),
+        custom_model_canvas_button("redo", canvas_text("Redo", "\ub2e4\uc2dc\uc2e4\ud589")),
+        custom_model_canvas_button("grid", canvas_text("Grid", "\uaca9\uc790"), mode = TRUE),
+        custom_model_canvas_button("zoomIn", canvas_text("Zoom in", "\ud655\ub300")),
+        custom_model_canvas_button("zoomOut", canvas_text("Zoom out", "\ucd95\uc18c")),
+        custom_model_canvas_button("fit", canvas_text("Fit", "\ud654\uba74\ub9de\ucda4")),
+        custom_model_canvas_button("reset", canvas_text("Reset", "\ucd08\uae30\ud654"), extra_class = "custom-model-reset-button"),
+        div(
+          class = "custom-model-reset-confirm-popover",
+          div(class = "custom-model-reset-confirm-title", canvas_text("Reset model", "\ubaa8\ud615 \ucd08\uae30\ud654")),
+          div(class = "custom-model-reset-confirm-message", canvas_text("Clear all boxes and arrows?", "\ubaa8\ub4e0 \ubc15\uc2a4\uc640 \ud654\uc0b4\ud45c\ub97c \ucd08\uae30\ud654\ud560\uae4c\uc694?")),
+          div(
+            class = "custom-model-reset-confirm-actions",
+            tags$button(type = "button", class = "btn btn-default btn-sm", `data-action` = "resetCancel", canvas_text("Cancel", "\ucde8\uc18c")),
+            tags$button(type = "button", class = "btn btn-warning btn-sm", `data-action` = "resetConfirm", canvas_text("Reset", "\ucd08\uae30\ud654"))
+          )
+        )
+      ),
+      div(
+        class = "mediation-moderation-secondary-tools",
+        custom_model_canvas_edge_shape_tools(language),
+        custom_model_canvas_edge_anchor_tools(language),
+        div(
+          class = "structural-result-icon-grid mediation-moderation-result-icons",
+          span(class = "structural-result-icon-placeholder", `aria-hidden` = "true"),
+          custom_model_canvas_button("resultView", canvas_text("Result diagram", "\uacb0\uacfc \uadf8\ub9bc")),
+          custom_model_canvas_button("resultEdit", canvas_text("Edit", "\ud3b8\uc9d1"), mode = TRUE),
+          custom_model_canvas_button("dashNonsignificant", canvas_text("Non-significant dashed", "\uc720\uc758\ud558\uc9c0 \uc54a\uc740 \uacbd\ub85c \uc810\uc120"), mode = TRUE),
+          custom_model_canvas_button("style", canvas_text("Style", "\uc2a4\ud0c0\uc77c"))
+        )
       )
     )
   )

@@ -1,6 +1,15 @@
 # Custom mediation/moderation model canvas workspace UI.
 
-custom_model_canvas_workspace <- function(selected_names, variable_table = NULL, labels = character(0), input = NULL, language = statedu_initial_language()) {
+custom_model_canvas_workspace <- function(
+  selected_names,
+  variable_table = NULL,
+  labels = character(0),
+  input = NULL,
+  language = statedu_initial_language(),
+  root_id = "custom-model-canvas-root",
+  input_prefix = "custom_model_canvas",
+  analysis_options_ui = NULL
+) {
   items <- custom_model_canvas_variable_items(selected_names, variable_table, labels)
   variables_json <- htmltools::htmlEscape(
     jsonlite::toJSON(items, auto_unbox = TRUE, null = "null"),
@@ -13,23 +22,40 @@ custom_model_canvas_workspace <- function(selected_names, variable_table = NULL,
 
   tagList(
     div(
-      id = "custom-model-canvas-root",
-      class = "custom-model-canvas-root",
+      id = root_id,
+      class = "custom-model-canvas-root mediation-moderation-canvas-root",
+      `data-input-prefix` = input_prefix,
+      `data-canvas-width` = "1123",
+      `data-canvas-height` = "794",
+      `data-canvas-paper` = "A4",
+      `data-canvas-orientation` = "landscape",
+      `data-default-font-size` = "13",
       `data-variables` = variables_json,
       `data-language` = normalize_app_language(language),
       `data-i18n` = i18n_json,
       div(
         class = "custom-model-variable-panel analysis-transfer-column analysis-transfer-panel",
         analysis_field_label_tag("Variables", language = language),
-        custom_model_canvas_variable_panel(items, language)
+        custom_model_canvas_variable_panel(items, language),
+        div(
+          class = "structural-selection-settings custom-model-selection-settings",
+          div(
+            class = "structural-selection-settings-title",
+            custom_model_canvas_text(language, "Variable settings", "환경 설정")
+          ),
+          div(
+            class = "structural-selection-settings-body",
+            custom_model_canvas_text(language, "Select a variable on the canvas.", "캔버스의 변수를 선택하세요.")
+          )
+        )
       ),
       div(
         class = "custom-model-diagram-panel",
-        custom_model_canvas_toolbar(input, language),
+        custom_model_canvas_toolbar(input, language, analysis_options_ui = analysis_options_ui),
         div(
           class = "custom-model-statusbar",
           span(class = "custom-model-mode-status", custom_model_canvas_text(language, "Mode: Select", "\ubaa8\ub4dc: \uc120\ud0dd")),
-          span(class = "custom-model-paper-status", "B5 landscape"),
+          span(class = "custom-model-paper-status", "A4 landscape"),
           span(class = "custom-model-covariate-status", custom_model_canvas_text(language, "Covariates: none", "\uacf5\ubcc0\ub7c9: \uc5c6\uc74c"))
         ),
         div(
@@ -38,9 +64,9 @@ custom_model_canvas_workspace <- function(selected_names, variable_table = NULL,
             class = "custom-model-paper-frame",
             div(
               class = "custom-model-paper is-grid-visible",
-              `data-width` = "971",
-              `data-height` = "688",
-              tags$svg(class = "custom-model-edge-layer", width = "971", height = "688"),
+              `data-width` = "1123",
+              `data-height` = "794",
+              tags$svg(class = "custom-model-edge-layer", width = "1123", height = "794"),
               div(class = "custom-model-node-layer")
             )
           )

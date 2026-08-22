@@ -297,6 +297,7 @@
     var selectionChanged = instance.settingsSelectionKey !== selectionKey;
     instance.settingsSelectionKey = selectionKey;
     var ko = instance.language === "ko";
+    var structural = isStructuralCanvas(instance);
     var single = nodes.length === 1 ? nodes[0] : null;
     updateDisturbancePositionToolbar(instance, single, ko);
     container.innerHTML = "";
@@ -306,7 +307,14 @@
     }
     var heading = document.createElement("div");
     heading.className = "structural-selection-summary";
-    heading.textContent = single ? (single.role === "latent" ? (ko ? "잠재변수" : "Latent variable") : single.role === "indicator" ? (ko ? "측정변수" : "Indicator") : single.role === "disturbance" ? (ko ? "구조오차" : "Structural disturbance") : (ko ? "오차변수" : "Error variable")) : (ko ? nodes.length + "개 선택" : nodes.length + " selected");
+    heading.textContent = single ? (
+      structural ? (
+        single.role === "latent" ? (ko ? "잠재변수" : "Latent variable") :
+        single.role === "indicator" ? (ko ? "측정변수" : "Indicator") :
+        single.role === "disturbance" ? (ko ? "구조오차" : "Structural disturbance") :
+        (ko ? "오차변수" : "Error variable")
+      ) : window.StatEduModelCanvas.state.roleLabel(instance, single.role || "independent")
+    ) : (ko ? nodes.length + "개 선택" : nodes.length + " selected");
     container.appendChild(heading);
 
     function field(labelText, input) {
@@ -380,6 +388,40 @@
         commit(function() { single.canvasLabel = String(labelInput.value || "").trim(); });
       });
       field(ko ? "라벨" : "Label", labelInput);
+      if (!structural) {
+        var roleInput = document.createElement("input");
+        roleInput.type = "text";
+        roleInput.className = "form-control input-sm";
+        roleInput.readOnly = true;
+        roleInput.value = window.StatEduModelCanvas.state.roleLabel(instance, single.role || "independent");
+        field(ko ? "역할" : "Role", roleInput);
+
+        var variable = variableByName(instance, single.variableId || single.name || "");
+        var measurement = String(variable && variable.measurement || "").toLowerCase();
+        var measurementLabels = ko ? {
+          continuous: "연속형",
+          binary: "이분형",
+          category: "명목형",
+          categorical: "명목형",
+          nominal: "명목형",
+          ordered: "순서형",
+          ordinal: "순서형"
+        } : {
+          continuous: "Continuous",
+          binary: "Binary",
+          category: "Nominal",
+          categorical: "Nominal",
+          nominal: "Nominal",
+          ordered: "Ordinal",
+          ordinal: "Ordinal"
+        };
+        var measurementInput = document.createElement("input");
+        measurementInput.type = "text";
+        measurementInput.className = "form-control input-sm";
+        measurementInput.readOnly = true;
+        measurementInput.value = measurementLabels[measurement] || measurement || (ko ? "미지정" : "Not specified");
+        field(ko ? "측정수준" : "Measurement", measurementInput);
+      }
       if (single.role === "latent") {
         var advancedInput = document.createElement("input");
         advancedInput.type = "checkbox";
@@ -1978,6 +2020,10 @@
     };
     ensurePaperFrame(instance);
     instance.state.variables = parseVariables(root);
+    var configuredFontSize = Number(root.getAttribute("data-default-font-size") || 0);
+    if (Number.isFinite(configuredFontSize) && configuredFontSize >= 8 && configuredFontSize <= 32) {
+      instance.state.style.fontSize = configuredFontSize;
+    }
     applyAnalysisCanvasDefaults(instance);
     var configuredWidth = Number(root.getAttribute("data-canvas-width") || 0);
     var configuredHeight = Number(root.getAttribute("data-canvas-height") || 0);

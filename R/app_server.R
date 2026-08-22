@@ -3,6 +3,8 @@
 create_app_server <- function(app_version) {
   force(app_version)
   function(input, output, session) {
+    server_start <- Sys.time()
+    server_phase_start <- server_start
     session$onSessionEnded(function() {
       if (identical(Sys.getenv("STATEDU_STOP_ON_SESSION_END"), "1")) {
         stopApp()
@@ -172,61 +174,63 @@ create_app_server <- function(app_version) {
     })
   }, ignoreInit = TRUE)
 
-  render_about_document <- function(key, value) {
-    renderUI({
-      spec <- about_document_specs(app_language())[[key]]
-      tab_panel_content(about_markdown_tab_panel(spec$title, value, spec$path, spec$subtitle, app_language()))
-    })
+  lazy_ui <- function(output_id, ui_fn) {
+    register_visible_ui_output(output, session, output_id, ui_fn)
   }
 
-  output$lazy_data_editor_coding_error_check <- renderUI(data_editor_coding_error_check_panel(app_language()))
-  output$lazy_data_editor_likert <- renderUI(data_editor_likert_panel(app_language()))
-  output$lazy_data_editor_missing_values <- renderUI(data_editor_missing_panel(app_language()))
-  output$lazy_data_editor_wide_long <- renderUI(data_editor_wide_long_panel(app_language()))
-  output$lazy_data_editor_merge <- renderUI(data_editor_merge_panel(app_language()))
-  output$lazy_data_editor_id_aggregate <- renderUI(data_editor_id_aggregate_panel(app_language()))
-  output$lazy_data_editor_recode_different <- renderUI(data_editor_different_variable_panel(app_language()))
-  output$lazy_data_editor_variable_calculation <- renderUI(data_editor_variable_calculation_panel(app_language()))
-  output$lazy_data_editor_variable_transformation <- renderUI(data_editor_variable_transformation_panel(app_language()))
-  output$lazy_data_editor_recode_same <- renderUI(data_editor_same_variable_panel(app_language()))
-  output$lazy_data_editor_variable_rename <- renderUI(data_editor_variable_rename_panel(app_language()))
+  render_about_document <- function(key, value) {
+    spec <- about_document_specs(app_language())[[key]]
+    tab_panel_content(about_markdown_tab_panel(spec$title, value, spec$path, spec$subtitle, app_language()))
+  }
+
+  lazy_ui("lazy_data_editor_coding_error_check", function() data_editor_coding_error_check_panel(app_language()))
+  lazy_ui("lazy_data_editor_likert", function() data_editor_likert_panel(app_language()))
+  lazy_ui("lazy_data_editor_missing_values", function() data_editor_missing_panel(app_language()))
+  lazy_ui("lazy_data_editor_wide_long", function() data_editor_wide_long_panel(app_language()))
+  lazy_ui("lazy_data_editor_merge", function() data_editor_merge_panel(app_language()))
+  lazy_ui("lazy_data_editor_id_aggregate", function() data_editor_id_aggregate_panel(app_language()))
+  lazy_ui("lazy_data_editor_recode_different", function() data_editor_different_variable_panel(app_language()))
+  lazy_ui("lazy_data_editor_variable_calculation", function() data_editor_variable_calculation_panel(app_language()))
+  lazy_ui("lazy_data_editor_variable_transformation", function() data_editor_variable_transformation_panel(app_language()))
+  lazy_ui("lazy_data_editor_recode_same", function() data_editor_same_variable_panel(app_language()))
+  lazy_ui("lazy_data_editor_variable_rename", function() data_editor_variable_rename_panel(app_language()))
 
   observeEvent(input$wide_long_nav_request, {
     updateNavbarPage(session, "main_menu", selected = "data_editor_wide_long")
   }, ignoreInit = TRUE)
 
-  output$lazy_calculator_hint8 <- renderUI(tab_panel_content(hint8_calculator_tab_panel(app_language())))
-  output$lazy_calculator_eq5d <- renderUI(tab_panel_content(eq5d_calculator_tab_panel(app_language())))
-  output$lazy_calculator_metabolic <- renderUI(tab_panel_content(metabolic_calculator_tab_panel(app_language())))
-  output$lazy_calculator_frs <- renderUI(tab_panel_content(frs_calculator_tab_panel(app_language())))
-  output$lazy_calculator_ascvd10 <- renderUI(tab_panel_content(ascvd10_calculator_tab_panel(app_language())))
-  output$lazy_calculator_metabolic_severity <- renderUI(tab_panel_content(metabolic_severity_calculator_tab_panel(app_language())))
+  lazy_ui("lazy_calculator_hint8", function() tab_panel_content(hint8_calculator_tab_panel(app_language())))
+  lazy_ui("lazy_calculator_eq5d", function() tab_panel_content(eq5d_calculator_tab_panel(app_language())))
+  lazy_ui("lazy_calculator_metabolic", function() tab_panel_content(metabolic_calculator_tab_panel(app_language())))
+  lazy_ui("lazy_calculator_frs", function() tab_panel_content(frs_calculator_tab_panel(app_language())))
+  lazy_ui("lazy_calculator_ascvd10", function() tab_panel_content(ascvd10_calculator_tab_panel(app_language())))
+  lazy_ui("lazy_calculator_metabolic_severity", function() tab_panel_content(metabolic_severity_calculator_tab_panel(app_language())))
 
-  output$lazy_analysis_frequencies <- renderUI(tab_panel_content(frequencies_tab_panel(statedu_ui_label("frequencies", app_language()), app_language())))
-  output$lazy_analysis_crosstabs <- renderUI(tab_panel_content(crosstab_tab_panel(app_language())))
-  output$lazy_analysis_ttest_anova <- renderUI(tab_panel_content(ttest_anova_tab_panel(statedu_ui_label("ttest_anova", app_language()), app_language())))
-  output$lazy_analysis_ancova <- renderUI(tab_panel_content(ancova_tab_panel(statedu_ui_label("ancova", app_language()), app_language())))
-  output$lazy_analysis_mixed_rm_anova <- renderUI(tab_panel_content(mixed_rm_anova_tab_panel(statedu_ui_label("mixed_rm_anova", app_language()), app_language())))
-  output$lazy_analysis_nonparametric <- renderUI(tab_panel_content(nonparametric_tab_panel(statedu_ui_label("nonparametric", app_language()), app_language())))
-  output$lazy_analysis_paired <- renderUI(tab_panel_content(paired_tab_panel(statedu_ui_label("paired", app_language()), app_language())))
-  output$lazy_analysis_nonparametric_paired <- renderUI(tab_panel_content(nonparametric_paired_tab_panel(statedu_ui_label("nonparametric_paired", app_language()), app_language())))
-  output$lazy_analysis_correlation <- renderUI(tab_panel_content(correlation_tab_panel(statedu_ui_label("correlation", app_language()), app_language())))
-  output$lazy_analysis_factor_analysis <- renderUI(tab_panel_content(factor_analysis_tab_panel(statedu_ui_label("factor_analysis", app_language()), app_language())))
-  output$lazy_analysis_pca <- renderUI(tab_panel_content(pca_tab_panel(statedu_ui_label("pca", app_language()), app_language())))
-  output$lazy_analysis_reliability <- renderUI(tab_panel_content(reliability_tab_panel(statedu_ui_label("reliability", app_language()), app_language())))
-  output$lazy_analysis_interrater_agreement <- renderUI(tab_panel_content(interrater_agreement_tab_panel(statedu_ui_label("interrater_agreement", app_language()), app_language())))
-  output$lazy_analysis_hierarchical <- renderUI(tab_panel_content(hierarchical_tab_panel(statedu_ui_label("regression", app_language()), app_language())))
-  output$lazy_analysis_mediation_moderation <- renderUI(tab_panel_content(mediation_moderation_tab_panel(mediation_moderation_title(app_language()), app_language())))
-  output$lazy_analysis_custom_model_canvas <- renderUI({
+  lazy_ui("lazy_analysis_frequencies", function() tab_panel_content(frequencies_tab_panel(statedu_ui_label("frequencies", app_language()), app_language())))
+  lazy_ui("lazy_analysis_crosstabs", function() tab_panel_content(crosstab_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_ttest_anova", function() tab_panel_content(ttest_anova_tab_panel(statedu_ui_label("ttest_anova", app_language()), app_language())))
+  lazy_ui("lazy_analysis_ancova", function() tab_panel_content(ancova_tab_panel(statedu_ui_label("ancova", app_language()), app_language())))
+  lazy_ui("lazy_analysis_mixed_rm_anova", function() tab_panel_content(mixed_rm_anova_tab_panel(statedu_ui_label("mixed_rm_anova", app_language()), app_language())))
+  lazy_ui("lazy_analysis_nonparametric", function() tab_panel_content(nonparametric_tab_panel(statedu_ui_label("nonparametric", app_language()), app_language())))
+  lazy_ui("lazy_analysis_paired", function() tab_panel_content(paired_tab_panel(statedu_ui_label("paired", app_language()), app_language())))
+  lazy_ui("lazy_analysis_nonparametric_paired", function() tab_panel_content(nonparametric_paired_tab_panel(statedu_ui_label("nonparametric_paired", app_language()), app_language())))
+  lazy_ui("lazy_analysis_correlation", function() tab_panel_content(correlation_tab_panel(statedu_ui_label("correlation", app_language()), app_language())))
+  lazy_ui("lazy_analysis_factor_analysis", function() tab_panel_content(factor_analysis_tab_panel(statedu_ui_label("factor_analysis", app_language()), app_language())))
+  lazy_ui("lazy_analysis_pca", function() tab_panel_content(pca_tab_panel(statedu_ui_label("pca", app_language()), app_language())))
+  lazy_ui("lazy_analysis_reliability", function() tab_panel_content(reliability_tab_panel(statedu_ui_label("reliability", app_language()), app_language())))
+  lazy_ui("lazy_analysis_interrater_agreement", function() tab_panel_content(interrater_agreement_tab_panel(statedu_ui_label("interrater_agreement", app_language()), app_language())))
+  lazy_ui("lazy_analysis_hierarchical", function() tab_panel_content(hierarchical_tab_panel(statedu_ui_label("regression", app_language()), app_language())))
+  lazy_ui("lazy_analysis_mediation_moderation", function() tab_panel_content(mediation_moderation_tab_panel(mediation_moderation_title(app_language()), app_language())))
+  lazy_ui("lazy_analysis_custom_model_canvas", function() {
     if (!isTRUE(statedu_feature_enabled("custom_model_canvas", TRUE))) {
       return(tab_panel_content(div(class = "analysis-placeholder-panel", "Mediation / Moderation Custom Model is not enabled in this build.")))
     }
     tab_panel_content(custom_model_canvas_tab_panel(custom_model_canvas_title(app_language()), app_language()))
   })
-  output$lazy_analysis_structural_cfa <- renderUI(tab_panel_content(structural_equation_tab_panel("cfa", app_language())))
-  output$lazy_analysis_structural_cbsem <- renderUI(tab_panel_content(structural_equation_tab_panel("cbsem", app_language())))
-  output$lazy_analysis_structural_plssem <- renderUI(tab_panel_content(structural_equation_tab_panel("plssem", app_language())))
-  output$lazy_analysis_structural_automation <- renderUI(tab_panel_content(structural_automation_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_structural_cfa", function() tab_panel_content(structural_equation_tab_panel("cfa", app_language())))
+  lazy_ui("lazy_analysis_structural_cbsem", function() tab_panel_content(structural_equation_tab_panel("cbsem", app_language())))
+  lazy_ui("lazy_analysis_structural_plssem", function() tab_panel_content(structural_equation_tab_panel("plssem", app_language())))
+  lazy_ui("lazy_analysis_structural_automation", function() tab_panel_content(structural_automation_tab_panel(app_language())))
   observeEvent(input$structural_automation_start, {
     objective <- input$structural_automation_objective %||% "measurement"
     construct <- input$structural_automation_construct %||% "common_factor"
@@ -244,43 +248,44 @@ create_app_server <- function(app_version) {
     }
     updateTabsetPanel(session, "main_menu", selected = target)
   }, ignoreInit = TRUE)
-  output$lazy_analysis_longitudinal <- renderUI({
+  lazy_ui("lazy_analysis_longitudinal", function() {
     if (!isTRUE(statedu_feature_enabled("longitudinal", TRUE))) {
       return(tab_panel_content(div(class = "analysis-placeholder-panel", "Longitudinal / Panel Models is not enabled in this build.")))
     }
     tab_panel_content(longitudinal_tab_panel(statedu_ui_label("longitudinal", app_language()), app_language()))
   })
-  output$lazy_analysis_generalized <- renderUI(tab_panel_content(generalized_tab_panel(statedu_ui_label("glm", app_language()), app_language())))
-  output$lazy_analysis_logistic <- renderUI(tab_panel_content(logistic_regression_tab_panel(app_language())))
-  output$lazy_analysis_complex_frequencies <- renderUI(tab_panel_content(complex_sample_frequencies_tab_panel(app_language())))
-  output$lazy_analysis_complex_design <- renderUI(tab_panel_content(complex_sample_design_tab_panel(app_language())))
-  output$lazy_analysis_complex_crosstabs <- renderUI(tab_panel_content(complex_sample_crosstabs_tab_panel(app_language())))
-  output$lazy_analysis_complex_ttest_anova <- renderUI(tab_panel_content(complex_sample_ttest_anova_tab_panel(app_language())))
-  output$lazy_analysis_complex_correlation <- renderUI(tab_panel_content(complex_sample_correlation_tab_panel(app_language())))
-  output$lazy_analysis_complex_regression <- renderUI(tab_panel_content(complex_sample_regression_tab_panel(app_language())))
-  output$lazy_analysis_complex_logistic <- renderUI(tab_panel_content(complex_sample_logistic_tab_panel(app_language())))
-  output$lazy_analysis_survival_setup <- renderUI(tab_panel_content(survival_setup_tab_panel(app_language())))
-  output$lazy_analysis_survival_km <- renderUI(tab_panel_content(survival_km_tab_panel(app_language())))
-  output$lazy_analysis_survival_cox <- renderUI(tab_panel_content(survival_cox_tab_panel(app_language())))
-  output$lazy_analysis_survival_competing <- renderUI(tab_panel_content(survival_competing_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_generalized", function() tab_panel_content(generalized_tab_panel(statedu_ui_label("glm", app_language()), app_language())))
+  lazy_ui("lazy_analysis_logistic", function() tab_panel_content(logistic_regression_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_complex_frequencies", function() tab_panel_content(complex_sample_frequencies_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_complex_design", function() tab_panel_content(complex_sample_design_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_complex_crosstabs", function() tab_panel_content(complex_sample_crosstabs_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_complex_ttest_anova", function() tab_panel_content(complex_sample_ttest_anova_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_complex_correlation", function() tab_panel_content(complex_sample_correlation_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_complex_regression", function() tab_panel_content(complex_sample_regression_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_complex_logistic", function() tab_panel_content(complex_sample_logistic_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_complex_custom_model", function() tab_panel_content(complex_sample_custom_model_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_survival_setup", function() tab_panel_content(survival_setup_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_survival_km", function() tab_panel_content(survival_km_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_survival_cox", function() tab_panel_content(survival_cox_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_survival_competing", function() tab_panel_content(survival_competing_tab_panel(app_language())))
 
   register_sample_size_server(input, output, session, app_language_fn = app_language)
 
-  output$lazy_about_preferences <- renderUI(tab_panel_content(about_preferences_tab_panel(app_language())))
-  output$lazy_about_overview <- render_about_document("overview", "about_overview")
-  output$lazy_about_user_guide <- render_about_document("user_guide", "about_user_guide")
-  output$lazy_about_analysis_methods <- render_about_document("analysis_methods", "about_analysis_methods")
-  output$lazy_about_method_notes <- render_about_document("method_notes", "about_method_notes")
-  output$lazy_about_validation <- render_about_document("validation", "about_validation")
-  output$lazy_about_version_history <- render_about_document("version_history", "about_version_history")
-  output$lazy_about_source_license <- renderUI(tab_panel_content(about_source_license_tab_panel(app_language())))
-  output$lazy_about_oss_licenses <- renderUI(tab_panel_content(about_license_tab_panel(app_language())))
-  output$lazy_about_update <- renderUI(tab_panel_content(about_update_tab_panel(app_language())))
-  output$lazy_about_info <- renderUI(tab_panel_content(about_info_tab_panel(app_version, app_language())))
-  output$lazy_help_bug <- renderUI(tab_panel_content(help_request_tab_panel("bug", "help_bug", app_version, app_language())))
-  output$lazy_help_feature <- renderUI(tab_panel_content(help_request_tab_panel("feature", "help_feature", app_version, app_language())))
-  output$lazy_help_analysis_request <- renderUI(tab_panel_content(help_request_tab_panel("analysis", "help_analysis_request", app_version, app_language())))
-  output$lazy_help_qa <- renderUI(tab_panel_content(help_request_tab_panel("qa", "help_qa", app_version, app_language())))
+  lazy_ui("lazy_about_preferences", function() tab_panel_content(about_preferences_tab_panel(app_language())))
+  lazy_ui("lazy_about_overview", function() render_about_document("overview", "about_overview"))
+  lazy_ui("lazy_about_user_guide", function() render_about_document("user_guide", "about_user_guide"))
+  lazy_ui("lazy_about_analysis_methods", function() render_about_document("analysis_methods", "about_analysis_methods"))
+  lazy_ui("lazy_about_method_notes", function() render_about_document("method_notes", "about_method_notes"))
+  lazy_ui("lazy_about_validation", function() render_about_document("validation", "about_validation"))
+  lazy_ui("lazy_about_version_history", function() render_about_document("version_history", "about_version_history"))
+  lazy_ui("lazy_about_source_license", function() tab_panel_content(about_source_license_tab_panel(app_language())))
+  lazy_ui("lazy_about_oss_licenses", function() tab_panel_content(about_license_tab_panel(app_language())))
+  lazy_ui("lazy_about_update", function() tab_panel_content(about_update_tab_panel(app_language())))
+  lazy_ui("lazy_about_info", function() tab_panel_content(about_info_tab_panel(app_version, app_language())))
+  lazy_ui("lazy_help_bug", function() tab_panel_content(help_request_tab_panel("bug", "help_bug", app_version, app_language())))
+  lazy_ui("lazy_help_feature", function() tab_panel_content(help_request_tab_panel("feature", "help_feature", app_version, app_language())))
+  lazy_ui("lazy_help_analysis_request", function() tab_panel_content(help_request_tab_panel("analysis", "help_analysis_request", app_version, app_language())))
+  lazy_ui("lazy_help_qa", function() tab_panel_content(help_request_tab_panel("qa", "help_qa", app_version, app_language())))
 
   observeEvent(input$check_updates, {
     notification_id <- showNotification(
@@ -988,6 +993,8 @@ create_app_server <- function(app_version) {
     category_label_table_data_fn = category_label_table_data,
     app_language_fn = app_language
   )
+  statedu_log_timing("server initialize data workspace", server_phase_start)
+  server_phase_start <- Sys.time()
 
   add_calculated_variable <- function(name, values, var_label = "Calculated variable", measurement = NULL) {
     name <- trimws(as.character(name %||% ""))
@@ -1691,6 +1698,22 @@ create_app_server <- function(app_version) {
     app_language_fn = app_language,
     design_state = complex_sample_design_state
   )
+  statedu_log_timing("server initialize editors and calculators", server_phase_start)
+  server_phase_start <- Sys.time()
+
+  register_complex_sample_custom_model_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    selected_names_fn = selected_names,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    mark_settings_dirty = mark_settings_dirty,
+    app_language_fn = app_language,
+    design_state = complex_sample_design_state
+  )
 
   register_mediation_moderation_setup_output(
     input = input,
@@ -1704,6 +1727,8 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+  statedu_log_timing("server initialize complex sample modules", server_phase_start)
+  server_phase_start <- Sys.time()
 
   register_custom_model_canvas_handlers(
     input = input,
@@ -1969,6 +1994,8 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+  statedu_log_timing("server initialize analysis modules", server_phase_start)
+  server_phase_start <- Sys.time()
 
   setup_order_sync <- create_setup_order_sync(
     input = input,
@@ -2288,6 +2315,9 @@ create_app_server <- function(app_version) {
     labels_fn = var_label_overrides,
     category_table_fn = category_label_values
   )
+
+  statedu_log_timing("server initialize remaining outputs", server_phase_start)
+  statedu_log_timing("server initialize total", server_start)
 
   }
 }

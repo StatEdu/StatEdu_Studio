@@ -5,6 +5,52 @@ structural_canvas_show_notification <- function(message, type = "message", durat
   invisible(TRUE)
 }
 
+statedu_bootstrap_stop_button <- function(input_id, label) {
+  shiny::actionButton(
+    input_id,
+    label,
+    class = "btn btn-sm btn-danger statedu-bootstrap-stop-button",
+    onclick = sprintf(
+      "if (window.Shiny) Shiny.setInputValue('%s', Date.now(), {priority: 'event'});",
+      input_id
+    )
+  )
+}
+
+statedu_bootstrap_status_ui <- function(
+  title,
+  detail,
+  percent = NA_real_,
+  stop_input_id,
+  stop_label,
+  phase_label = NULL
+) {
+  percent <- suppressWarnings(as.numeric(percent %||% NA_real_))
+  determinate <- is.finite(percent)
+  if (determinate) percent <- max(0, min(100, round(percent)))
+  bar_class <- paste(
+    "progress-bar progress-bar-striped",
+    if (!determinate) "active" else ""
+  )
+  shiny::tagList(
+    shiny::tags$strong(class = "statedu-bootstrap-status-title", title),
+    shiny::tags$div(class = "statedu-bootstrap-status-detail", detail),
+    shiny::tags$div(
+      class = "progress structural-bootstrap-progress statedu-bootstrap-progress",
+      shiny::tags$div(
+        class = bar_class,
+        role = "progressbar",
+        `aria-valuemin` = "0",
+        `aria-valuemax` = "100",
+        `aria-valuenow` = if (determinate) as.character(percent) else NULL,
+        style = paste0("width: ", if (determinate) paste0(percent, "%") else "100%", ";"),
+        if (determinate) paste0(percent, "%") else as.character(phase_label %||% "")
+      )
+    ),
+    statedu_bootstrap_stop_button(stop_input_id, stop_label)
+  )
+}
+
 structural_canvas_error_message <- function(error, language = NULL) {
   message <- if (inherits(error, "condition")) conditionMessage(error) else as.character(error %||% "")
   ko <- identical(normalize_app_language(language), "ko")

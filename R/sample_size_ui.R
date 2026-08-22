@@ -4602,7 +4602,7 @@ register_sample_size_server <- function(input, output, session, app_language_fn 
   for (effect_method in names(effect_size_method_labels())) {
     local({
       effect_method_local <- effect_method
-      output[[paste0("lazy_effect_size_", effect_method_local)]] <- renderUI({
+      register_visible_ui_output(output, session, paste0("lazy_effect_size_", effect_method_local), function() {
         tab_panel_content(effect_size_analysis_panel(effect_method_local, sample_size_language()))
       })
     })
@@ -4717,7 +4717,7 @@ register_sample_size_server <- function(input, output, session, app_language_fn 
   for (method in methods) {
     local({
       method_local <- method
-      output[[paste0("lazy_sample_size_", method_local)]] <- renderUI({
+      register_visible_ui_output(output, session, paste0("lazy_sample_size_", method_local), function() {
         tab_panel_content(sample_size_analysis_panel(method_local, sample_size_language()))
       })
       output[[paste0("sample_size_", method_local, "_inputs")]] <- renderUI(sample_size_inputs_ui(method_local, sample_size_input_snapshot(method_local, input), sample_size_language()))

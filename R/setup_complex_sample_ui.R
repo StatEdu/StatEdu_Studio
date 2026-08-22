@@ -14,6 +14,7 @@ complex_sample_ui_text <- function(key, language = statedu_initial_language()) {
     correlation = c(en = "Complex Samples Correlation", ko = "\uBCF5\uD569\uD45C\uBCF8 \uC0C1\uAD00\uBD84\uC11D"),
     regression = c(en = "Complex Samples Regression", ko = "\uBCF5\uD569\uD45C\uBCF8 \uD68C\uADC0\uBD84\uC11D"),
     logistic = c(en = "Complex Samples Logistic Regression", ko = "\uBCF5\uD569\uD45C\uBCF8 \uB85C\uC9C0\uC2A4\uD2F1 \uD68C\uADC0\uBD84\uC11D"),
+    custom_model = c(en = "Complex Samples Mediation / Moderation", ko = "\uBCF5\uD569\uD45C\uBCF8 \uB9E4\uAC1C\u00B7\uC870\uC808\uD6A8\uACFC"),
     design_menu = c(en = "Complex Samples Design Variables", ko = "\uBCF5\uD569\uD45C\uBCF8 \uC124\uACC4\uBCC0\uC218"),
     design_subtitle = c(en = "Set the complex-sample design once and reuse it automatically in every complex-sample analysis.", ko = "\uBCF5\uD569\uD45C\uBCF8 \uC124\uACC4\uBCC0\uC218\uB97C \uD55C \uBC88 \uC124\uC815\uD558\uACE0 \uBAA8\uB4E0 \uBCF5\uD569\uD45C\uBCF8 \uBD84\uC11D\uC5D0 \uC790\uB3D9\uC73C\uB85C \uC801\uC6A9\uD569\uB2C8\uB2E4."),
     design_input_block = c(en = "Design variables", ko = "\uC124\uACC4\uBCC0\uC218 \uC785\uB825"),
@@ -2017,18 +2018,31 @@ complex_sample_design_note <- function(built) {
   paste(notes[nzchar(notes)], collapse = " ")
 }
 
-complex_sample_build_design <- function(data, input, prefix, variables = character(0)) {
+complex_sample_build_design_from_spec <- function(data, design, variables = character(0), strict = FALSE) {
   shiny::validate(shiny::need(requireNamespace("survey", quietly = TRUE), "Install the survey package to run complex-sample analyses."))
-  design <- complex_sample_design_inputs(input, prefix)
-  variables <- unique(c(
-    as.character(variables %||% character(0)),
+  design <- complex_sample_normalize_design_state(design)
+  analysis_variables <- unique(as.character(variables %||% character(0)))
+  design_variables <- unique(c(
     design$strata,
     design$cluster,
     design$weight,
-    design$fpc,
-    design$replicate_weights,
+    if (!isTRUE(design$use_replicate_weights)) design$fpc else "",
+    if (isTRUE(design$use_replicate_weights)) design$replicate_weights else character(0),
     design$subpopulation
   ))
+  requested_variables <- unique(c(analysis_variables, design_variables))
+  requested_variables <- requested_variables[nzchar(requested_variables)]
+  if (isTRUE(strict)) {
+    missing_variables <- setdiff(requested_variables, names(data))
+    shiny::validate(shiny::need(
+      length(missing_variables) == 0L,
+      paste("Variables saved in the model or complex-sample design are missing from the current data:", paste(missing_variables, collapse = ", "))
+    ))
+    if (isTRUE(design$use_replicate_weights)) {
+      shiny::validate(shiny::need(length(design$replicate_weights) > 0L, "Select at least one replicate-weight variable."))
+    }
+  }
+  variables <- requested_variables
   variables <- intersect(variables[nzchar(variables)], names(data))
   shiny::validate(shiny::need(length(variables) > 0, "No usable variables were selected."))
   frame <- as.data.frame(data[, variables, drop = FALSE], stringsAsFactors = FALSE, check.names = FALSE)
@@ -2111,6 +2125,15 @@ complex_sample_build_design <- function(data, input, prefix, variables = charact
     data = as.data.frame(sample_design$variables, stringsAsFactors = FALSE, check.names = FALSE),
     spec = design,
     meta = meta
+  )
+}
+
+complex_sample_build_design <- function(data, input, prefix, variables = character(0)) {
+  complex_sample_build_design_from_spec(
+    data = data,
+    design = complex_sample_design_inputs(input, prefix),
+    variables = variables,
+    strict = FALSE
   )
 }
 

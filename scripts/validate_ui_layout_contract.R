@@ -263,10 +263,17 @@ for (i in seq_len(nrow(data_editor_lazy_contract))) {
   )
   assert_contains(
     app_server,
-    sprintf("output$%s <- renderUI(%s(app_language()))", lazy_row$output_id, lazy_row$panel_call),
-    sprintf("Data Editor lazy renderUI target: %s", lazy_row$title)
+    sprintf('lazy_ui("%s", function() %s(app_language()))', lazy_row$output_id, lazy_row$panel_call),
+    sprintf("Data Editor visible-only lazy target: %s", lazy_row$title)
   )
 }
+
+message("Checking visible-only lazy output contract...")
+assert_contains(utils_r, "register_visible_ui_output <- function(output, session, output_id, ui_fn)", "shared visible-only output helper")
+assert_contains(utils_r, 'hidden <- session$clientData[[paste0("output_", output_id, "_hidden")]]', "lazy helper reads Shiny hidden state")
+assert_contains(utils_r, "shiny::req(identical(hidden, FALSE))", "lazy helper waits until output is visible")
+assert_contains(utils_r, "shiny::outputOptions(output, output_id, suspendWhenHidden = TRUE)", "lazy helper suspends hidden outputs")
+assert_contains(app_server, "register_visible_ui_output(output, session, output_id, ui_fn)", "app server routes lazy outputs through shared helper")
 
 message("Checking shared selected-data viewer button contract...")
 assert_contains(analysis_data_viewer_ui, 'analysis_data_viewer_button <- function(id, language = statedu_initial_language())', "selected-data viewer button helper")
@@ -363,8 +370,8 @@ for (i in seq_len(nrow(analysis_lazy_contract))) {
   if (identical(lazy_row$output_id, "lazy_analysis_longitudinal")) {
     assert_contains(
       app_server,
-      'output$lazy_analysis_longitudinal <- renderUI({',
-      "Analysis lazy renderUI target: Longitudinal / Panel Models guarded output"
+      'lazy_ui("lazy_analysis_longitudinal", function() {',
+      "Analysis visible-only lazy target: Longitudinal / Panel Models guarded output"
     )
     assert_contains(
       app_server,
@@ -379,8 +386,8 @@ for (i in seq_len(nrow(analysis_lazy_contract))) {
   } else {
     assert_contains(
       app_server,
-      sprintf("output$%s <- renderUI(tab_panel_content(%s", lazy_row$output_id, lazy_row$panel_call),
-      sprintf("Analysis lazy renderUI target: %s", lazy_row$title)
+      sprintf('lazy_ui("%s", function() tab_panel_content(%s', lazy_row$output_id, lazy_row$panel_call),
+      sprintf("Analysis visible-only lazy target: %s", lazy_row$title)
     )
   }
 }
@@ -393,13 +400,14 @@ complex_lazy_outputs <- c(
   "lazy_analysis_complex_ttest_anova",
   "lazy_analysis_complex_correlation",
   "lazy_analysis_complex_regression",
-  "lazy_analysis_complex_logistic"
+  "lazy_analysis_complex_logistic",
+  "lazy_analysis_complex_custom_model"
 )
 for (output_id in complex_lazy_outputs) {
   assert_contains(
     app_server,
-    sprintf("output$%s <- renderUI(", output_id),
-    sprintf("Complex-sample lazy output is registered: %s", output_id)
+    sprintf('lazy_ui("%s", function()', output_id),
+    sprintf("Complex-sample visible-only output is registered: %s", output_id)
   )
 }
 assert_not_contains(
@@ -451,8 +459,8 @@ assert_contains(
 )
 assert_contains(
   sample_size_ui,
-  "for (method in methods) {\n    local({\n      method_local <- method\n      output[[paste0(\"lazy_sample_size_\", method_local)]] <- renderUI({\n        tab_panel_content(sample_size_analysis_panel(method_local, sample_size_language()))",
-  "Sample Size lazy renderUI targets are generated from method keys and current language"
+  "for (method in methods) {\n    local({\n      method_local <- method\n      register_visible_ui_output(output, session, paste0(\"lazy_sample_size_\", method_local), function() {\n        tab_panel_content(sample_size_analysis_panel(method_local, sample_size_language()))",
+  "Sample Size visible-only targets are generated from method keys and current language"
 )
 assert_contains(
   sample_size_ui,
@@ -466,8 +474,8 @@ assert_contains(
 )
 assert_contains(
   sample_size_ui,
-  "for (effect_method in names(effect_size_method_labels())) {\n    local({\n      effect_method_local <- effect_method\n      output[[paste0(\"lazy_effect_size_\", effect_method_local)]] <- renderUI({\n        tab_panel_content(effect_size_analysis_panel(effect_method_local, sample_size_language()))",
-  "Effect Size lazy renderUI targets are generated from method keys and current language"
+  "for (effect_method in names(effect_size_method_labels())) {\n    local({\n      effect_method_local <- effect_method\n      register_visible_ui_output(output, session, paste0(\"lazy_effect_size_\", effect_method_local), function() {\n        tab_panel_content(effect_size_analysis_panel(effect_method_local, sample_size_language()))",
+  "Effect Size visible-only targets are generated from method keys and current language"
 )
 
 message("Checking shared analysis menu geometry contract...")

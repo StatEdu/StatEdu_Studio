@@ -54,6 +54,7 @@ register_custom_model_canvas_handlers <- function(
   )
 
   custom_model_canvas_result <- reactiveVal(NULL)
+  custom_model_canvas_bootstrap_job <- reactiveVal(NULL)
   output$custom_model_canvas_results <- renderUI({
     mediation_moderation_result_ui(
       custom_model_canvas_result(),
@@ -79,107 +80,155 @@ register_custom_model_canvas_handlers <- function(
     )
   })
 
+  apply_custom_model_canvas_result <- function(result, snapshot) {
+    language <- statedu_current_language(app_language_fn)
+    if (is.data.frame(result$overview) && all(c("Item", "Value") %in% names(result$overview))) {
+      result$overview$Value[result$overview$Item == "Model"] <- custom_model_canvas_text(
+        language,
+        "User-defined mediation / moderation model",
+        "\uc0ac\uc6a9\uc790\uc815\uc758 \ub9e4\uac1c\u00b7\uc870\uc808 \ubaa8\ud615"
+      )
+    }
+    source_snapshot <- snapshot
+    source_snapshot$nonce <- NULL
+    result_snapshot <- custom_model_canvas_result_snapshot(source_snapshot, result)
+    result$custom_model_canvas <- TRUE
+    result$custom_model_canvas_snapshot <- source_snapshot
+    result$custom_model_canvas_result_snapshot <- result_snapshot
+    custom_model_canvas_result(result)
+    session$sendCustomMessage(
+      "custom-model-canvas-result",
+      list(source = source_snapshot, result = result_snapshot, show = TRUE)
+    )
+    showNotification(custom_model_canvas_text(language, "Custom model analysis finished.", "\uc0ac\uc6a9\uc790 \ubaa8\ud615 \ubd84\uc11d\uc774 \uc644\ub8cc\ub418\uc5c8\uc2b5\ub2c8\ub2e4."), type = "message", duration = 4)
+  }
+
   run_custom_model_canvas_analysis <- function(snapshot) {
     language <- statedu_current_language(app_language_fn)
-    spec <- custom_model_canvas_snapshot_spec(
-      snapshot,
-      selected_names_fn(),
-      language,
-      two_moderator_model = "3"
-    )
-    progress_message <- custom_model_canvas_text(
-      language,
-      "Running custom mediation / moderation model",
-      "\uc0ac\uc6a9\uc790 \ub9e4\uac1c\u00b7\uc870\uc808 \ubaa8\ud615 \uc2e4\ud589 \uc911"
-    )
-    result <- tryCatch(
-      shiny::withProgress(
-        message = progress_message,
-        value = 0,
-        {
-          run_mediation_moderation_analysis(
-            data = dataset_fn(),
-            roles = spec$roles,
-            mediator_arrangement = spec$mediator_arrangement,
-            moderated_paths = spec$moderated_paths,
-            boot_r = as.integer(input$custom_mm_boot_r %||% 5000L),
-            seed = as.integer(input$custom_mm_seed %||% default_seed()),
-            mean_center = FALSE,
-            simple_slopes = TRUE,
-            johnson_neyman = TRUE,
-            analysis_method = input$custom_mm_analysis_method %||% "statedu",
-            ci_method = input$custom_mm_ci_method %||% "bias_corrected",
-            residual_diagnostics = input$custom_mm_residual_diagnostics %||% TRUE,
-            auto_method = isTRUE(input$custom_mm_residual_diagnostics %||% TRUE) && isTRUE(input$custom_mm_auto_method %||% TRUE),
-            direct_x = spec$direct_x,
-            x_to_m = spec$x_to_m,
-            m_to_y = spec$m_to_y,
-            m_to_m = spec$m_to_m,
-            moderated_x_to_m = spec$moderated_x_to_m,
-            moderated_m_to_y = spec$moderated_m_to_y,
-            moderation_map = spec$moderation_map,
-            two_moderator_model = "3",
-            custom_path_model = TRUE,
-            effect_size_models = c(
-              if (isTRUE(input$custom_mm_effect_size_y %||% TRUE)) "y" else character(0),
-              if (isTRUE(input$custom_mm_effect_size_m %||% FALSE)) "m" else character(0)
-            ),
-            covariate_control = c(
-              if (isTRUE(input$custom_mm_covariate_control_y %||% TRUE)) "y" else character(0),
-              if (isTRUE(input$custom_mm_covariate_control_m %||% TRUE)) "m" else character(0)
-            ),
-            language = language,
-            variable_info = variable_table_fn(),
-            labels = labels_fn(),
-            category_table = category_table_fn(),
-            progress = function(done, total, focal) {
-              counts <- mediation_moderation_bootstrap_progress_counts(done, total, input$custom_mm_boot_r %||% 5000L)
-              shiny::setProgress(
-                value = counts$done / counts$total,
-                message = progress_message,
-                detail = mediation_moderation_bootstrap_progress_detail(
-                  counts$done,
-                  counts$total,
-                  focal,
-                  input$custom_mm_boot_r %||% 5000L,
-                  language
-                )
-              )
-            }
-          )
-        }
-      ),
+    spec <- custom_model_canvas_snapshot_spec(snapshot, selected_names_fn(), language, two_moderator_model = "3")
+    old_job <- custom_model_canvas_bootstrap_job()
+    if (!is.null(old_job)) {
+      if (!is.null(old_job$process) && old_job$process$is_alive()) old_job$process$kill()
+      mediation_moderation_cleanup_bootstrap_job(old_job)
+    }
+    job <- tryCatch(
+      mediation_moderation_start_bootstrap_job(list(
+        data = dataset_fn(),
+        roles = spec$roles,
+        mediator_arrangement = spec$mediator_arrangement,
+        moderated_paths = spec$moderated_paths,
+        boot_r = as.integer(input$custom_mm_boot_r %||% 5000L),
+        seed = as.integer(input$custom_mm_seed %||% default_seed()),
+        mean_center = FALSE,
+        simple_slopes = TRUE,
+        johnson_neyman = TRUE,
+        analysis_method = input$custom_mm_analysis_method %||% "statedu",
+        ci_method = input$custom_mm_ci_method %||% "bias_corrected",
+        residual_diagnostics = input$custom_mm_residual_diagnostics %||% TRUE,
+        auto_method = isTRUE(input$custom_mm_residual_diagnostics %||% TRUE) && isTRUE(input$custom_mm_auto_method %||% TRUE),
+        direct_x = spec$direct_x,
+        x_to_m = spec$x_to_m,
+        m_to_y = spec$m_to_y,
+        m_to_m = spec$m_to_m,
+        moderated_x_to_m = spec$moderated_x_to_m,
+        moderated_m_to_y = spec$moderated_m_to_y,
+        moderation_map = spec$moderation_map,
+        two_moderator_model = "3",
+        custom_path_model = TRUE,
+        effect_size_models = c(
+          if (isTRUE(input$custom_mm_effect_size_y %||% TRUE)) "y" else character(0),
+          if (isTRUE(input$custom_mm_effect_size_m %||% FALSE)) "m" else character(0)
+        ),
+        covariate_control = c(
+          if (isTRUE(input$custom_mm_covariate_control_y %||% TRUE)) "y" else character(0),
+          if (isTRUE(input$custom_mm_covariate_control_m %||% TRUE)) "m" else character(0)
+        ),
+        language = language,
+        variable_info = variable_table_fn(),
+        labels = labels_fn(),
+        category_table = category_table_fn()
+      )),
       error = function(e) {
         showNotification(conditionMessage(e), type = "warning", duration = 7)
         NULL
       }
     )
-    if (!is.null(result)) {
-      if (is.data.frame(result$overview) && all(c("Item", "Value") %in% names(result$overview))) {
-        result$overview$Value[result$overview$Item == "Model"] <- custom_model_canvas_text(
-          language,
-          "User-defined mediation / moderation model",
-          "\uc0ac\uc6a9\uc790\uc815\uc758 \ub9e4\uac1c\u00b7\uc870\uc808 \ubaa8\ud615"
-        )
-      }
-      source_snapshot <- snapshot
-      source_snapshot$nonce <- NULL
-      result_snapshot <- custom_model_canvas_result_snapshot(source_snapshot, result)
-      result$custom_model_canvas <- TRUE
-      result$custom_model_canvas_snapshot <- source_snapshot
-      result$custom_model_canvas_result_snapshot <- result_snapshot
-      custom_model_canvas_result(result)
-      session$sendCustomMessage(
-        "custom-model-canvas-result",
-        list(
-          source = source_snapshot,
-          result = result_snapshot,
-          show = TRUE
-        )
-      )
-      showNotification(custom_model_canvas_text(language, "Custom model analysis finished.", "\uc0ac\uc6a9\uc790 \ubaa8\ud615 \ubd84\uc11d\uc774 \uc644\ub8cc\ub418\uc5c8\uc2b5\ub2c8\ub2e4."), type = "message", duration = 4)
-    }
+    if (is.null(job)) return()
+    job$source_snapshot <- snapshot
+    custom_model_canvas_bootstrap_job(job)
+    ko <- identical(normalize_app_language(language), "ko")
+    structural_canvas_show_notification(
+      statedu_bootstrap_status_ui(
+        if (ko) "사용자 매개·조절 모형 부트스트랩 진행 상태" else "Custom mediation / moderation bootstrap progress",
+        if (ko) paste0("준비 중 · 전체 ", format(job$requested_total, big.mark = ","), "회") else paste0("Starting · ", format(job$requested_total, big.mark = ","), " total resamples"),
+        percent = NA_real_,
+        stop_input_id = "custom_model_canvas_bootstrap_stop",
+        stop_label = if (ko) "부트스트랩 중단" else "Stop bootstrap",
+        phase_label = if (ko) "준비 중" else "Starting"
+      ),
+      type = "message", duration = NULL, id = "custom-model-canvas-bootstrap-progress"
+    )
   }
+
+  observeEvent(input$custom_model_canvas_bootstrap_stop, {
+    job <- custom_model_canvas_bootstrap_job()
+    if (is.null(job)) return()
+    if (!is.null(job$process) && job$process$is_alive()) job$process$kill()
+    mediation_moderation_cleanup_bootstrap_job(job)
+    custom_model_canvas_bootstrap_job(NULL)
+    shiny::removeNotification("custom-model-canvas-bootstrap-progress")
+    language <- statedu_current_language(app_language_fn)
+    structural_canvas_show_notification(
+      custom_model_canvas_text(language, "The custom-model bootstrap was stopped.", "사용자 모형 부트스트랩을 중단했습니다."),
+      type = "warning", duration = 8
+    )
+  }, ignoreInit = TRUE)
+
+  observe({
+    job <- custom_model_canvas_bootstrap_job()
+    if (is.null(job) || is.null(job$process)) return()
+    if (job$process$is_alive()) {
+      shiny::invalidateLater(400, session)
+      language <- statedu_current_language(app_language_fn)
+      progress <- mediation_moderation_bootstrap_job_progress(job, language)
+      ko <- identical(normalize_app_language(language), "ko")
+      structural_canvas_show_notification(
+        statedu_bootstrap_status_ui(
+          if (ko) "사용자 매개·조절 모형 부트스트랩 진행 상태" else "Custom mediation / moderation bootstrap progress",
+          progress$detail,
+          percent = progress$percent,
+          stop_input_id = "custom_model_canvas_bootstrap_stop",
+          stop_label = if (ko) "부트스트랩 중단" else "Stop bootstrap",
+          phase_label = progress$phase_label
+        ),
+        type = "message", duration = NULL, id = "custom-model-canvas-bootstrap-progress"
+      )
+      return()
+    }
+    status <- job$process$get_exit_status()
+    shiny::removeNotification("custom-model-canvas-bootstrap-progress")
+    language <- statedu_current_language(app_language_fn)
+    if (identical(status, 0L) && file.exists(job$result_file)) {
+      apply_custom_model_canvas_result(readRDS(job$result_file), job$source_snapshot)
+    } else {
+      error_text <- if (file.exists(job$error_file)) paste(readLines(job$error_file, warn = FALSE, encoding = "UTF-8"), collapse = "\n") else ""
+      structural_canvas_show_notification(
+        paste0(
+          custom_model_canvas_text(language, "The custom-model bootstrap did not complete.", "사용자 모형 부트스트랩을 완료하지 못했습니다."),
+          if (nzchar(error_text)) paste0(" ", error_text) else ""
+        ),
+        type = "error", duration = 10
+      )
+    }
+    mediation_moderation_cleanup_bootstrap_job(job)
+    custom_model_canvas_bootstrap_job(NULL)
+  })
+
+  session$onSessionEnded(function() {
+    job <- shiny::isolate(custom_model_canvas_bootstrap_job())
+    if (!is.null(job$process) && job$process$is_alive()) job$process$kill()
+    mediation_moderation_cleanup_bootstrap_job(job)
+  })
 
   observeEvent(input$custom_model_canvas_run_request, {
     snapshot <- input$custom_model_canvas_run_request

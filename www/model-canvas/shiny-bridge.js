@@ -122,7 +122,11 @@
     if (message && message.show && instance.resultSnapshot) {
       if (root.classList.contains("structural-equation-canvas-root")) {
         window.StatEduModelCanvas.canvas.showResult(instance);
-      } else if (window.StatEduModelCanvas.toolbar && window.StatEduModelCanvas.toolbar.setActiveGroup) {
+      } else if (
+        root.querySelector('.custom-model-toolbar-panel[data-toolbar-panel="result"]') &&
+        window.StatEduModelCanvas.toolbar &&
+        window.StatEduModelCanvas.toolbar.setActiveGroup
+      ) {
         window.StatEduModelCanvas.toolbar.setActiveGroup(instance, "result");
       } else {
         window.StatEduModelCanvas.canvas.showResult(instance);

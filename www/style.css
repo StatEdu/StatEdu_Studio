@@ -6579,6 +6579,27 @@ pre {
   white-space: nowrap;
 }
 
+.statedu-bootstrap-status-title {
+  display: block;
+  margin-bottom: 4px;
+  line-height: 1.35;
+}
+
+.statedu-bootstrap-status-detail {
+  margin-bottom: 8px;
+  line-height: 1.35;
+}
+
+.statedu-bootstrap-progress {
+  height: 20px;
+  margin: 0 0 10px;
+}
+
+.statedu-bootstrap-stop-button {
+  width: 100%;
+  white-space: normal;
+}
+
 .regression-workspace-panel {
   width: var(--se-analysis-workspace-width);
   min-width: var(--se-analysis-workspace-width);

@@ -19,17 +19,20 @@
 }
 
 /* Match the structural workspace to the full-width Step 2 data panel. */
-.structural-equation-canvas-root {
+.structural-equation-canvas-root,
+.mediation-moderation-canvas-root {
   grid-template-columns: 260px minmax(0, 1fr);
   width: 100%;
 }
 
-.structural-equation-canvas-root .custom-model-diagram-panel {
+.structural-equation-canvas-root .custom-model-diagram-panel,
+.mediation-moderation-canvas-root .custom-model-diagram-panel {
   width: 100%;
   min-width: 0;
 }
 
-.structural-equation-canvas-root .custom-model-canvas-scroll {
+.structural-equation-canvas-root .custom-model-canvas-scroll,
+.mediation-moderation-canvas-root .custom-model-canvas-scroll {
   height: auto !important;
   flex: 0 0 auto;
   overflow-x: auto;
@@ -77,14 +80,16 @@
   margin-top: 8px;
 }
 
-.structural-equation-canvas-root .custom-model-variable-panel {
+.structural-equation-canvas-root .custom-model-variable-panel,
+.mediation-moderation-canvas-root .custom-model-variable-panel {
   align-self: start;
   min-height: 530px;
-  height: 530px;
-  overflow: hidden;
+  height: auto;
+  overflow: visible;
 }
 
-.structural-equation-canvas-root .custom-model-variable-list {
+.structural-equation-canvas-root .custom-model-variable-list,
+.mediation-moderation-canvas-root .custom-model-variable-list {
   height: auto;
   min-height: 180px;
   max-height: none;
@@ -1402,13 +1407,16 @@
   min-width: 260px;
 }
 
-.structural-equation-canvas-root .custom-model-variable-list {
+.structural-equation-canvas-root .custom-model-variable-list,
+.mediation-moderation-canvas-root .custom-model-variable-list {
   height: 330px;
   min-height: 260px;
   max-height: 330px;
+  flex: 0 1 330px;
 }
 
-.structural-equation-canvas-root .custom-model-variable-panel-body {
+.structural-equation-canvas-root .custom-model-variable-panel-body,
+.mediation-moderation-canvas-root .custom-model-variable-panel-body {
   flex: 0 0 auto;
 }
 
@@ -2110,13 +2118,17 @@
   min-height: 68px;
   align-items: start;
   gap: 6px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   overflow: visible;
 }
 
 .structural-equation-canvas-root .structural-primary-toolbar-tools {
   grid-template-columns: repeat(15, 36px);
   gap: 3px;
+}
+
+.structural-equation-canvas-root[data-analysis-type="cfa"] .structural-primary-toolbar-tools {
+  grid-template-columns: repeat(16, 36px);
 }
 
 .structural-equation-canvas-root .structural-primary-toolbar-tools > .custom-model-toolbar-button {
@@ -2129,16 +2141,16 @@
   height: 20px;
 }
 
-.structural-equation-canvas-root .structural-secondary-toolbar-tools,
-.structural-equation-canvas-root .structural-result-tools {
+.structural-equation-canvas-root .structural-secondary-toolbar-tools {
   flex-wrap: nowrap;
-  margin-left: 0;
   white-space: nowrap;
 }
 
 .structural-equation-canvas-root .structural-secondary-toolbar-tools {
   flex: 1 1 auto;
+  justify-content: flex-end;
   gap: 5px;
+  margin-left: auto;
 }
 
 .structural-equation-canvas-root .structural-advanced-analysis-tools {
@@ -2173,11 +2185,32 @@
 }
 
 .structural-equation-canvas-root .structural-result-tools {
+  display: grid;
+  grid-template-rows: repeat(2, 32px);
+  grid-auto-flow: column;
+  align-content: start;
+  align-items: center;
   gap: 3px;
   position: relative;
+  white-space: nowrap;
+}
+
+.structural-equation-canvas-root .structural-result-icon-grid {
+  position: relative;
+  display: grid;
+  grid-row: 1 / span 2;
+  grid-template-rows: repeat(2, 32px);
+  grid-auto-flow: column;
+  gap: 3px;
+}
+
+.structural-equation-canvas-root .structural-result-icon-placeholder {
+  width: 34px;
+  height: 32px;
 }
 
 .structural-equation-canvas-root .structural-result-coefficient-control {
+  grid-row: 1 / span 2;
   width: 88px;
   flex-basis: 88px;
 }
@@ -2213,7 +2246,7 @@
   font-size: 10px;
 }
 
-.structural-equation-canvas-root .structural-result-tools > .custom-model-toolbar-button {
+.structural-equation-canvas-root .structural-result-icon-grid > .custom-model-toolbar-button {
   width: 34px;
   min-width: 34px;
   flex-basis: 34px;
@@ -2225,16 +2258,142 @@
   overflow-y: auto;
 }
 
-@media (max-width: 1500px) {
-  .structural-equation-canvas-root .custom-model-toolbar-panel[data-toolbar-panel="tools"].is-active {
-    width: 100%;
-    flex-wrap: wrap;
-  }
+/* Give the mediation/moderation custom model the same compact icon chrome as SEM. */
+.mediation-moderation-canvas-root .mediation-moderation-toolbar-panel.is-active {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 68px;
+  align-items: start;
+  gap: 6px;
+  padding: 6px 8px;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+  overflow: visible;
+}
 
-  .structural-equation-canvas-root .structural-secondary-toolbar-tools,
-  .structural-equation-canvas-root .structural-result-tools {
+.mediation-moderation-primary-tools {
+  display: grid;
+  grid-template-columns: repeat(8, 36px);
+  grid-template-rows: repeat(2, 32px);
+  gap: 3px;
+  flex: 0 0 auto;
+  align-items: stretch;
+}
+
+.mediation-moderation-canvas-root .custom-model-toolbar-button {
+  display: inline-flex;
+  width: 36px;
+  min-width: 36px;
+  height: 32px;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+}
+
+.mediation-moderation-canvas-root .custom-model-toolbar-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.mediation-moderation-canvas-root .custom-model-toolbar-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.mediation-moderation-secondary-tools {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 5px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.mediation-moderation-canvas-root .structural-result-icon-grid {
+  position: relative;
+  display: grid;
+  grid-template-rows: repeat(2, 32px);
+  grid-auto-flow: column;
+  gap: 3px;
+}
+
+.mediation-moderation-canvas-root .structural-result-icon-placeholder {
+  width: 34px;
+  height: 32px;
+}
+
+.mediation-moderation-canvas-root .structural-result-icon-grid > .custom-model-toolbar-button {
+  width: 34px;
+  min-width: 34px;
+}
+
+.mediation-moderation-canvas-root [data-action="select"] .custom-model-toolbar-icon::before { content: "↖"; }
+.mediation-moderation-canvas-root [data-action="connect"] .custom-model-toolbar-icon::before { content: "→"; font-size: 25px; }
+.mediation-moderation-canvas-root [data-action="properties"] .custom-model-toolbar-icon::before { content: "⚙"; }
+.mediation-moderation-canvas-root [data-action="delete"] .custom-model-toolbar-icon::before {
+  content: "";
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: center / contain no-repeat url("assets/delete-brush-x.png");
+}
+.mediation-moderation-canvas-root [data-action="delete"].is-active .custom-model-toolbar-icon::before {
+  filter: grayscale(1) brightness(0) invert(1);
+}
+.mediation-moderation-canvas-root [data-action="autoAlign"] .custom-model-toolbar-icon::before { content: "T"; font-size: 14px; }
+.mediation-moderation-canvas-root [data-action="run"] .custom-model-toolbar-icon::before { content: "▶"; font-size: 17px; }
+.mediation-moderation-canvas-root [data-action="undo"] .custom-model-toolbar-icon::before { content: "↶"; }
+.mediation-moderation-canvas-root [data-action="redo"] .custom-model-toolbar-icon::before { content: "↷"; }
+.mediation-moderation-canvas-root [data-action="grid"] .custom-model-toolbar-icon::before { content: "▦"; }
+.mediation-moderation-canvas-root [data-action="zoomIn"] .custom-model-toolbar-icon::before { content: "+"; font-size: 22px; font-weight: 600; }
+.mediation-moderation-canvas-root [data-action="zoomOut"] .custom-model-toolbar-icon::before { content: "−"; font-size: 22px; font-weight: 600; }
+.mediation-moderation-canvas-root [data-action="fit"] .custom-model-toolbar-icon::before { content: "⛶"; }
+.mediation-moderation-canvas-root [data-action="export"] .custom-model-toolbar-icon::before { content: "\21E9"; font-size: 20px; }
+.mediation-moderation-canvas-root [data-action="reset"] .custom-model-toolbar-icon::before { content: "\21BA"; font-size: 21px; }
+.mediation-moderation-canvas-root [data-action="resultView"] .custom-model-toolbar-icon::before { content: "β"; font-family: Georgia, serif; font-size: 20px; }
+.mediation-moderation-canvas-root [data-action="resultEdit"] .custom-model-toolbar-icon::before { content: "\270E"; font-size: 19px; }
+.mediation-moderation-canvas-root [data-action="dashNonsignificant"] .custom-model-toolbar-icon::before { content: "\2504"; font-size: 22px; }
+.mediation-moderation-canvas-root [data-action="style"] .custom-model-toolbar-icon::before { content: "\25D0"; font-size: 20px; }
+.mediation-moderation-canvas-root [data-action="load"] .custom-model-toolbar-icon::before,
+.mediation-moderation-canvas-root [data-action="save"] .custom-model-toolbar-icon::before { content: none; }
+
+.mediation-moderation-canvas-root .custom-model-run-options-popover.is-visible {
+  z-index: 200;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+}
+
+@media (max-width: 1500px) {
+  .mediation-moderation-secondary-tools {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 1500px) {
+  .structural-equation-canvas-root .structural-secondary-toolbar-tools {
     min-width: 0;
     flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  .structural-equation-canvas-root .structural-result-tools {
+    min-width: 0;
     white-space: normal;
   }
 }

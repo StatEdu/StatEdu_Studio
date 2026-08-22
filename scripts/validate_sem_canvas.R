@@ -163,7 +163,8 @@ stopifnot(
   grepl('paste0(prefix, "_effect_bootstrap_stop")', handler_source, fixed = TRUE),
   grepl('paste0(prefix, "-effect-bootstrap-progress")', handler_source, fixed = TRUE),
   grepl("SEM path, indirect, and total-effect bootstrap progress", handler_source, fixed = TRUE),
-  grepl("Shiny.setInputValue('%s', Date.now(), {priority: 'event'})", handler_source, fixed = TRUE),
+  any(grepl("Shiny.setInputValue('%s', Date.now(), {priority: 'event'})", notification_source, fixed = TRUE)),
+  grepl("statedu_bootstrap_status_ui(", handler_source, fixed = TRUE),
   !grepl("Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed", ui_source, fixed = TRUE)
 )
 
