@@ -183,8 +183,11 @@ create_app_server <- function(app_version) {
     force(register_fn)
     observeEvent({
       selected_menu <- input$main_menu %||% ""
-      req(selected_menu %in% menu_values)
-      selected_menu
+      explicit_visit <- input$easyflow_menu_visit %||% list()
+      explicit_menu <- if (is.list(explicit_visit)) explicit_visit$value %||% "" else explicit_visit
+      visited_menus <- unique(c(as.character(selected_menu), as.character(explicit_menu)))
+      req(any(visited_menus %in% menu_values))
+      visited_menus
     }, {
       register_fn()
     }, ignoreInit = FALSE, once = TRUE)
@@ -281,7 +284,14 @@ create_app_server <- function(app_version) {
   lazy_ui("lazy_analysis_survival_cox", function() tab_panel_content(survival_cox_tab_panel(app_language())))
   lazy_ui("lazy_analysis_survival_competing", function() tab_panel_content(survival_competing_tab_panel(app_language())))
 
-  register_sample_size_server(input, output, session, app_language_fn = app_language)
+  register_on_first_menu_visit(c(
+    paste0("sample_size_", names(sample_size_method_labels())),
+    paste0("effect_size_", names(effect_size_method_labels()))
+  ), function() {
+    deferred_start <- Sys.time()
+    register_sample_size_server(input, output, session, app_language_fn = app_language)
+    statedu_log_timing("deferred sample-size modules", deferred_start)
+  })
 
   lazy_ui("lazy_about_preferences", function() tab_panel_content(about_preferences_tab_panel(app_language())))
   lazy_ui("lazy_about_overview", function() render_about_document("overview", "about_overview"))
@@ -1271,6 +1281,20 @@ create_app_server <- function(app_version) {
     invisible(TRUE)
   }
 
+  register_on_first_menu_visit(c(
+    "data_editor_coding_error_check",
+    "data_editor_likert",
+    "data_editor_missing_values",
+    "data_editor_wide_long",
+    "data_editor_merge",
+    "data_editor_id_aggregate",
+    "data_editor_recode_different",
+    "data_editor_variable_calculation",
+    "data_editor_variable_transformation",
+    "data_editor_recode_same",
+    "data_editor_variable_rename"
+  ), function() {
+  deferred_start <- Sys.time()
   register_recode_same_handlers(
     input = input,
     output = output,
@@ -1421,6 +1445,8 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty,
     language_fn = app_language
   )
+  statedu_log_timing("deferred data-editor modules", deferred_start)
+  })
 
   register_on_first_menu_visit(c(
     "calculator_hint8",
@@ -2074,6 +2100,34 @@ create_app_server <- function(app_version) {
   sync_dependent_order <- setup_order_sync$sync_dependent_order
   sync_predictor_order <- setup_order_sync$sync_predictor_order
 
+  hierarchical_block3_current <- create_hierarchical_block3_current(
+    independent_names_fn = independent_names,
+    selected_names_fn = selected_names,
+    hierarchical_block3_names = hierarchical_block3_names
+  )
+
+  prepare_hierarchical_result <- create_prepare_hierarchical_analysis_result_fn(
+    current_data_file_fn = current_data_file,
+    dataset_fn = dataset,
+    hierarchical_y_fn = function() sync_dependent_order(update_input = FALSE),
+    hierarchical_block1_fn = control_names,
+    hierarchical_block2_fn = function() setdiff(independent_names(), hierarchical_block3_current()),
+    hierarchical_block3_fn = hierarchical_block3_current,
+    variable_info_table_fn = regression_variable_table,
+    category_label_values_fn = category_label_values,
+    boot_r_fn = function() input$hierarchical_boot_r,
+    seed_fn = function() input$hierarchical_seed,
+    residual_diagnostics_fn = function() input$hierarchical_residual_diagnostics %||% TRUE,
+    auto_method_fn = function() isTRUE(input$hierarchical_residual_diagnostics %||% TRUE) && isTRUE(input$hierarchical_auto_method %||% TRUE),
+    sync_dependent_order_fn = sync_dependent_order,
+    control_names_fn = control_names,
+    independent_names_fn = independent_names,
+    hierarchical_block3_current_fn = hierarchical_block3_current
+  )
+
+  register_on_first_menu_visit("Regression", function() {
+  deferred_start <- Sys.time()
+
   register_role_variable_list_outputs(
     output,
     variable_table_fn = regression_variable_table,
@@ -2103,12 +2157,6 @@ create_app_server <- function(app_version) {
     sync_predictor_order_fn = sync_predictor_order,
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
-  )
-
-  hierarchical_block3_current <- create_hierarchical_block3_current(
-    independent_names_fn = independent_names,
-    selected_names_fn = selected_names,
-    hierarchical_block3_names = hierarchical_block3_names
   )
 
   register_hierarchical_block_observers(
@@ -2243,25 +2291,6 @@ create_app_server <- function(app_version) {
     language_fn = app_language
   )
 
-  prepare_hierarchical_result <- create_prepare_hierarchical_analysis_result_fn(
-    current_data_file_fn = current_data_file,
-    dataset_fn = dataset,
-    hierarchical_y_fn = function() sync_dependent_order(update_input = FALSE),
-    hierarchical_block1_fn = control_names,
-    hierarchical_block2_fn = function() setdiff(independent_names(), hierarchical_block3_current()),
-    hierarchical_block3_fn = hierarchical_block3_current,
-    variable_info_table_fn = regression_variable_table,
-    category_label_values_fn = category_label_values,
-    boot_r_fn = function() input$hierarchical_boot_r,
-    seed_fn = function() input$hierarchical_seed,
-    residual_diagnostics_fn = function() input$hierarchical_residual_diagnostics %||% TRUE,
-    auto_method_fn = function() isTRUE(input$hierarchical_residual_diagnostics %||% TRUE) && isTRUE(input$hierarchical_auto_method %||% TRUE),
-    sync_dependent_order_fn = sync_dependent_order,
-    control_names_fn = control_names,
-    independent_names_fn = independent_names,
-    hierarchical_block3_current_fn = hierarchical_block3_current
-  )
-
   register_hierarchical_analysis_run_handlers(
     input = input,
     session = session,
@@ -2335,6 +2364,8 @@ create_app_server <- function(app_version) {
     category_table_fn = category_label_values,
     app_language_fn = app_language
   )
+  statedu_log_timing("deferred regression modules", deferred_start)
+  })
 
   current_settings <- create_current_settings_fn(
     app_version = app_version,

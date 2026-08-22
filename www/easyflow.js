@@ -243,8 +243,17 @@
       }
 
       function easyflowScheduleClearExcelImportBusyState() {
-        [0, 50, 150, 350, 750, 1500, 3000].forEach(function(delay) {
-          window.setTimeout(easyflowClearExcelImportBusyState, delay);
+        if (!document.querySelector('.excel-import-main-panel')) {
+          if (document.body && document.body.classList) {
+            document.body.classList.remove('statedu-excel-import-review-visible');
+          }
+          return;
+        }
+        (window.easyflowExcelBusyTimers || []).forEach(function(timer) {
+          window.clearTimeout(timer);
+        });
+        window.easyflowExcelBusyTimers = [0, 50, 150, 350, 750, 1500, 3000].map(function(delay) {
+          return window.setTimeout(easyflowClearExcelImportBusyState, delay);
         });
       }
 
@@ -856,8 +865,18 @@
       };
 
       function scheduleEasyflowTypesetMath(root) {
-        window.setTimeout(function() {
-          window.easyflowTypesetMath(root || document);
+        root = root || document;
+        var hasMathDocument = !!(
+          (root.matches && root.matches('.about-markdown-document')) ||
+          (root.querySelector && root.querySelector('.about-markdown-document'))
+        );
+        if (!hasMathDocument) return;
+        if (window.easyflowTypesetMathTimer) {
+          window.clearTimeout(window.easyflowTypesetMathTimer);
+        }
+        window.easyflowTypesetMathTimer = window.setTimeout(function() {
+          window.easyflowTypesetMathTimer = null;
+          window.easyflowTypesetMath(root);
         }, 0);
       }
 
@@ -1083,12 +1102,13 @@
       }
 
       function easyflowRestoreRememberedTransferScrollsSoon() {
-        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 0);
-        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 50);
-        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 150);
-        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 300);
-        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 600);
-        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 1000);
+        if (Date.now() > (window.easyflowTransferScrollRestoreUntil || 0)) return;
+        (window.easyflowTransferScrollRestoreTimers || []).forEach(function(timer) {
+          window.clearTimeout(timer);
+        });
+        window.easyflowTransferScrollRestoreTimers = [0, 50, 150, 300, 600, 1000].map(function(delay) {
+          return window.setTimeout(easyflowRestoreRememberedTransferScrolls, delay);
+        });
       }
 
       document.addEventListener('mousedown', function(event) {
@@ -1563,6 +1583,17 @@
           var navLink = event.target && event.target.closest ? event.target.closest('.navbar-nav a[data-value]') : null;
           if (!navLink || navLink.classList.contains('dropdown-toggle')) return;
           easyflowOpenHelpRequestLink(event, navLink);
+        }, true);
+
+        document.addEventListener('click', function(event) {
+          var navLink = event.target && event.target.closest ? event.target.closest('.navbar-nav a[data-value]') : null;
+          if (!navLink || navLink.classList.contains('dropdown-toggle')) return;
+          var value = navLink.getAttribute('data-value') || '';
+          if (!value || !window.Shiny || typeof Shiny.setInputValue !== 'function') return;
+          Shiny.setInputValue('easyflow_menu_visit', {
+            value: value,
+            nonce: Date.now() + Math.random()
+          }, {priority: 'event'});
         }, true);
 
         function easyflowGroupedMenuConfigs() {
@@ -3753,7 +3784,12 @@
         }
 
         function scheduleTtestNormalityTreeUpdate() {
-          window.setTimeout(updateTtestNormalityTree, 0);
+          if (!document.getElementById('ttest_anova_normality_enabled')) return;
+          if (window.easyflowTtestNormalityTimer) window.clearTimeout(window.easyflowTtestNormalityTimer);
+          window.easyflowTtestNormalityTimer = window.setTimeout(function() {
+            window.easyflowTtestNormalityTimer = null;
+            updateTtestNormalityTree();
+          }, 0);
         }
 
         function updateFactorNormalityOptions() {
@@ -3770,11 +3806,21 @@
         }
 
         function scheduleFactorNormalityOptionsUpdate() {
-          window.setTimeout(updateFactorNormalityOptions, 0);
+          if (!document.getElementById('factor_assumption')) return;
+          if (window.easyflowFactorNormalityTimer) window.clearTimeout(window.easyflowFactorNormalityTimer);
+          window.easyflowFactorNormalityTimer = window.setTimeout(function() {
+            window.easyflowFactorNormalityTimer = null;
+            updateFactorNormalityOptions();
+          }, 0);
         }
 
         function scheduleAncovaNormalityOptionsUpdate() {
-          window.setTimeout(updateAncovaNormalityOptions, 0);
+          if (!document.getElementById('ancova_normality_enabled')) return;
+          if (window.easyflowAncovaNormalityTimer) window.clearTimeout(window.easyflowAncovaNormalityTimer);
+          window.easyflowAncovaNormalityTimer = window.setTimeout(function() {
+            window.easyflowAncovaNormalityTimer = null;
+            updateAncovaNormalityOptions();
+          }, 0);
         }
 
         document.addEventListener('change', function(event) {

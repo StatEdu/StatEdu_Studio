@@ -48,8 +48,8 @@ required_packages <- c(
 startup_packages <- c("shiny", "DT")
 
 ensure_required_packages <- function(packages = required_packages) {
-  installed_packages <- rownames(utils::installed.packages())
-  missing_packages <- setdiff(packages, installed_packages)
+  available_packages <- .packages(all.available = TRUE)
+  missing_packages <- setdiff(packages, available_packages)
   if (length(missing_packages) > 0) {
     stop(
       "Install required packages first: install.packages(c(",
@@ -385,7 +385,7 @@ utf8_app_module_files <- c(
   "app_misc_ui.R"
 )
 
-source_app_modules <- function(files = app_module_files, dir = "R") {
+source_app_modules_individually <- function(files, dir, latent_module_file) {
   for (file in files) {
     if (file %in% utf8_app_module_files) {
       source(file.path(dir, file), local = FALSE, encoding = "UTF-8")
@@ -393,11 +393,95 @@ source_app_modules <- function(files = app_module_files, dir = "R") {
       source(file.path(dir, file), local = FALSE)
     }
   }
-  latent_module_file <- file.path(dir, optional_app_module_files[["latent_mplus"]])
   if (file.exists(latent_module_file)) {
     source(latent_module_file, local = FALSE)
   }
   invisible(TRUE)
+}
+
+app_module_cache_manifest <- function(paths) {
+  info <- file.info(paths)
+  data.frame(
+    path = normalizePath(paths, winslash = "/", mustWork = FALSE),
+    size = as.numeric(info$size),
+    mtime = as.numeric(info$mtime),
+    stringsAsFactors = FALSE
+  )
+}
+
+app_module_cache_paths <- function() {
+  cache_dir <- trimws(Sys.getenv("STATEDU_MODULE_CACHE_DIR", ""))
+  if (!nzchar(cache_dir)) {
+    cache_dir <- tools::R_user_dir("StatEduStudio", which = "cache")
+  }
+  version_tag <- paste(R.version$major, strsplit(R.version$minor, ".", fixed = TRUE)[[1]][[1]], sep = ".")
+  list(
+    source = file.path(cache_dir, paste0("app-modules-r", version_tag, ".R")),
+    manifest = file.path(cache_dir, paste0("app-modules-r", version_tag, ".rds"))
+  )
+}
+
+write_combined_app_module_cache <- function(paths, target) {
+  dir.create(dirname(target), recursive = TRUE, showWarnings = FALSE)
+  temporary <- tempfile("app-modules-", tmpdir = dirname(target), fileext = ".R")
+  connection <- file(temporary, open = "wb")
+  connection_open <- TRUE
+  on.exit({
+    if (isTRUE(connection_open)) close(connection)
+    if (file.exists(temporary)) unlink(temporary, force = TRUE)
+  }, add = TRUE)
+  for (path in paths) {
+    writeBin(charToRaw(paste0("\n# source: ", normalizePath(path, winslash = "/", mustWork = FALSE), "\n")), connection)
+    writeBin(readBin(path, what = "raw", n = file.info(path)$size), connection)
+    writeBin(charToRaw("\n"), connection)
+  }
+  close(connection)
+  connection_open <- FALSE
+  if (!file.copy(temporary, target, overwrite = TRUE)) {
+    stop("Could not create the combined app-module cache.", call. = FALSE)
+  }
+  invisible(target)
+}
+
+source_app_modules <- function(files = app_module_files, dir = "R") {
+  latent_module_file <- file.path(dir, optional_app_module_files[["latent_mplus"]])
+  use_cache <- identical(files, app_module_files) &&
+    !identical(tolower(Sys.getenv("STATEDU_MODULE_CACHE", "true")), "false") &&
+    !identical(Sys.getenv("STATEDU_MODULE_CACHE", "true"), "0")
+  if (!isTRUE(use_cache)) {
+    return(source_app_modules_individually(files, dir, latent_module_file))
+  }
+
+  paths <- file.path(dir, files)
+  if (file.exists(latent_module_file)) paths <- c(paths, latent_module_file)
+  if (!all(file.exists(paths))) {
+    return(source_app_modules_individually(files, dir, latent_module_file))
+  }
+
+  cache_paths <- app_module_cache_paths()
+  manifest <- app_module_cache_manifest(paths)
+  cached_manifest <- suppressWarnings(tryCatch(readRDS(cache_paths$manifest), error = function(error) NULL))
+  cache_valid <- file.exists(cache_paths$source) && identical(cached_manifest, manifest)
+  if (!isTRUE(cache_valid)) {
+    cache_valid <- isTRUE(tryCatch({
+      write_combined_app_module_cache(paths, cache_paths$source)
+      saveRDS(manifest, cache_paths$manifest)
+      TRUE
+    }, error = function(error) FALSE))
+  }
+
+  if (isTRUE(cache_valid)) {
+    loaded <- isTRUE(tryCatch({
+      source(cache_paths$source, local = FALSE, encoding = "UTF-8")
+      TRUE
+    }, error = function(error) {
+      warning("Combined app-module cache failed; using individual source files: ", conditionMessage(error), call. = FALSE)
+      FALSE
+    }))
+    if (isTRUE(loaded)) return(invisible(TRUE))
+  }
+
+  source_app_modules_individually(files, dir, latent_module_file)
 }
 
 read_app_config <- function(version_file = "VERSION") {
