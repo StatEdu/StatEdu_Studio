@@ -287,6 +287,7 @@ app_module_files <- c(
 latent_mplus_enabled <- function() FALSE
 latent_mplus_head_tags <- function(version) NULL
 latent_menu_tab <- function() NULL
+latent_mplus_panel_content <- function(...) NULL
 register_latent_mplus_server <- function(...) invisible(FALSE)
 
 optional_app_module_files <- c(

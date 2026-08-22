@@ -70,8 +70,7 @@ create_analysis_state <- function(session) {
     bootstrap_status = reactiveVal(NULL),
     bootstrap_cancel_requested = reactiveVal(FALSE),
     bootstrap_process = reactiveVal(NULL),
-    bootstrap_stop_visible = reactiveVal(FALSE),
-    bootstrap_tick = reactiveTimer(200, session)
+    bootstrap_stop_visible = reactiveVal(FALSE)
   )
 }
 

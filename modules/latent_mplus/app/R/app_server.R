@@ -1632,13 +1632,25 @@ latent_result_or_example_path <- function(path) {
   grepl("/(Mplus_output|mplus_tmp|output|outputs|Mplus_examples)/", normalized, ignore.case = TRUE)
 }
 
+latent_original_data_path_cache <- new.env(parent = emptyenv())
+
 latent_original_data_path_from_name <- function(name, app_root = getwd()) {
   name <- basename(trimws(as.character(name %||% "")))
   if (!nzchar(name) || !supported_data_file_extension(name)) {
     return("")
   }
+  normalized_root <- normalizePath(app_root, winslash = "/", mustWork = FALSE)
+  cache_key <- paste(tolower(normalized_root), tolower(name), sep = "|")
+  if (exists(cache_key, envir = latent_original_data_path_cache, inherits = FALSE)) {
+    cached <- get(cache_key, envir = latent_original_data_path_cache, inherits = FALSE)
+    if (!nzchar(cached) || file.exists(cached)) {
+      return(cached)
+    }
+    rm(list = cache_key, envir = latent_original_data_path_cache)
+  }
   roots <- latent_data_search_roots(app_root)
   if (length(roots) == 0) {
+    assign(cache_key, "", envir = latent_original_data_path_cache)
     return("")
   }
   pattern <- gsub(".", "\\.", name, fixed = TRUE)
@@ -1651,10 +1663,13 @@ latent_original_data_path_from_name <- function(name, app_root = getwd()) {
   primary <- files[!vapply(files, latent_result_or_example_path, logical(1))]
   files <- if (length(primary) > 0) primary else files
   if (length(files) == 0) {
+    assign(cache_key, "", envir = latent_original_data_path_cache)
     return("")
   }
   normalized <- normalizePath(files, winslash = "/", mustWork = FALSE)
-  normalized[order(nchar(normalized), normalized)][[1]]
+  result <- normalized[order(nchar(normalized), normalized)][[1]]
+  assign(cache_key, result, envir = latent_original_data_path_cache)
+  result
 }
 
 latent_resolved_data_file_path <- function(file, app_root = getwd()) {
@@ -1666,8 +1681,14 @@ latent_resolved_data_file_path <- function(file, app_root = getwd()) {
     return(normalizePath(original_path, winslash = "/", mustWork = TRUE))
   }
   path <- as.character(file$path %||% file$datapath %||% "")
-  if (nzchar(path) && file.exists(path) && !latent_temporary_data_path(path)) {
+  # A Shiny fileInput is intentionally stored below tempdir(). It is already
+  # the authoritative readable copy for this session, so resolving it by the
+  # browser-visible name would recursively scan every configured data root.
+  if (nzchar(path) && file.exists(path)) {
     return(normalizePath(path, winslash = "/", mustWork = TRUE))
+  }
+  if (nzchar(path) && latent_temporary_data_path(path)) {
+    return(normalizePath(path, winslash = "/", mustWork = FALSE))
   }
   candidate <- latent_original_data_path_from_name(latent_data_file_name(file), app_root = app_root)
   if (nzchar(candidate) && file.exists(candidate)) {
@@ -1702,7 +1723,8 @@ dataset_id_from_data_file <- function(file) {
     return("")
   }
   path <- latent_resolved_data_file_path(file)
-  name <- basename(as.character(path %||% latent_data_file_name(file)))
+  uploaded_name <- latent_data_file_name(file)
+  name <- basename(as.character(if (nzchar(uploaded_name)) uploaded_name else path))
   dataset_id <- if (nzchar(name)) tools::file_path_sans_ext(name) else ""
   if ((!nzchar(dataset_id) || grepl("^[0-9]+$", dataset_id)) && latent_temporary_data_path(path)) {
     fallback <- latent_default_dataset_id_from_sample()

@@ -186,13 +186,25 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
             active_data_file(excel_pending_file_value(uploaded_path, uploaded_name, ""))
             reset_on_dataset_load(FALSE)
           } else {
-            active_data_file(list(
+            extension <- tolower(tools::file_ext(as.character(uploaded_name %||% uploaded_path %||% "")))
+            csv_header <- isolate(input$header)
+            dat_delimiter <- isolate(input$dat_delimiter)
+            dat_has_names <- isolate(input$dat_has_names)
+            uploaded_file <- list(
               path = uploaded_path,
               name = uploaded_name,
               original_path = "",
               restored = FALSE,
               loaded_at = format(Sys.time(), "%Y%m%d%H%M%OS6")
-            ))
+            )
+            if (identical(extension, "csv")) {
+              uploaded_file$csv_header <- if (is.null(csv_header)) TRUE else isTRUE(csv_header)
+            }
+            if (identical(extension, "dat")) {
+              uploaded_file$dat_delimiter <- as.character(dat_delimiter %||% "whitespace")
+              uploaded_file$dat_has_names <- if (is.null(dat_has_names)) FALSE else isTRUE(dat_has_names)
+            }
+            active_data_file(uploaded_file)
           }
         },
         error = function(error) {
@@ -204,7 +216,7 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
       )
     }
     mark_settings_dirty()
-  })
+  }, priority = 1000)
 
   observeEvent(input$header, {
     file <- active_data_file()

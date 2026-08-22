@@ -1,10 +1,33 @@
 # Main Shiny server assembly for StatEdu Studio.
 
+statedu_active_session_registry <- local({
+  registry <- new.env(parent = emptyenv())
+  registry$current <- NULL
+  function() registry
+})
+
+statedu_single_session_enabled <- function() {
+  tolower(trimws(Sys.getenv("STATEDU_SINGLE_SESSION", "false"))) %in% c("1", "true", "yes", "on")
+}
+
 create_app_server <- function(app_version) {
   force(app_version)
   function(input, output, session) {
     server_start <- Sys.time()
     server_phase_start <- server_start
+    if (isTRUE(statedu_single_session_enabled())) {
+      session_registry <- statedu_active_session_registry()
+      previous_session <- session_registry$current
+      session_registry$current <- session
+      if (!is.null(previous_session) && !identical(previous_session, session)) {
+        try(previous_session$close(), silent = TRUE)
+      }
+      session$onSessionEnded(function() {
+        if (identical(session_registry$current, session)) {
+          session_registry$current <- NULL
+        }
+      })
+    }
     session$onSessionEnded(function() {
       if (identical(Sys.getenv("STATEDU_STOP_ON_SESSION_END"), "1")) {
         stopApp()
@@ -283,6 +306,9 @@ create_app_server <- function(app_version) {
   lazy_ui("lazy_analysis_survival_km", function() tab_panel_content(survival_km_tab_panel(app_language())))
   lazy_ui("lazy_analysis_survival_cox", function() tab_panel_content(survival_cox_tab_panel(app_language())))
   lazy_ui("lazy_analysis_survival_competing", function() tab_panel_content(survival_competing_tab_panel(app_language())))
+  if (isTRUE(latent_mplus_enabled())) {
+    lazy_ui("lazy_latent_mixture", function() latent_mplus_panel_content(app_version, app_language()))
+  }
 
   register_on_first_menu_visit(c(
     paste0("sample_size_", names(sample_size_method_labels())),
@@ -505,23 +531,25 @@ create_app_server <- function(app_version) {
   render_calculator_scope_toggle("ascvd10_variable_scope_toggle", "toggle_ascvd10_selected_only")
   render_calculator_scope_toggle("mbss_variable_scope_toggle", "toggle_mbss_selected_only")
   if (isTRUE(latent_mplus_enabled())) {
-    statedu_time_expr(
-      "register_latent_mplus_server",
-      register_latent_mplus_server(
-        input = input,
-        output = output,
-        session = session,
-        app_version = app_version,
-        current_data_file = current_data_file,
-        variable_info_table = variable_info_table,
-        restored_data_file = restored_data_file,
-        restored_variable_info = restored_variable_info,
-        active_data_file = active_data_file,
-        reset_on_dataset_load = reset_on_dataset_load,
-        available_variable_names = available_variable_names
-      ),
-      detail = "startup"
-    )
+    register_on_first_menu_visit("latent_mixture", function() {
+      statedu_time_expr(
+        "register_latent_mplus_server",
+        register_latent_mplus_server(
+          input = input,
+          output = output,
+          session = session,
+          app_version = app_version,
+          current_data_file = current_data_file,
+          variable_info_table = variable_info_table,
+          restored_data_file = restored_data_file,
+          restored_variable_info = restored_variable_info,
+          active_data_file = active_data_file,
+          reset_on_dataset_load = reset_on_dataset_load,
+          available_variable_names = available_variable_names
+        ),
+        detail = "deferred latent"
+      )
+    })
   }
   table_input_collectors <- create_table_input_collectors(input, variable_info_table)
   merge_state_into_info <- create_merge_state_into_info_fn(
@@ -910,7 +938,6 @@ create_app_server <- function(app_version) {
   bootstrap_cancel_requested <- analysis_state$bootstrap_cancel_requested
   bootstrap_process <- analysis_state$bootstrap_process
   bootstrap_stop_visible <- analysis_state$bootstrap_stop_visible
-  bootstrap_tick <- analysis_state$bootstrap_tick
 
   bootstrap_manager <- create_bootstrap_manager(
     bootstrap_job = bootstrap_job,
@@ -921,6 +948,16 @@ create_app_server <- function(app_version) {
     bootstrap_stop_visible = bootstrap_stop_visible,
     analysis_result = analysis_result
   )
+
+  session$onSessionEnded(function() {
+    try(bootstrap_manager$cancel(), silent = TRUE)
+  })
+
+  observeEvent(input$file, {
+    if (!is.null(isolate(bootstrap_job())) || !is.null(isolate(bootstrap_process()))) {
+      bootstrap_manager$cancel()
+    }
+  }, ignoreInit = TRUE, priority = 1000)
 
   prepare_analysis_result <- create_prepare_analysis_result_fn(
     current_data_file_fn = current_data_file,
@@ -948,8 +985,7 @@ create_app_server <- function(app_version) {
     bootstrap_cancel_requested = bootstrap_cancel_requested,
     bootstrap_status = bootstrap_status,
     bootstrap_stop_visible = bootstrap_stop_visible,
-    bootstrap_manager = bootstrap_manager,
-    bootstrap_tick = bootstrap_tick
+    bootstrap_manager = bootstrap_manager
   )
 
   analysis_views <- create_analysis_result_views(analysis_result)

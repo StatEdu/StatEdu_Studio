@@ -181,7 +181,7 @@ set_data_step_view <- function(active_step_setter, data_view_setter, step, view 
 app_brand_title <- function(version) {
   div(
     class = "brand-title",
-    tags$img(src = paste0("logo-horizontal.png?v=", version, "-statedu-studio-final-logo-20260722"), class = "brand-logo-horizontal", alt = "StatEdu Studio logo"),
+    tags$img(src = paste0("logo-final.png?v=", version, "-statedu-studio-final-logo-ui-20260822"), class = "brand-logo-horizontal", alt = "StatEdu Studio logo"),
     span(class = "version", paste0("v", version))
   )
 }
@@ -338,7 +338,7 @@ app_head_tags <- function(version) {
     tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = paste0("logo-favicon-32.png?v=", version, "-statedu-studio-final-slanted-bar")),
     tags$link(rel = "icon", type = "image/png", sizes = "64x64", href = paste0("logo-favicon-64.png?v=", version, "-statedu-studio-final-slanted-bar")),
     app_stylesheet_link(version),
-    tags$script(HTML(
+    tags$script(HTML(paste0(
       "window.MathJax = {
         tex: {
           inlineMath: [['$', '$'], ['\\\\(', '\\\\)']],
@@ -348,14 +348,11 @@ app_head_tags <- function(version) {
         options: {
           skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
         }
-      };"
-    )),
-    tags$script(
-      id = "MathJax-script",
-      defer = "defer",
-      onload = "if (window.easyflowMathJaxReady) window.easyflowMathJaxReady();",
-      src = paste0("mathjax/tex-svg.js?v=", version, "-local")
-    ),
+      };
+      window.easyflowMathJaxSrc = '",
+      paste0("mathjax/tex-svg.js?v=", version, "-local"),
+      "';"
+    ))),
     app_static_language_labels_script(),
     app_script_link(version)
   )
@@ -412,8 +409,7 @@ app_ui <- function(version, request = NULL) {
       app_language_bootstrap_script(language),
       app_result_zoom_bootstrap_script(statedu_initial_result_zoom()),
       tags$input(id = "statedu_initial_language", type = "hidden", value = language),
-      tags$input(id = "statedu_initial_result_zoom", type = "hidden", value = statedu_initial_result_zoom()),
-      if (latent_mplus_enabled()) latent_mplus_head_tags(version)
+      tags$input(id = "statedu_initial_result_zoom", type = "hidden", value = statedu_initial_result_zoom())
     ),
 
     data_tab_panel(language),

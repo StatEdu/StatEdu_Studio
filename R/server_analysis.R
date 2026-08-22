@@ -617,8 +617,7 @@ register_analysis_run_handlers <- function(
   bootstrap_cancel_requested,
   bootstrap_status,
   bootstrap_stop_visible,
-  bootstrap_manager,
-  bootstrap_tick
+  bootstrap_manager
 ) {
   observeEvent(input$run, {
     penalized_result(NULL)
@@ -651,8 +650,11 @@ register_analysis_run_handlers <- function(
   }, ignoreInit = TRUE)
 
   observe({
-    bootstrap_tick()
-    isolate(bootstrap_manager$poll())
+    req(!is.null(bootstrap_job()))
+    bootstrap_manager$poll()
+    if (!is.null(isolate(bootstrap_job()))) {
+      invalidateLater(200, session)
+    }
   })
 
   invisible(TRUE)

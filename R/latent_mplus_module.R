@@ -688,7 +688,8 @@ latent_mplus_head_tags <- function(version) {
       }
     ")),
     tags$script(HTML("
-      $(document).on('click', '.latent-step-tab', function() {
+      $(document).off('.stateduLatentMplus');
+      $(document).on('click.stateduLatentMplus', '.latent-step-tab', function() {
         var target = $(this).data('target');
         var scope = $(this).closest('.latent-workflow');
         scope.find('.latent-step-tab').removeClass('active');
@@ -696,7 +697,7 @@ latent_mplus_head_tags <- function(version) {
         scope.find('.latent-step-panel').removeClass('active');
         scope.find('#' + target).addClass('active');
       });
-      $(document).on('click', '.latent-setup-topic', function() {
+      $(document).on('click.stateduLatentMplus', '.latent-setup-topic', function() {
         var target = $(this).data('target');
         var scope = $(this).closest('.latent-setup-workspace');
         scope.find('.latent-setup-topic').removeClass('active');
@@ -725,7 +726,7 @@ latent_mplus_head_tags <- function(version) {
         if (input[0].selectize) return input[0].selectize.getValue() || '';
         return input.val() || '';
       }
-      $(document).on('change', '.latent-role-select', function() {
+      $(document).on('change.stateduLatentMplus', '.latent-role-select', function() {
         if (!window.Shiny) return;
         var el = $(this);
         var moduleId = el.data('module');
@@ -737,7 +738,7 @@ latent_mplus_head_tags <- function(version) {
           nonce: Date.now() + Math.random()
         }, {priority: 'event'});
       });
-      $(document).on('change', '.latent-role-checkbox', function() {
+      $(document).on('change.stateduLatentMplus', '.latent-role-checkbox', function() {
         if (!window.Shiny) return;
         var el = $(this);
         var moduleId = el.data('module');
@@ -764,7 +765,7 @@ latent_mplus_head_tags <- function(version) {
         });
         table.find('.latent-role-checkbox').prop('checked', false);
       });
-      $(document).on('click', '.latent-select-current-page', function() {
+      $(document).on('click.stateduLatentMplus', '.latent-select-current-page', function() {
         if (!window.Shiny) return;
         var moduleId = $(this).data('module');
         var role = $('#' + moduleId + '_active_role').val() || '';
@@ -790,10 +791,21 @@ latent_menu_tab <- function(language = statedu_initial_language()) {
   if (!latent_mplus_enabled()) {
     return(NULL)
   }
-  env <- latent_mplus_env()
   navbarMenu(
     statedu_t("ui.latent", language, "Latent"),
-    env$latent_analysis_tab("mixture", language)
+    tabPanel(
+      statedu_t("latent.mixture_model", language, "Mixture Model"),
+      value = "latent_mixture",
+      uiOutput("lazy_latent_mixture")
+    )
+  )
+}
+
+latent_mplus_panel_content <- function(version, language = statedu_initial_language()) {
+  env <- latent_mplus_env()
+  tagList(
+    latent_mplus_head_tags(version),
+    tab_panel_content(env$latent_analysis_tab("mixture", language))
   )
 }
 

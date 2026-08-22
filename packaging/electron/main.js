@@ -6,6 +6,8 @@ const net = require("net");
 const path = require("path");
 
 const enableHardwareAcceleration = /^(1|true|yes)$/i.test(process.env.STATEDU_ENABLE_HARDWARE_ACCELERATION || "");
+const enableRendererDiagnostics = /^(1|true|yes)$/i.test(process.env.STATEDU_RENDERER_DIAGNOSTICS || "");
+const STARTUP_LOG_MAX_BYTES = 5 * 1024 * 1024;
 if (!enableHardwareAcceleration) {
   app.disableHardwareAcceleration();
   app.commandLine.appendSwitch("disable-gpu");
@@ -17,6 +19,7 @@ let mainWindow = null;
 let shinyProcess = null;
 let isQuitting = false;
 let startupLogPath = null;
+let startupLogPrepared = false;
 let launchStudioFile = "";
 let isReloadingStudioFile = false;
 
@@ -49,6 +52,25 @@ function startupLogFile() {
     startupLogPath = path.join(app.getPath("userData"), "logs", "startup.log");
   }
   return startupLogPath;
+}
+
+function prepareStartupLog() {
+  if (startupLogPrepared) {
+    return startupLogFile();
+  }
+  const file = startupLogFile();
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  try {
+    if (fs.existsSync(file) && fs.statSync(file).size >= STARTUP_LOG_MAX_BYTES) {
+      const rotated = `${file}.1`;
+      fs.rmSync(rotated, { force: true });
+      fs.renameSync(file, rotated);
+    }
+  } catch (error) {
+    // Log rotation must never prevent startup.
+  }
+  startupLogPrepared = true;
+  return file;
 }
 
 function appLanguageFile() {
@@ -113,9 +135,11 @@ function configureDownloadSavePath(webContents) {
 }
 
 function installRendererDiagnostics(webContents) {
-  webContents.on("console-message", (event, level, message, line, sourceId) => {
-    logStartup(`renderer console level=${level} ${sourceId || ""}:${line || 0} ${message}`);
-  });
+  if (enableRendererDiagnostics) {
+    webContents.on("console-message", (event, level, message, line, sourceId) => {
+      logStartup(`renderer console level=${level} ${sourceId || ""}:${line || 0} ${message}`);
+    });
+  }
   webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => {
     logStartup(`renderer did-fail-load code=${errorCode} url=${validatedURL || ""} ${errorDescription || ""}`);
   });
@@ -124,9 +148,11 @@ function installRendererDiagnostics(webContents) {
   });
   webContents.on("did-finish-load", () => {
     logStartup("renderer did-finish-load");
-    logRendererSnapshot(webContents, "did-finish-load");
-    setTimeout(() => logRendererSnapshot(webContents, "after-10s"), 10000);
-    setTimeout(() => logRendererSnapshot(webContents, "after-30s"), 30000);
+    if (enableRendererDiagnostics) {
+      logRendererSnapshot(webContents, "did-finish-load");
+      setTimeout(() => logRendererSnapshot(webContents, "after-10s"), 10000);
+      setTimeout(() => logRendererSnapshot(webContents, "after-30s"), 30000);
+    }
   });
   webContents.on("render-process-gone", (event, details) => {
     logStartup(`renderer process gone reason=${details.reason || ""} exitCode=${details.exitCode ?? ""}`);
@@ -168,9 +194,8 @@ function logRendererSnapshot(webContents, label) {
 function logStartup(message) {
   const line = `${new Date().toISOString()} ${message}\n`;
   try {
-    const file = startupLogFile();
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.appendFileSync(file, line, "utf8");
+    const file = prepareStartupLog();
+    fs.appendFile(file, line, "utf8", () => {});
   } catch (error) {
     // Logging must never block app startup.
   }
@@ -181,6 +206,7 @@ function logStartupEnvironment() {
   logStartup(`electron=${process.versions.electron} chrome=${process.versions.chrome} node=${process.versions.node}`);
   logStartup(`platform=${process.platform} arch=${process.arch} windowsRelease=${require("os").release()}`);
   logStartup(`hardwareAcceleration=${enableHardwareAcceleration ? "enabled" : "disabled"}`);
+  logStartup(`rendererDiagnostics=${enableRendererDiagnostics ? "enabled" : "disabled"}`);
   logStartup(`userData=${app.getPath("userData")}`);
   logStartup(`appPath=${app.getAppPath()}`);
 }
@@ -351,6 +377,7 @@ async function startShiny() {
     STATEDU_PUBLIC_RELEASE: process.env.STATEDU_PUBLIC_RELEASE || publicReleaseFlag(),
     STATEDU_USER_DATA_DIR: app.getPath("userData"),
     STATEDU_ENABLE_CUSTOM_MODEL_CANVAS: process.env.STATEDU_ENABLE_CUSTOM_MODEL_CANVAS || "1",
+    STATEDU_SINGLE_SESSION: "true",
     R_HOME: path.join(appBaseDir(), "runtime", "R-4.5.3"),
     R_LIBS_USER: bundledRLibraryPath(),
     PATH: `${bundledRBinPath()};${process.env.PATH || ""}`

@@ -74,12 +74,15 @@ $coreValidations = @(
   "scripts\validate_logistic_analysis.R",
   "scripts\validate_logistic_regression_sci.R",
   "scripts\validate_complex_sample_analysis.R",
+  "scripts\validate_complex_sample_custom_model.R",
   "scripts\validate_custom_model_canvas.R",
   "scripts\validate_mediation_moderation.R",
   "scripts\validate_longitudinal.R",
   "scripts\validate_mixed_rm_anova.R",
   "scripts\validate_release_hygiene.R",
-  "scripts\validate_data_io.R"
+  "scripts\validate_data_io.R",
+  "scripts\validate_data_upload_performance.R",
+  "scripts\validate_startup_performance_contract.R"
 )
 
 $fullOnlyValidations = @(

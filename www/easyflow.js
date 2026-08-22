@@ -864,13 +864,38 @@
         });
       };
 
-      function scheduleEasyflowTypesetMath(root) {
+      function easyflowHasMathDocument(root) {
         root = root || document;
-        var hasMathDocument = !!(
+        return !!(
           (root.matches && root.matches('.about-markdown-document')) ||
           (root.querySelector && root.querySelector('.about-markdown-document'))
         );
-        if (!hasMathDocument) return;
+      }
+
+      window.easyflowEnsureMathJax = function(root) {
+        root = root || document;
+        if (!easyflowHasMathDocument(root)) return false;
+        if (window.MathJax && (window.MathJax.tex2svgPromise || window.MathJax.tex2chtmlPromise || window.MathJax.typesetPromise)) {
+          return true;
+        }
+        if (!document.getElementById('MathJax-script')) {
+          var script = document.createElement('script');
+          script.id = 'MathJax-script';
+          script.async = true;
+          script.src = window.easyflowMathJaxSrc || 'mathjax/tex-svg.js';
+          script.onload = function() {
+            if (window.easyflowMathJaxReady) window.easyflowMathJaxReady();
+          };
+          document.head.appendChild(script);
+        }
+        window.easyflowStartMathJaxPolling();
+        return false;
+      };
+
+      function scheduleEasyflowTypesetMath(root) {
+        root = root || document;
+        if (!easyflowHasMathDocument(root)) return;
+        window.easyflowEnsureMathJax(root);
         if (window.easyflowTypesetMathTimer) {
           window.clearTimeout(window.easyflowTypesetMathTimer);
         }
@@ -3888,7 +3913,6 @@
           scheduleAncovaNormalityOptionsUpdate();
         }
         scheduleEasyflowTypesetMath(document);
-        window.easyflowStartMathJaxPolling();
         window.easyflowUpdateTtestNormalityTree = updateTtestNormalityTree;
         window.easyflowUpdateFactorNormalityOptions = updateFactorNormalityOptions;
         window.easyflowUpdateAncovaNormalityOptions = updateAncovaNormalityOptions;

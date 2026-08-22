@@ -677,7 +677,8 @@ assert_contains(direct_click_handler, "markNavbarDropdownActive(link);", "groupe
 assert_contains(direct_click_handler, "window.setTimeout(markActive, 0);", "grouped direct item reapplies active state after Shiny navigation")
 assert_contains(easyflow_js, "if (Date.now() > (window.easyflowTransferScrollRestoreUntil || 0)) return;", "transfer scroll restoration does not create idle timer storms")
 assert_contains(easyflow_js, "window.easyflowExcelBusyTimers = [0, 50, 150, 350, 750, 1500, 3000].map", "Excel busy-state timers are coalesced")
-assert_contains(easyflow_js, "if (!hasMathDocument) return;", "Math rendering is skipped outside documentation panels")
+assert_contains(easyflow_js, "if (!easyflowHasMathDocument(root)) return;", "Math rendering is skipped outside documentation panels")
+assert_contains(easyflow_js, "window.easyflowEnsureMathJax(root);", "MathJax is requested only after a documentation panel appears")
 assert_contains(direct_click_handler, "link.closest('.navbar-nav > li.dropdown').removeClass('open');", "grouped direct item closes after selection")
 
 message("Checking layout documentation...")
