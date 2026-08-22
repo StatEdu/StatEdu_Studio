@@ -27,6 +27,7 @@ Every row must pass against the same commit used to build the installer.
 
 | Check | Status | Evidence |
 |---|---|---|
+| `scripts/validate_installer_regressions.ps1` | Pending | |
 | `scripts/validate_stabilization.ps1 -Full` | Pending | |
 | `scripts/release_preflight.ps1` | Pending | |
 | `scripts/release_preflight.ps1 -FullElectronSmoke` | Pending | |
@@ -39,6 +40,7 @@ Every row must pass against the same commit used to build the installer.
 | Manual check | Expected result | Status | Evidence / notes |
 |---|---|---|---|
 | Launch installed `StatEdu Studio.exe` | App opens without a console window or startup error | Pending | |
+| First interactive screen timing | Ready for input within 15 seconds; record elapsed seconds | Pending | |
 | Navbar, About, and version history | All display public `v1.2.3`; no `-dev` label | Pending | |
 | About > Open Source Licenses | Bundled notices open and are readable | Pending | |
 | Local connection | App uses the authenticated `127.0.0.1` Shiny session | Pending | |
@@ -58,10 +60,26 @@ Every row must pass against the same commit used to build the installer.
 | Manual check | Expected result | Status | Evidence / notes |
 |---|---|---|---|
 | Import CSV and Excel sample files | Data and variable metadata render correctly | Pending | |
+| Small example CSV timing | Variable table appears within 5 seconds without a duplicate read or recursive workspace scan | Pending | |
 | Import from a path containing spaces | Import and subsequent analysis succeed | Pending | |
 | Import from a path containing Korean characters | Import and subsequent analysis succeed | Pending | |
 | Save and load settings | Only `.studio` is offered and the model/data reconnect message is accurate | Pending | |
+| `.studio` restore timing | Variables and the saved model/canvas return within 5 seconds | Pending | |
 | Native `.stmodel` open dialog | CFA, SEM, and PLS models restore nodes, paths, construct types, and analysis settings | Pending | |
+
+## 2026-08-22 canvas, bootstrap, and result regressions
+
+Use the fixture and timing method in `docs/INSTALLER_REGRESSION_CHECKLIST_2026-08-22_KO.md`.
+
+| Manual check | Expected result | Status | Evidence / notes |
+|---|---|---|---|
+| Mediation/moderation custom canvas timing | Toolbar and grid are interactive within 3 seconds | Pending | |
+| Shared canvas toolbar | CFA, SEM, PLS-SEM, and custom-model icons persist before/after analysis; PLS-SEM never wraps to four rows; custom font is 13px | Pending | |
+| Custom bootstrap timing | 75 rows, two focal X variables, and 5,000 samples per X finish within 20 seconds | Pending | |
+| Bootstrap status card | Exactly one card and one Stop button; phases and percentage never move backward | Pending | |
+| Cross-analysis ownership | Starting the standard/custom counterpart cancels its prior worker instead of creating a second card | Pending | |
+| Result transition | Table and result model appear within 5 seconds after completion; the source model remains available | Pending | |
+| Delta R-squared row | A defined value is shown; an undefined value removes the entire row | Pending | |
 
 ## CFA workflow
 

@@ -41,6 +41,7 @@ Use this checklist before creating a public beta installer, release candidate, o
 
 ## Runtime and Packaging
 
+- Run `scripts\validate_installer_regressions.ps1` and complete the packaged timing/visual checks in `docs/INSTALLER_REGRESSION_CHECKLIST_2026-08-22_KO.md`; any recurrence of the documented startup, data-load, canvas, bootstrap-status, result, or Delta R-squared defects blocks installer creation.
 - Run `scripts/validate_stabilization.ps1` for the core stabilization suite.
 - Run `scripts/validate_stabilization.ps1 -Full` before packaging a public beta or release candidate.
 - Run `scripts/release_preflight.ps1` before preparing a release candidate; after packaging, run it with `-FullElectronSmoke`.

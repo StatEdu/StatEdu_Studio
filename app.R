@@ -29,6 +29,22 @@ startup_time("load packages", load_app_packages())
 app_config <- read_app_config()
 app_version <- app_config$version
 
+statedu_build_fingerprint <- trimws(Sys.getenv("STATEDU_BUILD_FINGERPRINT", ""))
+try({
+  statedu_health_dir <- file.path(tempdir(), "statedu-health")
+  dir.create(statedu_health_dir, recursive = TRUE, showWarnings = FALSE)
+  jsonlite::write_json(
+    list(
+      app = "StatEdu Studio",
+      version = app_version,
+      fingerprint = statedu_build_fingerprint
+    ),
+    path = file.path(statedu_health_dir, "build.json"),
+    auto_unbox = TRUE
+  )
+  shiny::addResourcePath("statedu-health", statedu_health_dir)
+}, silent = TRUE)
+
 startup_time("source modules", source_app_modules())
 try(shiny::addResourcePath("docs", normalizePath("docs", winslash = "/", mustWork = FALSE)), silent = TRUE)
 

@@ -334,10 +334,17 @@ app_static_language_labels_script <- local({
 })
 
 app_head_tags <- function(version) {
+  build_fingerprint <- trimws(Sys.getenv("STATEDU_BUILD_FINGERPRINT", ""))
+  asset_version <- if (nzchar(build_fingerprint)) {
+    paste(version, substr(build_fingerprint, 1L, 12L), sep = "-")
+  } else {
+    version
+  }
   tags$head(
-    tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = paste0("logo-favicon-32.png?v=", version, "-statedu-studio-final-slanted-bar")),
-    tags$link(rel = "icon", type = "image/png", sizes = "64x64", href = paste0("logo-favicon-64.png?v=", version, "-statedu-studio-final-slanted-bar")),
-    app_stylesheet_link(version),
+    tags$meta(name = "statedu-build-fingerprint", content = build_fingerprint),
+    tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = paste0("logo-favicon-32.png?v=", asset_version, "-statedu-studio-final-slanted-bar")),
+    tags$link(rel = "icon", type = "image/png", sizes = "64x64", href = paste0("logo-favicon-64.png?v=", asset_version, "-statedu-studio-final-slanted-bar")),
+    app_stylesheet_link(asset_version),
     tags$script(HTML(paste0(
       "window.MathJax = {
         tex: {
@@ -354,7 +361,7 @@ app_head_tags <- function(version) {
       "';"
     ))),
     app_static_language_labels_script(),
-    app_script_link(version)
+    app_script_link(asset_version)
   )
 }
 

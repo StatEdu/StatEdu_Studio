@@ -591,6 +591,14 @@ hierarchical_model_note_lines <- function(group, variable_table = NULL, labels =
   c(hierarchical_notes, model_lines)
 }
 
+hierarchical_summary_value_available <- function(value) {
+  if (is.null(value) || length(value) == 0L) {
+    return(FALSE)
+  }
+  text <- tryCatch(trimws(as.character(value)), error = function(e) character(0))
+  any(!is.na(text) & nzchar(text) & !tolower(text) %in% c("na", "nan", "null"))
+}
+
 hierarchical_standard_summary_table <- function(table, summary, model_index, summary_values, include_delta = TRUE) {
   columns <- names(table)
   if (length(columns) == 0) {
@@ -609,7 +617,7 @@ hierarchical_standard_summary_table <- function(table, summary, model_index, sum
     list(label = attr(summary_values, "f_label", exact = TRUE) %||% "F(p)", value = summary$f %||% ""),
     list(label = "R\u00B2(adj. R\u00B2)", value = summary$r2 %||% "")
   )
-  if (length(summary_values) > 1L && isTRUE(include_delta) && model_index > 1L) {
+  if (isTRUE(include_delta) && hierarchical_summary_value_available(summary$delta)) {
     summary_items <- c(summary_items, list(list(
       label = attr(summary_values, "delta_label", exact = TRUE) %||% "Delta R\u00B2(F change p)",
       value = summary$delta %||% ""
@@ -1127,9 +1135,10 @@ hierarchical_coefficient_html_table <- function(
     hierarchical_footer_row(attr(summary_values, "f_label", exact = TRUE) %||% "F(p)", lapply(summary_values, `[[`, "f"), model_columns, first = TRUE),
     hierarchical_footer_row("R\u00B2(adj. R\u00B2)", lapply(summary_values, `[[`, "r2"), model_columns)
   )
-  if (length(model_tables) > 1 && isTRUE(include_delta)) {
+  delta_values <- lapply(summary_values, `[[`, "delta")
+  if (isTRUE(include_delta) && any(vapply(delta_values, hierarchical_summary_value_available, logical(1)))) {
     footer_rows <- c(footer_rows, list(
-      hierarchical_footer_row(attr(summary_values, "delta_label", exact = TRUE) %||% "Delta R\u00B2(F change p)", lapply(summary_values, `[[`, "delta"), model_columns)
+      hierarchical_footer_row(attr(summary_values, "delta_label", exact = TRUE) %||% "Delta R\u00B2(F change p)", delta_values, model_columns)
     ))
   }
   if (isTRUE(attr(summary_values, "any_residual_diagnostics", exact = TRUE))) {

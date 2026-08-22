@@ -8,7 +8,10 @@ custom_model_canvas_workspace <- function(
   language = statedu_initial_language(),
   root_id = "custom-model-canvas-root",
   input_prefix = "custom_model_canvas",
-  analysis_options_ui = NULL
+  analysis_options_ui = NULL,
+  initial_snapshot = NULL,
+  initial_result_snapshot = NULL,
+  initial_view = "source"
 ) {
   items <- custom_model_canvas_variable_items(selected_names, variable_table, labels)
   variables_json <- htmltools::htmlEscape(
@@ -19,6 +22,22 @@ custom_model_canvas_workspace <- function(
     jsonlite::toJSON(custom_model_canvas_i18n(language), auto_unbox = TRUE, null = "null"),
     attribute = TRUE
   )
+  initial_snapshot_json <- NULL
+  if (is.list(initial_snapshot)) {
+    initial_snapshot$nonce <- NULL
+    initial_snapshot_json <- htmltools::htmlEscape(
+      jsonlite::toJSON(initial_snapshot, auto_unbox = TRUE, null = "null"),
+      attribute = TRUE
+    )
+  }
+  initial_result_snapshot_json <- NULL
+  if (is.list(initial_result_snapshot)) {
+    initial_result_snapshot$nonce <- NULL
+    initial_result_snapshot_json <- htmltools::htmlEscape(
+      jsonlite::toJSON(initial_result_snapshot, auto_unbox = TRUE, null = "null"),
+      attribute = TRUE
+    )
+  }
 
   tagList(
     div(
@@ -33,6 +52,9 @@ custom_model_canvas_workspace <- function(
       `data-variables` = variables_json,
       `data-language` = normalize_app_language(language),
       `data-i18n` = i18n_json,
+      `data-initial-snapshot` = initial_snapshot_json,
+      `data-result-snapshot` = initial_result_snapshot_json,
+      `data-initial-view` = if (identical(initial_view, "result")) "result" else "source",
       div(
         class = "custom-model-variable-panel analysis-transfer-column analysis-transfer-panel",
         analysis_field_label_tag("Variables", language = language),

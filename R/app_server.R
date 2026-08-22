@@ -310,6 +310,23 @@ create_app_server <- function(app_version) {
     lazy_ui("lazy_latent_mixture", function() latent_mplus_panel_content(app_version, app_language()))
   }
 
+  register_on_first_menu_visit("analysis_custom_model_canvas", function() {
+    deferred_start <- Sys.time()
+    register_custom_model_canvas_handlers(
+      input = input,
+      output = output,
+      session = session,
+      dataset_fn = dataset,
+      selected_names_fn = selected_names,
+      variable_table_fn = regression_variable_table,
+      labels_fn = var_label_overrides,
+      category_table_fn = category_label_values,
+      mark_settings_dirty = mark_settings_dirty,
+      app_language_fn = app_language
+    )
+    statedu_log_timing("deferred custom-model canvas module", deferred_start)
+  })
+
   register_on_first_menu_visit(c(
     paste0("sample_size_", names(sample_size_method_labels())),
     paste0("effect_size_", names(effect_size_method_labels()))
@@ -1826,7 +1843,6 @@ create_app_server <- function(app_version) {
     "Principal Components",
     "Regression",
     "analysis_mediation_moderation",
-    "analysis_custom_model_canvas",
     "Generalized Linear Model (GLM)",
     "analysis_logistic_regression",
     "analysis_survival_setup",
@@ -1852,19 +1868,6 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
-  register_custom_model_canvas_handlers(
-    input = input,
-    output = output,
-    session = session,
-    dataset_fn = dataset,
-    selected_names_fn = selected_names,
-    variable_table_fn = regression_variable_table,
-    labels_fn = var_label_overrides,
-    category_table_fn = category_label_values,
-    mark_settings_dirty = mark_settings_dirty,
-    app_language_fn = app_language
-  )
-
   register_structural_equation_canvas_handlers(
     input = input,
     output = output,

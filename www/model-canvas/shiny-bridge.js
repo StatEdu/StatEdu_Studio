@@ -1,6 +1,31 @@
 (function() {
   "use strict";
 
+  var mountCache = window.StatEduModelCanvasMountCache = window.StatEduModelCanvasMountCache || {};
+
+  function rootCacheKey(root) {
+    if (!root) return "";
+    return root.id || root.getAttribute("data-input-prefix") || "custom_model_canvas";
+  }
+
+  function cacheInstance(instance, sourceSnapshot) {
+    if (!instance || !instance.root || !window.StatEduModelCanvas || !window.StatEduModelCanvas.state) return;
+    var key = rootCacheKey(instance.root);
+    if (!key) return;
+    var source = sourceSnapshot || instance.sourceSnapshot || window.StatEduModelCanvas.state.snapshot(instance.state);
+    mountCache[key] = {
+      source: source ? window.StatEduModelCanvas.state.clone(source) : null,
+      result: instance.resultSnapshot ? window.StatEduModelCanvas.state.clone(instance.resultSnapshot) : null,
+      viewingResult: !!(window.StatEduModelCanvas.nodes && window.StatEduModelCanvas.nodes.isViewingResult(instance))
+    };
+  }
+
+  function cachedStateForRoot(root) {
+    var cached = mountCache[rootCacheKey(root)];
+    if (!cached || !window.StatEduModelCanvas || !window.StatEduModelCanvas.state) return null;
+    return window.StatEduModelCanvas.state.clone(cached);
+  }
+
   function copyFields(target, source, fields) {
     fields.forEach(function(field) {
       if (Object.prototype.hasOwnProperty.call(source, field)) {
@@ -78,6 +103,7 @@
       instance.sourceSnapshot = window.StatEduModelCanvas.state.clone(payload);
       instance.resultSnapshot = syncVisualEdits(instance.resultSnapshot, payload);
     }
+    cacheInstance(instance, payload);
     payload.nonce = Date.now() + Math.random();
     Shiny.setInputValue((instance.root.getAttribute("data-input-prefix") || "custom_model_canvas") + "_state", payload, {priority: "event"});
   }
@@ -115,6 +141,7 @@
     if (incomingResult && currentResult) incomingResult = syncVisualEdits(incomingResult, currentResult);
     instance.sourceSnapshot = incomingSource;
     instance.resultSnapshot = incomingResult;
+    cacheInstance(instance, incomingSource);
     root.classList.toggle("has-result", !!instance.resultSnapshot);
     if (window.StatEduModelCanvas.toolbar && window.StatEduModelCanvas.toolbar.updateButtons) {
       window.StatEduModelCanvas.toolbar.updateButtons(instance);
@@ -143,6 +170,8 @@
   window.StatEduModelCanvas = window.StatEduModelCanvas || {};
   window.StatEduModelCanvas.bridge = {
     sendState: sendState,
+    cacheInstance: cacheInstance,
+    cachedStateForRoot: cachedStateForRoot,
     syncVisualEdits: syncVisualEdits,
     run: run,
     runConfirm: runConfirm,

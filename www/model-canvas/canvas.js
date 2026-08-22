@@ -51,6 +51,22 @@
     }
   }
 
+  function parseResultSnapshot(root) {
+    var raw = root.getAttribute("data-result-snapshot") || "";
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch (error) {
+      var textarea = document.createElement("textarea");
+      textarea.innerHTML = raw;
+      try {
+        return JSON.parse(textarea.value || "null");
+      } catch (innerError) {
+        return null;
+      }
+    }
+  }
+
   function canvasPoint(instance, event) {
     var rect = instance.paper.getBoundingClientRect();
     var structural = isStructuralCanvas(instance);
@@ -1995,6 +2011,9 @@
     instance.viewingResult = true;
     instance.root.classList.add("is-viewing-result");
     render(instance);
+    if (window.StatEduModelCanvas.bridge && window.StatEduModelCanvas.bridge.cacheInstance) {
+      window.StatEduModelCanvas.bridge.cacheInstance(instance, instance.sourceSnapshot);
+    }
   }
 
   function showSource(instance) {
@@ -2034,7 +2053,22 @@
       instance.state.canvas.orientation = root.getAttribute("data-canvas-orientation") ||
         (configuredHeight > configuredWidth ? "portrait" : "landscape");
     }
-    var initialSnapshot = parseInitialSnapshot(root);
+    var cachedCanvas = window.StatEduModelCanvas.bridge && window.StatEduModelCanvas.bridge.cachedStateForRoot
+      ? window.StatEduModelCanvas.bridge.cachedStateForRoot(root)
+      : null;
+    var initialSnapshot = parseInitialSnapshot(root) || (cachedCanvas && cachedCanvas.source);
+    var initialResultSnapshot = parseResultSnapshot(root) || (cachedCanvas && cachedCanvas.result);
+    instance.sourceSnapshot = initialSnapshot || null;
+    instance.resultSnapshot = initialResultSnapshot || null;
+    var initialResultView = root.getAttribute("data-initial-view") === "result" || (cachedCanvas && cachedCanvas.viewingResult);
+    if (initialResultView && instance.resultSnapshot) {
+      initialSnapshot = instance.resultSnapshot;
+      instance.viewingResult = true;
+      root.classList.add("is-viewing-result");
+    }
+    if (instance.resultSnapshot) {
+      root.classList.add("has-result");
+    }
     if (
       initialSnapshot &&
       typeof initialSnapshot === "object" &&

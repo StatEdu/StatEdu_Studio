@@ -184,6 +184,37 @@ mediation_moderation_bootstrap_progress_detail <- function(done, total, focal, b
   )
 }
 
+mediation_moderation_bootstrap_coordinator <- function(session) {
+  coordinator <- session$userData$mediation_moderation_bootstrap_coordinator
+  if (!is.environment(coordinator)) {
+    coordinator <- new.env(parent = emptyenv())
+    coordinator$owner <- NULL
+    coordinator$cancel <- NULL
+    session$userData$mediation_moderation_bootstrap_coordinator <- coordinator
+  }
+  coordinator
+}
+
+mediation_moderation_claim_bootstrap <- function(session, owner, cancel) {
+  coordinator <- mediation_moderation_bootstrap_coordinator(session)
+  previous_owner <- as.character(coordinator$owner %||% "")
+  if (nzchar(previous_owner) && !identical(previous_owner, owner) && is.function(coordinator$cancel)) {
+    coordinator$cancel()
+  }
+  coordinator$owner <- as.character(owner)
+  coordinator$cancel <- cancel
+  invisible(coordinator)
+}
+
+mediation_moderation_release_bootstrap <- function(session, owner) {
+  coordinator <- mediation_moderation_bootstrap_coordinator(session)
+  if (identical(as.character(coordinator$owner %||% ""), as.character(owner))) {
+    coordinator$owner <- NULL
+    coordinator$cancel <- NULL
+  }
+  invisible(coordinator)
+}
+
 mediation_moderation_write_bootstrap_progress <- function(
   progress_file,
   done,
@@ -192,18 +223,63 @@ mediation_moderation_write_bootstrap_progress <- function(
   boot_r = total,
   phase = "resampling"
 ) {
-  saveRDS(
-    list(
-      phase = as.character(phase),
-      done = as.integer(done),
-      total = as.integer(total),
-      focal = as.character(focal %||% ""),
-      boot_r = as.integer(boot_r),
-      updated_at = Sys.time()
-    ),
-    progress_file
+  progress <- list(
+    phase = as.character(phase),
+    done = as.integer(done),
+    total = as.integer(total),
+    focal = as.character(focal %||% ""),
+    boot_r = as.integer(boot_r),
+    updated_at = Sys.time()
   )
+  # A reader can briefly encounter an incomplete RDS while this small payload
+  # is replaced. The parent keeps the last valid value, so a direct write is
+  # both safe for the UI and much faster than Windows rename/copy loops.
+  saveRDS(progress, progress_file)
   invisible(NULL)
+}
+
+mediation_moderation_dw_critical_cache <- new.env(parent = emptyenv())
+
+mediation_moderation_read_dw_critical_table <- function(path) {
+  tryCatch(utils::read.csv(path, stringsAsFactors = FALSE), error = function(error) NULL)
+}
+
+mediation_moderation_cached_dw_critical <- function(n, p, path = regression_dw_table_path) {
+  path <- as.character(path %||% "")
+  path <- if (length(path) > 0L && !is.na(path[[1L]])) path[[1L]] else ""
+  table_key <- paste0("table\r", path)
+  if (!exists(table_key, envir = mediation_moderation_dw_critical_cache, inherits = FALSE)) {
+    cached_table <- if (!nzchar(path) || !file.exists(path)) {
+      list(table = NULL, note = "Durbin-Watson critical value table was not found.")
+    } else {
+      table <- mediation_moderation_read_dw_critical_table(path)
+      if (is.null(table) || !all(c("n", "p", "dL", "dU") %in% names(table))) {
+        list(table = NULL, note = "The Durbin-Watson critical value table has an invalid format.")
+      } else {
+        list(table = table, note = NA_character_)
+      }
+    }
+    assign(table_key, cached_table, envir = mediation_moderation_dw_critical_cache)
+  }
+  cached_table <- get(table_key, envir = mediation_moderation_dw_critical_cache, inherits = FALSE)
+  if (is.null(cached_table$table)) {
+    return(list(dL = NA_real_, dU = NA_real_, note = cached_table$note))
+  }
+  n <- as.integer(n %||% NA_integer_)
+  p <- as.integer(p %||% NA_integer_)
+  if (length(n) == 0L || length(p) == 0L || is.na(n[[1L]]) || is.na(p[[1L]]) ||
+      n[[1L]] < 1L || n[[1L]] > 2000L || p[[1L]] < 1L || p[[1L]] > 20L) {
+    return(list(dL = NA_real_, dU = NA_real_, note = "The critical value table supports n = 1-2000 and p = 1-20."))
+  }
+  row <- cached_table$table[cached_table$table$n == n[[1L]] & cached_table$table$p == p[[1L]], , drop = FALSE]
+  if (nrow(row) == 0L) {
+    return(list(dL = NA_real_, dU = NA_real_, note = "Durbin-Watson critical value was not found for this n and p."))
+  }
+  list(
+    dL = as.numeric(row$dL[[1L]]),
+    dU = as.numeric(row$dU[[1L]]),
+    note = NA_character_
+  )
 }
 
 mediation_moderation_start_bootstrap_job <- function(args) {
@@ -214,22 +290,42 @@ mediation_moderation_start_bootstrap_job <- function(args) {
   result_file <- file.path(job_dir, "result.rds")
   progress_file <- file.path(job_dir, "progress.rds")
   error_file <- file.path(job_dir, "error.txt")
+  args$worker_preferences <- args$worker_preferences %||% list(
+    result_zoom_percent = getOption("statedu.result_zoom_percent", statedu_result_zoom_default()),
+    output_decimal_digits = getOption("statedu.output_decimal_digits", 3L),
+    p_value_format = getOption("statedu.p_value_format", "apa"),
+    multiple_correction_default = getOption("statedu.multiple_correction_default", "holm"),
+    selected_variables_only_default = getOption("statedu.selected_variables_only_default", TRUE),
+    default_save_dir = getOption("statedu.default_save_dir", "")
+  )
   args$progress <- NULL
   saveRDS(args, input_file)
   boot_r <- max(1L, as.integer(args$boot_r %||% 5000L))
   model_total <- max(1L, length(args$roles$y %||% character(0)) * length(args$roles$x %||% character(0)))
   requested_total <- boot_r * model_total
+  started_at <- Sys.time()
   mediation_moderation_write_bootstrap_progress(progress_file, 0L, requested_total, "", boot_r, "starting")
+  progress_state <- new.env(parent = emptyenv())
+  progress_state$progress <- list(
+    phase = "starting",
+    done = 0L,
+    total = requested_total,
+    focal = "",
+    boot_r = boot_r,
+    updated_at = started_at
+  )
+  progress_state$last_sample_done <- 0L
+  progress_state$last_sample_at <- as.numeric(started_at)
+  progress_state$rate_samples <- numeric(0)
   process <- callr::r_bg(
     func = function(input_file, result_file, progress_file, error_file, project_dir) {
       tryCatch({
         setwd(project_dir)
-        suppressPackageStartupMessages(library(shiny))
         tags <- htmltools::tags
         tagList <- htmltools::tagList
         module_files <- c(
-          "utils.R", "result_labels.R", "setup_analysis_ui.R", "result_table_ui.R",
-          "result_panels_ui.R", "result_coefficients.R", "analysis_regression.R",
+          "utils.R", "result_labels.R", "result_coefficients.R",
+          "result_panels_ui.R", "analysis_regression.R",
           "setup_mediation_moderation_ui.R"
         )
         for (module_file in module_files) {
@@ -237,17 +333,46 @@ mediation_moderation_start_bootstrap_job <- function(args) {
         }
         args <- readRDS(input_file)
         boot_r <- max(1L, as.integer(args$boot_r %||% 5000L))
+        # A callr worker does not inherit the application's R options. Apply
+        # persisted preferences once so numeric formatting does not reopen and
+        # parse the preferences JSON for every result cell during postprocessing.
+        worker_preferences <- args$worker_preferences %||% statedu_default_preferences()
+        args$worker_preferences <- NULL
+        statedu_apply_preferences(worker_preferences)
+        initial_total <- max(
+          boot_r,
+          boot_r * max(1L, length(args$roles$y %||% character(0)) * length(args$roles$x %||% character(0)))
+        )
+        mediation_moderation_write_bootstrap_progress(
+          progress_file, 0L, initial_total, "", boot_r, "preparing"
+        )
+        last_progress_write_at <- 0
+        last_progress_focal <- ""
         args$progress <- function(done, total, focal) {
-          mediation_moderation_write_bootstrap_progress(
-            progress_file, done, total, focal, boot_r, "resampling"
-          )
+          now <- as.numeric(Sys.time())
+          focal <- as.character(focal %||% "")
+          if (
+            done <= 0L || done >= total || !identical(focal, last_progress_focal) ||
+              (now - last_progress_write_at) >= 1
+          ) {
+            mediation_moderation_write_bootstrap_progress(
+              progress_file, done, total, focal, boot_r,
+              if (done >= total) "finalizing" else "resampling"
+            )
+            last_progress_write_at <<- now
+            last_progress_focal <<- focal
+          }
         }
         value <- do.call(run_mediation_moderation_analysis, args)
-        saveRDS(value, result_file)
         final_progress <- tryCatch(readRDS(progress_file), error = function(error) list(total = boot_r))
         final_total <- max(1L, as.integer(final_progress$total %||% boot_r))
+        final_focal <- final_progress$focal %||% ""
         mediation_moderation_write_bootstrap_progress(
-          progress_file, final_total, final_total, final_progress$focal %||% "", boot_r, "complete"
+          progress_file, final_total, final_total, final_focal, boot_r, "serializing"
+        )
+        saveRDS(value, result_file)
+        mediation_moderation_write_bootstrap_progress(
+          progress_file, final_total, final_total, final_focal, boot_r, "complete"
         )
       }, error = function(error) {
         writeLines(conditionMessage(error), error_file, useBytes = TRUE)
@@ -270,9 +395,10 @@ mediation_moderation_start_bootstrap_job <- function(args) {
     result_file = result_file,
     progress_file = progress_file,
     error_file = error_file,
-    started_at = Sys.time(),
+    started_at = started_at,
     boot_r = boot_r,
-    requested_total = requested_total
+    requested_total = requested_total,
+    progress_state = progress_state
   )
 }
 
@@ -284,38 +410,109 @@ mediation_moderation_cleanup_bootstrap_job <- function(job) {
 }
 
 mediation_moderation_bootstrap_job_progress <- function(job, language = statedu_initial_language()) {
+  progress_state <- job$progress_state
+  if (!is.environment(progress_state)) {
+    progress_state <- new.env(parent = emptyenv())
+  }
+  cached_progress <- progress_state$progress
   progress <- tryCatch(
     if (file.exists(job$progress_file)) readRDS(job$progress_file) else NULL,
     error = function(error) NULL
   )
-  progress <- progress %||% list(
+  fallback_progress <- cached_progress %||% list(
     phase = "starting", done = 0L, total = job$requested_total %||% job$boot_r,
-    focal = "", boot_r = job$boot_r
+    focal = "", boot_r = job$boot_r, updated_at = job$started_at
   )
+  if (is.null(progress)) {
+    progress <- fallback_progress
+  } else {
+    progress_done <- max(0L, as.integer(progress$done %||% 0L))
+    cached_done <- max(0L, as.integer(cached_progress$done %||% 0L))
+    phase_order <- c(starting = 1L, preparing = 2L, resampling = 3L, finalizing = 4L, serializing = 5L, complete = 6L)
+    progress_phase_rank <- unname(phase_order[as.character(progress$phase %||% "starting")[[1L]]])
+    cached_phase_rank <- unname(phase_order[as.character(cached_progress$phase %||% "starting")[[1L]]])
+    progress_phase_rank <- if (length(progress_phase_rank) == 0L || is.na(progress_phase_rank)) 0L else progress_phase_rank
+    cached_phase_rank <- if (length(cached_phase_rank) == 0L || is.na(cached_phase_rank)) 0L else cached_phase_rank
+    progress_regressed <- progress_done < cached_done ||
+      (progress_done == cached_done && progress_phase_rank < cached_phase_rank)
+    if (!is.null(cached_progress) && isTRUE(progress_regressed)) {
+      progress <- cached_progress
+    } else {
+      progress_state$progress <- progress
+    }
+  }
   done <- max(0L, as.integer(progress$done %||% 0L))
   total <- max(1L, as.integer(progress$total %||% job$requested_total %||% job$boot_r))
   done <- min(done, total)
   boot_r <- max(1L, as.integer(progress$boot_r %||% job$boot_r %||% total))
   counts <- mediation_moderation_bootstrap_progress_counts(done, total, boot_r)
   elapsed <- max(0, as.numeric(difftime(Sys.time(), job$started_at, units = "secs")))
-  rate <- if (elapsed >= 1 && done > 0L) done / elapsed else NA_real_
+  sample_at <- suppressWarnings(as.numeric(progress$updated_at %||% Sys.time()))
+  if (length(sample_at) == 0L || !is.finite(sample_at[[1L]])) sample_at <- as.numeric(Sys.time())
+  sample_at <- sample_at[[1L]]
+  last_sample_done <- max(0L, as.integer(progress_state$last_sample_done %||% 0L))
+  last_sample_at <- suppressWarnings(as.numeric(progress_state$last_sample_at %||% as.numeric(job$started_at)))
+  if (length(last_sample_at) == 0L || !is.finite(last_sample_at[[1L]])) last_sample_at <- as.numeric(job$started_at)
+  last_sample_at <- last_sample_at[[1L]]
+  if (
+    done > last_sample_done &&
+      is.finite(sample_at) && is.finite(last_sample_at) && sample_at > last_sample_at
+  ) {
+    # The first interval includes process/module/model setup and is not a
+    # representative resampling rate. Exclude it from the ETA estimate.
+    if (last_sample_done > 0L) {
+      interval_rate <- (done - last_sample_done) / (sample_at - last_sample_at)
+      if (is.finite(interval_rate) && interval_rate > 0) {
+        samples <- c(progress_state$rate_samples %||% numeric(0), interval_rate)
+        progress_state$rate_samples <- tail(samples, 5L)
+      }
+    }
+    progress_state$last_sample_done <- done
+    progress_state$last_sample_at <- sample_at
+  }
+  rate_samples <- progress_state$rate_samples %||% numeric(0)
+  rate <- if (length(rate_samples) >= 3L) stats::median(rate_samples) else NA_real_
   remaining <- if (is.finite(rate) && rate > 0 && total > done) ceiling((total - done) / rate) else NA_integer_
   ko <- identical(normalize_app_language(language), "ko")
   focal <- as.character(progress$focal %||% "")
+  focal <- if (length(focal) > 0L && !is.na(focal[[1L]])) focal[[1L]] else ""
   phase <- as.character(progress$phase %||% "starting")
+  phase <- if (length(phase) > 0L && !is.na(phase[[1L]])) phase[[1L]] else "starting"
   phase_label <- if (ko) {
-    switch(phase, starting = "준비 중", resampling = "재표집 중", complete = "완료", "실행 중")
+    switch(
+      phase,
+      starting = "작업 시작 중",
+      preparing = "모형 준비 중",
+      resampling = "재표집 중",
+      finalizing = "부트스트랩 통계 계산 중",
+      serializing = "결과 저장 중",
+      complete = "완료",
+      "실행 중"
+    )
   } else {
-    switch(phase, starting = "Starting", resampling = "Resampling", complete = "Complete", "Running")
+    switch(
+      phase,
+      starting = "Starting worker",
+      preparing = "Preparing models",
+      resampling = "Resampling",
+      finalizing = "Computing bootstrap summaries",
+      serializing = "Saving results",
+      complete = "Complete",
+      "Running"
+    )
   }
-  detail <- if (ko) {
+  if (!identical(phase, "resampling")) {
+    rate <- NA_real_
+    remaining <- NA_integer_
+  }
+  resampling_detail <- if (ko) {
     paste0(
       phase_label, " ", round(100 * done / total), "% · 전체 ", format(done, big.mark = ","), "/", format(total, big.mark = ","), "회",
       if (nzchar(focal)) paste0(" · X: ", focal) else "",
       " · 모형 ", counts$model_index, "/", counts$model_total,
       if (is.finite(rate)) paste0(" · ", format(round(rate, 1), nsmall = 1), "회/초") else "",
       " · 경과 ", floor(elapsed), "초",
-      if (is.finite(remaining)) paste0(" · 예상 잔여 ", remaining, "초") else ""
+      if (is.finite(remaining)) paste0(" · 재표집 예상 잔여 ", remaining, "초") else if (done > 0L && done < total) " · 재표집 잔여 계산 중" else ""
     )
   } else {
     paste0(
@@ -324,15 +521,48 @@ mediation_moderation_bootstrap_job_progress <- function(job, language = statedu_
       " · model ", counts$model_index, "/", counts$model_total,
       if (is.finite(rate)) paste0(" · ", format(round(rate, 1), nsmall = 1), "/s") else "",
       " · elapsed ", floor(elapsed), " s",
-      if (is.finite(remaining)) paste0(" · about ", remaining, " s remaining") else ""
+      if (is.finite(remaining)) paste0(" · about ", remaining, " s of resampling remaining") else if (done > 0L && done < total) " · estimating resampling time remaining" else ""
     )
   }
+  detail <- if (identical(phase, "resampling")) {
+    resampling_detail
+  } else if (ko) {
+    switch(
+      phase,
+      starting = paste0("부트스트랩 작업 프로세스를 시작하는 중 · 경과 ", floor(elapsed), "초"),
+      preparing = paste0("모형 행렬과 진단 통계를 준비하는 중 · 예정 ", format(total, big.mark = ","), "회 · 경과 ", floor(elapsed), "초"),
+      finalizing = paste0("재표집 ", format(done, big.mark = ","), "/", format(total, big.mark = ","), "회 완료 · 신뢰구간과 결과표를 계산하는 중 · 경과 ", floor(elapsed), "초"),
+      serializing = paste0("계산된 분석 결과를 저장하는 중 · 경과 ", floor(elapsed), "초"),
+      complete = paste0("분석 완료 · 결과 화면을 준비하는 중 · 총 경과 ", floor(elapsed), "초"),
+      paste0(phase_label, " · 경과 ", floor(elapsed), "초")
+    )
+  } else {
+    switch(
+      phase,
+      starting = paste0("Starting the bootstrap worker · elapsed ", floor(elapsed), " s"),
+      preparing = paste0("Preparing model matrices and diagnostics · ", format(total, big.mark = ","), " resamples planned · elapsed ", floor(elapsed), " s"),
+      finalizing = paste0("Resampling complete (", format(done, big.mark = ","), "/", format(total, big.mark = ","), ") · computing confidence intervals and result tables · elapsed ", floor(elapsed), " s"),
+      serializing = paste0("Saving the computed analysis result · elapsed ", floor(elapsed), " s"),
+      complete = paste0("Analysis complete · preparing the result view · total elapsed ", floor(elapsed), " s"),
+      paste0(phase_label, " · elapsed ", floor(elapsed), " s")
+    )
+  }
+  percent <- if (identical(phase, "resampling")) {
+    100 * done / total
+  } else if (identical(phase, "complete")) {
+    100
+  } else {
+    NA_real_
+  }
   list(
-    percent = 100 * done / total,
+    percent = percent,
     detail = detail,
     phase_label = phase_label,
+    phase = phase,
     done = done,
-    total = total
+    total = total,
+    rate = rate,
+    remaining = remaining
   )
 }
 
@@ -2423,7 +2653,7 @@ mediation_moderation_model_summary_row <- function(model, focal, equation) {
   homogeneity <- tryCatch(lmtest::bptest(model), error = function(e) NULL)
   dw_d <- tryCatch(durbin_watson_stat(model), error = function(e) NA_real_)
   dw_p <- tryCatch(ncol(stats::model.matrix(model)) - 1L, error = function(e) NA_integer_)
-  dw_crit <- tryCatch(lookup_dw_critical(stats::nobs(model), dw_p), error = function(e) list(dL = NA_real_, dU = NA_real_, note = NA_character_))
+  dw_crit <- tryCatch(mediation_moderation_cached_dw_critical(stats::nobs(model), dw_p), error = function(e) list(dL = NA_real_, dU = NA_real_, note = NA_character_))
   data.frame(
     X = focal,
     Equation = equation,
@@ -2492,7 +2722,7 @@ mediation_moderation_path_result <- function(
   f_df2 <- unname(model_summary$fstatistic["dendf"])
   dw_d <- tryCatch(durbin_watson_stat(model), error = function(e) NA_real_)
   dw_p <- tryCatch(ncol(stats::model.matrix(model)) - 1L, error = function(e) NA_integer_)
-  dw_crit <- tryCatch(lookup_dw_critical(stats::nobs(model), dw_p), error = function(e) list(dL = NA_real_, dU = NA_real_, note = NA_character_))
+  dw_crit <- tryCatch(mediation_moderation_cached_dw_critical(stats::nobs(model), dw_p), error = function(e) list(dL = NA_real_, dU = NA_real_, note = NA_character_))
   method <- if (identical(analysis_method, "process_ols")) {
     "PROCESS-compatible OLS regression"
   } else if (normal_ok && homo_ok) {
@@ -6431,16 +6661,23 @@ mediation_moderation_combined_path_table_ui <- function(path_results, result, ou
 
   for (y_index in seq_along(y_path_results)) {
     y_path_result <- y_path_results[[y_index]]
-    last_result <- y_path_result
-    residual_diagnostics_used <- isTRUE(residual_diagnostics_used) || isTRUE(y_path_result$residual_diagnostics)
+    y_group <- mediation_moderation_hierarchical_steps(y_path_result)
+    y_full_result <- if (is.null(y_group)) y_path_result else y_group[[2L]]
+    last_result <- y_full_result
+    residual_diagnostics_used <- isTRUE(residual_diagnostics_used) ||
+      if (is.null(y_group)) {
+        isTRUE(y_full_result$residual_diagnostics)
+      } else {
+        any(vapply(y_group, function(step) isTRUE(step$residual_diagnostics), logical(1)))
+      }
     tbl <- mediation_moderation_combined_table_widths(
-      mediation_moderation_hierarchical_model_table(y_path_result, include_vif = FALSE, output_table_style = coefficient_output_table_style)
+      mediation_moderation_hierarchical_model_table(y_full_result, include_vif = FALSE, output_table_style = coefficient_output_table_style)
     )
     model_tables[[length(model_tables) + 1L]] <- tbl
 
-    y_name <- tryCatch(all.vars(stats::formula(y_path_result$model))[[1L]], error = function(e) "")
+    y_name <- tryCatch(all.vars(stats::formula(y_full_result$model))[[1L]], error = function(e) "")
     y_label <- mediation_moderation_effect_variable_label(
-      y_name, y_path_result$variable_info, y_path_result$labels %||% character(0)
+      y_name, y_full_result$variable_info, y_full_result$labels %||% character(0)
     )
     if (!nzchar(y_label)) y_label <- y_name
     collapsed_focals <- as.character(attr(y_path_result, "collapsed_focals", exact = TRUE) %||% y_path_result$focal %||% character(0))
@@ -6464,21 +6701,29 @@ mediation_moderation_combined_path_table_ui <- function(path_results, result, ou
       tags$span(class = "mm-combined-sublabel", y_sublabel)
     )
 
-    all_summary_values[[length(all_summary_values) + 1L]] <- list(
-      f         = sprintf("%s(%s)", format_decimal3(y_path_result$f_statistic), format_p(y_path_result$f_p)),
-      r2        = sprintf("%s (%s)", format_decimal3(y_path_result$r_squared), format_decimal3(y_path_result$adjusted_r_squared)),
-      delta     = NULL,
-      dw        = mediation_moderation_dw_summary_value(y_path_result),
-      normality = sprintf("%s (%s)", format_decimal3(y_path_result$normality_statistic), format_p(y_path_result$normality_p)),
-      homogeneity = sprintf("%s (%s)", format_decimal3(y_path_result$homogeneity_statistic), format_p(y_path_result$homogeneity_p))
-    )
+    if (is.null(y_group)) {
+      all_summary_values[[length(all_summary_values) + 1L]] <- list(
+        f         = sprintf("%s(%s)", format_decimal3(y_full_result$f_statistic), format_p(y_full_result$f_p)),
+        r2        = sprintf("%s (%s)", format_decimal3(y_full_result$r_squared), format_decimal3(y_full_result$adjusted_r_squared)),
+        delta     = NULL,
+        dw        = mediation_moderation_dw_summary_value(y_full_result),
+        normality = sprintf("%s (%s)", format_decimal3(y_full_result$normality_statistic), format_p(y_full_result$normality_p)),
+        homogeneity = sprintf("%s (%s)", format_decimal3(y_full_result$homogeneity_statistic), format_p(y_full_result$homogeneity_p))
+      )
+    } else {
+      y_summary_values <- hierarchical_summary_values(y_group)
+      if (is.null(m_delta_label)) m_delta_label <- attr(y_summary_values, "delta_label")
+      all_summary_values[[length(all_summary_values) + 1L]] <- y_summary_values[[2L]]
+    }
   }
 
   if (length(model_tables) == 0L) return(NULL)
 
   attr(all_summary_values, "delta_label") <- m_delta_label %||% "Delta R\u00B2(bootstrap 95% CI)"
   attr(all_summary_values, "any_residual_diagnostics") <- isTRUE(residual_diagnostics_used)
-  has_delta <- any(vapply(all_summary_values, function(sv) !is.null(sv$delta), logical(1)))
+  has_delta <- any(vapply(all_summary_values, function(sv) {
+    hierarchical_summary_value_available(sv$delta)
+  }, logical(1)))
   note_line <- if (!is.null(last_result)) mediation_moderation_combined_landscape_note_line(last_result) else NULL
   combined_landscape <- identical(output_table_style, "wide")
 
@@ -7324,6 +7569,16 @@ register_mediation_moderation_setup_output <- function(
 
   mm_result <- reactiveVal(NULL)
   mm_bootstrap_job <- reactiveVal(NULL)
+  cancel_mediation_moderation_bootstrap <- function() {
+    job <- shiny::isolate(mm_bootstrap_job())
+    if (!is.null(job$process) && isTRUE(job$process$is_alive())) {
+      try(job$process$kill(), silent = TRUE)
+    }
+    mediation_moderation_cleanup_bootstrap_job(job)
+    mm_bootstrap_job(NULL)
+    shiny::removeNotification("mediation-moderation-bootstrap-progress")
+    invisible(!is.null(job))
+  }
   output$mediation_moderation_results <- renderUI({
     mediation_moderation_result_ui(
       mm_result(),
@@ -7571,11 +7826,7 @@ register_mediation_moderation_setup_output <- function(
       covariates = mm_covariates(),
       selected_names = selected_names_fn()
     )
-    old_job <- mm_bootstrap_job()
-    if (!is.null(old_job)) {
-      if (!is.null(old_job$process) && old_job$process$is_alive()) old_job$process$kill()
-      mediation_moderation_cleanup_bootstrap_job(old_job)
-    }
+    cancel_mediation_moderation_bootstrap()
     job <- tryCatch(
       mediation_moderation_start_bootstrap_job(list(
         data = data,
@@ -7605,16 +7856,21 @@ register_mediation_moderation_setup_output <- function(
       }
     )
     if (is.null(job)) return()
+    mediation_moderation_claim_bootstrap(
+      session,
+      "mediation_moderation",
+      cancel_mediation_moderation_bootstrap
+    )
     mm_bootstrap_job(job)
     ko <- identical(normalize_app_language(language), "ko")
     structural_canvas_show_notification(
       statedu_bootstrap_status_ui(
         if (ko) "매개·조절 부트스트랩 진행 상태" else "Mediation / moderation bootstrap progress",
-        if (ko) paste0("준비 중 · 전체 ", format(job$requested_total, big.mark = ","), "회") else paste0("Starting · ", format(job$requested_total, big.mark = ","), " total resamples"),
+        if (ko) paste0("부트스트랩 작업 프로세스를 시작하는 중 · 예정 ", format(job$requested_total, big.mark = ","), "회") else paste0("Starting the bootstrap worker · ", format(job$requested_total, big.mark = ","), " resamples planned"),
         percent = NA_real_,
         stop_input_id = "mediation_moderation_bootstrap_stop",
         stop_label = if (ko) "부트스트랩 중단" else "Stop bootstrap",
-        phase_label = if (ko) "준비 중" else "Starting"
+        phase_label = if (ko) "작업 시작 중" else "Starting worker"
       ),
       type = "message", duration = NULL, id = "mediation-moderation-bootstrap-progress"
     )
@@ -7623,10 +7879,8 @@ register_mediation_moderation_setup_output <- function(
   observeEvent(input$mediation_moderation_bootstrap_stop, {
     job <- mm_bootstrap_job()
     if (is.null(job)) return()
-    if (!is.null(job$process) && job$process$is_alive()) job$process$kill()
-    mediation_moderation_cleanup_bootstrap_job(job)
-    mm_bootstrap_job(NULL)
-    shiny::removeNotification("mediation-moderation-bootstrap-progress")
+    cancel_mediation_moderation_bootstrap()
+    mediation_moderation_release_bootstrap(session, "mediation_moderation")
     language <- statedu_current_language(app_language_fn)
     structural_canvas_show_notification(
       mediation_moderation_text(language, "The mediation / moderation bootstrap was stopped.", "매개·조절 부트스트랩을 중단했습니다."),
@@ -7656,13 +7910,51 @@ register_mediation_moderation_setup_output <- function(
       return()
     }
     status <- job$process$get_exit_status()
-    shiny::removeNotification("mediation-moderation-bootstrap-progress")
     language <- statedu_current_language(app_language_fn)
+    ko <- identical(normalize_app_language(language), "ko")
     if (identical(status, 0L) && file.exists(job$result_file)) {
+      structural_canvas_show_notification(
+        statedu_bootstrap_status_ui(
+          if (ko) "매개·조절 부트스트랩 진행 상태" else "Mediation / moderation bootstrap progress",
+          if (ko) "저장된 분석 결과를 불러오는 중" else "Loading the saved analysis result",
+          percent = NA_real_,
+          stop_input_id = "mediation_moderation_bootstrap_stop",
+          stop_label = if (ko) "부트스트랩 중단" else "Stop bootstrap",
+          phase_label = if (ko) "결과 불러오는 중" else "Loading results"
+        ),
+        type = "message", duration = NULL, id = "mediation-moderation-bootstrap-progress"
+      )
+      result_read_started <- proc.time()[["elapsed"]]
       result <- readRDS(job$result_file)
+      result_read_elapsed <- proc.time()[["elapsed"]] - result_read_started
+      result_render_started <- proc.time()[["elapsed"]]
       mm_result(result)
-      showNotification(statedu_t("analysis.status.mediation_moderation_finished", language), type = "message", duration = 4)
+      structural_canvas_show_notification(
+        statedu_bootstrap_status_ui(
+          if (ko) "매개·조절 부트스트랩 진행 상태" else "Mediation / moderation bootstrap progress",
+          if (ko) "결과 표와 그림을 화면에 구성하는 중" else "Rendering result tables and figures",
+          percent = NA_real_,
+          stop_input_id = "mediation_moderation_bootstrap_stop",
+          stop_label = if (ko) "부트스트랩 중단" else "Stop bootstrap",
+          phase_label = if (ko) "결과 화면 구성 중" else "Rendering results"
+        ),
+        type = "message", duration = NULL, id = "mediation-moderation-bootstrap-progress"
+      )
+      session$onFlushed(function() {
+        render_elapsed <- proc.time()[["elapsed"]] - result_render_started
+        shiny::removeNotification("mediation-moderation-bootstrap-progress", session = session)
+        message(sprintf(
+          "[StatEdu timing] mediation/moderation result read %.3fs; server UI flush %.3fs",
+          result_read_elapsed,
+          render_elapsed
+        ))
+        shiny::showNotification(
+          statedu_t("analysis.status.mediation_moderation_finished", language),
+          type = "message", duration = 4, session = session
+        )
+      }, once = TRUE)
     } else {
+      shiny::removeNotification("mediation-moderation-bootstrap-progress")
       error_text <- if (file.exists(job$error_file)) paste(readLines(job$error_file, warn = FALSE, encoding = "UTF-8"), collapse = "\n") else ""
       structural_canvas_show_notification(
         paste0(
@@ -7674,12 +7966,12 @@ register_mediation_moderation_setup_output <- function(
     }
     mediation_moderation_cleanup_bootstrap_job(job)
     mm_bootstrap_job(NULL)
+    mediation_moderation_release_bootstrap(session, "mediation_moderation")
   })
 
   session$onSessionEnded(function() {
-    job <- shiny::isolate(mm_bootstrap_job())
-    if (!is.null(job$process) && job$process$is_alive()) job$process$kill()
-    mediation_moderation_cleanup_bootstrap_job(job)
+    cancel_mediation_moderation_bootstrap()
+    mediation_moderation_release_bootstrap(session, "mediation_moderation")
   })
 
   observeEvent(input$save_mediation_moderation_html_dialog, {

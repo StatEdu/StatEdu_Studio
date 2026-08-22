@@ -26,6 +26,7 @@ This checklist promotes `1.2.3-dev` to public `1.2.3`. It does not modify or sup
 ## Gate 3: Final package validation
 
 - Complete `docs/RELEASE_1_2_3_PACKAGED_VALIDATION_NOTES.md` against the final public package; development-package results are corroborating evidence only.
+- Run `scripts/validate_installer_regressions.ps1` and complete `docs/INSTALLER_REGRESSION_CHECKLIST_2026-08-22_KO.md`; any documented recurrence blocks the installer.
 - Run `scripts/validate_stabilization.ps1 -Full`.
 - Run `scripts/release_preflight.ps1`.
 - Build with `scripts/build_electron_release.ps1` and final non-dev names.

@@ -44,6 +44,11 @@ if ($RscriptPath) {
   $validationArgs += @("-RscriptPath", $RscriptPath)
 }
 
+$installerRegressionArgs = @("-RepoRoot", $RepoRoot)
+if ($RscriptPath) {
+  $installerRegressionArgs += @("-RscriptPath", $RscriptPath)
+}
+
 $shinyArgs = @("-RepoRoot", $RepoRoot, "-Port", "$Port", "-TimeoutSeconds", "$TimeoutSeconds")
 if ($RscriptPath) {
   $shinyArgs += @("-RscriptPath", $RscriptPath)
@@ -53,6 +58,11 @@ $electronArgs = @("-RepoRoot", $RepoRoot)
 if (-not $FullElectronSmoke) {
   $electronArgs += "-SkipUnpackedChecks"
 }
+
+Invoke-Script `
+  -Label "Installer regression gate" `
+  -Path (Join-Path $RepoRoot "scripts\validate_installer_regressions.ps1") `
+  -Arguments $installerRegressionArgs
 
 Invoke-Script `
   -Label "Full stabilization validation" `

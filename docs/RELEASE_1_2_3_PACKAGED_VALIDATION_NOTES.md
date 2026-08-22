@@ -30,6 +30,7 @@ Residual packaged processes:
 |---|---|---|
 | Git commit matches the promotion manifest | Pending | |
 | `VERSION` and public metadata are `1.2.3` | Pending | |
+| `scripts/validate_installer_regressions.ps1` | Pending | Attach the timed step output. |
 | `scripts/validate_stabilization.ps1 -Full` | Pending | |
 | `scripts/validate_sem_public_claims.R` | Pending | |
 | `scripts/validate_sem_release_promotion.R` preconditions other than final package/approval | Pending | |
@@ -63,6 +64,23 @@ Residual packaged processes:
 | Closing Electron terminates bundled R/Shiny | Pending | |
 | Residual packaged Electron/R process count is zero | Pending | |
 | Startup log contains no release-blocking error | Pending | |
+
+## 2026-08-22 regression evidence
+
+Complete `docs/INSTALLER_REGRESSION_CHECKLIST_2026-08-22_KO.md` against this exact installer hash. A failed or unmeasured required row blocks promotion.
+
+| Check | Required result | Status | Evidence / measured time |
+|---|---|---|---|
+| First installed-app launch | First interactive screen within 15 seconds | Pending | |
+| Small example CSV | Variable table within 5 seconds; one source-data read; no recursive workspace scan | Pending | |
+| `.studio` settings restore | Variables and canvas/model restored within 5 seconds | Pending | |
+| Mediation/moderation custom canvas | Toolbar and grid interactive within 3 seconds | Pending | |
+| CFA/SEM/PLS-SEM/custom toolbars | No overlap or disappearance; PLS-SEM does not wrap to four rows; custom font is 13px | Pending | |
+| Custom bootstrap fixture | 75 rows, two focal X variables, 5,000 samples per X complete within 20 seconds | Pending | |
+| Bootstrap status and Stop | Exactly one monotonic status card; Stop owns and terminates the active worker | Pending | |
+| Result transition | Result table/model visible within 5 seconds after bootstrap completion; source model remains recoverable | Pending | |
+| Delta R-squared | Numeric value shown when defined; the entire row is absent when undefined | Pending | |
+| Launcher/build identity | Current build fingerprint is served; same healthy BAT backend is reused; an unrelated listener is preserved | Pending | |
 
 ## Packaged SEM/CFA/PLS regression evidence
 

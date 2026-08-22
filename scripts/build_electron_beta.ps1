@@ -285,6 +285,35 @@ function Remove-StaleRuntimeArtifacts {
   }
 }
 
+$gateRscript = ""
+if ($RHome) {
+  foreach ($relativePath in @("bin\x64\Rscript.exe", "bin\Rscript.exe")) {
+    $candidate = Join-Path $RHome $relativePath
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+      $gateRscript = $candidate
+      break
+    }
+  }
+  if (-not $gateRscript) {
+    throw "Rscript.exe was not found under RHome: $RHome"
+  }
+} else {
+  $gateRscript = Find-Rscript
+}
+
+$installerRegressionScript = Join-Path $repoRoot "scripts\validate_installer_regressions.ps1"
+Write-Host "Running installer regression gate before Electron staging..."
+& powershell.exe `
+  -NoProfile `
+  -ExecutionPolicy Bypass `
+  -File $installerRegressionScript `
+  -RepoRoot $repoRoot `
+  -RscriptPath $gateRscript
+$installerRegressionExitCode = $LASTEXITCODE
+if ($installerRegressionExitCode -ne 0) {
+  throw "Installer regression gate failed with exit code $installerRegressionExitCode"
+}
+
 $releaseProfile = Get-ElectronReleaseProfile
 Write-Host "Preparing $($releaseProfile.ProductName) $version Electron installer..."
 Remove-StaleElectronDistArtifacts

@@ -12,14 +12,21 @@ register_custom_model_canvas_handlers <- function(
 ) {
   custom_model_canvas_snapshot <- reactiveVal(NULL)
   custom_model_canvas_pending_snapshot <- reactiveVal(NULL)
+  custom_model_canvas_result <- reactiveVal(NULL)
+  custom_model_canvas_bootstrap_job <- reactiveVal(NULL)
 
   output$custom_model_canvas_setup <- renderUI({
+    result <- custom_model_canvas_result()
+    result_snapshot <- result$custom_model_canvas_result_snapshot %||% NULL
     custom_model_canvas_workspace(
       selected_names = selected_names_fn(),
       variable_table = variable_table_fn(),
       labels = labels_fn(),
       input = input,
-      language = statedu_current_language(app_language_fn)
+      language = statedu_current_language(app_language_fn),
+      initial_snapshot = shiny::isolate(custom_model_canvas_snapshot()),
+      initial_result_snapshot = result_snapshot,
+      initial_view = if (is.list(result_snapshot)) "result" else "source"
     )
   })
 
@@ -53,8 +60,16 @@ register_custom_model_canvas_handlers <- function(
     language_fn = app_language_fn
   )
 
-  custom_model_canvas_result <- reactiveVal(NULL)
-  custom_model_canvas_bootstrap_job <- reactiveVal(NULL)
+  cancel_custom_model_canvas_bootstrap <- function() {
+    job <- shiny::isolate(custom_model_canvas_bootstrap_job())
+    if (!is.null(job$process) && isTRUE(job$process$is_alive())) {
+      try(job$process$kill(), silent = TRUE)
+    }
+    mediation_moderation_cleanup_bootstrap_job(job)
+    custom_model_canvas_bootstrap_job(NULL)
+    shiny::removeNotification("custom-model-canvas-bootstrap-progress")
+    invisible(!is.null(job))
+  }
   output$custom_model_canvas_results <- renderUI({
     mediation_moderation_result_ui(
       custom_model_canvas_result(),
@@ -98,19 +113,19 @@ register_custom_model_canvas_handlers <- function(
     custom_model_canvas_result(result)
     session$sendCustomMessage(
       "custom-model-canvas-result",
-      list(source = source_snapshot, result = result_snapshot, show = TRUE)
+      list(
+        rootId = "custom-model-canvas-root",
+        source = source_snapshot,
+        result = result_snapshot,
+        show = TRUE
+      )
     )
-    showNotification(custom_model_canvas_text(language, "Custom model analysis finished.", "\uc0ac\uc6a9\uc790 \ubaa8\ud615 \ubd84\uc11d\uc774 \uc644\ub8cc\ub418\uc5c8\uc2b5\ub2c8\ub2e4."), type = "message", duration = 4)
   }
 
   run_custom_model_canvas_analysis <- function(snapshot) {
     language <- statedu_current_language(app_language_fn)
     spec <- custom_model_canvas_snapshot_spec(snapshot, selected_names_fn(), language, two_moderator_model = "3")
-    old_job <- custom_model_canvas_bootstrap_job()
-    if (!is.null(old_job)) {
-      if (!is.null(old_job$process) && old_job$process$is_alive()) old_job$process$kill()
-      mediation_moderation_cleanup_bootstrap_job(old_job)
-    }
+    cancel_custom_model_canvas_bootstrap()
     job <- tryCatch(
       mediation_moderation_start_bootstrap_job(list(
         data = dataset_fn(),
@@ -154,17 +169,22 @@ register_custom_model_canvas_handlers <- function(
       }
     )
     if (is.null(job)) return()
+    mediation_moderation_claim_bootstrap(
+      session,
+      "custom_model_canvas",
+      cancel_custom_model_canvas_bootstrap
+    )
     job$source_snapshot <- snapshot
     custom_model_canvas_bootstrap_job(job)
     ko <- identical(normalize_app_language(language), "ko")
     structural_canvas_show_notification(
       statedu_bootstrap_status_ui(
         if (ko) "사용자 매개·조절 모형 부트스트랩 진행 상태" else "Custom mediation / moderation bootstrap progress",
-        if (ko) paste0("준비 중 · 전체 ", format(job$requested_total, big.mark = ","), "회") else paste0("Starting · ", format(job$requested_total, big.mark = ","), " total resamples"),
+        if (ko) paste0("부트스트랩 작업 프로세스를 시작하는 중 · 예정 ", format(job$requested_total, big.mark = ","), "회") else paste0("Starting the bootstrap worker · ", format(job$requested_total, big.mark = ","), " resamples planned"),
         percent = NA_real_,
         stop_input_id = "custom_model_canvas_bootstrap_stop",
         stop_label = if (ko) "부트스트랩 중단" else "Stop bootstrap",
-        phase_label = if (ko) "준비 중" else "Starting"
+        phase_label = if (ko) "작업 시작 중" else "Starting worker"
       ),
       type = "message", duration = NULL, id = "custom-model-canvas-bootstrap-progress"
     )
@@ -173,10 +193,8 @@ register_custom_model_canvas_handlers <- function(
   observeEvent(input$custom_model_canvas_bootstrap_stop, {
     job <- custom_model_canvas_bootstrap_job()
     if (is.null(job)) return()
-    if (!is.null(job$process) && job$process$is_alive()) job$process$kill()
-    mediation_moderation_cleanup_bootstrap_job(job)
-    custom_model_canvas_bootstrap_job(NULL)
-    shiny::removeNotification("custom-model-canvas-bootstrap-progress")
+    cancel_custom_model_canvas_bootstrap()
+    mediation_moderation_release_bootstrap(session, "custom_model_canvas")
     language <- statedu_current_language(app_language_fn)
     structural_canvas_show_notification(
       custom_model_canvas_text(language, "The custom-model bootstrap was stopped.", "사용자 모형 부트스트랩을 중단했습니다."),
@@ -206,11 +224,51 @@ register_custom_model_canvas_handlers <- function(
       return()
     }
     status <- job$process$get_exit_status()
-    shiny::removeNotification("custom-model-canvas-bootstrap-progress")
     language <- statedu_current_language(app_language_fn)
+    ko <- identical(normalize_app_language(language), "ko")
     if (identical(status, 0L) && file.exists(job$result_file)) {
-      apply_custom_model_canvas_result(readRDS(job$result_file), job$source_snapshot)
+      structural_canvas_show_notification(
+        statedu_bootstrap_status_ui(
+          if (ko) "사용자 매개·조절 모형 부트스트랩 진행 상태" else "Custom mediation / moderation bootstrap progress",
+          if (ko) "저장된 분석 결과를 불러오는 중" else "Loading the saved analysis result",
+          percent = NA_real_,
+          stop_input_id = "custom_model_canvas_bootstrap_stop",
+          stop_label = if (ko) "부트스트랩 중단" else "Stop bootstrap",
+          phase_label = if (ko) "결과 불러오는 중" else "Loading results"
+        ),
+        type = "message", duration = NULL, id = "custom-model-canvas-bootstrap-progress"
+      )
+      result_read_started <- proc.time()[["elapsed"]]
+      result <- readRDS(job$result_file)
+      result_read_elapsed <- proc.time()[["elapsed"]] - result_read_started
+      result_render_started <- proc.time()[["elapsed"]]
+      apply_custom_model_canvas_result(result, job$source_snapshot)
+      structural_canvas_show_notification(
+        statedu_bootstrap_status_ui(
+          if (ko) "사용자 매개·조절 모형 부트스트랩 진행 상태" else "Custom mediation / moderation bootstrap progress",
+          if (ko) "결과 표·그림과 캔버스를 화면에 구성하는 중" else "Rendering result tables, figures, and canvas",
+          percent = NA_real_,
+          stop_input_id = "custom_model_canvas_bootstrap_stop",
+          stop_label = if (ko) "부트스트랩 중단" else "Stop bootstrap",
+          phase_label = if (ko) "결과 화면 구성 중" else "Rendering results"
+        ),
+        type = "message", duration = NULL, id = "custom-model-canvas-bootstrap-progress"
+      )
+      session$onFlushed(function() {
+        render_elapsed <- proc.time()[["elapsed"]] - result_render_started
+        shiny::removeNotification("custom-model-canvas-bootstrap-progress", session = session)
+        message(sprintf(
+          "[StatEdu timing] custom mediation/moderation result read %.3fs; server UI flush %.3fs",
+          result_read_elapsed,
+          render_elapsed
+        ))
+        shiny::showNotification(
+          custom_model_canvas_text(language, "Custom model analysis finished.", "사용자 모형 분석이 완료되었습니다."),
+          type = "message", duration = 4, session = session
+        )
+      }, once = TRUE)
     } else {
+      shiny::removeNotification("custom-model-canvas-bootstrap-progress")
       error_text <- if (file.exists(job$error_file)) paste(readLines(job$error_file, warn = FALSE, encoding = "UTF-8"), collapse = "\n") else ""
       structural_canvas_show_notification(
         paste0(
@@ -222,12 +280,12 @@ register_custom_model_canvas_handlers <- function(
     }
     mediation_moderation_cleanup_bootstrap_job(job)
     custom_model_canvas_bootstrap_job(NULL)
+    mediation_moderation_release_bootstrap(session, "custom_model_canvas")
   })
 
   session$onSessionEnded(function() {
-    job <- shiny::isolate(custom_model_canvas_bootstrap_job())
-    if (!is.null(job$process) && job$process$is_alive()) job$process$kill()
-    mediation_moderation_cleanup_bootstrap_job(job)
+    cancel_custom_model_canvas_bootstrap()
+    mediation_moderation_release_bootstrap(session, "custom_model_canvas")
   })
 
   observeEvent(input$custom_model_canvas_run_request, {

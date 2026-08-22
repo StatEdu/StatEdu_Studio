@@ -57,6 +57,7 @@ $env:LC_ALL = "English_United States.utf8"
 $env:LANG = "English_United States.utf8"
 
 $coreValidations = @(
+  "scripts\validate_installer_regression_gate.R",
   "scripts\validate_version_metadata.R",
   "scripts\validate_sem_release_promotion.R",
   "scripts\validate_sem_public_claims.R",
@@ -77,6 +78,7 @@ $coreValidations = @(
   "scripts\validate_complex_sample_custom_model.R",
   "scripts\validate_custom_model_canvas.R",
   "scripts\validate_mediation_moderation.R",
+  "scripts\validate_mediation_moderation_runtime.R",
   "scripts\validate_longitudinal.R",
   "scripts\validate_mixed_rm_anova.R",
   "scripts\validate_release_hygiene.R",
