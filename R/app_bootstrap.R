@@ -48,7 +48,8 @@ required_packages <- c(
 startup_packages <- c("shiny", "DT")
 
 ensure_required_packages <- function(packages = required_packages) {
-  missing_packages <- packages[!vapply(packages, requireNamespace, logical(1), quietly = TRUE)]
+  installed_packages <- rownames(utils::installed.packages())
+  missing_packages <- setdiff(packages, installed_packages)
   if (length(missing_packages) > 0) {
     stop(
       "Install required packages first: install.packages(c(",

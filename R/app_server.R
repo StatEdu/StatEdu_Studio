@@ -178,6 +178,18 @@ create_app_server <- function(app_version) {
     register_visible_ui_output(output, session, output_id, ui_fn)
   }
 
+  register_on_first_menu_visit <- function(menu_values, register_fn) {
+    force(menu_values)
+    force(register_fn)
+    observeEvent({
+      selected_menu <- input$main_menu %||% ""
+      req(selected_menu %in% menu_values)
+      selected_menu
+    }, {
+      register_fn()
+    }, ignoreInit = FALSE, once = TRUE)
+  }
+
   render_about_document <- function(key, value) {
     spec <- about_document_specs(app_language())[[key]]
     tab_panel_content(about_markdown_tab_panel(spec$title, value, spec$path, spec$subtitle, app_language()))
@@ -1410,6 +1422,15 @@ create_app_server <- function(app_version) {
     language_fn = app_language
   )
 
+  register_on_first_menu_visit(c(
+    "calculator_hint8",
+    "calculator_eq5d",
+    "calculator_metabolic",
+    "calculator_frs",
+    "calculator_ascvd10",
+    "calculator_metabolic_severity"
+  ), function() {
+  deferred_start <- Sys.time()
   register_hint8_calculator_handlers(
     input = input,
     output = output,
@@ -1481,6 +1502,8 @@ create_app_server <- function(app_version) {
     add_calculated_variable_fn = add_calculated_variable,
     language_fn = app_language
   )
+  statedu_log_timing("deferred calculator modules", deferred_start)
+  })
 
   regression_accessors <- create_regression_variable_accessors(
     selected_names_fn = selected_names,
@@ -1509,6 +1532,17 @@ create_app_server <- function(app_version) {
     }
     available_variable_names()
   }
+  register_on_first_menu_visit(c(
+    "analysis_complex_design",
+    "analysis_complex_frequencies",
+    "analysis_complex_crosstabs",
+    "analysis_complex_ttest_anova",
+    "analysis_complex_correlation",
+    "analysis_complex_regression",
+    "analysis_complex_logistic",
+    "analysis_complex_custom_model"
+  ), function() {
+  deferred_start <- Sys.time()
   register_complex_sample_design_handlers(
     input = input,
     output = output,
@@ -1698,9 +1732,6 @@ create_app_server <- function(app_version) {
     app_language_fn = app_language,
     design_state = complex_sample_design_state
   )
-  statedu_log_timing("server initialize editors and calculators", server_phase_start)
-  server_phase_start <- Sys.time()
-
   register_complex_sample_custom_model_handlers(
     input = input,
     output = output,
@@ -1714,7 +1745,39 @@ create_app_server <- function(app_version) {
     app_language_fn = app_language,
     design_state = complex_sample_design_state
   )
+  statedu_log_timing("deferred complex-sample modules", deferred_start)
+  })
 
+  register_on_first_menu_visit(c(
+    "Frequencies / Descriptives",
+    "analysis_crosstabs",
+    "t-test / ANOVA",
+    "Paired test",
+    "ANCOVA",
+    "Repeated-measures ANOVA",
+    "Nonparametric Tests",
+    "Nonparametric Paired",
+    "Correlation",
+    "Reliability",
+    "Inter-rater Agreement",
+    "Factor Analysis",
+    "Principal Components",
+    "Regression",
+    "analysis_mediation_moderation",
+    "analysis_custom_model_canvas",
+    "Generalized Linear Model (GLM)",
+    "analysis_logistic_regression",
+    "analysis_survival_setup",
+    "analysis_survival_km",
+    "analysis_survival_cox",
+    "analysis_survival_competing",
+    "Longitudinal / Panel Models",
+    "analysis_structural_cfa",
+    "analysis_structural_cbsem",
+    "analysis_structural_plssem",
+    "analysis_structural_automation"
+  ), function() {
+  deferred_start <- Sys.time()
   register_mediation_moderation_setup_output(
     input = input,
     output = output,
@@ -1727,9 +1790,6 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
-  statedu_log_timing("server initialize complex sample modules", server_phase_start)
-  server_phase_start <- Sys.time()
-
   register_custom_model_canvas_handlers(
     input = input,
     output = output,
@@ -1994,7 +2054,9 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
-  statedu_log_timing("server initialize analysis modules", server_phase_start)
+  statedu_log_timing("deferred analysis modules", deferred_start)
+  })
+  statedu_log_timing("server initialize deferred registrations", server_phase_start)
   server_phase_start <- Sys.time()
 
   setup_order_sync <- create_setup_order_sync(
