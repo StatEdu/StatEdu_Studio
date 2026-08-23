@@ -329,7 +329,16 @@ Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "validate_
 Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "smoke_shiny_app\.ps1" "Shiny app smoke test in release checklist"
 Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "RELEASE_MANUAL_QA\.md" "manual QA protocol in release checklist"
 Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_MANUAL_QA.md") "Packaged Electron Workflow" "packaged Electron manual QA workflow"
-Assert-FileNotContains (Join-Path $RepoRoot "R\app_server.R") 'session\$close\(\)' "no Shiny startup session close"
+$directSessionClosePattern = '(?<![\w.])session\s*\$\s*close\s*\(\s*\)'
+if (
+  ('session$close()' -notmatch $directSessionClosePattern) -or
+  ('session $ close ( )' -notmatch $directSessionClosePattern) -or
+  ('previous_session$close()' -match $directSessionClosePattern)
+) {
+  throw "Direct Shiny session-close regex contract is invalid."
+}
+Write-Host "[ok] direct Shiny session-close regex contract"
+Assert-FileNotContains (Join-Path $RepoRoot "R\app_server.R") $directSessionClosePattern "no direct Shiny startup session close"
 Assert-FileContains (Join-Path $RepoRoot "R\app_misc_ui.R") 'statedu_ui_label\("source_license", language\)' "Source and License About menu label"
 Assert-FileContains (Join-Path $RepoRoot "R\app_misc_ui.R") '"about_source_license"' "Source and License About menu tab"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "contextIsolation:\s*true" "contextIsolation enabled"

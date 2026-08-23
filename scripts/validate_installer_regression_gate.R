@@ -27,6 +27,7 @@ require_absent <- function(text, pattern, label) {
 }
 
 gate <- read_text("scripts/validate_installer_regressions.ps1")
+electron_smoke <- read_text("scripts/smoke_electron_release.ps1")
 data_upload_performance <- read_text("scripts/validate_data_upload_performance.R")
 runtime_regression <- read_text("scripts/validate_mediation_moderation_runtime.R")
 structural_bootstrap_regression <- read_text("scripts/validate_structural_bootstrap_performance.R")
@@ -509,6 +510,18 @@ render_measurements <- gregexpr("result_render_started <- proc.time()[[\"elapsed
 if (sum(render_measurements > 0L) != 1L) {
   stop("The runtime gate must contain exactly one uncached HTML render measurement.", call. = FALSE)
 }
+
+message("Checking the direct Shiny session-close smoke contract...")
+for (contract in c(
+  "$directSessionClosePattern = '(?<![\\w.])session\\s*\\$\\s*close\\s*\\(\\s*\\)'",
+  "('session$close()' -notmatch $directSessionClosePattern)",
+  "('session $ close ( )' -notmatch $directSessionClosePattern)",
+  "('previous_session$close()' -match $directSessionClosePattern)",
+  "Assert-FileNotContains (Join-Path $RepoRoot \"R\\app_server.R\") $directSessionClosePattern"
+)) {
+  require_contains(electron_smoke, contract, sprintf("direct session-close smoke contract %s", contract))
+}
+require_absent(electron_smoke, "'session\\$close\\(\\)'", "suffix-blind Shiny session-close regex")
 
 message("Checking fail-closed release and build integration...")
 require_contains(
