@@ -16,6 +16,13 @@ Public 1.2에는 다음 정식 Analysis workflow의 방법론 노트가 포함�
 - 평가자간 일치도: 8.1절 참고.
 - 매개·조절 사용자 정의 모델: 13.5절 참고.
 
+## 1.2.4-dev 구조모형 캔버스 방법론 추가
+
+1.2.4-dev 개발판의 CFA, CB-SEM, 잠재조절, PLS-SEM 및 PLSc 방법론은
+25절에 정리한다. 이 추가 절은 공개 1.2 분석 범위를 소급해 변경하지 않으며,
+현재 개발판 구조모형 캔버스의 추정대상, 추정량, 재표집, 해석 경계와 보고
+계약을 설명한다.
+
 ## 1. Measurement Level
 
 분석 방법 선택의 핵심 입력은 변수의 measurement level이다.
@@ -1406,3 +1413,273 @@ $$ d_{\mathrm{GLMM}} = \frac{B}{SD_{\mathrm{residual}}} $$
 - Woertman, W., de Hoop, E., Moerbeek, M., Zuidema, S. U., Gerritsen, D. L., & Teerenstra, S. (2013). Stepped wedge designs could reduce the required sample size. *Journal of Clinical Epidemiology*, 66(7), 752-758.
 - Zhang, Z., & Yuan, K.-H. (2018). *Practical Statistical Power Analysis Using Webpower and R*. ISDSA Press.
 - Zhu, H., & Lakkis, H. (2014). Sample size calculation for comparing two negative binomial rates. *Statistics in Medicine*, 33(3), 376-387.
+
+## 25. CFA, CB-SEM, 잠재조절 및 PLS-SEM 방법론 노트
+
+### 25.1 분석목적과 추정대상
+
+구조모형 캔버스는 같은 화살표 그림을 서로 다른 통계적 대상으로 적합할 수
+있으므로 모형을 그리기 전에 구성개념의 성격과 분석목적을 정해야 한다.
+
+- **CFA와 CB-SEM의 공통요인**은 관측지표의 공통분산을 설명하고 측정오차를
+  분리하는 잠재변수다.
+- **표준 PLS의 합성변수**는 지표의 가중결합이다. 반영형 Mode A 블록도 표준
+  PLS에서는 공통요인이 아니라 합성점수 대리변수로 추정된다.
+- **PLSc**는 적격한 반영형 블록의 PLS 상관과 loading을 일관성 보정해
+  공통요인 관계를 근사한다. 모든 모형에서 자동으로 CB-SEM과 같은 추정대상이
+  되는 것은 아니다.
+- **형성형 구성개념**은 지표가 개념을 구성한다는 명세다. 지표 간 내적
+  일관성이 필수조건이 아니므로 alpha, CR, AVE로 합격 여부를 판단하지 않는다.
+
+이론 확인과 측정오차 분리가 주목적이고 모든 구성개념이 반영형 공통요인이면
+CB-SEM을 우선 검토한다. 점수·예측 또는 합성변수 자체가 연구대상이면 PLS-SEM을
+검토한다. 표본이 작거나 정규성 검정이 유의하다는 이유만으로 PLS를 자동
+선택하지 않으며, 적합도가 좋다는 이유만으로 CB-SEM을 자동 선택하지 않는다.
+
+### 25.2 자료구조와 실행 gate
+
+1.2.4-dev 구조모형 캔버스는 독립 관측 횡단자료를 지원한다. 새 분석의 기본값은
+`independent_cross_sectional`이지만 이는 자료에서 표집설계를 판별한 결과가
+아니다. 분석가는 실제 자료수집 구조가 이 가정과 일치하는지 확인해야 한다.
+
+- 층화·PSU·표본가중치가 있는 자료는 survey-aware SEM이 필요하다.
+- 군집 또는 다층자료는 cluster-robust 또는 multilevel SEM이 필요하다.
+- 종단·반복측정자료는 개인 내 상관과 종단 측정구조를 모형화해야 한다.
+- 명시적으로 전달된 알 수 없는 설계값은 독립표본으로 바꾸지 않고 실행을
+  차단한다.
+
+현재 캔버스가 이 설계들을 차단한다는 것은 해당 방법이 불가능하다는 의미가
+아니라, 일반 SEM 표준오차를 잘못 보고하지 않기 위한 지원범위 제한이다.
+
+### 25.3 CFA 명세와 식별
+
+CFA를 실행하기 전에 각 요인과 지표의 연결, 교차적재, 잔차공분산, 요인척도
+설정과 집단구조를 이론적으로 정한다. 식별은 단순히 수렴 여부만으로 판단하지
+않는다. 자유모수 수, 지표 수, 요인척도, 공분산구조와 제약을 함께 확인한다.
+
+단일지표 공통요인은 고정된 loading과 측정오차 가정이 필요하며, 그 가정이
+자료만으로 검증된 것처럼 해석하지 않는다. 2지표 요인이나 매우 높은 잠재상관은
+약한 식별과 불안정한 분산추정을 유발할 수 있다. 음의 잔차분산, 비양정치
+공분산행렬, 절댓값 1에 가까운 잠재상관과 불안정한 parameter vcov는 허용가능성
+문제로 보고한다.
+
+### 25.4 CFA와 CB-SEM 추정량
+
+연속형 공통요인 모형은 ML 또는 MLR을 사용한다. ML은 모형의 연속형 정규이론
+likelihood를 적합하며, MLR은 비정규성에 강건한 표준오차와 scaled 검정통계량을
+제공한다. MLR은 CB-SEM을 PLS로 바꾸는 규칙이 아니라 같은 공통요인 모형 안의
+추정량 선택이다.
+
+순서형 공통요인 지표는 WLSMV/DWLS와 theta 모수화를 사용한다. threshold와
+다범주 상관에 기반한 순서형 추정 결과를 연속형 ML 결과와 같은 수치척도로
+직접 비교하지 않는다. 실제 ordered 변수, 추정량, 모수화와 결측처리는 논문과
+Audit에 기록한다.
+
+연속형 기본 ML은 Normal likelihood 규약, 즉 N 분모 공분산과 N 배율 목적함수를
+사용한다. AMOS처럼 N-1 규약을 맞춰야 할 때만 Wishart ML을 명시적으로 선택해
+모형 전체를 재적합한다. 계산 후 chi-square 하나에 배율만 곱하는 방식이 아니다.
+MLR과 WLSMV에는 Wishart 토글을 적용하지 않는다.
+
+### 25.5 전역·국소 적합과 허용가능성
+
+chi-square, CFI, TLI, RMSEA와 신뢰구간, SRMR은 서로 다른 측면의 모형-자료
+불일치를 요약한다. 표본크기, 자유도, 추정량, 비정규성, 모형 복잡도의 영향을
+받으므로 하나의 절단값으로 모형을 자동 채택하지 않는다.
+
+- 관행적 범위 안의 값은 `기준 참고`이며 이론모형이 참이라는 증거가 아니다.
+- 기준에서 크게 벗어난 값은 잔차, modification index, 국소의존과 대안모형을
+  검토하라는 신호다.
+- modification index는 자료기반 후보 순위다. 이론 없이 가장 큰 값을 반복해
+  자유화하면 우연자본화가 발생한다.
+- 표준화 잔차, 잔차상관, 지표 R²와 예상하지 않은 교차관계를 전역 적합도와
+  함께 검토한다.
+
+모형은 최적화가 종료됐다는 이유만으로 허용 가능한 해가 아니다. StatEdu는
+negative variance, covariance·latent covariance·parameter-vcov의 양정치성,
+경계해, 잠재상관과 자유도 등을 함께 확인한다.
+
+### 25.6 신뢰도와 수렴·판별타당도
+
+반영형 공통요인에는 loading과 불확실성, omega, composite reliability, AVE,
+HTMT, 잠재상관과 경쟁 측정모형을 함께 사용한다. alpha, omega, CR은 가정과
+계산대상이 달라 서로 대체 가능한 단일 합격점수가 아니다.
+
+loading .70, CR .70, AVE .50, HTMT .85/.90 같은 값은 관행적 참고값이다.
+기준 미달을 이유로 문항을 자동 삭제하지 않으며 내용타당도, 문항 wording,
+잔차·국소의존, 표본불확실성과 독립표본 재현성을 함께 검토한다. HTMT는
+점추정치뿐 아니라 bootstrap 구간과 유효 반복수를 보고한다. Fornell-Larcker는
+보조정보이며 단독으로 판별타당도를 확립하지 않는다.
+
+CFA의 AVE·신뢰도 percentile 구간은 R quantile type 7, BC/BCa 구간은 type 6을
+사용한다. 구조효과와 HTMT의 percentile·BC·BCa 분위수는 type 6을 사용한다.
+선택한 CI 방법과 quantile type은 결과와 Audit에 남는다.
+
+### 25.7 고차 CFA와 측정불변성
+
+고차 CFA에서는 1차요인 지표의 적재량과 잔차뿐 아니라 1차요인이 고차요인에
+적재되는 관계와 설명된 분산을 함께 해석한다. parcel은 item-level CFA를
+대체하는 기본 도구가 아니며, 현재 기능은 적격성 점검과 배정 미리보기에
+한정한다.
+
+다집단 CFA는 configural, metric, scalar, strict 단계를 순서대로 비교한다.
+Delta CFI, Delta RMSEA, Delta SRMR은 Chen(2007)의 민감도 연구에 기반한
+참고값이며 표본크기·집단불균형·모형복잡도에 따라 달라질 수 있다. 현재 앱은
+부분불변성 제약을 자동 해제해 재적합하지 않는다. score 검정과 표준화 EPC는
+후속 이론검토 후보이지 부분불변성 확립 결과가 아니다.
+
+집단 간 구조경로 비교는 최소한 metric 불변성 gate를 통과한 뒤 수행한다.
+잠재 product 상호작용이 포함된 다집단 비교는 별도의 상호작용 불변성 절차가
+필요하므로 현재 차단한다.
+
+### 25.8 CB-SEM 구조효과와 매개효과
+
+직접효과는 구조회귀계수, 간접효과는 지정된 구성경로 계수의 곱, 총효과는
+직접효과와 관련 간접효과의 합으로 계산한다. 간접효과의 표본분포는 비대칭일
+수 있으므로 bootstrap 구간을 우선 해석한다. 개별 a와 b 경로의 유의성만으로
+간접효과를 판정하지 않는다.
+
+구조효과 bootstrap은 BC 또는 percentile 95% 구간과 양측 부호형 p값을
+제공한다. 기본 반복수는 5,000회이며 최종 보고에는 요청수, 유효수, 유효율,
+CI 방법과 seed를 포함한다. BC는 관측된 편향을 보정하지만 BCa의 acceleration을
+포함하지 않으며 모든 자료에서 percentile보다 우월하다고 해석하지 않는다.
+유효율이 80% 미만이면 주의 상태로 표시하고, 50% 미만이거나 효과별 최소
+유효수가 충족되지 않으면 해당 bootstrap CI와 p값을 신뢰할 수 없는 결과로
+억제한다.
+
+### 25.9 잠재 product-indicator 조절
+
+StatEdu의 CB-SEM 잠재조절은 unconstrained product-indicator 방법이며 LMS가
+아니다. 연속형 예측·조절 잠재변수의 지표로 product indicator를 만든다.
+
+- `all_pairs_dmc`: 모든 지표쌍을 곱하고 double-mean-centering한다.
+- `matched_pair_dmc`: 이론 또는 사전계획으로 정한 순서에 따라 지표를 짝짓고
+  double-mean-centering한다.
+- `all_pairs_mean_centered`: 원지표만 중심화한 과거 호환 방식이다.
+
+bootstrap에서는 각 재표집 표본 안에서 원지표 평균을 다시 계산하고 product를
+생성한 뒤 product 평균도 다시 제거한다. 전체자료에서 미리 만든 product 열을
+행 재표집하는 AMOS native bootstrap과는 다른 추정 절차다.
+
+상호작용계수는 구성요인과 product-indicator의 척도에 의존한다. 비표준화
+계수와 구간을 주 결과로 보고하고, 유일한 표준화 정의가 없는 moderated-
+mediation index는 표준화 값을 억지로 만들지 않는다. Johnson-Neyman 결과는
+적용 가능한 연속 조절척도에서 조건부 효과가 0과 구분되는 영역을 기술하며,
+관측범위 밖 외삽과 다중검정 문제를 함께 확인한다.
+
+### 25.10 bootstrap 실행과 lavaan 권한
+
+StatEdu는 seed에서 사례 재표집 index를 먼저 고정하고 worker에 반복 위치와
+index를 전달한다. 잠재조절에서는 worker가 해당 표본의 DMC를 다시 생성한다.
+빠른 1차 적합은 명백한 부적합을 선별할 수 있지만 최종 raw·standardized
+추정치, 표준오차와 허용가능성 판정은 public full-SE lavaan 적합에서만 가져온다.
+
+worker 오류, 버전 fingerprint 불일치, 계약 위반 또는 경계해는 과학적 실패
+draw로 확정하지 않고 기존 lavaan 경로로 다시 계산한다. 같은 seed와 index에서
+worker 수·chunk 크기가 달라도 draw 순서, 유효 mask와 최종 요약이 같아야 한다.
+이 계약은 속도 향상이 추정대상이나 BC 구간을 바꾸지 않도록 하는 장치다.
+
+### 25.11 PLS-SEM과 PLSc 측정모형
+
+표준 PLS의 반영형 Mode A는 지표와 합성점수의 상관에 기반하고, 형성형 Mode B는
+지표의 다중회귀 가중에 기반한다. 형성형 블록은 weight의 크기·부호·bootstrap
+구간, 보조 loading, item VIF, 내용범위와 외부 redundancy 기준을 함께 검토한다.
+
+PLSc는 반영형 공통요인 명세와 적격한 신뢰도·상관 보정에 조건부다. 형성형
+블록이나 보정 불가능한 혼합모형에서 일부 블록만 보정한 결과를 PLSc라고
+표시하지 않는다. 실행이 차단돼도 사용자는 표준 PLS를 별도 방법으로 선택할 수
+있으며, 그 경우 공통요인을 composite proxy로 추정한다는 제한을 보고한다.
+
+### 25.12 PLS 구조모형, 품질지표와 예측
+
+PLS 경로, R²와 f²는 합성점수 관계를 요약한다. 높은 R²가 인과설명이나 외부
+예측을 보증하지 않으며 f² .02/.15/.35는 관행적 위치표시다. inner VIF가 낮다는
+사실도 구성개념의 판별타당도나 인과적 타당성을 보증하지 않는다.
+
+Approx PLS SRMR, d_G, d_ULS와 NFI는 반영형 측정부분의 saturated
+지표상관행렬에서 계산한 기술적 진단이다. 구조경로를 제약한 estimated-model
+전역적합도가 아니며 수용·기각 절단값을 적용하지 않는다.
+
+PLSpredict는 각 훈련 fold에서 측정·구조모형을 다시 적합하고 지표별 RMSE/MAE를
+선형모형 기준과 비교한다. 기본은 10회 반복 k-fold다. 평균 차이, 분할 간 변동,
+PLS가 우세한 반복 비율과 실제 손실함수를 함께 보고한다. 내부 교차검증이 외부
+모집단 타당화를 대신하지 않는다.
+
+### 25.13 PLS/PLSc bootstrap 유효성
+
+PLS bootstrap은 기본 비활성화이며 사용자가 반복수를 선택한다. 1.2.4부터
+L'Ecuyer-CMRG 난수 스트림을 반복 위치별로 할당하여 worker 수와 완료순서에
+관계없이 표본을 재현한다. 이 난수열은 1.2.3의 seminr `seed + 반복번호`
+방식과 다르므로 버전 간 같은 seed의 bitwise 일치를 보장하지 않는다.
+
+경로, loading, weight, HTMT와 요청 효과 등 필수 통계 전체가 유한할 때만 한
+whole draw를 유효로 센다. 유효 draw가 요청수의 80% 미만이면 bootstrap SE,
+CI, t, p와 유의성 선 표현을 억제한다. 작업 시작 실패, 실행 실패, 사용자 취소와
+빈 결과도 요청수, 유효 0회, 상태와 실패유형을 결과와 Audit에 남긴다.
+
+### 25.14 인과해석과 공통방법편향
+
+구조 화살표는 이론적으로 정한 회귀 방향이다. 시간적 선행성, 처치배정,
+미측정교란 부재와 매개-결과 교란 가정은 앱이 검증하지 않는다. 따라서 경로와
+간접효과는 기본적으로 가정한 연관구조의 통계적 분해로 보고한다. 인과적
+효과라는 표현은 연구설계와 외부 가정이 별도로 정당화될 때만 사용한다.
+
+Harman 단일요인 분산과 full-collinearity VIF는 공통방법편향의 존재·부재를
+검정하지 않는다. 설계단계 절차, 응답원·측정시점, marker 또는 method-factor
+모형과 민감도 분석을 함께 사용한다. 현재 marker 입력은 기록용이며 계수보정
+분석을 실행한 것으로 보고하지 않는다.
+
+### 25.15 결과 보고 체크리스트
+
+논문 또는 연구보고서에는 최소한 다음을 기록한다.
+
+1. 분석목적과 공통요인·합성변수·형성형 명세.
+2. 표본설계, 분석 N, 결측처리와 ordered 변수.
+3. 엔진, 추정량, Normal/Wishart likelihood와 모수화.
+4. 모형식별 방식, loading·경로·공분산·잔차공분산 명세.
+5. 수렴 및 허용가능성, 전역·국소 적합과 경쟁모형 검토.
+6. 신뢰도·AVE·HTMT의 공식, CI 방법과 유효 반복수.
+7. 직접·간접·총효과와 잠재조절 product 생성방법.
+8. bootstrap 요청·유효 반복수, seed, CI 방법과 quantile type.
+9. PLS/PLSc 선택근거, Mode, weight·loading·VIF·예측 결과.
+10. 자료기반 수정, 제외한 모수, 민감도 분석과 인과해석 제한.
+
+Audit manifest는 이 항목의 재현을 돕지만 원자료, 연구설계의 타당성 또는 분석가의
+이론적 판단을 대신하지 않는다.
+
+### 25.16 외부 프로그램 비교와 재현성
+
+외부 프로그램 비교에서는 같은 그림이나 seed만 맞추는 것으로 충분하지 않다.
+지표 순서, marker와 잠재척도, 자유·고정 공분산, mean structure, 결측처리,
+Normal/Wishart 규약, product 중심화, bootstrap index와 CI 알고리즘을 맞춘다.
+
+StatEdu의 최종 추정 권한은 lavaan에 있다. AMOS 동일-index·표본별 DMC 컨트롤러,
+cSEM 고정행렬 함수와 SmartPLS 표시값 비교는 구현 검증 증거이며 모든 모형에서
+서로 다른 프로그램이 같은 수치를 낸다는 보편적 보장이 아니다. AMOS native
+고정-product bootstrap처럼 추정절차가 다르면 빠르더라도 동일 분석의 속도
+비교로 사용하지 않는다.
+
+### 25.17 주요 참고문헌
+
+- Brown, T. A. (2015). *Confirmatory Factor Analysis for Applied Research*
+  (2nd ed.). Guilford Press.
+- Chen, F. F. (2007). Sensitivity of goodness of fit indexes to lack of
+  measurement invariance. *Structural Equation Modeling*, 14(3), 464-504.
+- Dijkstra, T. K., & Henseler, J. (2015). Consistent partial least squares path
+  modeling. *MIS Quarterly*, 39(2), 297-316.
+- Efron, B., & Tibshirani, R. J. (1993). *An Introduction to the Bootstrap*.
+  Chapman & Hall/CRC.
+- Henseler, J., Ringle, C. M., & Sarstedt, M. (2015). A new criterion for
+  assessing discriminant validity in variance-based structural equation
+  modeling. *Journal of the Academy of Marketing Science*, 43, 115-135.
+- Kline, R. B. (2023). *Principles and Practice of Structural Equation Modeling*
+  (5th ed.). Guilford Press.
+- Little, T. D., Rhemtulla, M., Gibson, K., & Schoemann, A. M. (2013). Why the
+  items versus parcels controversy needn't be one. *Psychological Methods*,
+  18(3), 285-300.
+- Marsh, H. W., Hau, K.-T., & Wen, Z. (2004). In search of golden rules:
+  Comment on hypothesis-testing approaches to setting cutoff values for fit
+  indexes. *Structural Equation Modeling*, 11(3), 320-341.
+- Preacher, K. J., Rucker, D. D., & Hayes, A. F. (2007). Addressing moderated
+  mediation hypotheses. *Multivariate Behavioral Research*, 42(1), 185-227.
+- Schumacker, R. E., & Marcoulides, G. A. (Eds.). (1998). *Interaction and
+  Nonlinear Effects in Structural Equation Modeling*. Lawrence Erlbaum.

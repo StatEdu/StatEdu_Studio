@@ -12,6 +12,14 @@ Public 1.2 adds method notes for the following released Analysis workflows:
 - Inter-rater Agreement: see section 8.1.
 - Mediation / Moderation Custom Model: see section 13.5.
 
+## 1.2.4-dev Structural-Canvas Addendum
+
+Section 25 documents the CFA, CB-SEM, latent-moderation, PLS-SEM, and PLSc
+methods in the 1.2.4-dev structural-model canvas. This addendum does not
+retroactively change the public 1.2 scope. It states the estimands, estimators,
+resampling rules, interpretation boundaries, and reporting contract of the
+current development build.
+
 ## 1. Measurement Level
 
 Several analyses depend on the selected measurement level:
@@ -1131,3 +1139,283 @@ The implementation and method notes are aligned with standard references and pac
 - Tabachnick, B. G., & Fidell, L. S. (2019). *Using Multivariate Statistics*.
 - West, S. G., Finch, J. F., & Curran, P. J. (1995). Structural equation models with nonnormal variables.
 - Wilcox, R. R. (2017). *Introduction to Robust Estimation and Hypothesis Testing*.
+
+## 25. CFA, CB-SEM, Latent Moderation, and PLS-SEM
+
+### 25.1 Purpose and Estimand
+
+The same canvas diagram can represent different statistical objects. Specify
+the construct and purpose before choosing an engine.
+
+- A CFA/CB-SEM **common factor** explains shared indicator variance while
+  separating measurement error.
+- A standard-PLS **composite** is a weighted indicator combination. A
+  reflective Mode A block in standard PLS remains a composite proxy.
+- **PLSc** consistently corrects eligible reflective-block relationships; it
+  does not automatically turn every PLS model into the CB-SEM estimand.
+- A **formative composite** is formed by its indicators. Internal consistency
+  is not a required property, so alpha, CR, and AVE are not acceptance tests.
+
+Use CB-SEM when theory testing and measurement-error separation are primary and
+constructs are reflective common factors. Consider PLS when scores, prediction,
+or composites are the target. Do not choose PLS automatically because a sample
+is small or a normality test is significant, and do not choose CB-SEM only
+because its fit indices appear favorable.
+
+### 25.2 Data-Structure Gate
+
+The 1.2.4-dev structural canvas supports independent cross-sectional
+observations. `independent_cross_sectional` is a starting default, not a design
+diagnosis inferred from the data.
+
+- Survey weights, strata, and PSUs require survey-aware SEM.
+- Clustered data require cluster-robust or multilevel SEM.
+- Longitudinal and repeated observations require within-person dependence and
+  longitudinal measurement structure.
+- An explicitly unknown design code is blocked rather than converted to the
+  independent default.
+
+Blocking these designs is a support boundary that prevents ordinary-SEM
+standard errors from being reported for dependent observations.
+
+### 25.3 CFA Specification and Identification
+
+Specify factor-indicator relations, cross-loadings, residual covariances,
+factor scaling, and group structure from theory before fitting. Identification
+requires more than optimizer convergence; inspect the free-parameter count,
+indicators, scaling, covariance structure, and constraints.
+
+Single-indicator factors require fixed loading and measurement-error
+assumptions. Two-indicator factors and near-unit latent correlations may be
+weakly identified. Negative residual variances, non-positive-definite
+covariance matrices, near-boundary latent correlations, and unstable parameter
+vcov matrices are inadmissibility signals.
+
+### 25.4 CFA and CB-SEM Estimators
+
+Continuous common-factor models use ML or MLR. ML fits a continuous normal-
+theory likelihood; MLR supplies robust standard errors and a scaled test. MLR
+is an estimator choice within CB-SEM, not a rule for switching to PLS.
+
+Ordered common-factor indicators use WLSMV/DWLS with theta parameterization.
+Report the ordered variables, estimator, parameterization, and missing-data
+handling. Do not interpret ordinal estimates as though they were continuous-ML
+estimates on the same numerical scale.
+
+Continuous ML defaults to the Normal-likelihood convention with N-denominator
+covariances and an N-scaled objective. Select Wishart ML only when matching an
+N-1 convention such as AMOS, and refit the complete model. Do not rescale only
+the final chi-square. Wishart switching is unavailable for MLR and WLSMV.
+
+### 25.5 Global Fit, Local Fit, and Admissibility
+
+Chi-square, CFI, TLI, RMSEA with its interval, and SRMR summarize different
+aspects of model-data discrepancy. They depend on sample size, degrees of
+freedom, estimator, distribution, and model complexity.
+
+- A conventional range is a reference, not automatic model acceptance.
+- A large discrepancy prompts residual, local-dependence, and competing-model
+  review.
+- A modification index ranks data-driven candidates; repeatedly freeing the
+  largest value without theory capitalizes on chance.
+- Standardized residuals, residual correlations, indicator R-squared, and
+  unexpected cross-relations complement global indices.
+
+StatEdu also checks negative variances, positive definiteness of observed,
+latent, and parameter-vcov matrices, boundary solutions, latent correlations,
+and degrees of freedom. Optimization completion alone is insufficient.
+
+### 25.6 Reliability, Convergent Validity, and Discriminant Validity
+
+For reflective common factors, interpret loadings and uncertainty, omega,
+composite reliability, AVE, HTMT, latent correlations, and competing
+measurement models together. Alpha, omega, and CR have different assumptions
+and are not interchangeable pass/fail scores.
+
+Loading .70, CR .70, AVE .50, and HTMT .85/.90 are conventional references.
+Do not automatically delete items below a threshold; consider content validity,
+wording, residual dependence, uncertainty, and replication. Report HTMT with a
+bootstrap interval and valid-draw count. Fornell-Larcker is supplementary and
+does not establish discriminant validity by itself.
+
+CFA reliability/AVE percentile intervals use R quantile type 7; their BC/BCa
+intervals use type 6. Structural-effect and HTMT percentile/BC/BCa intervals
+use type 6. Results and audit metadata record the selected method and type.
+
+### 25.7 Higher-Order CFA and Measurement Invariance
+
+Interpret both first-order indicator relations and first-order-factor loadings
+on the higher-order factor. Parceling is not a default replacement for item-
+level CFA; the current feature provides eligibility checks and assignment
+preview only.
+
+Multigroup CFA proceeds through configural, metric, scalar, and strict stages.
+Delta CFI, RMSEA, and SRMR are sensitivity references informed by Chen (2007),
+not universal cutoffs. The app does not automatically release constraints and
+refit partial-invariance models. Score tests and standardized EPC values are
+exploratory candidates.
+
+Structural-path group comparison requires the metric-invariance gate. Models
+with latent-product interactions need additional interaction-invariance work
+and are currently blocked from multigroup path comparison.
+
+### 25.8 CB-SEM Structural and Indirect Effects
+
+A direct effect is a structural regression coefficient. An indirect effect is
+the product of its specified component paths, and a total effect combines the
+direct and relevant indirect effects. Bootstrap intervals are primary because
+indirect-effect distributions may be asymmetric; component-path significance
+alone does not decide the indirect effect.
+
+Structural bootstrap provides BC or percentile 95% intervals and two-sided
+sign-based p values. The default is 5,000 draws. Report requested and valid
+draws, valid ratio, interval method, and seed. BC corrects observed bias but
+does not include BCa acceleration and is not universally superior to percentile.
+Ratios below 80% are flagged for caution. Below 50%, or when an effect fails
+its minimum valid-draw requirement, its bootstrap interval and p value are
+suppressed as unreliable.
+
+### 25.9 Latent Product-Indicator Moderation
+
+StatEdu CB-SEM latent moderation is an unconstrained product-indicator method,
+not LMS.
+
+- `all_pairs_dmc` forms every indicator pair and double-mean-centers products.
+- `matched_pair_dmc` uses a theoretically or prospectively fixed pairing order
+  and double-mean-centers the products.
+- `all_pairs_mean_centered` is a compatibility method that centers only the
+  original indicators.
+
+Every bootstrap sample recomputes indicator means, products, and product means.
+This differs from resampling product columns precomputed on the full data.
+
+Interaction coefficients depend on factor and product scaling. Prefer the
+unstandardized coefficient and interval. Do not manufacture a standardized
+moderated-mediation index when no unique latent-product standardization exists.
+Johnson-Neyman results describe regions on an applicable continuous moderator
+scale and require caution about extrapolation and multiplicity.
+
+### 25.10 Bootstrap Execution and lavaan Authority
+
+StatEdu fixes case-resampling indices from the seed before scheduling workers.
+For latent moderation, each worker regenerates DMC products within the sample.
+An accelerated first pass may reject clearly inadmissible draws, but every
+reported raw/standardized estimate, standard error, and final admissibility
+decision comes from a public full-SE lavaan fit.
+
+Worker errors, version-fingerprint mismatches, contract violations, and
+ambiguous boundary cases are recomputed through the prior lavaan path rather
+than counted as scientific failures. Worker count and chunk size must not
+change draw order, the validity mask, or the final summary.
+
+### 25.11 PLS-SEM and PLSc Measurement Models
+
+Reflective Mode A weights use indicator-composite relations; formative Mode B
+weights use multiple regression. Evaluate formative blocks through weight
+sign/size and intervals, auxiliary loadings, item VIF, content coverage, and an
+external redundancy criterion.
+
+PLSc is conditional on reflective common-factor specification and eligible
+correction. It does not label a partially corrected formative or ineligible
+mixed model as PLSc. Standard PLS remains available as a separate method, with
+the explicit limitation that common factors are represented by composite proxies.
+
+### 25.12 PLS Structural Model, Quality Diagnostics, and Prediction
+
+PLS paths, R-squared, and f-squared summarize composite-score relations. High
+R-squared does not establish causality or external prediction; .02/.15/.35
+f-squared values are conventional landmarks. Low inner VIF does not establish
+discriminant or causal validity.
+
+Approximate PLS SRMR, d_G, d_ULS, and NFI are descriptive saturated
+measurement-model diagnostics. They are not estimated-structural-model global
+fit statistics and receive no automatic acceptance cutoff.
+
+PLSpredict refits measurement and structural models in every training fold and
+compares indicator RMSE/MAE with a linear-model benchmark. Ten repeated k-fold
+splits are the default. Report mean differences, split variability, the share
+of repetitions favoring PLS, and the application loss function. Internal
+cross-validation does not replace external validation.
+
+### 25.13 PLS/PLSc Bootstrap Validity
+
+PLS bootstrap is off by default. In 1.2.4, L'Ecuyer-CMRG streams are assigned
+by draw position, making samples invariant to worker count and completion order.
+This stream differs from the pre-1.2.4 seminr `seed + repetition` sequence, so
+same-seed bitwise agreement across versions is not promised.
+
+A whole draw is valid only when all required paths, loadings, weights, HTMT,
+and requested effects are finite. With fewer than 80% valid draws, StatEdu
+suppresses bootstrap SEs, CIs, t and p values, and significance styling. Start
+failure, run failure, cancellation, and empty results retain requested draws,
+zero valid draws, status, and failure types in results and the audit manifest.
+
+### 25.14 Causal Interpretation and Common-Method Bias
+
+A canvas arrow is a theory-directed regression relation. The app does not
+verify temporal order, treatment assignment, absence of unmeasured confounding,
+or mediation identification assumptions. Report paths and indirect effects as
+a statistical decomposition of the assumed association structure unless the
+study design separately justifies causal language.
+
+Harman single-factor variance and full-collinearity VIF do not test the
+presence or absence of common-method bias. Combine procedural design controls,
+source and timing information, defensible marker or method-factor models, and
+sensitivity analysis. Current marker input is record-only and does not mean a
+marker-adjusted analysis was fitted.
+
+### 25.15 Minimum Reporting Checklist
+
+Report at least:
+
+1. Analysis purpose and common-factor/composite/formative specification.
+2. Sampling design, analysis N, missing-data handling, and ordered indicators.
+3. Engine, estimator, Normal/Wishart convention, and parameterization.
+4. Identification, loadings, paths, covariances, and residual-covariance rules.
+5. Convergence, admissibility, global/local fit, and competing-model review.
+6. Reliability/AVE/HTMT formulas, interval method, and valid draws.
+7. Direct/indirect/total effects and latent-product construction method.
+8. Bootstrap requested/valid draws, seed, interval method, and quantile type.
+9. PLS/PLSc rationale, modes, weights/loadings/VIF, and prediction results.
+10. Data-driven changes, sensitivity analyses, and causal limitations.
+
+The audit manifest supports reproducibility but does not replace raw-data
+governance, research-design validity, or analyst judgment.
+
+### 25.16 Cross-Software Comparison
+
+Matching a diagram or seed is insufficient. Align indicator order, marker and
+factor scaling, free/fixed covariances, mean structure, missing-data handling,
+Normal/Wishart convention, product centering, bootstrap indices, and CI method.
+
+lavaan remains the final numerical authority for StatEdu CB-SEM. The AMOS
+same-index per-sample-DMC controller, cSEM fixed-matrix functions, and SmartPLS
+displayed-value comparisons are implementation evidence, not a promise that
+all models agree across software. A fast native bootstrap that resamples fixed
+products is a different estimand and is not a matched speed comparison.
+
+### 25.17 Selected References
+
+- Brown, T. A. (2015). *Confirmatory Factor Analysis for Applied Research*
+  (2nd ed.). Guilford Press.
+- Chen, F. F. (2007). Sensitivity of goodness of fit indexes to lack of
+  measurement invariance. *Structural Equation Modeling*, 14(3), 464-504.
+- Dijkstra, T. K., & Henseler, J. (2015). Consistent partial least squares path
+  modeling. *MIS Quarterly*, 39(2), 297-316.
+- Efron, B., & Tibshirani, R. J. (1993). *An Introduction to the Bootstrap*.
+  Chapman & Hall/CRC.
+- Henseler, J., Ringle, C. M., & Sarstedt, M. (2015). A new criterion for
+  assessing discriminant validity in variance-based structural equation
+  modeling. *Journal of the Academy of Marketing Science*, 43, 115-135.
+- Kline, R. B. (2023). *Principles and Practice of Structural Equation Modeling*
+  (5th ed.). Guilford Press.
+- Little, T. D., Rhemtulla, M., Gibson, K., & Schoemann, A. M. (2013). Why the
+  items versus parcels controversy needn't be one. *Psychological Methods*,
+  18(3), 285-300.
+- Marsh, H. W., Hau, K.-T., & Wen, Z. (2004). In search of golden rules:
+  Comment on hypothesis-testing approaches to setting cutoff values for fit
+  indexes. *Structural Equation Modeling*, 11(3), 320-341.
+- Preacher, K. J., Rucker, D. D., & Hayes, A. F. (2007). Addressing moderated
+  mediation hypotheses. *Multivariate Behavioral Research*, 42(1), 185-227.
+- Schumacker, R. E., & Marcoulides, G. A. (Eds.). (1998). *Interaction and
+  Nonlinear Effects in Structural Equation Modeling*. Lawrence Erlbaum.

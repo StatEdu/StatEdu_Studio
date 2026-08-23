@@ -26,6 +26,14 @@
 
 public 1.2는 아래 분석 목록에 평가자간 일치도, 혼합 반복측정 ANOVA, 매개·조절 사용자 정의 모델을 포함한다. HTML/PDF 결과 출력은 공개 범위이며, Excel/Word 결과 저장, license activation, paid-edition gating, Mplus/latent add-on은 public 1.2 화면에 노출하지 않는다.
 
+### 1.2.4-dev 구조모형 캔버스 범위
+
+1.2.4-dev 개발판은 별도의 구조모형 캔버스에서 CFA, CB-SEM, 잠재변수
+product-indicator 조절, PLS-SEM 및 PLSc를 제공한다. 이 기능의 분석 선택과
+해석 원칙은 `METHOD_NOTES_KO.md` 25절과 `SEM_DECISION_RULES_V1_KO.md`를
+따른다. 독립 관측 횡단자료만 현재 지원하며, 복합표본·군집·다층·종단·반복측정
+설계를 일반 SEM으로 자동 변환하지 않는다.
+
 ## 빈도분석과 기술통계
 
 - 범주형 변수: 빈도, 백분율, 유효 백분율, 누적 백분율을 표시한다.
@@ -385,6 +393,105 @@ public 1.2는 아래 분석 목록에 평가자간 일치도, 혼합 반복측�
 - pseudo R-squared 등 기술적 적합 지표.
 - 가중 N, 설계 df, 모형 적합 요약.
 
+
+## CFA와 구조방정식모형: 1.2.4-dev
+
+### 확인적 요인분석(CFA)
+
+- 반영형 공통요인의 측정모형을 lavaan으로 추정한다.
+- 연속형 지표는 ML 또는 MLR, 순서형 지표는 WLSMV/DWLS와 theta
+  모수화를 사용한다. 실제 추정량과 모수화는 결과와 Audit에 기록한다.
+- 적재량, 지표 R², 잔차분산, 잠재상관, 국소적합도, CR, omega, AVE,
+  HTMT와 신뢰구간을 제공한다.
+- 고차요인 CFA, 경쟁 측정모형 및 다집단 configural/metric/scalar/strict
+  불변성 단계를 지원한다. Bollen-Stine 보조검사는 적격한 단일집단·완전자료·
+  연속형 ML 모형에서 제공한다.
+- 부분불변성 제약을 자동 해제해 재적합하지 않는다. score 검정과 EPC는
+  탐색 후보이며 자동 모형수정 결과가 아니다.
+- CFI, TLI, RMSEA, SRMR과 관행적 기준은 참고정보다. 기준 충족만으로
+  모형을 자동 채택하거나 타당도가 확립됐다고 표시하지 않는다.
+
+### 공분산 기반 SEM(CB-SEM)
+
+- lavaan 공통요인 측정모형과 구조회귀를 함께 적합한다.
+- 구조경로, 공분산, 직접효과, 간접효과, 총효과와 정의모수를 출력한다.
+- 연속형 기본 ML은 Normal likelihood 규약을 사용한다. AMOS 등 N-1
+  규약과 비교할 때에만 Wishart ML을 명시적으로 선택한다.
+- 수렴뿐 아니라 음의 분산, 비양정치 공분산·vcov, 경계해와 잠재상관을
+  포함한 허용가능성 검사를 수행한다.
+- 캔버스 화살표와 유의한 경로는 인과관계를 자동 입증하지 않는다.
+
+### 잠재조절과 조절된 매개효과
+
+- CB-SEM 잠재조절은 unconstrained product-indicator 접근을 사용한다.
+- `all_pairs_dmc`는 모든 지표쌍을 곱해 double-mean-centering하고,
+  `matched_pair_dmc`는 사전에 정한 지표 순서로 짝을 만든다.
+- 각 bootstrap 표본에서 원지표를 다시 중심화하고 product indicator를
+  다시 생성한다. 미리 만든 product 열만 재표집하는 분석과 동일하지 않다.
+- 비표준화 상호작용계수, 조건부 효과, Johnson-Neyman 결과와 moderated-
+  mediation index를 제공한다. 잠재곱 척도에 유일한 표준화 정의가 없으면
+  비표준화 index와 bootstrap 구간을 주 결과로 사용한다.
+- PLS/PLSc 잠재조절은 현재 지원하지 않으며 주효과 모형으로 조용히
+  대체하지 않고 실행을 차단한다.
+
+### 구조효과 bootstrap
+
+- SEM 경로·간접·총효과는 기본 5,000회 사례 재표집을 제공한다.
+- BC 또는 percentile 95% 신뢰구간과 양측 bootstrap p값을 계산하며,
+  StatEdu가 계산하는 구조효과 분위수는 R quantile type 6을 사용한다.
+- seed와 재표집 위치를 고정하고 worker 수와 작업분할에 관계없이 같은
+  draw 순서를 재현한다.
+- 빠른 선별 경로를 사용하더라도 최종 보고 추정치는 public full-SE lavaan
+  적합에서만 가져온다. 오류·계약 불일치는 기존 lavaan 경로로 재계산한다.
+- 요청 반복수, 유효 반복수, 유효율, 실패유형과 CI 방식을 함께 출력한다.
+
+## PLS-SEM과 PLSc: 1.2.4-dev
+
+### 측정 및 구조모형
+
+- 표준 PLS는 반영형 Mode A와 형성형 Mode B 합성점수를 추정한다.
+- 반영형 공통요인을 표준 PLS로 실행하면 결과는 Mode A composite
+  대리변수이며 측정오차를 분리한 CFA 공통요인으로 해석하지 않는다.
+- PLSc는 모든 관련 반영 블록이 보정에 적격일 때 일관성 보정을 적용한다.
+  형성형·혼합 모형에서 부분 PLSc 결과를 만들지 않고 적격성 오류를
+  표시하며 표준 PLS는 별도 선택으로 유지한다.
+- 경로, R², f², outer loading·weight, item/inner VIF, 신뢰도, AVE, HTMT,
+  redundancy, MICOM 및 PLSpredict 결과를 제공한다.
+
+### PLS 적합도와 예측
+
+- Approx PLS SRMR, d_G, d_ULS와 NFI는 saturated 측정모형의 기술적
+  진단값이다. 구조모형의 절대 적합이나 자동 합격 기준으로 사용하지 않는다.
+- PLSpredict는 훈련 fold마다 측정·구조모형을 다시 적합하고 선형모형
+  기준과 RMSE/MAE를 비교한다. 기본 반복분할은 10회이며 단일 분할이나
+  평균오차 하나만으로 외부 예측력을 주장하지 않는다.
+- R², f², VIF, loading, AVE와 HTMT의 관행적 절단값은 참고값이며 자동
+  문항삭제·경로채택·타당도 합격 판정이 아니다.
+
+### PLS/PLSc bootstrap
+
+- bootstrap은 기본 비활성화이며 1,000/5,000/10,000/20,000/50,000회 중
+  명시적으로 선택한다.
+- 1.2.4의 L'Ecuyer-CMRG 위치별 난수 스트림은 worker 수와 완료순서에
+  관계없이 같은 표본을 재현한다. 1.2.3 이전 seminr 난수열과 같은 seed의
+  bitwise 일치를 보장하지 않는다.
+- 한 반복의 필수 경로·loading·weight·HTMT·효과가 모두 유한할 때만
+  whole draw를 유효로 센다.
+- 유효 draw가 요청수의 80% 미만이면 bootstrap SE, CI, t, p와 유의성
+  표현을 억제하고 실패유형을 결과와 Audit에 기록한다.
+
+## 구조모형 공통 출력과 제한
+
+- 사용자 label을 화면과 결과표에 우선 적용하되 syntax와 Audit에는 재현을
+  위해 원 변수명과 내부 product 명세를 보존한다.
+- Audit schema 1.7은 앱·R·패키지 버전, 모형 fingerprint, estimator,
+  sampling design, seed, RNG, CI 방법, quantile type, 유효 draw와 실패를
+  기록한다.
+- 현재 구조모형 캔버스는 독립 관측 횡단자료만 지원한다. 복합표본,
+  군집·다층, 종단·반복측정 설계는 실행을 차단한다.
+- cSEM과 SmartPLS 비교는 구현 검증 증거다. 다른 프로그램의 표시값이
+  일치하더라도 분석가가 모형·추정량·likelihood·결측처리·중심화 규약을
+  동일하게 지정했는지 별도로 확인해야 한다.
 
 ## 저장과 출력
 

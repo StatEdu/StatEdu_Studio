@@ -46,7 +46,7 @@ Public 1.2.0 includes the Mediation / Moderation Custom Model canvas in the Regr
 - Result saving to HTML, PDF, figures, and accumulated Result collections
 - Result collection export to HTML and PDF
 
-For the full current method inventory, see [docs/ANALYSIS_METHODS_EN.md](docs/ANALYSIS_METHODS_EN.md).
+For the full current method inventory, see [docs/ANALYSIS_METHODS_EN.md](docs/ANALYSIS_METHODS_EN.md). For method selection, assumptions, interpretation, and the 1.2.4-dev CFA/CB-SEM/latent-moderation/PLS/PLSc methodology, see [docs/METHOD_NOTES_EN.md](docs/METHOD_NOTES_EN.md).
 
 ## Runtime Environment
 

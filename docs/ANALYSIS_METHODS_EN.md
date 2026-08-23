@@ -12,6 +12,16 @@ This document summarizes the analysis menus and main outputs implemented in **St
 
 Public 1.2 exposes the analysis and calculator workflows listed below, including Inter-rater Agreement, Longitudinal / Panel Models, Mixed Repeated-Measures ANOVA, and Mediation / Moderation Custom Model. HTML and PDF result output are public. Excel/Word result export, license activation, paid-edition gating, and Mplus/latent add-ons are not exposed in the public 1.2 interface. Planning calculators may include GEE, LMM, GLMM, survival, cluster, and SEM/CFA entries; those are calculator workflows, not public 1.2 Analysis menus.
 
+### 1.2.4-dev Structural-Canvas Scope
+
+The 1.2.4-dev build adds a separate structural-model canvas for CFA, CB-SEM,
+latent-variable product-indicator moderation, PLS-SEM, and PLSc. Method
+selection and interpretation follow section 25 of `METHOD_NOTES_EN.md` and
+`SEM_DECISION_RULES_V1_KO.md`. The current canvas supports independent
+cross-sectional observations only; it does not silently treat complex-sample,
+clustered, multilevel, longitudinal, or repeated-measures designs as ordinary
+SEM data.
+
 ## Data and Variable Preparation
 
 StatEdu Studio imports SPSS, SAS, Stata, Excel, CSV, and DAT/text data. The import process preserves variable labels and value labels where the source format provides them.
@@ -597,6 +607,116 @@ Complex-sample analysis uses `survey`-based design objects to account for strati
 - Descriptive pseudo R-squared fit indices.
 - Weighted N, design df, and model-fit summaries.
 
+
+## CFA and Structural Equation Models: 1.2.4-dev
+
+### Confirmatory Factor Analysis
+
+- CFA estimates reflective common-factor measurement models with lavaan.
+- Continuous indicators use ML or MLR. Ordered indicators use WLSMV/DWLS with
+  theta parameterization. The actual estimator and parameterization are saved
+  in results and the audit manifest.
+- Outputs include loadings, indicator R-squared, residual variances, latent
+  correlations, local-fit diagnostics, CR, omega, AVE, and HTMT with intervals.
+- Higher-order CFA, competing measurement models, and configural/metric/
+  scalar/strict multigroup invariance are supported. Bollen-Stine diagnostics
+  are available for eligible single-group, complete-data, continuous ML models.
+- The app does not automatically release constraints and refit partial
+  invariance models. Score tests and EPC values identify exploratory candidates.
+- CFI, TLI, RMSEA, SRMR, and conventional cutoffs are references rather than
+  automatic acceptance or validity decisions.
+
+### Covariance-Based SEM
+
+- CB-SEM jointly estimates lavaan common-factor measurement and structural
+  regression models.
+- Outputs include structural paths, covariances, direct, indirect, total, and
+  user-defined effects.
+- Normal-likelihood ML is the default for continuous models. Wishart ML is an
+  explicit option for comparisons with N-1-convention software such as AMOS.
+- Admissibility checks cover convergence, negative variances, non-positive-
+  definite covariance or parameter-vcov matrices, boundary solutions, and
+  inadmissible latent correlations.
+- Canvas arrows and significant paths do not by themselves establish causal
+  identification.
+
+### Latent Moderation and Moderated Mediation
+
+- CB-SEM latent moderation uses an unconstrained product-indicator approach.
+- `all_pairs_dmc` double-mean-centers all indicator-pair products;
+  `matched_pair_dmc` uses a pre-specified indicator pairing order.
+- Every bootstrap sample re-centers the original indicators and regenerates
+  its products. This is not equivalent to resampling fixed precomputed products.
+- The app reports the unstandardized interaction, conditional effects,
+  Johnson-Neyman results, and the index of moderated mediation. When a unique
+  standardized latent-product scale is unavailable, the unstandardized index
+  and its bootstrap interval are primary.
+- PLS/PLSc latent moderation is currently blocked rather than silently replaced
+  by a main-effects-only model.
+
+### Structural-Effect Bootstrap
+
+- SEM paths, indirect effects, and total effects default to 5,000 case draws.
+- BC or percentile 95% intervals and two-sided bootstrap p values are available;
+  StatEdu structural-effect quantiles use R quantile type 6.
+- Seeds and draw positions are fixed so worker count and scheduling do not
+  change draw order.
+- An accelerated screen may reduce computation, but every reported estimate
+  comes from a public full-SE lavaan fit. Contract or worker failures are
+  recomputed through the prior lavaan path.
+- Requested draws, valid draws, valid ratio, failure type, and CI method are
+  reported together.
+
+## PLS-SEM and PLSc: 1.2.4-dev
+
+### Measurement and Structural Models
+
+- Standard PLS estimates reflective Mode A and formative Mode B composites.
+- A reflective common-factor declaration run through standard PLS remains a
+  Mode A composite proxy; it is not a CFA factor with separated measurement error.
+- PLSc applies consistency correction only when all relevant reflective blocks
+  are eligible. It does not create partially corrected PLSc results for
+  formative or ineligible mixed models; standard PLS remains a separate choice.
+- Outputs include paths, R-squared, f-squared, outer loadings and weights,
+  item/inner VIF, reliability, AVE, HTMT, redundancy, MICOM, and PLSpredict.
+
+### PLS Fit and Prediction
+
+- Approximate PLS SRMR, d_G, d_ULS, and NFI are descriptive saturated-
+  measurement-model diagnostics. They are not automatic global-fit decisions.
+- PLSpredict refits the measurement and structural model within every training
+  fold and compares RMSE/MAE with a linear-model benchmark. Ten repeated splits
+  are the default; one split or one mean error is insufficient evidence of
+  external predictive performance.
+- Conventional R-squared, f-squared, VIF, loading, AVE, and HTMT thresholds are
+  references, not automatic item deletion, path selection, or validity rules.
+
+### PLS/PLSc Bootstrap
+
+- Bootstrap is off by default and may be explicitly set to 1,000, 5,000,
+  10,000, 20,000, or 50,000 draws.
+- The 1.2.4 L'Ecuyer-CMRG position streams reproduce samples independently of
+  worker count and completion order. Same-seed bitwise agreement with the
+  pre-1.2.4 seminr stream is not promised.
+- A whole draw is valid only when every required path, loading, weight, HTMT,
+  and effect statistic is finite.
+- When fewer than 80% of requested draws are valid, bootstrap SEs, intervals,
+  t and p values, and significance styling are suppressed; failure counts and
+  types remain visible and audited.
+
+## Shared Structural Output and Boundaries
+
+- User labels have priority in displayed and exported tables. Raw variable
+  names and internal product specifications remain in syntax and audit output
+  for reproducibility.
+- Audit schema 1.7 records app/R/package versions, model fingerprint, estimator,
+  sampling design, seed, RNG, CI method, quantile type, valid draws, and failures.
+- The structural canvas currently supports independent cross-sectional
+  observations only. Complex-sample, clustered/multilevel, longitudinal, and
+  repeated-measures designs are blocked.
+- cSEM and SmartPLS agreement is implementation evidence. Cross-software
+  agreement still requires matched models, estimators, likelihood convention,
+  missing-data handling, and centering rules.
 
 ## Result Saving and Export
 

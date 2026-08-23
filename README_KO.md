@@ -43,7 +43,7 @@
 - HTML, PDF, 그림, 누적 Result collection 저장
 - Result collection의 HTML 및 PDF 출력
 
-전체 공개 분석 방법 목록은 [docs/ANALYSIS_METHODS_KO.md](docs/ANALYSIS_METHODS_KO.md)를 참고하십시오.
+전체 공개 분석 방법 목록은 [docs/ANALYSIS_METHODS_KO.md](docs/ANALYSIS_METHODS_KO.md)를 참고하십시오. 분석 선택, 가정과 해석 원칙 및 1.2.4-dev CFA·CB-SEM·잠재조절·PLS/PLSc 방법론은 [docs/METHOD_NOTES_KO.md](docs/METHOD_NOTES_KO.md)를 참고하십시오.
 
 ## 실행 환경
 
