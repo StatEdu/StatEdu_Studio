@@ -74,19 +74,20 @@ function Get-BundledRProcesses {
 }
 
 function Get-PackagedAppProcesses {
-  $exeNeedle = [regex]::Escape((Resolve-Path $ElectronExe))
+  $resolvedElectronExe = [string](Resolve-Path -LiteralPath $ElectronExe)
   @(Get-CimInstance Win32_Process | Where-Object {
-    $_.ExecutablePath -eq $ElectronExe -or
-    ($_.CommandLine -and $_.CommandLine -match $exeNeedle)
+    $_.ProcessId -ne $PID -and
+    $_.ExecutablePath -and
+    [string]$_.ExecutablePath -eq $resolvedElectronExe
   })
 }
 
 function Get-SameProductAppProcesses {
-  $productExeName = [regex]::Escape($releaseProfile.ExeName)
   @(Get-CimInstance Win32_Process | Where-Object {
-    $_.Name -eq $releaseProfile.ExeName -or
-    ($_.ExecutablePath -and $_.ExecutablePath -match "\\$productExeName$") -or
-    ($_.CommandLine -and $_.CommandLine -match "\\$productExeName(`"|\\s|$)")
+    $_.ProcessId -ne $PID -and (
+      $_.Name -eq $releaseProfile.ExeName -or
+      ($_.ExecutablePath -and [System.IO.Path]::GetFileName([string]$_.ExecutablePath) -eq $releaseProfile.ExeName)
+    )
   })
 }
 
@@ -140,10 +141,11 @@ function Read-NewLogText {
   }
   $stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
   try {
-    if ($stream.Length -le $InitialLength) {
+    $readOffset = if ($stream.Length -lt $InitialLength) { 0L } else { $InitialLength }
+    if ($stream.Length -le $readOffset) {
       return ""
     }
-    $stream.Seek($InitialLength, [System.IO.SeekOrigin]::Begin) | Out-Null
+    $stream.Seek($readOffset, [System.IO.SeekOrigin]::Begin) | Out-Null
     $reader = [System.IO.StreamReader]::new($stream, [System.Text.Encoding]::UTF8, $true, 4096, $true)
     try {
       return $reader.ReadToEnd()

@@ -28,6 +28,7 @@ require_absent <- function(text, pattern, label) {
 
 gate <- read_text("scripts/validate_installer_regressions.ps1")
 electron_smoke <- read_text("scripts/smoke_electron_release.ps1")
+electron_lifecycle_smoke <- read_text("scripts/smoke_electron_app_lifecycle.ps1")
 data_upload_performance <- read_text("scripts/validate_data_upload_performance.R")
 runtime_regression <- read_text("scripts/validate_mediation_moderation_runtime.R")
 structural_bootstrap_regression <- read_text("scripts/validate_structural_bootstrap_performance.R")
@@ -522,6 +523,48 @@ for (contract in c(
   require_contains(electron_smoke, contract, sprintf("direct session-close smoke contract %s", contract))
 }
 require_absent(electron_smoke, "'session\\$close\\(\\)'", "suffix-blind Shiny session-close regex")
+
+message("Checking packaged Electron lifecycle process selection...")
+lifecycle_selector_start <- regexpr("function Get-PackagedAppProcesses", electron_lifecycle_smoke, fixed = TRUE)[[1L]]
+lifecycle_selector_end <- regexpr("function Get-PackagedMainProcesses", electron_lifecycle_smoke, fixed = TRUE)[[1L]]
+if (lifecycle_selector_start < 1L || lifecycle_selector_end <= lifecycle_selector_start) {
+  stop("Electron lifecycle process selectors could not be isolated.", call. = FALSE)
+}
+lifecycle_selectors <- substr(electron_lifecycle_smoke, lifecycle_selector_start, lifecycle_selector_end - 1L)
+require_absent(lifecycle_selectors, "CommandLine", "command-line fallback in Electron lifecycle product selectors")
+require_contains(lifecycle_selectors, "[string]$_.ExecutablePath -eq $resolvedElectronExe", "exact packaged executable path selector")
+require_contains(lifecycle_selectors, "$_.Name -eq $releaseProfile.ExeName", "same-product executable name selector")
+require_contains(lifecycle_selectors, "[System.IO.Path]::GetFileName([string]$_.ExecutablePath)", "same-product executable path selector")
+pid_exclusions <- gregexpr(
+  "$_.ProcessId -ne $PID",
+  lifecycle_selectors,
+  fixed = TRUE
+)[[1L]]
+if (sum(pid_exclusions > 0L) != 2L) {
+  stop("Both Electron lifecycle product selectors must exclude the current process.", call. = FALSE)
+}
+require_contains(
+  electron_lifecycle_smoke,
+  '$readOffset = if ($stream.Length -lt $InitialLength) { 0L } else { $InitialLength }',
+  "rotated startup-log offset reset"
+)
+require_contains(
+  electron_lifecycle_smoke,
+  '$stream.Seek($readOffset, [System.IO.SeekOrigin]::Begin)',
+  "startup-log read uses rotation-safe offset"
+)
+require_absent(
+  electron_lifecycle_smoke,
+  'if ($stream.Length -le $InitialLength)',
+  "rotation-blind startup-log length guard"
+)
+lifecycle_log_offset <- function(current_length, initial_length) {
+  if (current_length < initial_length) 0 else initial_length
+}
+stopifnot(
+  identical(lifecycle_log_offset(2923, 70218451), 0),
+  identical(lifecycle_log_offset(70218452, 70218451), 70218451)
+)
 
 message("Checking fail-closed release and build integration...")
 require_contains(
