@@ -1,0 +1,3 @@
+"Model","Fit","srmr","d_G","d_ULS"
+"pls","saturated",0.112,0.176,0.566
+"plsc","saturated",0.123,0.282,0.677

@@ -4,6 +4,15 @@ script_path <- tryCatch(
 )
 repo_root <- normalizePath(file.path(dirname(script_path), ".."), winslash = "/", mustWork = TRUE)
 setwd(repo_root)
+if (identical(.Platform$OS.type, "windows")) {
+  # Background workers inherit these values. Use the same UTF-8 locale contract
+  # as the runtime gate before sourcing files that contain Korean UI strings.
+  Sys.setenv(
+    LC_ALL = "English_United States.utf8",
+    LANG = "English_United States.utf8"
+  )
+  invisible(suppressWarnings(try(Sys.setlocale("LC_CTYPE", "English_United States.utf8"), silent = TRUE)))
+}
 options(statedu.output_decimal_digits = 3L)
 
 suppressPackageStartupMessages(library(shiny))
@@ -17,6 +26,69 @@ source(file.path(repo_root, "R", "result_panels_ui.R"))
 source(file.path(repo_root, "R", "result_coefficients.R"))
 source(file.path(repo_root, "R", "analysis_regression.R"))
 source(file.path(repo_root, "R", "setup_mediation_moderation_ui.R"))
+
+message("Checking worker-only validation and unchanged Shiny validation behavior...")
+validation_contract <- local({
+  old_option <- getOption("statedu.mediation_moderation_worker")
+  on.exit(options(statedu.mediation_moderation_worker = old_option), add = TRUE)
+
+  options(statedu.mediation_moderation_worker = TRUE)
+  force_probe <- new.env(parent = emptyenv())
+  force_probe$message_forced <- FALSE
+  mediation_moderation_validate(TRUE, {
+    force_probe$message_forced <- TRUE
+    "should not be forced"
+  })
+  worker_error <- tryCatch(
+    mediation_moderation_validate(FALSE, "worker validation message"),
+    error = identity
+  )
+  worker_analysis_error <- tryCatch(
+    run_mediation_moderation_analysis(
+      data = data.frame(),
+      roles = list(y = "Y", x = "X", mediators = character(0), w = character(0), covariates = character(0)),
+      mediator_arrangement = "parallel",
+      moderated_paths = character(0),
+      boot_r = 1L,
+      seed = 1L,
+      language = "en"
+    ),
+    error = identity
+  )
+
+  options(statedu.mediation_moderation_worker = FALSE)
+  reference_ui_error <- tryCatch(
+    shiny::validate(shiny::need(FALSE, "ui validation message")),
+    error = identity
+  )
+  helper_ui_error <- tryCatch(
+    mediation_moderation_validate(FALSE, "ui validation message"),
+    error = identity
+  )
+
+  list(
+    message_forced = force_probe$message_forced,
+    worker_error = worker_error,
+    worker_analysis_error = worker_analysis_error,
+    reference_ui_error = reference_ui_error,
+    helper_ui_error = helper_ui_error
+  )
+})
+stopifnot(
+  !isTRUE(validation_contract$message_forced),
+  inherits(validation_contract$worker_error, "error"),
+  identical(conditionMessage(validation_contract$worker_error), "worker validation message"),
+  inherits(validation_contract$worker_analysis_error, "error"),
+  identical(
+    conditionMessage(validation_contract$worker_analysis_error),
+    "Load a data file before running the analysis."
+  ),
+  identical(class(validation_contract$helper_ui_error), class(validation_contract$reference_ui_error)),
+  identical(
+    conditionMessage(validation_contract$helper_ui_error),
+    conditionMessage(validation_contract$reference_ui_error)
+  )
+)
 
 assert_close <- function(actual, expected, tolerance = 1e-8, label = "value") {
   actual <- as.numeric(actual)
@@ -82,6 +154,34 @@ variable_info_for <- function(data) {
   )
 }
 
+run_mediation_background_fixture <- function(args, timeout_seconds = 30) {
+  job <- mediation_moderation_start_bootstrap_job(args)
+  on.exit({
+    if (!is.null(job$process) && isTRUE(tryCatch(job$process$is_alive(), error = function(e) FALSE))) {
+      try(statedu_stop_background_process_tree(job$process), silent = TRUE)
+    }
+    mediation_moderation_cleanup_bootstrap_job(job)
+  }, add = TRUE)
+  started <- proc.time()[["elapsed"]]
+  while (isTRUE(job$process$is_alive())) {
+    if ((proc.time()[["elapsed"]] - started) > timeout_seconds) {
+      stop(sprintf("Background mediation/moderation fixture exceeded %ss.", timeout_seconds), call. = FALSE)
+    }
+    Sys.sleep(.02)
+  }
+  status <- job$process$get_exit_status()
+  if (!identical(status, 0L)) {
+    detail <- if (file.exists(job$error_file)) {
+      paste(readLines(job$error_file, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    } else {
+      "No worker error file was produced."
+    }
+    stop(sprintf("Background mediation/moderation fixture failed (%s): %s", status, detail), call. = FALSE)
+  }
+  stopifnot(file.exists(job$result_file))
+  readRDS(job$result_file)
+}
+
 message("Checking simple mediation against independent OLS equations...")
 set.seed(20260820)
 n <- 180L
@@ -131,8 +231,10 @@ boot_result <- mediation_moderation_boot_effects(
 set.seed(boot_seed)
 manual_boot <- matrix(NA_real_, nrow = boot_r, ncol = 4L,
                       dimnames = list(NULL, names(expected_effects)))
+manual_draws <- matrix(NA_integer_, nrow = boot_r, ncol = nrow(complete_data))
 for (index in seq_len(boot_r)) {
   sample_rows <- sample.int(nrow(complete_data), nrow(complete_data), replace = TRUE)
+  manual_draws[index, ] <- sample_rows
   sample_data <- complete_data[sample_rows, , drop = FALSE]
   boot_m <- stats::lm.fit(stats::model.matrix(~ X + C, sample_data), sample_data$M)
   boot_y <- stats::lm.fit(stats::model.matrix(~ X + M + C, sample_data), sample_data$Y)
@@ -140,6 +242,39 @@ for (index in seq_len(boot_r)) {
   indirect <- boot_m$coefficients[["X"]] * boot_y$coefficients[["M"]]
   manual_boot[index, ] <- c(direct, indirect, indirect, direct + indirect)
 }
+manual_rng_state <- .Random.seed
+
+message("Checking bootstrap draw, RNG, numerical, and rendered-table equivalence at tolerance 0...")
+fast_context <- mediation_moderation_fast_boot_context(base, roles, "X", "single", "4")
+set.seed(boot_seed)
+fast_draws <- matrix(NA_integer_, nrow = boot_r, ncol = nrow(complete_data))
+fast_boot <- matrix(NA_real_, nrow = boot_r, ncol = length(expected_effects),
+                    dimnames = list(NULL, names(expected_effects)))
+for (index in seq_len(boot_r)) {
+  sample_rows <- sample.int(nrow(complete_data), nrow(complete_data), replace = TRUE)
+  fast_draws[index, ] <- sample_rows
+  fast_fit <- mediation_moderation_fast_boot_fit(fast_context, sample_rows)
+  stopifnot(is.list(fast_fit), is.numeric(fast_fit$effects))
+  fast_boot[index, ] <- mediation_moderation_numeric_match(fast_fit$effects, colnames(fast_boot))
+}
+fast_rng_state <- .Random.seed
+stopifnot(
+  identical(fast_draws, manual_draws),
+  identical(fast_rng_state, manual_rng_state),
+  isTRUE(all.equal(fast_boot, manual_boot, tolerance = 0, check.attributes = TRUE))
+)
+manual_effect_table <- mediation_moderation_effect_table(
+  "4", "X", boot_result$effects, manual_boot,
+  ci_method = "bias_corrected", y = "Y", mediators = "M",
+  variable_info = variable_info_for(mediation_data), model_label = "Model 4"
+)
+stopifnot(
+  identical(boot_result$effect_table, manual_effect_table),
+  identical(
+    boot_result$effect_bootstrap_diagnostics,
+    attr(manual_effect_table, "bootstrap_diagnostics", exact = TRUE)
+  )
+)
 
 indirect_path <- "X-->M-->Y"
 indirect_row <- effect_row(boot_result$effect_table, "Indirect effect", indirect_path)
@@ -204,6 +339,60 @@ assert_close(numeric_cell(slopes$Effect), expected_slopes, .00051, "conditional 
 v <- stats::vcov(moderation_lm)
 expected_se <- sqrt(v["X", "X"] + 2 * w_values * v["X", "X:W"] + w_values^2 * v["X:W", "X:W"])
 assert_close(numeric_cell(slopes$SE), expected_se, .00051, "conditional slope SE")
+
+message("Checking the actual background worker HC3 interaction-change branch...")
+set.seed(13L)
+hc3_n <- 140L
+hc3_data <- data.frame(
+  X = stats::rnorm(hc3_n),
+  W = stats::rnorm(hc3_n),
+  C = stats::rnorm(hc3_n)
+)
+hc3_data$Y <- -.3 + .4 * hc3_data$X - .2 * hc3_data$W +
+  .5 * hc3_data$X * hc3_data$W + .1 * hc3_data$C +
+  stats::rnorm(hc3_n, sd = exp(.35 * hc3_data$X))
+hc3_roles <- list(y = "Y", x = "X", mediators = character(0), w = "W", covariates = "C")
+hc3_background <- run_mediation_background_fixture(list(
+  data = hc3_data,
+  roles = hc3_roles,
+  mediator_arrangement = "parallel",
+  moderated_paths = "xy",
+  boot_r = 40L,
+  seed = 1301L,
+  mean_center = FALSE,
+  simple_slopes = FALSE,
+  johnson_neyman = FALSE,
+  analysis_method = "statedu",
+  ci_method = "bias_corrected",
+  residual_diagnostics = TRUE,
+  auto_method = TRUE,
+  two_moderator_model = "3",
+  custom_path_model = FALSE,
+  effect_size_models = "y",
+  covariate_control = c("y", "m"),
+  language = "en",
+  variable_info = variable_info_for(hc3_data),
+  labels = character(0),
+  category_table = NULL
+))
+hc3_group <- mediation_moderation_hierarchical_steps(hc3_background$path_results[[1L]])
+stopifnot(
+  is.list(hc3_group),
+  length(hc3_group) == 2L,
+  any(vapply(hc3_group, function(step) isTRUE(step$use_hc3), logical(1))),
+  !any(vapply(hc3_group, function(step) isTRUE(step$use_bootstrap), logical(1))),
+  is.data.frame(hc3_background$interaction_table),
+  nrow(hc3_background$interaction_table) == 1L,
+  identical(as.character(hc3_background$interaction_table$Test[[1L]]), "Robust Wald F")
+)
+hc3_expected_p <- hierarchical_robust_wald_f_p(hc3_group[[1L]], hc3_group[[2L]])
+stopifnot(
+  is.finite(hc3_expected_p),
+  identical(
+    as.character(hc3_background$interaction_table$p[[1L]]),
+    format_p(hc3_expected_p)
+  )
+)
 
 message("Checking serial mediation path decomposition...")
 set.seed(982)

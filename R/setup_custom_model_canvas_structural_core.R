@@ -219,11 +219,14 @@ structural_canvas_result_snapshot <- function(snapshot, fit, coefficient = "beta
     loadings <- as.matrix(summary_fit$loadings %||% matrix(numeric(0), 0L, 0L))
     weights <- as.matrix(summary_fit$weights %||% matrix(numeric(0), 0L, 0L))
     paths <- as.matrix(summary_fit$paths %||% matrix(numeric(0), 0L, 0L))
-    show_path_p <- coefficient %in% c("pls_p", "beta_p")
-    show_measurement_p <- identical(as.character(measurement_coefficient %||% "measurement_p"), "measurement_p")
-    bootstrap_paths <- bootstrap$bootstrapped_paths %||% NULL
-    bootstrap_loadings <- bootstrap$bootstrapped_loadings %||% NULL
-    bootstrap_weights <- bootstrap$bootstrapped_weights %||% NULL
+    path_p_requested <- coefficient %in% c("pls_p", "beta_p")
+    measurement_p_requested <- identical(as.character(measurement_coefficient %||% "measurement_p"), "measurement_p")
+    bootstrap_inference_available <- is.list(bootstrap) && isTRUE(bootstrap$inference_available)
+    bootstrap_paths <- if (bootstrap_inference_available) bootstrap$bootstrapped_paths %||% NULL else NULL
+    bootstrap_loadings <- if (bootstrap_inference_available) bootstrap$bootstrapped_loadings %||% NULL else NULL
+    bootstrap_weights <- if (bootstrap_inference_available) bootstrap$bootstrapped_weights %||% NULL else NULL
+    show_path_p <- path_p_requested && !is.null(bootstrap_paths)
+    show_measurement_p <- measurement_p_requested && (!is.null(bootstrap_loadings) || !is.null(bootstrap_weights))
     reliability <- as.data.frame(summary_fit$reliability %||% data.frame(), check.names = FALSE)
     snapshot$nodes <- lapply(snapshot$nodes %||% list(), function(node) {
       if (!identical(node$role, "latent")) return(node)
@@ -297,7 +300,7 @@ structural_canvas_result_snapshot <- function(snapshot, fit, coefficient = "beta
       edge$significant <- isTRUE(info$matched) && is.finite(edge$p) && edge$p < .05
       error_path <- !is.null(from) && !is.null(to) &&
         (from$role %in% c("error", "disturbance") || to$role %in% c("error", "disturbance"))
-      edge$dashEligible <- !error_path && if (!is.null(from) && !is.null(to) && identical(from$role, "latent") && identical(to$role, "latent")) show_path_p else show_measurement_p
+      edge$dashEligible <- !error_path && is.finite(edge$p)
       edge$resultMatched <- isTRUE(info$matched)
       measurement_path <- !is.null(from) && !is.null(to) &&
         ((identical(from$role, "latent") && identical(to$role, "indicator")) ||
@@ -310,7 +313,11 @@ structural_canvas_result_snapshot <- function(snapshot, fit, coefficient = "beta
       edge$labelTextAnchor <- "middle"
       edge
     })
-    snapshot$dashNonsignificant <- show_path_p || show_measurement_p
+    snapshot$dashNonsignificant <- any(vapply(
+      snapshot$edges %||% list(),
+      function(edge) isTRUE(edge$dashEligible),
+      logical(1)
+    ))
     snapshot$resultCoefficient <- if (coefficient %in% c("pls_value", "pls_p")) coefficient else "pls_p"
     snapshot$resultMeasurementCoefficient <- measurement_coefficient
     return(snapshot)

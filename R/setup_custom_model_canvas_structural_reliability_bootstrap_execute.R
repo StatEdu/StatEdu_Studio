@@ -28,7 +28,7 @@ structural_canvas_run_reliability_bootstrap <- function(analysis_type, reliabili
           if (nrow(row) && column %in% names(row)) as.numeric(row[[column]][[1L]]) else NA_real_
         }, numeric(1))
         value$`Valid %` <- 100 * value[["Valid replicates"]] / value[["Requested replicates"]]
-        value <- value[, c("Factor", "Statistic", "Estimate", "Lower", "Upper", "CI method", "Valid replicates", "Requested replicates", "Valid %", "Status"), drop = FALSE]
+        value <- value[, c("Factor", "Statistic", "Estimate", "Lower", "Upper", "CI method", "Quantile type", "Valid replicates", "Requested replicates", "Valid %", "Status"), drop = FALSE]
       }
       interval_name <- if (identical(reliability_ci_method, "bca")) "BCa" else if (identical(reliability_ci_method, "bias_corrected")) "bias-corrected (BC)" else "percentile"
       structural_canvas_inc_progress(.95, detail = paste0("Preparing ", interval_name, " intervals"))

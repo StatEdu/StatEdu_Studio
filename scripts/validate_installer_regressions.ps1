@@ -52,6 +52,60 @@ function Invoke-RegressionStep {
   Write-Host ("    passed in {0:N2}s" -f $stopwatch.Elapsed.TotalSeconds)
 }
 
+function Assert-PlsWholeDrawEvidence {
+  param(
+    [Parameter(Mandatory = $true)]
+    [AllowNull()]
+    [object]$Evidence
+  )
+
+  if ($null -eq $Evidence) {
+    throw "Structural bootstrap evidence is missing PLS-SEM whole-draw inference fields."
+  }
+  $requiredFields = @(
+    "repetitions", "valid_repetitions", "valid_ratio",
+    "minimum_valid_repetitions", "minimum_valid_ratio",
+    "inference_available", "bootstrap_status"
+  )
+  foreach ($field in $requiredFields) {
+    if ($null -eq $Evidence.PSObject.Properties[$field] -or $null -eq $Evidence.$field) {
+      throw "Structural bootstrap evidence is missing PLS-SEM field '$field'."
+    }
+  }
+  foreach ($field in @(
+    "repetitions", "valid_repetitions", "valid_ratio",
+    "minimum_valid_repetitions", "minimum_valid_ratio"
+  )) {
+    if ($Evidence.$field -isnot [ValueType] -or $Evidence.$field -is [bool]) {
+      throw "Structural bootstrap PLS-SEM field '$field' must be a JSON number."
+    }
+  }
+
+  try {
+    $requested = [double]$Evidence.repetitions
+    $valid = [double]$Evidence.valid_repetitions
+    $ratio = [double]$Evidence.valid_ratio
+    $minimumValid = [double]$Evidence.minimum_valid_repetitions
+    $minimumRatio = [double]$Evidence.minimum_valid_ratio
+  } catch {
+    throw "Structural bootstrap PLS-SEM whole-draw counts or ratios are not numeric."
+  }
+  $invalidNumeric = @($requested, $valid, $ratio, $minimumValid, $minimumRatio) |
+    Where-Object { [double]::IsNaN($_) -or [double]::IsInfinity($_) }
+  if ($invalidNumeric.Count -gt 0 -or
+      $requested -ne 1000 -or $requested -ne [Math]::Floor($requested) -or
+      $valid -lt 800 -or $valid -gt $requested -or $valid -ne [Math]::Floor($valid) -or
+      $ratio -lt .80 -or $ratio -gt 1 -or
+      $minimumValid -ne 800 -or $minimumValid -ne [Math]::Floor($minimumValid) -or
+      [Math]::Abs($minimumRatio - .80) -gt 1e-12 -or
+      [Math]::Abs($ratio - ($valid / $requested)) -gt 1e-12 -or
+      $Evidence.inference_available -isnot [bool] -or
+      -not $Evidence.inference_available -or
+      [string]$Evidence.bootstrap_status -cne "Adequate") {
+    throw "Structural bootstrap PLS-SEM evidence does not satisfy the 1,000-draw, 80% whole-draw inference contract."
+  }
+}
+
 if (-not $RscriptPath) {
   $RscriptPath = Find-Rscript
 }
@@ -64,6 +118,8 @@ $env:LANG = "English_United States.utf8"
 $previousStructuralBootstrapMode = $env:STATEDU_STRUCTURAL_BOOTSTRAP_MODE
 $previousStructuralBootstrapReport = $env:STATEDU_STRUCTURAL_BOOTSTRAP_REPORT
 $previousStructuralBootstrapRunId = $env:STATEDU_STRUCTURAL_BOOTSTRAP_RUN_ID
+$previousCsemValidationMode = $env:STATEDU_CSEM_VALIDATION_MODE
+$previousSmartplsEvidenceMode = $env:STATEDU_SMARTPLS_EVIDENCE_MODE
 $structuralBootstrapRunId = [Guid]::NewGuid().ToString("N")
 $structuralGateStartedAtUtc = [DateTime]::UtcNow
 $structuralBootstrapReport = $env:STATEDU_STRUCTURAL_BOOTSTRAP_REPORT
@@ -85,6 +141,8 @@ if (Test-Path -LiteralPath $structuralBootstrapReport) {
 $env:STATEDU_STRUCTURAL_BOOTSTRAP_MODE = "installer"
 $env:STATEDU_STRUCTURAL_BOOTSTRAP_REPORT = $structuralBootstrapReport
 $env:STATEDU_STRUCTURAL_BOOTSTRAP_RUN_ID = $structuralBootstrapRunId
+$env:STATEDU_CSEM_VALIDATION_MODE = "required"
+$env:STATEDU_SMARTPLS_EVIDENCE_MODE = "required"
 
 $regressions = @(
   [pscustomobject]@{
@@ -109,14 +167,19 @@ $regressions = @(
   },
   # Keep the interactive latency sentinel ahead of the intentionally long
   # SEM/CFA stress profiles so thermal throttling cannot masquerade as a
-  # custom-bootstrap regression. The 20-second budget remains unchanged.
+  # custom-bootstrap regression. The 20-second median target remains unchanged;
+  # 25 seconds is only a hard ceiling for any one independently spawned worker.
   [pscustomobject]@{
-    Label = "Exact 10,000-sample custom bootstrap runtime"
+    Label = "Exact 10,000-sample custom bootstrap robust runtime"
     Path = "scripts\validate_mediation_moderation_runtime.R"
   },
   [pscustomobject]@{
     Label = "CFA defaults, labels, and shared structural UI"
     Path = "scripts\validate_cfa_ui.R"
+  },
+  [pscustomobject]@{
+    Label = "SEM policy and bootstrap quantile metadata"
+    Path = "scripts\validate_sem_policy_metadata.R"
   },
   [pscustomobject]@{
     Label = "SEM and PLS-SEM defaults, labels, bootstrap, and exports"
@@ -125,6 +188,14 @@ $regressions = @(
   [pscustomobject]@{
     Label = "PLS-SEM and PLSc numerical regression"
     Path = "scripts\validate_pls_fit_csem.R"
+  },
+  [pscustomobject]@{
+    Label = "SmartPLS private/public external evidence"
+    Path = "scripts\validate_pls_smartpls_private_evidence.R"
+  },
+  [pscustomobject]@{
+    Label = "PLS-SEM bootstrap whole-draw validity contract"
+    Path = "scripts\validate_pls_bootstrap_contract.R"
   },
   [pscustomobject]@{
     Label = "Measured CFA, SEM, and PLS-SEM bootstrap performance"
@@ -191,6 +262,7 @@ try {
       $structuralEvidence.metrics.installer.pls_sem.repetitions -ne 1000) {
     throw "Structural bootstrap timing record does not contain CFA 1,000 / SEM 5,000 / PLS-SEM 1,000 actual repetitions."
   }
+  Assert-PlsWholeDrawEvidence -Evidence $structuralEvidence.metrics.installer.pls_sem
   Write-Host "Verified structural bootstrap timing record: $structuralBootstrapReport"
   Write-Host ("    CFA 1,000: {0:N2}s; SEM 5,000: {1:N2}s; PLS-SEM 1,000: {2:N2}s" -f `
     $structuralEvidence.metrics.installer.cfa.total_seconds,
@@ -214,6 +286,16 @@ try {
     Remove-Item Env:\STATEDU_STRUCTURAL_BOOTSTRAP_RUN_ID -ErrorAction SilentlyContinue
   } else {
     $env:STATEDU_STRUCTURAL_BOOTSTRAP_RUN_ID = $previousStructuralBootstrapRunId
+  }
+  if ($null -eq $previousCsemValidationMode) {
+    Remove-Item Env:\STATEDU_CSEM_VALIDATION_MODE -ErrorAction SilentlyContinue
+  } else {
+    $env:STATEDU_CSEM_VALIDATION_MODE = $previousCsemValidationMode
+  }
+  if ($null -eq $previousSmartplsEvidenceMode) {
+    Remove-Item Env:\STATEDU_SMARTPLS_EVIDENCE_MODE -ErrorAction SilentlyContinue
+  } else {
+    $env:STATEDU_SMARTPLS_EVIDENCE_MODE = $previousSmartplsEvidenceMode
   }
   Pop-Location
 }

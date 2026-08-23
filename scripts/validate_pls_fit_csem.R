@@ -9,9 +9,40 @@ source(file.path("R", "utils.R"), encoding = "UTF-8")
 suppressPackageStartupMessages(library(shiny))
 source(file.path("R", "setup_custom_model_canvas_structural_render_fit.R"), encoding = "UTF-8")
 
+validation_mode <- tolower(trimws(Sys.getenv("STATEDU_CSEM_VALIDATION_MODE", "required")))
+if (!validation_mode %in% c("required", "optional")) {
+  stop(
+    "STATEDU_CSEM_VALIDATION_MODE must be explicitly 'required' or 'optional'. Release and installer gates must use 'required'.",
+    call. = FALSE
+  )
+}
+csem_required <- identical(validation_mode, "required")
+expected_csem_version <- "0.6.1"
+
 if (!requireNamespace("cSEM", quietly = TRUE)) {
-  message("SKIP: cSEM is not installed; the package-level PLS fit benchmark was not run.")
+  if (csem_required) {
+    stop(
+      paste0(
+        "RELEASE BLOCKER: cSEM ", expected_csem_version,
+        " is unavailable in the selected R library paths. The required package-level PLS numerical validation cannot be skipped. ",
+        "Install cSEM in an isolated validation library and include that library in R_LIBS_USER, or run this non-release suite with STATEDU_CSEM_VALIDATION_MODE=optional."
+      ),
+      call. = FALSE
+    )
+  }
+  message("SKIP (explicit optional contract): cSEM is not installed; no package-level PLS equivalence claim was made.")
   quit(status = 0L, save = "no")
+}
+
+actual_csem_version <- as.character(utils::packageVersion("cSEM"))
+if (!identical(actual_csem_version, expected_csem_version)) {
+  stop(
+    sprintf(
+      "cSEM validation version contract failed: expected %s, found %s. Revalidate and deliberately update the pinned contract before release.",
+      expected_csem_version, actual_csem_version
+    ),
+    call. = FALSE
+  )
 }
 
 observed <- matrix(c(
@@ -40,6 +71,6 @@ stopifnot(
 
 cat(
   "PLS fit diagnostics match cSEM matrix functions (cSEM ",
-  as.character(utils::packageVersion("cSEM")), ", tolerance 1e-12).\n",
+  actual_csem_version, ", required=", csem_required, ", tolerance 1e-12).\n",
   sep = ""
 )

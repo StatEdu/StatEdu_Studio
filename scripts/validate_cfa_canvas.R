@@ -1,6 +1,10 @@
 source(file.path("scripts", "validate_cfa_common.R"), encoding = "UTF-8")
 
 stopifnot(requireNamespace("lavaan", quietly = TRUE))
+holzinger_swineford <- utils::read.csv(
+  file.path("sample", "HolzingerSwineford1939.csv"),
+  check.names = FALSE, stringsAsFactors = FALSE
+)
 edge_source <- paste(readLines(file.path("www", "model-canvas", "edges.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 state_source <- paste(readLines(file.path("www", "model-canvas", "state.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 dialog_source <- paste(readLines(file.path("www", "model-canvas", "dialogs.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -91,7 +95,8 @@ stopifnot(
   grepl("CFA analysis reproducibility record", reproducibility_record, fixed = TRUE),
   grepl("Analysis context: Prespecified/original model.", reproducibility_record, fixed = TRUE),
   grepl("Estimator: ML", reproducibility_record, fixed = TRUE),
-  grepl("CI method: bias_corrected", reproducibility_record, fixed = TRUE),
+  grepl("CI method: bias_corrected; quantile type: R type 6", reproducibility_record, fixed = TRUE),
+  grepl("Path/indirect/total-effect bootstrap: 0;", reproducibility_record, fixed = TRUE),
   grepl("eta1 =~ x1 + x2 + x3", reproducibility_record, fixed = TRUE),
   grepl("lavaan version:", reproducibility_record, fixed = TRUE)
 )
@@ -119,6 +124,10 @@ stopifnot(
   isTRUE(structural_canvas_validate_model_based_bootstrap(ml$fit)),
   identical(structural_canvas_bootstrap_status(c(80, 79, 50, 49, 0), 100), c("Adequate", "Caution", "Caution", "Unreliable", "Unreliable")),
   identical(structural_canvas_bootstrap_ci_method("BCa (slower)"), "bca"),
+  identical(structural_canvas_bootstrap_quantile_type("bias_corrected", "structural_effects"), 6L),
+  identical(structural_canvas_bootstrap_quantile_type("percentile", "htmt"), 6L),
+  identical(structural_canvas_bootstrap_quantile_type("percentile", "reliability"), 7L),
+  identical(structural_canvas_bootstrap_quantile_type("bca", "reliability"), 6L),
   grepl("progress(1L, total_iterations, valid_count)", bootstrap_source, fixed = TRUE),
   grepl("progress(completed, total_iterations, valid_count)", bootstrap_source, fixed = TRUE)
 )
@@ -245,12 +254,12 @@ stopifnot(
 stopifnot(identical(dim(correlations), c(1L, 1L)), identical(rownames(correlations), "eta1"))
 two_factor_fit <- lavaan::cfa(
   "eta1 =~ x1 + x2 + x3\neta2 =~ x4 + x5 + x6",
-  data = lavaan::HolzingerSwineford1939
+  data = holzinger_swineford
 )
 automatic_covariance_bootstrap_error <- tryCatch({
   structural_canvas_reliability_bootstrap(
     "eta1 =~ x1 + x2 + x3\neta2 =~ x4 + x5 + x6",
-    lavaan::HolzingerSwineford1939,
+    holzinger_swineford,
     reps = 2L,
     estimator = "ML",
     missing = "listwise",
@@ -261,7 +270,7 @@ automatic_covariance_bootstrap_error <- tryCatch({
 stopifnot(grepl("automatic exogenous latent covariances", automatic_covariance_bootstrap_error, fixed = TRUE))
 two_factor_mlr_fit <- lavaan::cfa(
   "eta1 =~ x1 + x2 + x3\neta2 =~ x4 + x5 + x6",
-  data = lavaan::HolzingerSwineford1939, estimator = "MLR"
+  data = holzinger_swineford, estimator = "MLR"
 )
 rmsea_tests_ml <- structural_canvas_rmsea_hypothesis_tests(list(fit = two_factor_fit, estimator = "ML", rmsea_ci = .90))
 rmsea_tests_mlr <- structural_canvas_rmsea_hypothesis_tests(list(fit = two_factor_mlr_fit, estimator = "MLR", rmsea_ci = .90))

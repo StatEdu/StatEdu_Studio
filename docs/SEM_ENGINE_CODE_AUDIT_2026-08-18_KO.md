@@ -49,6 +49,17 @@
 - Audit schema 1.6에 재현성 정책을 추가해 자동 생성 seed를 포함한 재분석은 기록된 seed·RNG 설정과 자료·명세·코드 fingerprint 등을 일치시켜야 함을 구조화했다.
 - 설계 규칙을 혼합 PLSc 블록별 보정, 구조효과 BC 기본값, 단일지표 완전측정 경고, Audit schema 1.6에 맞게 갱신했다.
 
+### 2026-08-23 릴리스 정책·Audit schema 후속
+
+아래 2026-08-18 감사 본문과 2026-08-19 종결 검증 문장은 당시의 판단과 구현 이력을 그대로 보존한다. 이후 승인된 1.2.4 정책과 Audit 확장은 다음과 같으며, 과거 감사내용을 소급해 바꾸는 것이 아니다.
+
+- 새 CFA·SEM·PLS-SEM의 표본설계 시작값은 `independent_cross_sectional`로 통일했다. 이는 자료에서 설계를 검증한 결과나 복합표본·군집·종단 분산추정 지원 주장이 아니며, 사용자가 다른 설계를 선택하면 현행 엔진은 계속 실행을 차단한다.
+- 새 SEM/CB-SEM의 경로·간접·총효과 bootstrap은 5,000회를 기본으로 하되 `계산하지 않음` 및 1,000 / 5,000 / 10,000 / 20,000 / 50,000회로 재설정할 수 있다. CFA·PLS-SEM의 다른 재표집 기본값은 비활성 상태를 유지한다.
+- Audit schema 1.7은 1.6의 재현성 필드를 유지하면서 StatEdu bootstrap CI의 R quantile type과 PLS whole-draw 유효 반복·실패분류 메타데이터를 추가한다. 분위수 메타데이터 추가는 기존 CI 계산을 바꾸지 않으며, 구조효과·HTMT·BC/BCa는 type 6, AVE·신뢰도 percentile은 type 7이다.
+- 1.2.4의 표준 PLS와 PLSc bootstrap은 L'Ecuyer-CMRG 요청위치별 스트림을 공유한다. 동일 1.2.4 코드·자료·모형·seed의 작업자 독립 재현성을 제공하지만, 1.2.3 표준 PLS의 `seminr::bootstrap_model()` (`seed + 반복번호`)과 같은 seed의 draw가 bitwise 동일하다는 버전 간 호환성은 주장하지 않는다.
+- cSEM package-level benchmark는 0.6.1 패키지 함수와 직접 대조한다. 설치본·집중 검증은 `required` 모드로 cSEM 누락, 버전 불일치 또는 수치 불일치를 실패 처리하고, 비출시 일반 개발 검증에서만 동등성 주장 없는 `optional` SKIP을 허용한다.
+- 현행 정책과 실행 계약은 `SEM_DECISION_RULES_V1_KO.md`, `INSTALLER_REGRESSION_CHECKLIST_2026-08-22_KO.md` 및 `validate_sem_policy_metadata.R`에서 검증한다.
+
 아래 본문은 수정 전 발견 근거이므로 당시 코드상태에 대한 서술로 읽어야 한다. SmartPLS식 PLS exact-fit 동등성은 별도 잔여 검증항목이다.
 
 ---

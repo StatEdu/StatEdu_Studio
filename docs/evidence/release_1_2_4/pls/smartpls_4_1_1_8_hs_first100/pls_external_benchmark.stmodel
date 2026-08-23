@@ -1,0 +1,34 @@
+{
+  "modelSchemaVersion": 7,
+  "analysisType": "plssem",
+  "nodes": [
+    {"id":"visual","role":"latent","name":"visual","canvasLabel":"Visual","x":180,"y":300,"measurementMode":"reflective","constructType":"commonFactor","weightingMode":"auto"},
+    {"id":"textual","role":"latent","name":"textual","canvasLabel":"Textual","x":520,"y":160,"measurementMode":"reflective","constructType":"commonFactor","weightingMode":"auto"},
+    {"id":"speed","role":"latent","name":"speed","canvasLabel":"Speed","x":520,"y":440,"measurementMode":"reflective","constructType":"commonFactor","weightingMode":"auto"},
+    {"id":"x1","role":"indicator","name":"x1","variableId":"x1","canvasLabel":"x1","x":40,"y":210},
+    {"id":"x2","role":"indicator","name":"x2","variableId":"x2","canvasLabel":"x2","x":40,"y":300},
+    {"id":"x3","role":"indicator","name":"x3","variableId":"x3","canvasLabel":"x3","x":40,"y":390},
+    {"id":"x4","role":"indicator","name":"x4","variableId":"x4","canvasLabel":"x4","x":700,"y":70},
+    {"id":"x5","role":"indicator","name":"x5","variableId":"x5","canvasLabel":"x5","x":700,"y":150},
+    {"id":"x6","role":"indicator","name":"x6","variableId":"x6","canvasLabel":"x6","x":700,"y":230},
+    {"id":"x7","role":"indicator","name":"x7","variableId":"x7","canvasLabel":"x7","x":700,"y":350},
+    {"id":"x8","role":"indicator","name":"x8","variableId":"x8","canvasLabel":"x8","x":700,"y":430},
+    {"id":"x9","role":"indicator","name":"x9","variableId":"x9","canvasLabel":"x9","x":700,"y":510}
+  ],
+  "edges": [
+    {"id":"m1","from":"visual","to":"x1"},
+    {"id":"m2","from":"visual","to":"x2"},
+    {"id":"m3","from":"visual","to":"x3"},
+    {"id":"m4","from":"textual","to":"x4"},
+    {"id":"m5","from":"textual","to":"x5"},
+    {"id":"m6","from":"textual","to":"x6"},
+    {"id":"m7","from":"speed","to":"x7"},
+    {"id":"m8","from":"speed","to":"x8"},
+    {"id":"m9","from":"speed","to":"x9"},
+    {"id":"p1","from":"visual","to":"textual","pathType":"regression"},
+    {"id":"p2","from":"visual","to":"speed","pathType":"regression"},
+    {"id":"p3","from":"textual","to":"speed","pathType":"regression"}
+  ],
+  "moderations": [],
+  "covariates": []
+}

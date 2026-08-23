@@ -1,5 +1,25 @@
 source(file.path("scripts", "smartpls_tam_reference_common.R"), encoding = "UTF-8")
 
+reference_path <- file.path(
+  "docs", "evidence", "release_1_2_4", "pls",
+  "smartpls_4_1_1_8_tam100_supplement", "external_reference.csv"
+)
+stopifnot(file.exists(reference_path))
+external_reference <- utils::read.csv(reference_path, check.names = FALSE, stringsAsFactors = FALSE)
+stopifnot(
+  identical(names(external_reference), c("Type", "Estimator", "Key", "SmartPLS")),
+  nrow(external_reference) == 20L,
+  setequal(tolower(external_reference$Estimator), c("pls", "plsc"))
+)
+reference_value <- function(type, estimator, key) {
+  match <- external_reference[
+    external_reference$Type == type & external_reference$Estimator == estimator & external_reference$Key == key,
+    "SmartPLS"
+  ]
+  stopifnot(length(match) == 1L)
+  as.numeric(match)
+}
+
 pls <- run_structural_canvas_analysis(snapshot, tam_data[indicators], "plssem", estimator = "PLS")
 plsc <- run_structural_canvas_analysis(snapshot, tam_data[indicators], "plssem", estimator = "PLSc")
 stopifnot(
@@ -18,8 +38,8 @@ pls_fit <- fit_values(pls, "PLS")
 plsc_fit <- fit_values(plsc, "PLSC")
 
 rounded_reference <- rbind(
-  pls = c(srmr = .077, d_g = .882, d_uls = 1.514),
-  plsc = c(srmr = .080, d_g = NA_real_, d_uls = 1.601)
+  pls = vapply(c("srmr", "d_g", "d_uls"), function(key) reference_value("fit", "pls", key), numeric(1)),
+  plsc = vapply(c("srmr", "d_g", "d_uls"), function(key) reference_value("fit", "plsc", key), numeric(1))
 )
 actual <- rbind(pls = pls_fit[c("srmr", "d_g", "d_uls")], plsc = plsc_fit[c("srmr", "d_g", "d_uls")])
 stopifnot(
@@ -32,11 +52,14 @@ stopifnot(
 )
 
 path_values <- function(model) vapply(path_pairs, function(pair) model$path_coef[pair[[1L]], pair[[2L]]], numeric(1))
+path_reference <- function(estimator) vapply(path_pairs, function(pair) {
+  reference_value("path", estimator, paste0(pair[[1L]], "->", pair[[2L]]))
+}, numeric(1))
 pls_paths <- path_values(pls$fit)
 plsc_paths <- path_values(plsc$fit)
 stopifnot(
-  max(abs(pls_paths - c(.361, .264, .332, .227, .339, .203, .193))) <= .0005,
-  max(abs(plsc_paths - c(.388, .306, .352, .229, .380, .200, .253))) <= .0005
+  max(abs(pls_paths - path_reference("pls"))) <= .0005,
+  max(abs(plsc_paths - path_reference("plsc"))) <= .0005
 )
 
 options(digits = 17)

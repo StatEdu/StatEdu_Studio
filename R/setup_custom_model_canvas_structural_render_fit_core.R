@@ -30,7 +30,21 @@ structural_canvas_fit_table_result_ui <- function(bundle, values) {
         tags$tbody(lapply(seq_len(nrow(values)), function(index) tags$tr(Map(pls_cell, as.character(values[index, , drop = TRUE]), names(values)))))
       ),
       tags$p(class = "structural-result-note", "B = standardized PLS path coefficient; Boot SE = bootstrap standard error; z = bootstrap test statistic; p = raw bootstrap p value; f^2 = local effect size; R^2(adj R^2) = explained variance (adjusted explained variance); VIF = inner variance inflation factor. R^2(adj R^2) describes the destination construct and may therefore repeat across paths with the same outcome. Out-of-sample prediction is reported separately by repeated PLSpredict."),
-      if (as.integer(bundle$pls_bootstrap %||% 0L) > 0L) tags$p(class = "structural-result-note", paste0("Bootstrap columns use seminr percentile intervals from ", as.integer(bundle$pls_bootstrap %||% 0L), " requested resamples; failed bootstrap iterations are excluded by seminr."))
+      if (as.integer(bundle$pls_bootstrap %||% 0L) > 0L) {
+        bootstrap <- bundle$pls_bootstrap_result %||% list()
+        valid <- suppressWarnings(as.integer(bootstrap$nboot %||% 0L))
+        requested <- suppressWarnings(as.integer(bootstrap$requested_nboot %||% bundle$pls_bootstrap %||% 0L))
+        minimum_ratio <- suppressWarnings(as.numeric(bootstrap$minimum_valid_ratio %||% .80))
+        bootstrap_status <- as.character(bootstrap$bootstrap_status %||% "Not recorded")[[1L]]
+        tags$p(
+          class = paste("structural-result-note", if (!isTRUE(bootstrap$inference_available)) "structural-result-warning" else ""),
+          paste0(
+            "Bootstrap inference uses percentile intervals after a whole-draw contract across every reported path, loading, weight, HTMT, and total-effect statistic. Valid resamples: ",
+            valid, "/", requested, "; status: ", bootstrap_status, "; the minimum reporting ratio is ", formatC(100 * minimum_ratio, format = "fg", digits = 3), "%. ",
+            if (!isTRUE(bootstrap$inference_available)) "Bootstrap SE, CI, t, and p values are suppressed because the minimum was not met." else ""
+          )
+        )
+      }
     ))
   }
   ci_percent <- round(100 * as.numeric(bundle$rmsea_ci %||% .90))

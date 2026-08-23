@@ -228,6 +228,7 @@ reliability_cancel_error <- tryCatch({
 stopifnot(
   nrow(reliability_bootstrap) == 4L,
   all(reliability_bootstrap[["CI method"]] == "Bias-corrected (BC)"),
+  all(reliability_bootstrap[["Quantile type"]] == "R type 6"),
   all(reliability_bootstrap[["Requested replicates"]] == 12L),
   all(reliability_bootstrap[["Valid replicates"]] > 0L),
   reliability_progress_events[[1L]][["done"]] == 0L,
@@ -244,7 +245,8 @@ reliability_bca <- structural_canvas_reliability_bootstrap(
 )
 stopifnot(
   nrow(reliability_bca) == 4L,
-  all(reliability_bca[["CI method"]] %in% c("BCa", "BCa unavailable"))
+  all(reliability_bca[["CI method"]] %in% c("BCa", "BCa unavailable")),
+  all(reliability_bca[["Quantile type"]] == "R type 6")
 )
 
 cfa_job_progress <- tempfile(fileext = ".rds")
@@ -363,6 +365,7 @@ htmt_cancel_error <- tryCatch({
 stopifnot(
   nrow(htmt_bootstrap) == 1L,
   htmt_bootstrap[["Requested replicates"]][[1L]] == 20L,
+  identical(htmt_bootstrap[["Quantile type"]][[1L]], "R type 6"),
   htmt_progress_events[[1L]][["done"]] == 0L,
   tail(htmt_progress_events, 1L)[[1L]][["done"]] == 20L,
   grepl("canceled", htmt_cancel_error, fixed = TRUE)

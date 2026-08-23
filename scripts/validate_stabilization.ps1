@@ -61,6 +61,7 @@ $coreValidations = @(
   "scripts\validate_version_metadata.R",
   "scripts\validate_sem_release_promotion.R",
   "scripts\validate_sem_public_claims.R",
+  "scripts\validate_sem_policy_metadata.R",
   "scripts\validate_document_encoding.R",
   "scripts\validate_repository_fixtures.R",
   "scripts\validate_brand_metadata.R",
@@ -85,6 +86,7 @@ $coreValidations = @(
   "scripts\validate_data_io.R",
   "scripts\validate_data_upload_performance.R",
   "scripts\validate_startup_performance_contract.R",
+  "scripts\validate_pls_bootstrap_contract.R",
   "scripts\validate_structural_bootstrap_performance.R"
 )
 
@@ -103,6 +105,7 @@ $fullOnlyValidations = @(
   "scripts\validate_ordinal_category_order.R",
   "scripts\validate_paired_guards.R",
   "scripts\validate_pls_external_comparator.R",
+  "scripts\validate_pls_smartpls_private_evidence.R",
   "scripts\validate_pls_fit_csem.R",
   "scripts\validate_pls_smartpls_tam.R",
   "scripts\validate_smartpls_cbsem_tam.R",
@@ -175,7 +178,33 @@ try {
     if (-not (Test-Path -LiteralPath $script)) {
       throw "Validation script was not found: $script"
     }
-    Invoke-Step $script { & $RscriptPath $script }
+    if ($script -eq "scripts\validate_pls_fit_csem.R") {
+      $previousCsemValidationMode = $env:STATEDU_CSEM_VALIDATION_MODE
+      try {
+        $env:STATEDU_CSEM_VALIDATION_MODE = "optional"
+        Invoke-Step $script { & $RscriptPath $script }
+      } finally {
+        if ($null -eq $previousCsemValidationMode) {
+          Remove-Item Env:\STATEDU_CSEM_VALIDATION_MODE -ErrorAction SilentlyContinue
+        } else {
+          $env:STATEDU_CSEM_VALIDATION_MODE = $previousCsemValidationMode
+        }
+      }
+    } elseif ($script -eq "scripts\validate_pls_smartpls_private_evidence.R") {
+      $previousSmartplsEvidenceMode = $env:STATEDU_SMARTPLS_EVIDENCE_MODE
+      try {
+        $env:STATEDU_SMARTPLS_EVIDENCE_MODE = "optional"
+        Invoke-Step $script { & $RscriptPath $script }
+      } finally {
+        if ($null -eq $previousSmartplsEvidenceMode) {
+          Remove-Item Env:\STATEDU_SMARTPLS_EVIDENCE_MODE -ErrorAction SilentlyContinue
+        } else {
+          $env:STATEDU_SMARTPLS_EVIDENCE_MODE = $previousSmartplsEvidenceMode
+        }
+      }
+    } else {
+      Invoke-Step $script { & $RscriptPath $script }
+    }
   }
 
   Write-Host "Stabilization validations passed."

@@ -43,9 +43,16 @@ structural_canvas_git_provenance <- function() {
 
 structural_canvas_analysis_code_fingerprint <- function() {
   function_names <- c(
-    "run_structural_canvas_analysis", "structural_canvas_execute_analysis",
-    "structural_canvas_lavaan_syntax", "structural_canvas_run_pls_analysis",
-    "structural_canvas_run_pls_predict", "structural_canvas_effect_bootstrap"
+    "run_structural_canvas_analysis", "structural_canvas_execute_analysis", "structural_canvas_execute_settings",
+    "structural_canvas_sampling_design_gate", "structural_canvas_bootstrap_quantile_type",
+    "structural_canvas_lavaan_syntax", "structural_canvas_run_pls_analysis", "structural_canvas_apply_plsc",
+    "structural_canvas_run_pls_predict", "structural_canvas_effect_bootstrap",
+    "structural_canvas_rng_streams", "structural_canvas_run_pls_bootstrap",
+    "structural_canvas_run_plsc_bootstrap", "structural_canvas_pls_bootstrap_min_valid_ratio",
+    "structural_canvas_pls_bootstrap_validity", "structural_canvas_pls_bootstrap_required_masks",
+    "structural_canvas_pls_bootstrap_components_contract", "structural_canvas_pls_bootstrap_select_draws",
+    "structural_canvas_pls_bootstrap_suppress_inference", "structural_canvas_pls_bootstrap_contract_metadata",
+    "structural_canvas_pls_bootstrap_unavailable_result"
   )
   definitions <- lapply(function_names, function(name) {
     value <- get0(name, mode = "function", inherits = TRUE)
@@ -99,6 +106,54 @@ structural_canvas_audit_warnings <- function(bundle, analysis_type, diagnostics)
   bootstrap_tables <- list(bundle$effect_bootstrap_result, bundle$htmt_bootstrap_result, bundle$reliability_bootstrap_result, bundle$bollen_stine_result)
   bootstrap_status <- unique(unlist(lapply(bootstrap_tables, function(value) if (is.data.frame(value) && "Status" %in% names(value)) as.character(value$Status) else character(0))))
   if (any(bootstrap_status %in% c("Caution", "Unreliable"))) add("Resampling", if ("Unreliable" %in% bootstrap_status) "Critical" else "Major", paste0("Bootstrap diagnostics include: ", paste(bootstrap_status, collapse = ", "), "."))
+  pls_bootstrap <- bundle$pls_bootstrap_result %||% NULL
+  if (identical(analysis_type, "plssem") && is.list(pls_bootstrap)) {
+    pls_status <- as.character(pls_bootstrap$bootstrap_status %||% "")
+    pls_status <- if (length(pls_status)) pls_status[[1L]] else ""
+    pls_inference_unavailable <- !isTRUE(pls_bootstrap$inference_available) || identical(pls_status, "Insufficient")
+    if (pls_inference_unavailable) {
+      audit_count <- function(value, fallback = NA_integer_) {
+        value <- suppressWarnings(as.numeric(value %||% fallback))
+        if (!length(value) || !is.finite(value[[1L]])) return(as.integer(fallback))
+        as.integer(value[[1L]])
+      }
+      display_count <- function(value) if (is.finite(value)) as.character(value) else "not recorded"
+      valid_n <- audit_count(pls_bootstrap$nboot)
+      requested_n <- audit_count(pls_bootstrap$requested_nboot, bundle$pls_bootstrap %||% NA_integer_)
+      timeout_n <- audit_count(pls_bootstrap$timeout_failures, 0L)
+      estimation_n <- audit_count(pls_bootstrap$estimation_failures, 0L)
+      invalid_n <- audit_count(pls_bootstrap$invalid_statistic_failures, 0L)
+      execution_n <- audit_count(pls_bootstrap$execution_failures, 0L)
+      canceled_n <- audit_count(pls_bootstrap$canceled_failures, 0L)
+      failure_message <- as.character(pls_bootstrap$failure_message %||% "")
+      failure_message <- if (length(failure_message)) trimws(failure_message[[1L]]) else ""
+      add(
+        "Resampling", "Critical",
+        paste0(
+          "PLS bootstrap inference is unavailable (status ", if (nzchar(pls_status)) pls_status else "not recorded",
+          "): valid ", display_count(valid_n), "/", display_count(requested_n),
+          " requested draws; failures timeout=", display_count(timeout_n),
+          ", estimation=", display_count(estimation_n),
+          ", invalid-statistics=", display_count(invalid_n),
+          ", execution=", display_count(execution_n),
+          ", canceled=", display_count(canceled_n),
+          if (nzchar(failure_message)) paste0("; detail: ", failure_message) else "",
+          ". Bootstrap SE, CI, t, and p values must not be interpreted."
+        )
+      )
+    }
+  } else if (identical(analysis_type, "plssem")) {
+    requested_n <- suppressWarnings(as.integer(bundle$pls_bootstrap %||% 0L))
+    if (is.finite(requested_n) && requested_n > 0L) {
+      add(
+        "Resampling", "Critical",
+        paste0(
+          "PLS bootstrap inference is unavailable because no bootstrap result contract was recorded: valid 0/",
+          requested_n, " requested draws. Bootstrap SE, CI, t, and p values must not be interpreted."
+        )
+      )
+    }
+  }
   if (is.list(bundle$pls_predict_result)) {
     predict_reps <- as.integer(bundle$pls_predict_result$reps %||% 0L)
     if (predict_reps < 5L) {
@@ -136,7 +191,7 @@ structural_canvas_audit_manifest <- function(bundle, analysis_type = NULL, gener
   residual_diagnostics <- if (inherits(bundle$fit, "lavaan")) structural_canvas_residual_diagnostics(bundle$fit) else list(available = FALSE)
   factor_score_quality <- if (inherits(bundle$fit, "lavaan")) structural_canvas_factor_score_quality(bundle$fit) else data.frame()
   list(
-    schema = list(name = "StatEdu SEM audit manifest", version = "1.6"),
+    schema = list(name = "StatEdu SEM audit manifest", version = "1.7"),
     generated = list(
       timestamp = format(generated_at, "%Y-%m-%dT%H:%M:%S%z"),
       timezone = format(generated_at, "%Z"),
@@ -212,13 +267,57 @@ structural_canvas_audit_manifest <- function(bundle, analysis_type = NULL, gener
       reproducibility_policy = list(
         requirement = "Reuse the recorded seed and RNG configuration; rerunning unchanged options without supplying the recorded seed is not a reproducibility guarantee.",
         scope = "All bootstrap, permutation, cross-validation, prediction, and holdout procedures recorded below.",
-        additional_conditions = "Match the recorded data and model fingerprints, analysis-code fingerprint, package versions, and analysis settings."
+        additional_conditions = "Match the recorded data and model fingerprints, analysis-code fingerprint, package versions, and analysis settings.",
+        quantile_definition = "R quantile type is recorded separately for every bootstrap CI method implemented by StatEdu; package-owned procedures retain their package-defined calculation."
       ),
-      reliability = list(replicates = bundle$reliability_bootstrap %||% 0L, seed = bundle$reliability_seed %||% NULL, ci_method = bundle$reliability_ci_method %||% NULL),
-      htmt = list(replicates = bundle$htmt_bootstrap %||% 0L, seed = bundle$htmt_seed %||% NULL, ci_method = bundle$htmt_ci_method %||% NULL),
+      reliability = list(
+        replicates = bundle$reliability_bootstrap %||% 0L,
+        seed = bundle$reliability_seed %||% NULL,
+        ci_method = bundle$reliability_ci_method %||% "bias_corrected",
+        quantile_type = structural_canvas_bootstrap_quantile_type(bundle$reliability_ci_method %||% "bias_corrected", "reliability")
+      ),
+      htmt = list(
+        replicates = bundle$htmt_bootstrap %||% 0L,
+        seed = bundle$htmt_seed %||% NULL,
+        ci_method = bundle$htmt_ci_method %||% "bias_corrected",
+        quantile_type = structural_canvas_bootstrap_quantile_type(bundle$htmt_ci_method %||% "bias_corrected", "htmt")
+      ),
       bollen_stine = list(replicates = bundle$bollen_stine_bootstrap %||% 0L, seed = bundle$bollen_stine_seed %||% NULL),
-      structural_effects = list(replicates = bundle$effect_bootstrap %||% 0L, seed = bundle$effect_bootstrap_seed %||% NULL, interval = paste("case-resampling", bundle$effect_bootstrap_ci_method %||% "bias_corrected", "for unstandardized and standardized effects"), diagnostics = bundle$effect_bootstrap_result %||% NULL),
-      pls = list(replicates = bundle$pls_bootstrap %||% 0L, seed = bundle$pls_seed %||% NULL),
+      structural_effects = list(
+        replicates = bundle$effect_bootstrap %||% 0L,
+        seed = bundle$effect_bootstrap_seed %||% NULL,
+        ci_method = bundle$effect_bootstrap_ci_method %||% "bias_corrected",
+        quantile_type = structural_canvas_bootstrap_quantile_type(bundle$effect_bootstrap_ci_method %||% "bias_corrected", "structural_effects"),
+        interval = paste("case-resampling", bundle$effect_bootstrap_ci_method %||% "bias_corrected", "for unstandardized and standardized effects"),
+        diagnostics = bundle$effect_bootstrap_result %||% NULL
+      ),
+      pls = list(
+        replicates = bundle$pls_bootstrap %||% 0L,
+        requested_replicates = bundle$pls_bootstrap_result$requested_nboot %||% bundle$pls_bootstrap %||% 0L,
+        seed = bundle$pls_seed %||% NULL,
+        rng = bundle$pls_bootstrap_result$rng %||% "L'Ecuyer-CMRG independent stream per requested position",
+        draw_order = bundle$pls_bootstrap_result$draw_order %||% NULL,
+        valid_positions = bundle$pls_bootstrap_result$valid_positions %||% NULL,
+        valid_replicates = bundle$pls_bootstrap_result$nboot %||% NULL,
+        valid_ratio = bundle$pls_bootstrap_result$valid_ratio %||% NULL,
+        minimum_valid_ratio = bundle$pls_bootstrap_result$minimum_valid_ratio %||% .80,
+        inference_available = bundle$pls_bootstrap_result$inference_available %||% NULL,
+        status = bundle$pls_bootstrap_result$bootstrap_status %||% NULL,
+        timeout_failures = bundle$pls_bootstrap_result$timeout_failures %||% NULL,
+        estimation_failures = bundle$pls_bootstrap_result$estimation_failures %||% NULL,
+        invalid_statistic_failures = bundle$pls_bootstrap_result$invalid_statistic_failures %||% NULL,
+        execution_failures = bundle$pls_bootstrap_result$execution_failures %||% NULL,
+        canceled_failures = bundle$pls_bootstrap_result$canceled_failures %||% NULL,
+        failure_message = bundle$pls_bootstrap_result$failure_message %||% NULL,
+        failure_counts = list(
+          timeout = bundle$pls_bootstrap_result$timeout_failures %||% NULL,
+          estimation = bundle$pls_bootstrap_result$estimation_failures %||% NULL,
+          invalid_statistics = bundle$pls_bootstrap_result$invalid_statistic_failures %||% NULL,
+          execution = bundle$pls_bootstrap_result$execution_failures %||% NULL,
+          canceled = bundle$pls_bootstrap_result$canceled_failures %||% NULL
+        ),
+        validity_contract = bundle$pls_bootstrap_result$validity_contract %||% "whole-draw finite/shape contract"
+      ),
       micom = list(enabled = isTRUE(bundle$invariance_enabled) && identical(analysis_type, "plssem"), permutations = bundle$micom_permutations %||% NULL, seed = bundle$micom_seed %||% NULL, result = if (identical(bundle$invariance_result$type %||% "", "pls_micom")) bundle$invariance_result else NULL),
       pls_predict = list(folds = bundle$pls_predict_folds %||% NULL, repetitions = bundle$pls_predict_reps %||% NULL, seed = bundle$pls_predict_seed %||% NULL, rng = bundle$pls_predict_result$rng %||% NULL, benchmark = "linear model", repetition_results = bundle$pls_predict_result$repetition_summaries %||% NULL),
       mi_holdout = list(enabled = isTRUE(bundle$mi_holdout_enabled), fraction = bundle$mi_holdout_fraction %||% NULL, seed = bundle$mi_holdout_seed %||% NULL)
@@ -301,8 +400,9 @@ structural_canvas_reproducibility_record <- function(bundle, generated_at = Sys.
     paste0("AVE/CR formula: ", bundle$validity_formula %||% "standardized"),
     paste0("RMSEA CI level: ", bundle$rmsea_ci %||% .90),
     paste0("HTMT threshold: ", bundle$htmt_threshold %||% .85),
-    paste0("HTMT bootstrap: ", bundle$htmt_bootstrap %||% 0L, "; seed: ", bundle$htmt_seed %||% "not used", "; CI method: ", bundle$htmt_ci_method %||% "bias_corrected"),
-    paste0("AVE/reliability bootstrap: ", bundle$reliability_bootstrap %||% 0L, "; seed: ", bundle$reliability_seed %||% "not used", "; CI method: ", bundle$reliability_ci_method %||% "bias_corrected"),
+    paste0("HTMT bootstrap: ", bundle$htmt_bootstrap %||% 0L, "; seed: ", bundle$htmt_seed %||% "not used", "; CI method: ", bundle$htmt_ci_method %||% "bias_corrected", "; quantile type: R type ", structural_canvas_bootstrap_quantile_type(bundle$htmt_ci_method %||% "bias_corrected", "htmt")),
+    paste0("AVE/reliability bootstrap: ", bundle$reliability_bootstrap %||% 0L, "; seed: ", bundle$reliability_seed %||% "not used", "; CI method: ", bundle$reliability_ci_method %||% "bias_corrected", "; quantile type: R type ", structural_canvas_bootstrap_quantile_type(bundle$reliability_ci_method %||% "bias_corrected", "reliability")),
+    paste0("Path/indirect/total-effect bootstrap: ", bundle$effect_bootstrap %||% 0L, "; seed: ", bundle$effect_bootstrap_seed %||% "not used", "; CI method: ", bundle$effect_bootstrap_ci_method %||% "bias_corrected", "; quantile type: R type ", structural_canvas_bootstrap_quantile_type(bundle$effect_bootstrap_ci_method %||% "bias_corrected", "structural_effects")),
     paste0("Bollen-Stine bootstrap: ", bundle$bollen_stine_bootstrap %||% 0L, "; seed: ", bundle$bollen_stine_seed %||% "not used"),
     paste0("Measurement invariance: ", if (isTRUE(bundle$invariance_enabled)) paste0("enabled; group = ", bundle$invariance_group) else "disabled"),
     paste0("Common method bias diagnostics: ", if (isTRUE(bundle$common_method_enabled)) paste0("enabled; methods = ", paste(bundle$common_method_methods %||% character(0), collapse = ", ")) else "disabled"),

@@ -321,11 +321,11 @@ mediation_moderation_start_bootstrap_job <- function(args) {
     func = function(input_file, result_file, progress_file, error_file, project_dir) {
       tryCatch({
         setwd(project_dir)
-        tags <- htmltools::tags
-        tagList <- htmltools::tagList
+        # The background calculation path does not render Shiny/htmltools UI.
+        # Avoid loading the full UI stack before the first bootstrap draw.
+        options(statedu.mediation_moderation_worker = TRUE)
         module_files <- c(
-          "utils.R", "result_labels.R", "result_coefficients.R",
-          "result_panels_ui.R", "analysis_regression.R",
+          "utils.R", "result_labels.R", "analysis_regression.R",
           "setup_mediation_moderation_ui.R"
         )
         for (module_file in module_files) {
@@ -7061,6 +7061,16 @@ save_mediation_moderation_figures_to_dir <- function(result, directory, language
   saved
 }
 
+mediation_moderation_validate <- function(condition, message) {
+  if (isTRUE(getOption("statedu.mediation_moderation_worker", FALSE))) {
+    if (!isTRUE(condition)) {
+      stop(as.character(message %||% "The mediation/moderation model is invalid."), call. = FALSE)
+    }
+    return(invisible(TRUE))
+  }
+  shiny::validate(shiny::need(isTRUE(condition), message))
+}
+
 run_mediation_moderation_analysis <- function(
   data,
   roles,
@@ -7093,10 +7103,10 @@ run_mediation_moderation_analysis <- function(
   category_table = NULL,
   progress = NULL
 ) {
-  shiny::validate(shiny::need(is.data.frame(data) && nrow(data) > 0, mediation_moderation_text(language, "Load a data file before running the analysis.", "\ubd84\uc11d \uc804\uc5d0 \ub370\uc774\ud130\ub97c \ubd88\ub7ec\uc624\uc138\uc694.")))
+  mediation_moderation_validate(is.data.frame(data) && nrow(data) > 0, mediation_moderation_text(language, "Load a data file before running the analysis.", "\ubd84\uc11d \uc804\uc5d0 \ub370\uc774\ud130\ub97c \ubd88\ub7ec\uc624\uc138\uc694."))
   roles <- mediation_moderation_role_values(roles$y, roles$x, roles$mediators, roles$w, roles$covariates, selected_names = names(data))
-  shiny::validate(shiny::need(length(roles$y) >= 1L, mediation_moderation_text(language, "Select at least one dependent variable.", "\uc885\uc18d\ubcc0\uc218\ub97c 1\uac1c \uc774\uc0c1 \uc120\ud0dd\ud558\uc138\uc694.")))
-  shiny::validate(shiny::need(length(roles$x) >= 1L, mediation_moderation_text(language, "Select at least one independent variable.", "\ub3c5\ub9bd\ubcc0\uc218\ub97c 1\uac1c \uc774\uc0c1 \uc120\ud0dd\ud558\uc138\uc694.")))
+  mediation_moderation_validate(length(roles$y) >= 1L, mediation_moderation_text(language, "Select at least one dependent variable.", "\uc885\uc18d\ubcc0\uc218\ub97c 1\uac1c \uc774\uc0c1 \uc120\ud0dd\ud558\uc138\uc694."))
+  mediation_moderation_validate(length(roles$x) >= 1L, mediation_moderation_text(language, "Select at least one independent variable.", "\ub3c5\ub9bd\ubcc0\uc218\ub97c 1\uac1c \uc774\uc0c1 \uc120\ud0dd\ud558\uc138\uc694."))
   boot_r <- as.integer(boot_r %||% 5000L)
   if (is.na(boot_r) || boot_r < 1L) {
     boot_r <- 5000L
@@ -7170,7 +7180,7 @@ run_mediation_moderation_analysis <- function(
   if (isTRUE(custom_path_model) && (is.na(model) || !model %in% mediation_moderation_models())) {
     model <- "custom"
   }
-  shiny::validate(shiny::need(isTRUE(custom_path_model) || (!is.na(model) && model %in% mediation_moderation_models()), mediation_moderation_text(language, "The current variable arrangement is not mapped to a supported model number.", "\ud604\uc7ac \ubcc0\uc218 \uad6c\uc131\uc740 \uc9c0\uc6d0\ud558\ub294 \ubaa8\ub378 \ubc88\ud638\uc640 \ub9e4\uce6d\ub418\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.")))
+  mediation_moderation_validate(isTRUE(custom_path_model) || (!is.na(model) && model %in% mediation_moderation_models()), mediation_moderation_text(language, "The current variable arrangement is not mapped to a supported model number.", "\ud604\uc7ac \ubcc0\uc218 \uad6c\uc131\uc740 \uc9c0\uc6d0\ud558\ub294 \ubaa8\ub378 \ubc88\ud638\uc640 \ub9e4\uce6d\ub418\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4."))
   structure <- spec$structure
   if (!isTRUE(custom_path_model)) {
     moderated_paths <- mediation_moderation_model_moderated_paths(model)
@@ -7178,17 +7188,17 @@ run_mediation_moderation_analysis <- function(
   if (identical(structure, "none")) {
     if (!isTRUE(custom_path_model)) {
       required_w <- mediation_moderation_model_moderator_count(model)
-      shiny::validate(shiny::need(length(roles$w) >= required_w && length(roles$w) <= 2L && "xy" %in% moderated_paths, mediation_moderation_text(language, "Without mediators, select one or two moderators and the X -> Y moderated path.", "\ub9e4\uac1c\ubcc0\uc218\uac00 \uc5c6\uc73c\uba74 \uc870\uc808\ubcc0\uc218 1~2\uac1c\uc640 X -> Y \uc870\uc808\uacbd\ub85c\ub97c \uc120\ud0dd\ud558\uc138\uc694.")))
+      mediation_moderation_validate(length(roles$w) >= required_w && length(roles$w) <= 2L && "xy" %in% moderated_paths, mediation_moderation_text(language, "Without mediators, select one or two moderators and the X -> Y moderated path.", "\ub9e4\uac1c\ubcc0\uc218\uac00 \uc5c6\uc73c\uba74 \uc870\uc808\ubcc0\uc218 1~2\uac1c\uc640 X -> Y \uc870\uc808\uacbd\ub85c\ub97c \uc120\ud0dd\ud558\uc138\uc694."))
     }
   } else {
-    shiny::validate(shiny::need(length(roles$mediators) >= 1L, mediation_moderation_text(language, "Select at least one mediator.", "\ub9e4\uac1c\ubcc0\uc218\ub97c 1\uac1c \uc774\uc0c1 \uc120\ud0dd\ud558\uc138\uc694.")))
+    mediation_moderation_validate(length(roles$mediators) >= 1L, mediation_moderation_text(language, "Select at least one mediator.", "\ub9e4\uac1c\ubcc0\uc218\ub97c 1\uac1c \uc774\uc0c1 \uc120\ud0dd\ud558\uc138\uc694."))
   }
   required_w <- mediation_moderation_model_moderator_count(model)
   if (required_w > 0L && !identical(model, "custom")) {
     if (identical(structure, "none")) {
-      shiny::validate(shiny::need(length(roles$w) == required_w, mediation_moderation_text(language, sprintf("This model number requires %s moderator(s).", required_w), sprintf("\uc774 \ubaa8\ub378 \ubc88\ud638\ub294 \uc870\uc808\ubcc0\uc218 %s\uac1c\uac00 \ud544\uc694\ud569\ub2c8\ub2e4.", required_w))))
+      mediation_moderation_validate(length(roles$w) == required_w, mediation_moderation_text(language, sprintf("This model number requires %s moderator(s).", required_w), sprintf("\uc774 \ubaa8\ub378 \ubc88\ud638\ub294 \uc870\uc808\ubcc0\uc218 %s\uac1c\uac00 \ud544\uc694\ud569\ub2c8\ub2e4.", required_w)))
     } else {
-      shiny::validate(shiny::need(length(roles$w) >= 1L && length(roles$w) <= 2L, mediation_moderation_text(language, "Select one or two moderators for this moderated mediation model.", "\uc774 \uc870\uc808\ub41c \ub9e4\uac1c\ubaa8\ud615\uc5d0\ub294 \uc870\uc808\ubcc0\uc218 1~2\uac1c\ub97c \uc120\ud0dd\ud558\uc138\uc694.")))
+      mediation_moderation_validate(length(roles$w) >= 1L && length(roles$w) <= 2L, mediation_moderation_text(language, "Select one or two moderators for this moderated mediation model.", "\uc774 \uc870\uc808\ub41c \ub9e4\uac1c\ubaa8\ud615\uc5d0\ub294 \uc870\uc808\ubcc0\uc218 1~2\uac1c\ub97c \uc120\ud0dd\ud558\uc138\uc694."))
     }
   }
 
@@ -7206,7 +7216,7 @@ run_mediation_moderation_analysis <- function(
       )
     }, logical(1))
     analysis_grid <- analysis_grid[keep_grid, , drop = FALSE]
-    shiny::validate(shiny::need(nrow(analysis_grid) > 0L, mediation_moderation_text(language, "Draw at least one path from an independent variable to a dependent variable.", "\ub3c5\ub9bd\ubcc0\uc218\uc5d0\uc11c \uc885\uc18d\ubcc0\uc218\ub85c \uc774\uc5b4\uc9c0\ub294 \uacbd\ub85c\ub97c 1\uac1c \uc774\uc0c1 \uadf8\ub824\uc8fc\uc138\uc694.")))
+    mediation_moderation_validate(nrow(analysis_grid) > 0L, mediation_moderation_text(language, "Draw at least one path from an independent variable to a dependent variable.", "\ub3c5\ub9bd\ubcc0\uc218\uc5d0\uc11c \uc885\uc18d\ubcc0\uc218\ub85c \uc774\uc5b4\uc9c0\ub294 \uacbd\ub85c\ub97c 1\uac1c \uc774\uc0c1 \uadf8\ub824\uc8fc\uc138\uc694."))
   }
   progress_total <- nrow(analysis_grid) * boot_r
   results <- lapply(seq_len(nrow(analysis_grid)), function(grid_index) {

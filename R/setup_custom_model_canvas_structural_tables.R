@@ -505,6 +505,20 @@ structural_canvas_lavaan_standardized_effect <- function(fit, effect) {
   if (!any(is.finite(values))) NA_real_ else sum(values[is.finite(values)])
 }
 
+structural_canvas_effect_bootstrap_ci_label <- function(bootstrap) {
+  method <- if (is.data.frame(bootstrap) && nrow(bootstrap) && "ci_method" %in% names(bootstrap) && any(bootstrap$ci_method == "bias_corrected", na.rm = TRUE)) {
+    "bias-corrected (BC)"
+  } else {
+    "percentile"
+  }
+  quantile_type <- if (is.data.frame(bootstrap) && nrow(bootstrap) && "quantile_type" %in% names(bootstrap)) {
+    suppressWarnings(as.integer(bootstrap$quantile_type[[1L]]))
+  } else {
+    structural_canvas_bootstrap_quantile_type(method, "structural_effects")
+  }
+  paste0("Bootstrap ", method, " 95% CI (R quantile type ", quantile_type, ")")
+}
+
 structural_canvas_lavaan_structural_effect_rows <- function(fit, effect_definitions, fmt, display_name, bootstrap = NULL) {
   if (!length(effect_definitions)) return(data.frame())
   raw <- lavaan::parameterEstimates(fit, ci = TRUE)
@@ -525,7 +539,7 @@ structural_canvas_lavaan_structural_effect_rows <- function(fit, effect_definiti
       row$ci.upper <- boot$upper[[1L]]
       row$pvalue <- boot$p[[1L]]
     }
-    boot_ci_label <- if (nrow(boot) && "ci_method" %in% names(boot) && identical(as.character(boot$ci_method[[1L]]), "bias_corrected")) "Bootstrap bias-corrected (BC) 95% CI" else "Bootstrap percentile 95% CI"
+    boot_ci_label <- structural_canvas_effect_bootstrap_ci_label(boot)
     b_ci_source <- if (!nrow(boot)) "Model-based 95% CI" else if (all(is.finite(c(row$ci.lower[[1L]], row$ci.upper[[1L]])))) boot_ci_label else "Not estimated - insufficient valid bootstrap replicates"
     standardized_row <- standardized[standardized$lhs == effect$label, , drop = FALSE]
     beta <- if (nrow(standardized_row)) suppressWarnings(as.numeric(standardized_row$est.std[[1L]])) else structural_canvas_lavaan_standardized_effect(fit, effect)
@@ -586,7 +600,7 @@ structural_canvas_lavaan_structural_result_table <- function(kind, fit, ko, fmt,
   }
   b_ci_source <- rep("Model-based 95% CI", nrow(raw))
   if (is.data.frame(bootstrap) && nrow(bootstrap)) {
-    bootstrap_ci_label <- if ("ci_method" %in% names(bootstrap) && any(bootstrap$ci_method == "bias_corrected", na.rm = TRUE)) "Bootstrap bias-corrected (BC) 95% CI" else "Bootstrap percentile 95% CI"
+    bootstrap_ci_label <- structural_canvas_effect_bootstrap_ci_label(bootstrap)
     b_ci_source[available] <- ifelse(is.finite(raw$ci.lower[available]) & is.finite(raw$ci.upper[available]), bootstrap_ci_label, "Not estimated - insufficient valid bootstrap replicates")
   }
   standardized <- lavaan::standardizedSolution(fit, ci = TRUE, level = .95)
@@ -605,7 +619,7 @@ structural_canvas_lavaan_structural_result_table <- function(kind, fit, ko, fmt,
     matched_beta <- !is.na(beta_bootstrap_match)
     beta_ci_lower[matched_beta] <- bootstrap_paths$beta_lower[beta_bootstrap_match[matched_beta]]
     beta_ci_upper[matched_beta] <- bootstrap_paths$beta_upper[beta_bootstrap_match[matched_beta]]
-    bootstrap_ci_label <- if ("ci_method" %in% names(bootstrap) && any(bootstrap$ci_method == "bias_corrected", na.rm = TRUE)) "Bootstrap bias-corrected (BC) 95% CI" else "Bootstrap percentile 95% CI"
+    bootstrap_ci_label <- structural_canvas_effect_bootstrap_ci_label(bootstrap)
     beta_ci_source[matched_beta] <- ifelse(is.finite(beta_ci_lower[matched_beta]) & is.finite(beta_ci_upper[matched_beta]), bootstrap_ci_label, "Not estimated - insufficient valid standardized bootstrap replicates")
   }
   r2_values <- tryCatch(lavaan::lavInspect(fit, "r2"), error = function(error) numeric(0))

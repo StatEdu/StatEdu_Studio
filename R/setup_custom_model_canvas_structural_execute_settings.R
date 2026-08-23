@@ -71,8 +71,14 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
     },
     analysis_plan_reference = trimws(as.character(settings$analysis_plan_reference %||% input[[paste0(prefix, "_analysis_plan_reference")]] %||% "")),
     sampling_design = {
-      value <- as.character(settings$sampling_design %||% input[[paste0(prefix, "_sampling_design")]] %||% "independent_cross_sectional")
-      if (value %in% c("not_declared", "independent_cross_sectional", "clustered", "complex_survey", "longitudinal_repeated")) value else "independent_cross_sectional"
+      supplied <- settings$sampling_design %||% input[[paste0(prefix, "_sampling_design")]]
+      if (is.null(supplied) || !length(supplied)) {
+        "independent_cross_sectional"
+      } else {
+        value <- as.character(supplied[[1L]])
+        supported_values <- c("not_declared", "independent_cross_sectional", "clustered", "complex_survey", "longitudinal_repeated")
+        if (!is.na(value) && nzchar(trimws(value)) && value %in% supported_values) value else "not_declared"
+      }
     },
     power_basis = {
       value <- as.character(settings$power_basis %||% input[[paste0(prefix, "_power_basis")]] %||% "not_recorded")

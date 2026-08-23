@@ -14,14 +14,71 @@ benchmark_sha256 <- function(path) {
   digest::digest(file = path, algo = "sha256", serialize = FALSE)
 }
 
-generate_pls_external_benchmark <- function(output_dir) {
+benchmark_text_sha256 <- function(path) {
+  bytes <- readBin(path, what = "raw", n = file.info(path)$size)
+  if (any(bytes == as.raw(0L))) stop("Public text artifact contains a NUL byte: ", path, call. = FALSE)
+  normalized <- gsub("\r\n?", "\n", rawToChar(bytes), perl = TRUE)
+  digest::digest(charToRaw(normalized), algo = "sha256", serialize = FALSE)
+}
+
+pls_external_benchmark_profile <- function(profile = "holzinger-swineford-301") {
+  profile <- tolower(trimws(as.character(profile %||% "")))
+  if (profile %in% c("", "historical301", "full301", "hs301")) profile <- "holzinger-swineford-301"
+  if (profile %in% c("student100", "first100", "hs100")) {
+    profile <- "holzinger-swineford-first100-smartpls-student"
+  }
+  if (identical(profile, "holzinger-swineford-301")) {
+    return(list(
+      id = profile,
+      row_indices = NULL,
+      data_filename = "HolzingerSwineford1939.csv",
+      external_data_format = "canonical CSV source file",
+      intended_scope = "Historical fixed 301-row benchmark; requires an external license that accepts 301 records"
+    ))
+  }
+  if (identical(profile, "holzinger-swineford-first100-smartpls-student")) {
+    return(list(
+      id = profile,
+      row_indices = seq_len(100L),
+      data_filename = "HolzingerSwineford1939_first100_x1_x9.txt",
+      external_data_format = "semicolon-delimited UTF-8 text without quoting",
+      intended_scope = "Deterministic first-100-row benchmark executed under the SmartPLS Student license (free limited, non-Professional)"
+    ))
+  }
+  stop("Unknown PLS external benchmark profile: ", profile, call. = FALSE)
+}
+
+pls_external_write_profile_data <- function(analysis_data, profile, path) {
+  if (identical(profile$id, "holzinger-swineford-301")) {
+    if (!file.copy(file.path("sample", "HolzingerSwineford1939.csv"), path, overwrite = TRUE)) {
+      stop("Could not copy the historical benchmark data.", call. = FALSE)
+    }
+  } else {
+    output_connection <- file(path, open = "wb")
+    on.exit(close(output_connection), add = TRUE)
+    utils::write.table(
+      analysis_data, output_connection, sep = ";", row.names = FALSE, col.names = TRUE,
+      quote = FALSE, na = "", eol = "\r\n"
+    )
+  }
+  invisible(path)
+}
+
+`%||%` <- function(value, fallback) if (is.null(value) || !length(value)) fallback else value
+
+generate_pls_external_benchmark <- function(output_dir, profile = "holzinger-swineford-301") {
   output_dir <- normalizePath(output_dir, winslash = "/", mustWork = FALSE)
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
+  profile <- pls_external_benchmark_profile(profile)
   data_path <- file.path("sample", "HolzingerSwineford1939.csv")
   model_path <- file.path("sample", "pls_external_benchmark.stmodel")
   indicators <- paste0("x", 1:9)
-  analysis_data <- utils::read.csv(data_path, check.names = FALSE, stringsAsFactors = FALSE)[, indicators, drop = FALSE]
+  source_data <- utils::read.csv(data_path, check.names = FALSE, stringsAsFactors = FALSE)
+  if (is.null(profile$row_indices)) profile$row_indices <- seq_len(nrow(source_data))
+  analysis_data <- source_data[profile$row_indices, indicators, drop = FALSE]
+  external_data_path <- file.path(output_dir, profile$data_filename)
+  pls_external_write_profile_data(analysis_data, profile, external_data_path)
   snapshot <- jsonlite::fromJSON(model_path, simplifyVector = FALSE)
 
   analysis <- run_structural_canvas_analysis(snapshot, analysis_data, "plssem", estimator = "PLS")
@@ -63,8 +120,10 @@ generate_pls_external_benchmark <- function(output_dir) {
   utils::write.csv(external_template, template_path, row.names = FALSE, na = "")
 
   manifest <- list(
-  schema_version = "1.0",
+  schema_version = "1.1",
+  public_text_hash_normalization = "CRLF and CR normalized to LF before SHA-256",
   purpose = "External SmartPLS/ADANCO saturated-model numerical comparison",
+  profile = list(id = profile$id, intended_scope = profile$intended_scope),
   generated_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE),
   statedu = list(
     version = trimws(readLines("VERSION", warn = FALSE, n = 1L)),
@@ -73,14 +132,21 @@ generate_pls_external_benchmark <- function(output_dir) {
     lavaan = as.character(utils::packageVersion("lavaan"))
   ),
   data = list(
-    file = gsub("\\\\", "/", data_path), sha256 = benchmark_sha256(data_path),
+    file = basename(external_data_path), sha256 = benchmark_text_sha256(external_data_path),
+    source_file = gsub("\\\\", "/", data_path), source_sha256 = benchmark_text_sha256(data_path),
     rows = nrow(analysis_data), indicators = indicators, missing_cells = sum(is.na(analysis_data)),
+    row_selection = list(
+      index_basis = "1-based data rows excluding the header",
+      start = min(profile$row_indices), end = max(profile$row_indices), count = length(profile$row_indices),
+      order = "source-file order preserved"
+    ),
+    external_format = profile$external_data_format,
     source = "lavaan::HolzingerSwineford1939",
     export = "utils::write.csv(lavaan::HolzingerSwineford1939, row.names = FALSE)",
     preprocessing = "seminr default mean replacement with standardized PLS results"
   ),
   model = list(
-    file = gsub("\\\\", "/", model_path), sha256 = benchmark_sha256(model_path),
+    file = gsub("\\\\", "/", model_path), sha256 = benchmark_text_sha256(model_path),
     constructs = list(visual = c("x1", "x2", "x3"), textual = c("x4", "x5", "x6"), speed = c("x7", "x8", "x9")),
     structural_paths = c("visual -> textual", "visual -> speed", "textual -> speed"),
     ontology = "All constructs are reflective common factors initialized with Mode A weights"
@@ -99,12 +165,15 @@ generate_pls_external_benchmark <- function(output_dir) {
   )
   )
   jsonlite::write_json(manifest, manifest_path, auto_unbox = TRUE, pretty = TRUE, null = "null")
-  invisible(list(statedu = statedu, statedu_path = statedu_path, template_path = template_path, manifest_path = manifest_path))
+  invisible(list(
+    profile = profile$id, statedu = statedu, statedu_path = statedu_path,
+    template_path = template_path, manifest_path = manifest_path, data_path = external_data_path
+  ))
 }
 
 if (sys.nframe() == 0L) {
   arguments <- benchmark_arguments(commandArgs(trailingOnly = TRUE))
-  result <- generate_pls_external_benchmark(arguments$output_dir)
+  result <- generate_pls_external_benchmark(arguments$output_dir, arguments$profile %||% "holzinger-swineford-301")
   cat("PLS external benchmark bundle generated:\n")
   cat(" - ", result$statedu_path, "\n", sep = "")
   cat(" - ", result$template_path, "\n", sep = "")

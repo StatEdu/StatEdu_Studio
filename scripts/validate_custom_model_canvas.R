@@ -220,8 +220,22 @@ bootstrap_worker_source <- paste(
   readLines(file.path(repo_root, "R", "setup_mediation_moderation_ui.R"), warn = FALSE, encoding = "UTF-8"),
   collapse = "\n"
 )
+analysis_regression_source <- paste(
+  readLines(file.path(repo_root, "R", "analysis_regression.R"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+result_panels_source <- paste(
+  readLines(file.path(repo_root, "R", "result_panels_ui.R"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
 stopifnot(
-  grepl('"result_panels_ui.R"', bootstrap_worker_source, fixed = TRUE),
+  grepl('options(statedu.mediation_moderation_worker = TRUE)', bootstrap_worker_source, fixed = TRUE),
+  grepl('"utils.R", "result_labels.R", "analysis_regression.R"', bootstrap_worker_source, fixed = TRUE),
+  grepl('"setup_mediation_moderation_ui.R"', bootstrap_worker_source, fixed = TRUE),
+  !grepl('"result_coefficients.R"', bootstrap_worker_source, fixed = TRUE),
+  !grepl('"result_panels_ui.R"', bootstrap_worker_source, fixed = TRUE),
+  grepl("hierarchical_robust_wald_f_p <- function", analysis_regression_source, fixed = TRUE),
+  !grepl("hierarchical_robust_wald_f_p <- function", result_panels_source, fixed = TRUE),
   grepl("worker_preferences <- args$worker_preferences", bootstrap_worker_source, fixed = TRUE),
   grepl("args$worker_preferences <- NULL", bootstrap_worker_source, fixed = TRUE),
   grepl("statedu_apply_preferences(worker_preferences)", bootstrap_worker_source, fixed = TRUE),

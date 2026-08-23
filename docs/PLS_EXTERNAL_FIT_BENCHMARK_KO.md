@@ -78,6 +78,52 @@ plsc,saturated,0.0789513151368562,0.119832386033816,0.280498957282763
 
 각 지표는 절대오차 또는 상대오차 중 하나가 허용범위 안이면 통과한다. 초과 행이 있으면 스크립트는 실패 종료코드를 반환한다. 차이가 발견되면 먼저 지표 정의, 상관행렬 구성 범위, PLSc 보정 범위, 반올림 전 원값과 saturated/estimated model 설정을 확인한다.
 
+## SmartPLS Student용 Holzinger–Swineford first-100 실제 실행
+
+301행 고정 benchmark와 별도로, SmartPLS Student license(무료 제한형,
+Professional 아님)에서 실행한
+`holzinger-swineford-first100-smartpls-student` 프로필을 만들었다. 이 프로필은
+원본 CSV의 헤더 다음 자료행을 1부터 세어 **정확히 1:100행**, x1:x9만 원래 순서로
+선택한다. 선택·순서·출력 형식은 생성기가 고정하며, 세미콜론 구분 입력 파일의
+줄바꿈 정규화 SHA-256은 `F95E19EC5474CDA087F42D348FCEE447FF3AA271009E021E43F9ED0C6CC52C32`이다.
+측정 블록과 구조경로는 301행 고정 benchmark와 같다.
+
+```powershell
+& "C:\Program Files\R\R-4.5.3\bin\Rscript.exe" scripts/prepare_pls_external_handoff.R `
+  --output-dir=docs/evidence/release_1_2_4/pls/smartpls_4_1_1_8_hs_first100 `
+  --profile=holzinger-swineford-first100-smartpls-student
+```
+
+2026-08-23에 SmartPLS 4.1.1.8 Student license에서 standardized results, path weighting,
+초기 외부가중치 +1, stop criterion 10^-7, saturated model 조건으로 PLS와 PLSc를
+각각 실행했다. 두 실행 모두 초기 PLS 단계가 26회에 수렴했고 실행 로그에
+`All calculations done.`이 표시되었다.
+
+| 추정량 | 프로그램 | SRMR | d_G | d_ULS |
+|:--|:--|--:|--:|--:|
+| PLS | StatEdu, 반올림 전 | 0.112153043659770 | 0.175648969255271 | 0.566023734096761 |
+| PLS | SmartPLS 화면 | .112 | .176 | .566 |
+| PLSc | StatEdu, 반올림 전 | 0.122668303364477 | 0.281768771471191 | 0.677138069264375 |
+| PLSc | SmartPLS 화면 | .123 | .282 | .677 |
+
+화면에 표시된 세 자리의 반 단위 허용오차로 여섯 비교가 모두 통과했다. SmartPLS
+Student license에서는 Excel·HTML·표 복사 내보내기가 잠겨 있었으므로 이 기록은 내부 원값의
+완전 동일성이 아니라 **표시 정밀도 내 일치**만 주장한다. 내보내기 잠금 화면도 함께
+보존했다. SmartPLS UI·프로젝트·설정 원본 16개는 공개 저장소 밖
+`STATEDU_SMARTPLS_EVIDENCE_ROOT` 아래에 보존하며, 공개 매니페스트에는 basename,
+byte 길이, SHA-256만 기록한다. 공개 입력·StatEdu 결과·외부 전사값·비교표의 SHA-256은
+`docs/evidence/release_1_2_4/pls/smartpls_4_1_1_8_hs_first100/external_run.json`에
+봉인되어 있다. release/installer gate는 비공개 원본 16개의 byte 길이와 해시를
+fail-closed로 검사하고, finalizer는 실제 설정 JSON과 입력 자료도 파싱한다. 화면 수치와
+수렴 횟수는 화면 해시에 연결된 수동 전사이며 화면을 기계 판독했다는 주장은 하지 않는다.
+SmartPLS UI 캡처와 vendor 원본을 공개 저장소 밖에 두는 근거는
+[SmartPLS Terms §3.4](https://www.smartpls.com/terms/?locale=en-US)이다.
+
+이 first-100 결과는 301행 고정 benchmark를 대체하지 않는다. 이번 Student license
+환경은 100행으로 제한하여 실행했으며, 301행 프로필의 실행 완료 증거는 보존되어 있지
+않으므로 SmartPLS/ADANCO 외부 실행은 계속 pending이다. 301행을 허용하는 외부 환경에서
+실행 증거를 확보하기 전까지 두 프로필의 주장을 합치지 않는다.
+
 ## SmartPLS TAM 교차검증
 
 2026-08-21에 SmartPLS 4.1.1.8의 내장 Technology Acceptance Model(TAM) 예제 중
@@ -95,6 +141,10 @@ StatEdu의 반올림 전 결과는 PLS가 SRMR `0.077364679218131074`, d_G
 화면에 표시한 세 자리 결과와 모두 일치했다. 일곱 구조경로 역시 PLS
 `.361, .264, .332, .227, .339, .203, .193`, PLSc
 `.388, .306, .352, .229, .380, .200, .253`으로 각각 일치했다.
+
+이 TAM 기록은 화면값의 수동 전사이며 SmartPLS 원자료·모형·설정·경로 화면 증거를
+보존하지 않은 선택적 보조검사다. 따라서 first-100 고정 benchmark의 외부 증거를
+대체하거나 TAM 원본 실행의 독립 재현성을 주장하지 않는다.
 
 이 검증은 일반 PLS의 Mode A 점수모형과 PLSc의 일관성 보정을 분리하는 회귀검사다.
 `seminr::reflective()`가 `estimate_pls()` 내부에서 PLSc를 자동 호출하므로, StatEdu는
@@ -123,6 +173,21 @@ skip 메시지를 남긴다.
   --reported-decimal-places=3
 ```
 
-`--reported-decimal-places`에는 화면이 아니라 실제 비교에 사용한 Excel/HTML 내보내기 값의 소수 자릿수를 기록한다. 확정 스크립트는 기본 수치 허용오차와 마지막 보고 자릿수의 반 단위 중 큰 값을 절대 허용오차로 사용한다. 따라서 결과는 ‘외부 출력 정밀도 내 일치’로 해석하며 원시 내부값의 완전 동일성을 주장하지 않는다. 스크립트는 여섯 행이 이 기준을 모두 통과한 경우에만 `comparison.csv`를 보존하고 `external_run.json`의 외부 결과·비교표 SHA-256을 갱신한다. 프로그램명, 버전, 실행일, 보고 자릿수 또는 300회 이전 수렴 확인이 빠지면 실패한다.
+`--reported-decimal-places`에는 실제 비교에 사용한 내보내기 또는 화면 표시값의 소수
+자릿수를 기록한다. `output_provenance`에는 `exported` 또는 `displayed`를 구분해
+기록하며, 화면값만 있는 경우 원시 내부값의 완전 동일성을 주장하지 않는다. 확정
+스크립트는 기본 수치 허용오차와 마지막 보고 자릿수의 반 단위 중 큰 값을 절대
+허용오차로 사용한다. 따라서 결과는 ‘외부 출력 정밀도 내 일치’로 해석한다. 스크립트는
+여섯 행이 이 기준을 모두 통과한 경우에만 `comparison.csv`를 보존하고
+`external_run.json`의 외부 결과·비교표 SHA-256을 갱신한다. 프로그램명, 버전,
+실행일, 보고 자릿수 또는 300회 이전 수렴 확인이 빠지면 실패한다. Student first-100
+프로필은 여기에 더해 실행 자료·모형·설정과 각 화면 증거의 해시가 하나라도 없거나
+달라지면 실패한다.
 
-SmartPLS 공식 참고: [Model Fit](https://www.smartpls.com/documentation/algorithms-and-techniques/model-fit/), [Consistent PLS-SEM](https://www.smartpls.com/documentation/algorithms-and-techniques/consistent-pls/), [PLS-SEM Algorithm](https://smartpls.com/documentation/algorithms-and-techniques/core-algorithm/pls/).
+SmartPLS Terms §8.1의 소프트웨어 인용 예시를 그대로 적용한다:
+Ringle, C. M., Wende, S., and Becker, J.-M. (2024). SmartPLS 4. Bönningstedt: SmartPLS GmbH. https://www.smartpls.com .
+
+추가 공식 참고:
+[Model Fit](https://www.smartpls.com/documentation/algorithms-and-techniques/model-fit/),
+[Consistent PLS-SEM](https://www.smartpls.com/documentation/algorithms-and-techniques/consistent-pls/),
+[PLS-SEM Algorithm](https://smartpls.com/documentation/algorithms-and-techniques/core-algorithm/pls/).

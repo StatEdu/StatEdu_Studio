@@ -497,18 +497,30 @@ if (identical(analysis_type, "plssem")) {
     table <- result_table("fit_bootstrap")
     if (!is.data.frame(table) || !nrow(table)) return(NULL)
     value_columns <- setdiff(names(table), c("Effect", "Outcome", "Predictor"))
-    if (!length(value_columns) || !any(nzchar(as.character(unlist(table[value_columns], use.names = FALSE))))) return(NULL)
     ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
-    bootstrap <- fit_result()$pls_bootstrap_result %||% list()
+    bundle <- fit_result()
+    bootstrap <- bundle$pls_bootstrap_result %||% list()
     valid_n <- suppressWarnings(as.integer(bootstrap$nboot %||% 0L))
-    requested_n <- suppressWarnings(as.integer(bootstrap$requested_nboot %||% 0L))
+    requested_n <- suppressWarnings(as.integer(bootstrap$requested_nboot %||% bundle$pls_bootstrap %||% 0L))
     timeout_n <- suppressWarnings(as.integer(bootstrap$timeout_failures %||% 0L))
     estimation_n <- suppressWarnings(as.integer(bootstrap$estimation_failures %||% max(0L, requested_n - valid_n - timeout_n)))
+    invalid_n <- suppressWarnings(as.integer(bootstrap$invalid_statistic_failures %||% 0L))
+    execution_n <- suppressWarnings(as.integer(bootstrap$execution_failures %||% 0L))
+    canceled_n <- suppressWarnings(as.integer(bootstrap$canceled_failures %||% 0L))
+    inference_available <- isTRUE(bootstrap$inference_available)
+    if (!is.finite(requested_n) || requested_n <= 0L) return(NULL)
+    has_values <- length(value_columns) && any(nzchar(as.character(unlist(table[value_columns], use.names = FALSE))))
+    if (!has_values && inference_available) return(NULL)
+    minimum_ratio <- suppressWarnings(as.numeric(bootstrap$minimum_valid_ratio %||% .80))
+    bootstrap_status <- as.character(bootstrap$bootstrap_status %||% "Not recorded")[[1L]]
+    failure_message <- as.character(bootstrap$failure_message %||% "")
+    failure_message <- if (length(failure_message)) trimws(failure_message[[1L]]) else ""
     tagList(
       tags$h5(if (ko) "표 3 보조: PLS 부트스트랩 경로 추론" else "Supplementary Table 3: PLS bootstrap path inference"),
-      structural_canvas_basic_html_table(table, class = "table table-striped table-bordered structural-pls-fit-bootstrap-table"),
-      if (requested_n > 0L) tags$p(class = "structural-result-note", if (ko) paste0("유효 재표집: ", valid_n, "/", requested_n, "회 (시간 제한 ", timeout_n, ", 추정 실패 ", estimation_n, ").") else paste0("Valid resamples: ", valid_n, "/", requested_n, " (timeouts ", timeout_n, ", estimation failures ", estimation_n, ").")),
-      tags$p(class = "structural-result-note", if (ko) "직접경로, 간접효과, 총효과의 percentile bootstrap CI, t, p 값입니다. seminr가 반환한 항목만 표시됩니다." else "Percentile bootstrap CI, t, and p values are shown when seminr returns them.")
+      if (has_values) structural_canvas_basic_html_table(table, class = "table table-striped table-bordered structural-pls-fit-bootstrap-table"),
+      if (requested_n > 0L) tags$p(class = "structural-result-note", if (ko) paste0("상태: ", bootstrap_status, ". 유효 재표집: ", valid_n, "/", requested_n, "회 (시간 제한 ", timeout_n, ", 추정 실패 ", estimation_n, ", 통계량 계약 실패 ", invalid_n, ", 실행 실패 ", execution_n, ", 취소 ", canceled_n, ").") else paste0("Status: ", bootstrap_status, ". Valid resamples: ", valid_n, "/", requested_n, " (timeouts ", timeout_n, ", estimation failures ", estimation_n, ", statistic-contract failures ", invalid_n, ", execution failures ", execution_n, ", cancellations ", canceled_n, ").")),
+      if (!inference_available) tags$p(class = "structural-result-note structural-result-warning", if (ko) paste0("전체 통계량이 유효한 반복이 요청 반복의 ", formatC(100 * minimum_ratio, format = "fg", digits = 3), "% 미만이어서 bootstrap SE, CI, t, p를 보고하지 않습니다.", if (nzchar(failure_message)) paste0(" 상세: ", failure_message) else "") else paste0("Fewer than ", formatC(100 * minimum_ratio, format = "fg", digits = 3), "% of requested resamples passed the whole-draw statistic contract, so bootstrap SE, CI, t, and p are not reported.", if (nzchar(failure_message)) paste0(" Detail: ", failure_message) else "")),
+      if (inference_available) tags$p(class = "structural-result-note", if (ko) "직접경로, 간접효과, 총효과의 percentile bootstrap CI, t, p 값입니다. 경로·적재량·가중치·HTMT·총효과 전체가 유한하고 구조가 일치한 반복만 사용합니다." else "Percentile bootstrap CI, t, and p values use only resamples whose complete path, loading, weight, HTMT, and total-effect statistics are finite and structurally consistent.")
     )
   })
   output[[paste0(prefix, "_result_pls_quality")]] <- renderUI({

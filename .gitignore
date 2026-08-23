@@ -30,6 +30,12 @@ output/
 outputs/
 scratch/
 tmp/
+# SmartPLS vendor UI and raw project/settings evidence is retained only in
+# %LOCALAPPDATA%/StatEdu/private-evidence and must never be published.
+docs/evidence/**/*.png
+docs/evidence/**/*.splsm
+docs/evidence/**/*.settings.json
+docs/evidence/**/smartpls_imported_data.txt
 data/output/
 modules/latent_mplus/app/output/
 modules/latent_mplus/app/outputs/

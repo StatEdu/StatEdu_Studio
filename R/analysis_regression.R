@@ -482,6 +482,44 @@ regression_model_test <- function(model, vcov_matrix = NULL) {
   )
 }
 
+# Shared calculation helper for hierarchical interaction tests. Keep this in
+# the regression layer because mediation/moderation workers do not load result
+# rendering modules.
+hierarchical_robust_wald_f_p <- function(previous, current) {
+  if (is.null(previous$model) || is.null(current$model)) {
+    return(NA_real_)
+  }
+  current_terms <- setdiff(colnames(stats::model.matrix(current$model)), "(Intercept)")
+  previous_terms <- setdiff(colnames(stats::model.matrix(previous$model)), "(Intercept)")
+  added_terms <- setdiff(current_terms, previous_terms)
+  if (length(added_terms) == 0) {
+    return(NA_real_)
+  }
+  coefficients <- stats::coef(current$model)
+  term_index <- match(added_terms, names(coefficients))
+  term_index <- term_index[!is.na(term_index)]
+  if (length(term_index) == 0) {
+    return(NA_real_)
+  }
+  vcov_matrix <- tryCatch(sandwich::vcovHC(current$model, type = "HC3"), error = function(e) NULL)
+  if (is.null(vcov_matrix)) {
+    return(NA_real_)
+  }
+  beta <- coefficients[term_index]
+  covariance <- vcov_matrix[term_index, term_index, drop = FALSE]
+  inverse_covariance <- tryCatch(solve(covariance), error = function(e) NULL)
+  if (is.null(inverse_covariance)) {
+    return(NA_real_)
+  }
+  df1 <- length(beta)
+  df2 <- stats::df.residual(current$model)
+  statistic <- as.numeric(t(beta) %*% inverse_covariance %*% beta / df1)
+  if (!is.finite(statistic) || !is.finite(df1) || !is.finite(df2) || df1 <= 0 || df2 <= 0) {
+    return(NA_real_)
+  }
+  stats::pf(statistic, df1, df2, lower.tail = FALSE)
+}
+
 start_bootstrap_process <- function(job) {
   callr::r_bg(
     function(job) {

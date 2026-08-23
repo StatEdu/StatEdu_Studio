@@ -194,11 +194,13 @@ Audit trail에는 활성화 여부, 대상 요인, parcel 수, 사용자가 기�
 | 조절효과 | 평균중심화 product-indicator 상호작용 | 현재 엔진 미지원·실행 차단 |
 | 조절된 매개효과 | 조건부 간접효과와 moderated-mediation index | 현재 엔진 미지원·실행 차단 |
 
-CB-SEM 직접·간접·총효과는 선택적으로 사례 재표집 bias-corrected(BC, 기본값) 또는 percentile bootstrap 95% CI와 양측 bootstrap p 값을 보고한다. BC가 모든 표본·효과크기 조건에서 보편적으로 우월하다고 주장하지 않으며, 논문에서는 선택한 방법과 필요한 민감도 분석을 명시한다. 각 효과별 요청 반복 수, 유효 반복 수, 유효율과 상태를 함께 기록하며 미수렴 또는 부적합 해는 유효 반복에서 제외한다. 유효율이 80% 미만이면 주의, 50% 미만이면 신뢰할 수 없는 결과로 표시한다. 기본 delta-method 구간과 bootstrap 구간을 혼동하지 않도록 bootstrap 실행 시 비표준화 효과의 CI와 p 값을 bootstrap 결과로 교체한다.
+CB-SEM 직접·간접·총효과는 사례 재표집 bias-corrected(BC, 기본값) 또는 percentile bootstrap 95% CI와 양측 bootstrap p 값을 보고한다. 두 방법의 분위수는 R quantile type 6을 사용하며 선택한 CI 방법과 quantile type을 결과·Audit·분석기록에 함께 남긴다. BC가 모든 표본·효과크기 조건에서 보편적으로 우월하다고 주장하지 않으며, 논문에서는 선택한 방법과 필요한 민감도 분석을 명시한다. 각 효과별 요청 반복 수, 유효 반복 수, 유효율과 상태를 함께 기록하며 미수렴 또는 부적합 해는 유효 반복에서 제외한다. 유효율이 80% 미만이면 주의, 50% 미만이면 신뢰할 수 없는 결과로 표시한다. 기본 delta-method 구간과 bootstrap 구간을 혼동하지 않도록 bootstrap 실행 시 비표준화 효과의 CI와 p 값을 bootstrap 결과로 교체한다.
 
-앱 UI에서는 이 분석을 `경로·간접·총효과 bootstrap`으로 표시하여 AVE·신뢰도, HTMT, Bollen–Stine 및 PLS 재표집과 구분한다. 모든 재표집 분석은 기본적으로 비활성화되며, 사용자가 `부트스트랩` 탭에서 반복 수를 선택한 경우에만 기본 모형 적합 후 추가로 실행한다. PLS-SEM은 부트스트랩을 실행하지 않아도 점추정값을 표시하지만, CI와 p 값은 보고하지 않는다.
+앱 UI에서는 이 분석을 `경로·간접·총효과 bootstrap`으로 표시하여 AVE·신뢰도, HTMT, Bollen–Stine 및 PLS 재표집과 구분한다. 새 SEM/CB-SEM 분석의 경로·간접·총효과 bootstrap 기본값은 5,000회이며, 사용자는 `계산하지 않음` 또는 1,000 / 5,000 / 10,000 / 20,000 / 50,000회로 명시적으로 변경할 수 있다. CFA의 AVE·신뢰도·HTMT·Bollen–Stine와 PLS-SEM 재표집은 기존처럼 기본 비활성화이며 선택한 경우에만 기본 모형 적합 후 추가 실행한다. PLS-SEM은 부트스트랩을 실행하지 않아도 점추정값을 표시하지만, CI와 p 값은 보고하지 않는다.
 
-병렬 PLSc bootstrap은 기준 seed에서 L'Ecuyer-CMRG 독립 난수 스트림을 반복별로 사전 할당한다. 작업자 수나 동적 작업 배정 순서와 무관하게 같은 seed의 반복 표본을 재현하며, 호출 전 세션 RNG 상태를 복원한다.
+1.2.4부터 PLS와 PLSc bootstrap은 모두 기준 seed에서 L'Ecuyer-CMRG 독립 난수 스트림을 요청 반복 위치별로 사전 할당한다. 동일한 1.2.4 분석 코드·자료·모형·seed에서는 작업자 수나 동적 작업 배정 순서와 무관하게 같은 반복 표본을 재현하며, 호출 전 세션 RNG 상태를 복원한다. 다만 1.2.3까지 표준 PLS가 사용한 `seminr::bootstrap_model()`의 `seed + 반복번호` 난수열과는 생성 방식이 다르므로, 같은 seed라도 버전 간 bootstrap draw와 결과가 bitwise 동일하다고 보장하지 않는다. 재현성 비교에는 Audit의 앱 버전·code fingerprint·seminr 버전·RNG 방식을 함께 사용한다.
+
+PLS/PLSc background bootstrap이 실행 중이거나 작업 시작·실행 실패, 사용자 취소 또는 빈 결과로 끝난 경우에도 요청 반복수와 유효 0회, `Pending`·`Failed`·`Canceled` 상태, 실행·취소 실패 수와 상세를 결과 번들 및 Audit에 남긴다. 이 상태에서는 기본 PLS 점추정만 유지하고 bootstrap SE·CI·t·p 및 BH 판정을 표시하지 않는다.
 
 조절된 매개효과에서는 조절경로의 상호작용계수와 나머지 간접경로 계수의 곱으로 index of moderated mediation를 반복마다 다시 계산한다. index의 선택된 BC 또는 percentile CI와 bootstrap p를 유의 여부와 관계없이 보고하며, Johnson-Neyman 결과도 index의 사전 유의성 필터로 숨기지 않는다. Product-indicator 잠재조절모형의 index는 잠재변수·곱지표 척도에 의존하고 유일한 표준화 정의가 없으므로, 비표준화 index와 bootstrap CI를 주 결과로 제공하고 표준화 index는 미보고 사유를 명시한다.
 
@@ -230,19 +232,19 @@ CB-SEM 조절효과의 Johnson-Neyman 구간은 연속형 관측 조절변수 �
 
 ### 관측치 독립성 및 표본설계 gate
 
-분석 실행 전 자료구조를 `독립 관측 횡단자료`, `군집·다층자료`, `복합표본`, `종단·반복측정자료` 중 하나로 명시해야 한다. 미선택 상태에서는 실행하지 않는다. 현재 캔버스 엔진은 독립 관측 횡단자료만 지원한다.
+새 CFA·SEM·PLS-SEM 분석은 `독립 관측 횡단자료(independent_cross_sectional)`를 기본값으로 시작한다. 이 기본값은 자료에서 설계를 판별한 결과가 아니라 일반적인 독립 관측 분석을 위한 시작 설정이며, 사용자는 실제 자료 생성·표집 절차와 일치하는지 실행 전에 확인하고 필요하면 `군집·다층자료`, `복합표본`, `종단·반복측정자료`로 변경해야 한다. 현재 캔버스 엔진은 독립 관측 횡단자료만 지원한다. 새 분석에서 값이 전혀 제공되지 않은 경우에만 이 기본값을 적용하며, 명시적으로 전달된 알 수 없는 설계 코드는 `not_declared`로 처리해 실행을 차단한다.
 
 - 군집·다층자료는 cluster-robust 또는 multilevel SEM이 필요하므로 실행을 차단한다.
 - 표본가중치, 층화, PSU가 있는 복합표본은 survey-aware SEM이 필요하므로 실행을 차단한다.
 - 동일 개인의 반복측정 또는 종단자료는 개인 내 의존성과 종단 측정구조를 모형화해야 하므로 실행을 차단한다.
 
-변수명이나 중복 ID만으로 설계를 자동 추정하지 않는다. 자료 생성과 표집 절차는 통계량만으로 확정할 수 없기 때문에 사용자의 명시적 선언을 gate로 사용한다. 통과한 설계 유형과 판정 근거는 결과 보고 체크리스트와 Audit manifest에 기록한다.
+변수명이나 중복 ID만으로 설계를 자동 추정하지 않는다. 기본값을 그대로 사용했다는 사실은 복합표본·군집·종단 설계를 지원하거나 그 분산을 올바르게 추정했다는 주장이 아니다. 독립 관측 외의 설정을 선택하면 현재 엔진은 실행을 차단하며, 선택된 설계 유형과 지원 gate 판정은 결과 보고 체크리스트와 Audit manifest에 기록한다.
 
 ### PLS 품질 판정의 경계
 
 현재 앱이 표시하는 Approx PLS SRMR, d_G, d_ULS, NFI는 반영형 측정 부분의 관측·모형함의 지표상관행렬에서 cSEM 정의와 동일하게 계산한다. PLS는 원 점수상관을, PLSc는 공통요인 블록에 disattenuation을 적용한 구성개념 상관을 사용한다. SRMR은 대각을 포함한 비중복 잔차의 RMS, d_ULS는 전체 행렬 제곱오차의 절반, d_G는 `0.5 × Σ(log10 일반화고유값)²`, NFI는 ML 거리의 영모형 대비 감소비이다. 모든 구성개념 상관을 자유롭게 둔 saturated 측정모형 근사만 제공하며 구조경로를 제약한 estimated-model 값은 제공하지 않는다. 이들은 로컬에서 재구성한 근사 진단값이므로 수용·기각 절단값을 적용하지 않고 `기술적 참고`로만 표시하며, 보고 준비상태를 차단하거나 모형 적합을 입증하는 근거로 사용하지 않는다.
 
-고정 행렬 oracle은 기본 SEM 검증에서 항상 실행한다. `scripts/validate_pls_fit_csem.R`은 cSEM이 설치된 환경에서 동일 행렬을 cSEM의 `calculateSRMR()`, `calculateDG()`, `calculateDL()`에 직접 전달해 `10^-12` 허용오차로 패키지 간 동등성을 추가 검증하며, cSEM 미설치 환경에서는 명시적인 `SKIP`을 출력한다.
+고정 행렬 oracle은 기본 SEM 검증에서 항상 실행한다. `scripts/validate_pls_fit_csem.R`은 동일 행렬을 cSEM 0.6.1의 `calculateSRMR()`, `calculateDG()`, `calculateDL()`에 직접 전달해 `10^-12` 허용오차로 패키지 간 동등성을 검증한다. 설치본·집중 검증은 `required` 모드로 실행하므로 cSEM 누락, 버전 불일치 또는 수치 불일치가 있으면 실패 종료한다. 일반 개발용 전체 검증에서만 명시적으로 `optional` 모드를 선택할 수 있으며, cSEM이 없을 때에는 동등성 주장 없이 `SKIP`을 기록한다.
 
 10-times rule도 `기술적 참고`로만 표시한다. 이 규칙은 표본크기를 정당화하기에 부정확하므로, 연구 설계 단계에서는 사전 검정력 분석이나 모형별 Monte Carlo 시뮬레이션을 우선한다. 연구 맥락에 적합할 때에는 inverse-square-root 또는 gamma-exponential 방식 등을 추가 민감도 근거로 검토할 수 있으나 하나의 휴리스틱을 보편적 최소표본 기준으로 사용하지 않는다.
 
@@ -313,15 +315,17 @@ Audit은 5회 미만을 예측 안정성이 충분히 특성화되지 않은 `Ma
 - 구성개념 명세와 구조효과 지원계획
 - 전체 캔버스 snapshot, 실제 적합 syntax, 명세 SHA-256 fingerprint(지원 패키지가 있는 경우)
 - 결측·순서형·잠재척도 설정과 분석/검증 표본 수
-- bootstrap, PLS-Predict, holdout의 반복수·fold·seed·CI 방식
+- bootstrap, PLS-Predict, holdout의 반복수·fold·seed·CI 방식과 StatEdu가 계산한 bootstrap CI의 R quantile type
 - 측정불변성, CMB, redundancy, parcel preview의 요청 및 결과
 - 식별·수렴·허용가능성, 제외된 공분산, 자료기반 수정 이력
 - 원자료와 fitted object가 포함되지 않았다는 privacy 표시
 
-Audit schema 1.6은 분석자료와 검증자료에 대해 행·열 수, 변수명·자료형 및 직렬화된 내용의 SHA-256 fingerprint를 저장한다. 원자료 값은 manifest에 포함하지 않지만 동일한 자료·행 순서·변수 속성으로 실행했는지 fingerprint로 대조할 수 있다. 명세 fingerprint와 별도로 핵심 분석 함수 본문의 code fingerprint, Git commit·branch·dirty 상태, 운영체제·locale·RNG 종류와 주요 패키지 버전을 기록한다. PLS/PLSc에서는 요청·선택 추정량, 선택 이유, 보정된 공통요인, 비보정 composite, 보정 상태와 보정된 내생변수도 기록한다.
+Audit schema 1.7은 분석자료와 검증자료에 대해 행·열 수, 변수명·자료형 및 직렬화된 내용의 SHA-256 fingerprint를 저장한다. 원자료 값은 manifest에 포함하지 않지만 동일한 자료·행 순서·변수 속성으로 실행했는지 fingerprint로 대조할 수 있다. 명세 fingerprint와 별도로 핵심 분석 함수 본문의 code fingerprint, Git commit·branch·dirty 상태, 운영체제·locale·RNG 종류와 주요 패키지 버전을 기록한다. PLS/PLSc에서는 요청·선택 추정량, 선택 이유, 보정된 공통요인, 비보정 composite, 보정 상태와 보정된 내생변수도 기록한다. Schema 1.7은 schema 1.6에 bootstrap CI quantile type과 PLS whole-draw 유효 반복수·유효율·최소 유효율·추론 가능 여부·실패 분류를 추가한 확장이다.
 
-재표집 seed를 사용자가 직접 입력하지 않아 시스템이 생성한 경우에도 동일 옵션을 다시 실행하는 것만으로 동일 난수열이 보장되지는 않는다. 정확한 계산 재현에는 Audit에 기록된 seed와 RNG 설정을 명시적으로 재사용하고, 자료·명세·분석 코드 fingerprint, 패키지 버전 및 분석 설정을 함께 일치시켜야 한다. 이 조건은 schema 1.6의 `resampling.reproducibility_policy`에 구조화해 저장한다.
+구조효과와 HTMT의 percentile·BC·BCa 계산은 R quantile type 6을 사용한다. AVE·신뢰도는 기존 수치 계약을 보존하여 percentile만 R 기본 type 7, BC·BCa는 type 6을 사용한다. 이 차이는 CI 방법과 별도의 `quantile_type` 필드로 기록한다. Bollen–Stine와 외부 패키지 소유 절차처럼 StatEdu가 직접 분위수를 계산하지 않는 항목에는 임의의 quantile type을 부여하지 않는다.
+
+재표집 seed를 사용자가 직접 입력하지 않아 시스템이 생성한 경우에도 동일 옵션을 다시 실행하는 것만으로 동일 난수열이 보장되지는 않는다. 정확한 계산 재현에는 Audit에 기록된 seed와 RNG 설정을 명시적으로 재사용하고, 자료·명세·분석 코드 fingerprint, 패키지 버전 및 분석 설정을 함께 일치시켜야 한다. 이 조건은 schema 1.7의 `resampling.reproducibility_policy`에 구조화해 저장한다.
 
 수렴 실패, 부적합 해, 무시된 공분산, 자료기반 모형수정, 측정불변성 gate 실패, 낮은 bootstrap 유효율, 부족한 PLSpredict 반복, 인과식별 미확립은 `warnings` 배열에 중요도와 함께 구조화한다. Git dirty 상태에서는 commit hash만으로 정확한 실행 코드를 재구성할 수 없으므로 code fingerprint와 변경 상태를 함께 보고해야 한다.
 
-기존 CFA/CB-SEM 텍스트 기록과 Excel 결과표는 유지한다. PLS/PLSc에도 동일한 Audit JSON 다운로드를 제공하여 엔진에 따라 재현성 기록이 사라지지 않도록 한다. Audit manifest는 결과의 통계적 타당성을 보증하는 인증서가 아니라, 분석 선택과 계산 맥락을 추적하기 위한 기록이다.
+기존 CFA/CB-SEM 텍스트 기록과 Excel 결과표는 유지한다. 사용자 해석용 결과 시트는 라벨 우선 규칙을 적용하지만, Excel의 `Model_Syntax`와 `Analysis_Record`는 적합 구문·seed·내부 parameter key를 그대로 재현하기 위해 원 변수명과 내부명을 보존하는 명시적 예외다. 이 두 시트의 원시 이름은 사용자용 결과표의 라벨 혼용으로 간주하지 않는다. PLS/PLSc에도 동일한 Audit JSON 다운로드를 제공하여 엔진에 따라 재현성 기록이 사라지지 않도록 한다. Audit manifest는 결과의 통계적 타당성을 보증하는 인증서가 아니라, 분석 선택과 계산 맥락을 추적하기 위한 기록이다.

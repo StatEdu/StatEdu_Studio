@@ -12,9 +12,24 @@ if (!nzchar(tam_data_path) && .Platform$OS.type == "windows") {
   if (file.exists(local_candidate)) tam_data_path <- local_candidate
 }
 if (!nzchar(tam_data_path) || !file.exists(tam_data_path)) {
-  message("SmartPLS TAM reference validation skipped: provide --data=PATH or SMARTPLS_TAM_DATA to the locally installed 100-row TAM data.")
+  message("SmartPLS TAM optional validation SKIP: provide --data=PATH or SMARTPLS_TAM_DATA to the locally installed 100-row TAM data.")
   quit(save = "no", status = 0L)
 }
+
+tam_manifest_path <- file.path(
+  "docs", "evidence", "release_1_2_4", "pls",
+  "smartpls_4_1_1_8_tam100_supplement", "evidence_manifest.json"
+)
+tam_manifest <- jsonlite::fromJSON(tam_manifest_path, simplifyVector = TRUE)
+expected_data <- tam_manifest$optional_local_data
+stopifnot(
+  basename(tam_data_path) == expected_data$file_basename,
+  file.info(tam_data_path)$size == as.numeric(expected_data$bytes),
+  identical(
+    tolower(digest::digest(file = tam_data_path, algo = "sha256", serialize = FALSE)),
+    tolower(expected_data$sha256)
+  )
+)
 
 tam_data <- utils::read.table(
   tam_data_path, header = TRUE, sep = ";", check.names = FALSE,

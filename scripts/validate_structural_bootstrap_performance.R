@@ -119,6 +119,72 @@ installer_exactness_verified <- function(recorded) {
   ))
 }
 
+installer_pls_evidence_from_result <- function(value) {
+  scalar_integer <- function(field) {
+    field <- suppressWarnings(as.numeric(field))
+    if (length(field) != 1L || !is.finite(field) || field != floor(field) ||
+        field < -.Machine$integer.max || field > .Machine$integer.max) {
+      return(NA_integer_)
+    }
+    as.integer(field)
+  }
+  scalar_number <- function(field) {
+    field <- suppressWarnings(as.numeric(field))
+    if (length(field) == 1L && is.finite(field)) field[[1L]] else NA_real_
+  }
+  scalar_text <- function(field) {
+    field <- as.character(field)
+    if (length(field) == 1L && !is.na(field)) field[[1L]] else ""
+  }
+  if (!is.list(value)) value <- list()
+  list(
+    repetitions = scalar_integer(value$requested_nboot),
+    valid_repetitions = scalar_integer(value$nboot),
+    valid_ratio = scalar_number(value$valid_ratio),
+    minimum_valid_repetitions = scalar_integer(value$minimum_valid_n),
+    minimum_valid_ratio = scalar_number(value$minimum_valid_ratio),
+    inference_available = isTRUE(value$inference_available),
+    bootstrap_status = scalar_text(value$bootstrap_status)
+  )
+}
+
+installer_pls_whole_draw_verified <- function(pls) {
+  scalar_number <- function(value) {
+    value <- suppressWarnings(as.numeric(value))
+    if (length(value) == 1L && is.finite(value)) value[[1L]] else NA_real_
+  }
+  scalar_text <- function(value) {
+    value <- as.character(value)
+    if (length(value) == 1L && !is.na(value)) value[[1L]] else ""
+  }
+  if (!is.list(pls)) return(FALSE)
+  numeric_fields <- c(
+    "repetitions", "valid_repetitions", "valid_ratio",
+    "minimum_valid_repetitions", "minimum_valid_ratio"
+  )
+  if (!all(vapply(pls[numeric_fields], function(value) {
+    is.numeric(value) && length(value) == 1L && !is.na(value)
+  }, logical(1))) ||
+      !is.logical(pls$inference_available) || length(pls$inference_available) != 1L ||
+      is.na(pls$inference_available) ||
+      !is.character(pls$bootstrap_status) || length(pls$bootstrap_status) != 1L ||
+      is.na(pls$bootstrap_status)) {
+    return(FALSE)
+  }
+  requested <- scalar_number(pls$repetitions)
+  valid <- scalar_number(pls$valid_repetitions)
+  ratio <- scalar_number(pls$valid_ratio)
+  minimum_valid <- scalar_number(pls$minimum_valid_repetitions)
+  minimum_ratio <- scalar_number(pls$minimum_valid_ratio)
+  isTRUE(pls$inference_available) &&
+    identical(scalar_text(pls$bootstrap_status), "Adequate") &&
+    identical(requested, 1000) &&
+    is.finite(valid) && valid >= 800 && valid <= requested &&
+    is.finite(ratio) && ratio >= .80 && ratio <= 1 &&
+    identical(minimum_valid, 800) && identical(minimum_ratio, .80) &&
+    abs(ratio - valid / requested) <= sqrt(.Machine$double.eps)
+}
+
 write_verified_structural_report <- function(report, path, run_id) {
   report_directory <- dirname(path)
   if (!dir.exists(report_directory) &&
@@ -146,7 +212,8 @@ write_verified_structural_report <- function(report, path, run_id) {
   if (is.null(staged) || !isTRUE(staged$passed) ||
       !identical(staged$mode, "installer") ||
       !identical(as.character(staged$run_id), run_id) ||
-      !installer_exactness_verified(staged)) {
+      !installer_exactness_verified(staged) ||
+      !installer_pls_whole_draw_verified(staged$metrics$installer$pls_sem)) {
     stop("Structural bootstrap timing report failed staged verification.", call. = FALSE)
   }
   if (file.exists(path)) {
@@ -162,7 +229,8 @@ write_verified_structural_report <- function(report, path, run_id) {
   if (is.null(recorded) || !isTRUE(recorded$passed) ||
       !identical(recorded$mode, "installer") ||
       !identical(as.character(recorded$run_id), run_id) ||
-      !installer_exactness_verified(recorded)) {
+      !installer_exactness_verified(recorded) ||
+      !installer_pls_whole_draw_verified(recorded$metrics$installer$pls_sem)) {
     stop("Structural bootstrap timing report could not be verified after atomic publication.", call. = FALSE)
   }
   committed <- TRUE
@@ -1775,11 +1843,20 @@ if (!installer_mode) {
     c("starting", "resampling", "summarizing", "complete"),
     "PLS-SEM installer bootstrap", budgets$pls_total
   )
-  requested_pls <- suppressWarnings(as.integer(pls_run$value$requested_nboot %||% NA_integer_))
+  pls_installer_evidence <- installer_pls_evidence_from_result(pls_run$value)
+  requested_pls <- pls_installer_evidence$repetitions
+  valid_pls <- pls_installer_evidence$valid_repetitions
+  valid_ratio_pls <- pls_installer_evidence$valid_ratio
+  inference_available_pls <- pls_installer_evidence$inference_available
+  bootstrap_status_pls <- pls_installer_evidence$bootstrap_status
   if (!inherits(pls_run$value, "summary.boot_seminr_model") ||
       !is.finite(requested_pls) || requested_pls != 1000L ||
-      suppressWarnings(as.integer(pls_run$value$nboot %||% 0L)) < 1L) {
-    stop("PLS-SEM installer bootstrap did not return a valid 1,000-repetition result.", call. = FALSE)
+      !isTRUE(inference_available_pls) ||
+      !identical(bootstrap_status_pls, "Adequate") ||
+      !is.finite(valid_pls) || valid_pls < 800L ||
+      !is.finite(valid_ratio_pls) || valid_ratio_pls < .80 ||
+      !installer_pls_whole_draw_verified(pls_installer_evidence)) {
+    stop("PLS-SEM installer bootstrap did not satisfy the 1,000-draw, 80% whole-draw inference contract.", call. = FALSE)
   }
   assert_within_budget(
     "CFA installer bootstrap first completed resample",
@@ -1825,12 +1902,17 @@ if (!installer_mode) {
       minimum_valid_repetitions = min(sem_run$value$valid, na.rm = TRUE)
     ),
     pls_sem = list(
-      repetitions = 1000L,
+      repetitions = pls_installer_evidence$repetitions,
       first_phase_seconds = pls_run$first_phase_seconds,
       first_completion_seconds = pls_run$first_completion_seconds,
       phase_transition_seconds = phase_transition_seconds(pls_run$events),
       total_seconds = pls_run$total_seconds,
-      valid_repetitions = as.integer(pls_run$value$nboot)
+      valid_repetitions = pls_installer_evidence$valid_repetitions,
+      valid_ratio = pls_installer_evidence$valid_ratio,
+      minimum_valid_repetitions = pls_installer_evidence$minimum_valid_repetitions,
+      minimum_valid_ratio = pls_installer_evidence$minimum_valid_ratio,
+      inference_available = pls_installer_evidence$inference_available,
+      bootstrap_status = pls_installer_evidence$bootstrap_status
     )
   )
 

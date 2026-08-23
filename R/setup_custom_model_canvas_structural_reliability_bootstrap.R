@@ -432,8 +432,8 @@ structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, c
         )
       } else if (length(finite)) {
         c(
-          unname(stats::quantile(finite, alpha, names = FALSE)),
-          unname(stats::quantile(finite, 1 - alpha, names = FALSE))
+          unname(stats::quantile(finite, alpha, names = FALSE, type = 7)),
+          unname(stats::quantile(finite, 1 - alpha, names = FALSE, type = 7))
         )
       } else c(NA_real_, NA_real_)
       data.frame(Factor = factor, Statistic = statistic,
@@ -441,6 +441,7 @@ structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, c
         `CI method` = if (identical(ci_method, "bca")) {
           if (all(is.finite(interval))) "BCa" else "BCa unavailable"
         } else if (identical(ci_method, "bias_corrected")) "Bias-corrected (BC)" else "Percentile",
+        `Quantile type` = paste0("R type ", structural_canvas_bootstrap_quantile_type(ci_method, "reliability")),
         `Valid replicates` = length(finite), `Requested replicates` = reps,
         `Valid %` = 100 * length(finite) / reps,
         Status = structural_canvas_bootstrap_status(length(finite), reps),

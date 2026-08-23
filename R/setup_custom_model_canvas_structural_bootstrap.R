@@ -99,6 +99,7 @@ structural_canvas_htmt_bootstrap <- function(data, indicators_by_factor, reps = 
       `CI method` = if (identical(ci_method, "bca")) {
         if (all(is.finite(interval))) "BCa" else "BCa unavailable"
       } else if (identical(ci_method, "bias_corrected")) "Bias-corrected (BC)" else "Percentile",
+      `Quantile type` = paste0("R type ", structural_canvas_bootstrap_quantile_type(ci_method, "htmt")),
       `Valid replicates` = length(pair_values), `Requested replicates` = reps,
       `Valid %` = 100 * length(pair_values) / reps,
       Status = structural_canvas_bootstrap_status(length(pair_values), reps), check.names = FALSE
@@ -116,8 +117,18 @@ structural_canvas_bootstrap_ci_method <- function(value) {
   value <- tolower(trimws(as.character(value %||% "percentile")))
   if (grepl("^bca", value)) return("bca")
   if (value %in% c("bca", "bc_a", "bias-corrected accelerated", "bias corrected accelerated")) return("bca")
-  if (value %in% c("bc", "bias_corrected", "bias-corrected", "bias corrected")) return("bias_corrected")
+  if (value %in% c("bc", "bias_corrected", "bias-corrected", "bias corrected", "bias-corrected (bc)", "bias corrected (bc)")) return("bias_corrected")
   "percentile"
+}
+
+structural_canvas_bootstrap_quantile_type <- function(ci_method = "percentile", procedure = "structural_effects") {
+  ci_method <- structural_canvas_bootstrap_ci_method(ci_method)
+  procedure <- tolower(trimws(as.character(procedure %||% "structural_effects")[[1L]]))
+  # Preserve the released numerical contracts: structural effects and HTMT,
+  # including BC/BCa adjusted probabilities, use R quantile type 6. The
+  # reliability/AVE percentile branch predates that shared helper and retains
+  # R's default type 7; its BC/BCa branches use type 6.
+  if (procedure %in% c("reliability", "ave_reliability") && identical(ci_method, "percentile")) 7L else 6L
 }
 
 structural_canvas_bias_corrected_quantile <- function(bootstrap_values, original_value, probability) {
@@ -276,7 +287,7 @@ structural_canvas_effect_bootstrap <- function(snapshot, data, analysis_type, es
     standardized_valid <- length(standardized_values)
     standardized_interval <- if (standardized_valid >= max(20L, ceiling(.5 * reps))) bootstrap_ci(standardized_original_values[[column]], standardized_values, method = ci_method) else c(NA_real_, NA_real_)
     standardized_p <- if (standardized_valid) min(1, 2 * min((sum(standardized_values <= 0) + 1) / (standardized_valid + 1), (sum(standardized_values >= 0) + 1) / (standardized_valid + 1))) else NA_real_
-    data.frame(lhs = raw_original$lhs[[column]], op = raw_original$op[[column]], rhs = raw_original$rhs[[column]], estimate = raw_original$est[[column]], se = if (valid > 1L) stats::sd(values) else NA_real_, lower = interval[[1L]], upper = interval[[2L]], p = p_value, beta_estimate = standardized_original_values[[column]], beta_se = if (standardized_valid > 1L) stats::sd(standardized_values) else NA_real_, beta_lower = standardized_interval[[1L]], beta_upper = standardized_interval[[2L]], beta_p = standardized_p, beta_valid = standardized_valid, beta_status = if (identical(raw_original$op[[column]], "modmed")) "Not reported: product-indicator index is scale-dependent" else if (standardized_valid) "Estimated" else "Not available", valid = valid, requested = reps, `valid_percent` = 100 * valid / reps, ci_method = ci_method, status = structural_canvas_bootstrap_status(valid, reps), stringsAsFactors = FALSE)
+    data.frame(lhs = raw_original$lhs[[column]], op = raw_original$op[[column]], rhs = raw_original$rhs[[column]], estimate = raw_original$est[[column]], se = if (valid > 1L) stats::sd(values) else NA_real_, lower = interval[[1L]], upper = interval[[2L]], p = p_value, beta_estimate = standardized_original_values[[column]], beta_se = if (standardized_valid > 1L) stats::sd(standardized_values) else NA_real_, beta_lower = standardized_interval[[1L]], beta_upper = standardized_interval[[2L]], beta_p = standardized_p, beta_valid = standardized_valid, beta_status = if (identical(raw_original$op[[column]], "modmed")) "Not reported: product-indicator index is scale-dependent" else if (standardized_valid) "Estimated" else "Not available", valid = valid, requested = reps, `valid_percent` = 100 * valid / reps, ci_method = ci_method, quantile_type = structural_canvas_bootstrap_quantile_type(ci_method, "structural_effects"), status = structural_canvas_bootstrap_status(valid, reps), stringsAsFactors = FALSE)
   })
   do.call(rbind, rows)
 }
@@ -1620,7 +1631,9 @@ structural_canvas_effect_bootstrap_prepared <- function(
       beta_valid = standardized_valid,
       beta_status = if (identical(raw_original$op[[column]], "modmed")) "Not reported: product-indicator index is scale-dependent" else if (standardized_valid) "Estimated" else "Not available",
       valid = valid, requested = reps, `valid_percent` = 100 * valid / reps,
-      ci_method = ci_method, status = structural_canvas_bootstrap_status(valid, reps),
+      ci_method = ci_method,
+      quantile_type = structural_canvas_bootstrap_quantile_type(ci_method, "structural_effects"),
+      status = structural_canvas_bootstrap_status(valid, reps),
       stringsAsFactors = FALSE
     )
   })
@@ -1837,8 +1850,17 @@ structural_canvas_start_effect_bootstrap_job <- function(
 structural_canvas_cleanup_effect_bootstrap_job <- function(job) {
   if (is.null(job)) return(invisible(FALSE))
   directory <- as.character(job$directory %||% "")
-  if (nzchar(directory) && dir.exists(directory)) unlink(directory, recursive = TRUE, force = TRUE)
-  invisible(TRUE)
+  if (!nzchar(directory)) return(invisible(FALSE))
+  # A just-terminated Windows worker can retain an input/progress handle for a
+  # few scheduler ticks. Retry the same resolved job directory so cancellation
+  # does not leave StatEdu-owned bootstrap artifacts behind.
+  for (attempt in seq_len(20L)) {
+    if (!dir.exists(directory)) return(invisible(TRUE))
+    unlink(directory, recursive = TRUE, force = TRUE)
+    if (!dir.exists(directory)) return(invisible(TRUE))
+    Sys.sleep(0.025)
+  }
+  invisible(!dir.exists(directory))
 }
 
 structural_canvas_stop_effect_bootstrap_job <- function(job) {

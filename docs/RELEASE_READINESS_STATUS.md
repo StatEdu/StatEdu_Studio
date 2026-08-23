@@ -10,7 +10,7 @@ Release-line note: public 1.2.0 was published on 2026-08-08 and is retained belo
 
 The 1.2.3 fail-closed promotion validator remains scoped to the historical 1.2.3 promotion line. Its evidence and approval requirements must not be reused as proof for a future public 1.2.4 build.
 
-The external-program handoff is automated by `scripts/prepare_pls_external_handoff.R` and `scripts/finalize_pls_external_evidence.R`: the first packages the fixed data/model/specification and result template, and the second accepts only versioned, dated, convergence-confirmed SmartPLS/ADANCO results, recomputes all six comparisons, records actual output precision, and seals the evidence hashes. Actual proprietary-program values remain pending.
+The external-program handoff is automated by `scripts/prepare_pls_external_handoff.R` and `scripts/finalize_pls_external_evidence.R`: the first packages the fixed data/model/specification and result template, and the second accepts only versioned, dated, convergence-confirmed SmartPLS/ADANCO results, recomputes all six comparisons, records actual output precision/provenance, and seals the evidence hashes. A deterministic 100-row Holzinger–Swineford profile has actual SmartPLS 4.1.1.8 Student-license displayed-output evidence; the historical 301-row proprietary-program run remains pending and is not replaced by the 100-row result.
 
 `scripts/package_pls_external_handoff.ps1` creates the transfer ZIP from a fresh temporary staging directory, verifies its required contents, embeds per-file SHA-256 values, and emits a checksum sidecar for the archive. This closes the evidence-transfer integrity step but does not substitute for the pending proprietary-program run.
 
@@ -20,6 +20,8 @@ The external-program handoff is automated by `scripts/prepare_pls_external_hando
 - Branch: `codex/external-validation-stabilization`.
 - The development line adds exact, fail-open bootstrap execution control around lavaan for CFA, SEM, and latent-product moderation, while retaining public full-SE lavaan fits as the final numerical authority.
 - Same-index regression gates require the optimized and prior lavaan paths to match in sample order, validity decisions, raw estimates, standardized estimates, and final result tables with tolerance 0.
+- SmartPLS 4.1.1.8 under the Student license (free limited, non-Professional) actually ran the deterministic first 100 Holzinger–Swineford rows with the fixed three-factor model. PLS and PLSc both converged in 26 initial PLS iterations; all six saturated SRMR/d_G/d_ULS values matched StatEdu at the three displayed decimal places. Public data/results/manifests are under `docs/evidence/release_1_2_4/pls/`; sixteen vendor UI/project/settings artifacts are retained outside the repository under `STATEDU_SMARTPLS_EVIDENCE_ROOT` and are mandatory for installer/release validation.
+- The Student-license run was limited to 100 rows and no completed 301-row execution evidence was retained. Therefore only the first-100 profile is complete; the historical 301-row SmartPLS/ADANCO gate remains explicitly pending. The separate TAM-100 manual displayed transcription remains an optional supplementary check without retained source/path evidence.
 - A new 1.2.4-dev installer has not yet been packaged or assigned release checksums. Historical 1.2.3-dev package evidence below is not 1.2.4 evidence.
 
 ## Current 1.2.0 Public Release Snapshot

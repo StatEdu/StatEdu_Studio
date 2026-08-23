@@ -135,7 +135,7 @@ structural_canvas_cfa_bootstrap_job_value <- function(args, progress_file) {
         if (nrow(row) && column %in% names(row)) as.numeric(row[[column]][[1L]]) else NA_real_
       }, numeric(1))
       value$`Valid %` <- 100 * value[["Valid replicates"]] / value[["Requested replicates"]]
-      value <- value[, c("Factor", "Statistic", "Estimate", "Lower", "Upper", "CI method", "Valid replicates", "Requested replicates", "Valid %", "Status"), drop = FALSE]
+      value <- value[, c("Factor", "Statistic", "Estimate", "Lower", "Upper", "CI method", "Quantile type", "Valid replicates", "Requested replicates", "Valid %", "Status"), drop = FALSE]
     }
     output$reliability_bootstrap_result <- value
     reliability_seconds <- as.numeric(difftime(Sys.time(), phase_started_at, units = "secs"))

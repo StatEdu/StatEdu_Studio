@@ -174,28 +174,53 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       )
       if (identical(analysis_type, "plssem")) {
         bundle <- fit_result()
+        old_job <- pls_bootstrap_job()
+        if (!is.null(old_job)) {
+          statedu_stop_background_process_tree(old_job$process)
+          structural_canvas_cleanup_pls_bootstrap_job(old_job)
+          shiny::removeNotification(paste0(prefix, "-pls-bootstrap-progress"))
+        }
+        pls_bootstrap_job(NULL)
+        pls_bootstrap_progress_mtime(NA_real_)
+        pls_bootstrap_progress_cache(NULL)
         nboot <- suppressWarnings(as.integer(bundle$pls_bootstrap %||% 0L))
         if (is.finite(nboot) && nboot > 0L) {
-          old_job <- pls_bootstrap_job()
-          if (!is.null(old_job)) {
-            statedu_stop_background_process_tree(old_job$process)
-            structural_canvas_cleanup_pls_bootstrap_job(old_job)
-          }
-          job <- structural_canvas_start_pls_bootstrap_job(bundle$diagnostics, nboot, bundle$pls_seed)
-          pls_bootstrap_job(job)
-          pls_bootstrap_progress_mtime(NA_real_)
-          pls_bootstrap_progress_cache(NULL)
-          ko <- identical(statedu_current_language(app_language_fn), "ko")
-          structural_canvas_show_notification(
-            statedu_bootstrap_status_ui(
-              if (ko) "PLS/PLSc 부트스트랩 진행 상태" else "PLS/PLSc bootstrap progress",
-              paste0(format(nboot, big.mark = ","), if (ko) "회 재표집 · 기본 분석 결과는 지금 확인할 수 있습니다." else " resamples · Base-model results are available now."),
-              percent = NA_real_, stop_input_id = paste0(prefix, "_pls_bootstrap_stop"),
-              stop_label = if (ko) "부트스트랩 중단" else "Stop bootstrap",
-              phase_label = if (ko) "준비 중" else "Starting"
-            ),
-            type = "message", duration = NULL, id = paste0(prefix, "-pls-bootstrap-progress")
+          bundle$pls_bootstrap_result <- structural_canvas_pls_bootstrap_unavailable_result(
+            nboot, bundle$pls_seed, status = "Pending",
+            failure_message = "Background PLS/PLSc bootstrap is running."
           )
+          fit_result(bundle)
+          ko <- identical(statedu_current_language(app_language_fn), "ko")
+          job <- tryCatch(
+            structural_canvas_start_pls_bootstrap_job(bundle$diagnostics, nboot, bundle$pls_seed),
+            error = function(error) {
+              error_text <- conditionMessage(error)
+              bundle$pls_bootstrap_result <- structural_canvas_pls_bootstrap_unavailable_result(
+                nboot, bundle$pls_seed, status = "Failed", failure_message = error_text
+              )
+              fit_result(bundle)
+              structural_canvas_show_notification(
+                if (ko) paste0("PLS/PLSc 부트스트랩을 시작하지 못했습니다. ", error_text) else paste0("The PLS/PLSc bootstrap could not start. ", error_text),
+                type = "error", duration = 12
+              )
+              NULL
+            }
+          )
+          if (!is.null(job)) {
+            pls_bootstrap_job(job)
+            pls_bootstrap_progress_mtime(NA_real_)
+            pls_bootstrap_progress_cache(NULL)
+            structural_canvas_show_notification(
+              statedu_bootstrap_status_ui(
+                if (ko) "PLS/PLSc 부트스트랩 진행 상태" else "PLS/PLSc bootstrap progress",
+                paste0(format(nboot, big.mark = ","), if (ko) "회 재표집 · 기본 분석 결과는 지금 확인할 수 있습니다." else " resamples · Base-model results are available now."),
+                percent = NA_real_, stop_input_id = paste0(prefix, "_pls_bootstrap_stop"),
+                stop_label = if (ko) "부트스트랩 중단" else "Stop bootstrap",
+                phase_label = if (ko) "준비 중" else "Starting"
+              ),
+              type = "message", duration = NULL, id = paste0(prefix, "-pls-bootstrap-progress")
+            )
+          }
         }
       }
       if (analysis_type %in% c("cbsem", "sem")) {
@@ -462,6 +487,14 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
         statedu_stop_background_process_tree(job$process)
         structural_canvas_cleanup_pls_bootstrap_job(job)
         pls_bootstrap_job(NULL)
+        bundle <- fit_result()
+        if (!is.null(bundle)) {
+          bundle$pls_bootstrap_result <- structural_canvas_pls_bootstrap_unavailable_result(
+            job$nboot, bundle$pls_seed, status = "Canceled",
+            failure_message = "Canceled by user"
+          )
+          fit_result(bundle)
+        }
         shiny::removeNotification(paste0(prefix, "-pls-bootstrap-progress"))
         structural_canvas_show_notification(
           if (identical(statedu_current_language(app_language_fn), "ko")) "PLS/PLSc 부트스트랩을 중단했습니다. 기본 분석 결과는 유지됩니다." else "The PLS/PLSc bootstrap was stopped. Base-model results remain available.",
@@ -518,8 +551,20 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
         on.exit(structural_canvas_cleanup_pls_bootstrap_job(job), add = TRUE)
         shiny::removeNotification(paste0(prefix, "-pls-bootstrap-progress"))
         status <- job$process$get_exit_status()
-        if (identical(status, 0L) && file.exists(job$result_file)) {
-          value <- readRDS(job$result_file)
+        read_error <- ""
+        value <- if (identical(status, 0L) && file.exists(job$result_file)) {
+          tryCatch(
+            readRDS(job$result_file),
+            error = function(error) {
+              read_error <<- conditionMessage(error)
+              NULL
+            }
+          )
+        } else NULL
+        result_contract_ok <- is.list(value) && all(c(
+          "nboot", "requested_nboot", "inference_available", "bootstrap_status", "failure_counts"
+        ) %in% names(value))
+        if (identical(status, 0L) && isTRUE(result_contract_ok)) {
           bundle <- fit_result()
           if (!is.null(bundle)) {
             bundle$pls_bootstrap_result <- value
@@ -541,12 +586,40 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
           requested_n <- suppressWarnings(as.integer(value$requested_nboot %||% job$nboot %||% 0L))
           timeout_n <- suppressWarnings(as.integer(value$timeout_failures %||% 0L))
           estimation_n <- suppressWarnings(as.integer(value$estimation_failures %||% max(0L, requested_n - valid_n - timeout_n)))
+          invalid_n <- suppressWarnings(as.integer(value$invalid_statistic_failures %||% 0L))
+          execution_n <- suppressWarnings(as.integer(value$execution_failures %||% 0L))
+          canceled_n <- suppressWarnings(as.integer(value$canceled_failures %||% 0L))
+          inference_available <- isTRUE(value$inference_available)
           structural_canvas_show_notification(
-            if (identical(statedu_current_language(app_language_fn), "ko")) paste0("PLS/PLSc 부트스트랩이 완료되어 결과표를 갱신했습니다. 유효 재표집 ", format(valid_n, big.mark = ","), "/", format(requested_n, big.mark = ","), "회 (시간 제한 ", timeout_n, ", 추정 실패 ", estimation_n, ").") else paste0("The PLS/PLSc bootstrap is complete and result tables were updated. Valid resamples: ", format(valid_n, big.mark = ","), "/", format(requested_n, big.mark = ","), " (timeouts ", timeout_n, ", estimation failures ", estimation_n, ")."),
-            type = "message", duration = 8
+            if (identical(statedu_current_language(app_language_fn), "ko")) paste0("PLS/PLSc 부트스트랩이 완료되었습니다. 유효 재표집 ", format(valid_n, big.mark = ","), "/", format(requested_n, big.mark = ","), "회 (시간 제한 ", timeout_n, ", 추정 실패 ", estimation_n, ", 통계량 계약 실패 ", invalid_n, ", 실행 실패 ", execution_n, ", 취소 ", canceled_n, ").", if (!inference_available) " 유효율이 80% 미만이므로 추론값은 표시하지 않습니다." else " 결과표를 갱신했습니다.") else paste0("The PLS/PLSc bootstrap completed. Valid resamples: ", format(valid_n, big.mark = ","), "/", format(requested_n, big.mark = ","), " (timeouts ", timeout_n, ", estimation failures ", estimation_n, ", statistic-contract failures ", invalid_n, ", execution failures ", execution_n, ", cancellations ", canceled_n, ").", if (!inference_available) " Inference is suppressed because the valid ratio is below 80%." else " Result tables were updated."),
+            type = if (inference_available) "message" else "warning", duration = 10
           )
         } else {
-          error_text <- if (file.exists(job$error_file)) paste(readLines(job$error_file, warn = FALSE, encoding = "UTF-8"), collapse = "\n") else ""
+          error_text <- if (file.exists(job$error_file)) paste(readLines(job$error_file, warn = FALSE, encoding = "UTF-8"), collapse = "\n") else read_error
+          if (!nzchar(error_text)) {
+            status_label <- if (length(status)) as.character(status[[1L]]) else "not recorded"
+            error_text <- if (identical(status, 0L)) "The background bootstrap returned no contract-valid result." else paste0("Background bootstrap process exited with status ", status_label, ".")
+          }
+          bundle <- fit_result()
+          if (!is.null(bundle)) {
+            failed_value <- structural_canvas_pls_bootstrap_unavailable_result(
+              job$nboot, bundle$pls_seed, status = "Failed", failure_message = error_text
+            )
+            bundle$pls_bootstrap_result <- failed_value
+            fit_result(bundle)
+            session$sendCustomMessage(
+              "custom-model-canvas-result",
+              list(
+                rootId = paste0(prefix, "-canvas-root"), source = bundle$snapshot,
+                result = structural_canvas_result_snapshot(
+                  bundle$snapshot, bundle$fit,
+                  bundle$result_coefficient %||% "pls_p", failed_value,
+                  bundle$result_measurement_coefficient %||% "measurement_p"
+                ),
+                show = TRUE
+              )
+            )
+          }
           structural_canvas_show_notification(
             if (identical(statedu_current_language(app_language_fn), "ko")) paste0("PLS/PLSc 부트스트랩을 완료하지 못했습니다.", if (nzchar(error_text)) paste0(" ", error_text) else "") else paste0("The PLS/PLSc bootstrap did not complete.", if (nzchar(error_text)) paste0(" ", error_text) else ""),
             type = "error", duration = 12

@@ -261,6 +261,153 @@ structural_canvas_rng_streams <- function(n, seed = default_seed()) {
   streams
 }
 
+structural_canvas_pls_bootstrap_min_valid_ratio <- function() .80
+
+structural_canvas_pls_bootstrap_validity <- function(valid, requested) {
+  valid <- suppressWarnings(as.integer(valid %||% 0L))
+  requested <- suppressWarnings(as.integer(requested %||% 0L))
+  if (!is.finite(valid) || valid < 0L) valid <- 0L
+  if (!is.finite(requested) || requested < 1L) requested <- 0L
+  ratio <- if (requested > 0L) valid / requested else NA_real_
+  minimum_ratio <- structural_canvas_pls_bootstrap_min_valid_ratio()
+  minimum_valid <- if (requested > 0L) as.integer(max(2L, ceiling(minimum_ratio * requested))) else NA_integer_
+  adequate <- requested > 0L && valid >= minimum_valid && is.finite(ratio) && ratio >= minimum_ratio
+  list(
+    valid = valid,
+    requested = requested,
+    ratio = ratio,
+    minimum_ratio = minimum_ratio,
+    minimum_valid = minimum_valid,
+    adequate = adequate,
+    status = if (adequate) "Adequate" else "Insufficient"
+  )
+}
+
+structural_canvas_pls_bootstrap_required_masks <- function(reference_components) {
+  masks <- lapply(names(reference_components), function(name) {
+    reference <- reference_components[[name]]
+    if (identical(name, "htmt")) {
+      if (length(dim(reference)) != 2L || nrow(reference) != ncol(reference)) {
+        return(array(FALSE, dim = dim(reference), dimnames = dimnames(reference)))
+      }
+      return(upper.tri(reference, diag = FALSE))
+    }
+    array(TRUE, dim = dim(reference), dimnames = dimnames(reference))
+  })
+  names(masks) <- names(reference_components)
+  masks
+}
+
+structural_canvas_pls_bootstrap_components_contract <- function(components, reference_components) {
+  expected_names <- names(reference_components)
+  if (!is.list(components) || !identical(names(components), expected_names)) {
+    return(list(valid = FALSE, reason = "component_names"))
+  }
+  required_masks <- structural_canvas_pls_bootstrap_required_masks(reference_components)
+  for (name in expected_names) {
+    value <- components[[name]]
+    reference <- reference_components[[name]]
+    if (!is.numeric(value) || !identical(dim(value), dim(reference)) ||
+        !identical(dimnames(value), dimnames(reference))) {
+      return(list(valid = FALSE, reason = paste0("component_shape:", name)))
+    }
+    required <- required_masks[[name]]
+    if (length(value) != length(reference) || length(required) != length(reference) ||
+        any(!is.finite(reference[required])) || any(!is.finite(value[required])) ||
+        any(is.finite(value[!required]))) {
+      return(list(valid = FALSE, reason = paste0("nonfinite_statistics:", name)))
+    }
+  }
+  list(valid = TRUE, reason = "")
+}
+
+structural_canvas_pls_bootstrap_select_draws <- function(values, expected_length, required_mask = NULL) {
+  expected_length <- suppressWarnings(as.integer(expected_length))
+  if (is.null(required_mask)) required_mask <- rep(TRUE, expected_length)
+  required_mask <- as.logical(required_mask)
+  reasons <- vapply(values, function(value) as.character(attr(value, "failure_reason") %||% ""), character(1))
+  valid <- vapply(values, function(value) {
+    is.numeric(value) && length(value) == expected_length && length(required_mask) == expected_length &&
+      identical(is.finite(value), required_mask)
+  }, logical(1))
+  reasons[!valid & !nzchar(reasons)] <- "invalid_statistics"
+  list(valid = valid, values = values[valid], failure_reasons = reasons)
+}
+
+structural_canvas_pls_bootstrap_suppress_inference <- function(value) {
+  if (!is.matrix(value) && !is.data.frame(value)) return(value)
+  columns <- intersect(
+    c("Bootstrap SD", "T Stat.", "2.5% CI", "97.5% CI", "Bootstrap P Val"),
+    colnames(value) %||% character(0)
+  )
+  if (length(columns)) value[, columns] <- NA_real_
+  attr(value, "inference_suppressed") <- TRUE
+  value
+}
+
+structural_canvas_pls_bootstrap_contract_metadata <- function(summary, validity, failure_reasons, valid_positions = integer(0), seed = NA_integer_) {
+  failure_reasons <- as.character(failure_reasons %||% character(0))
+  summary$nboot <- validity$valid
+  summary$requested_nboot <- validity$requested
+  summary$valid_ratio <- validity$ratio
+  summary$minimum_valid_ratio <- validity$minimum_ratio
+  summary$minimum_valid_n <- validity$minimum_valid
+  summary$inference_available <- isTRUE(validity$adequate)
+  summary$bootstrap_status <- validity$status
+  summary$timeout_failures <- sum(failure_reasons == "timeout")
+  summary$estimation_failures <- sum(failure_reasons == "estimation")
+  summary$invalid_statistic_failures <- sum(startsWith(failure_reasons, "invalid_statistics") |
+    startsWith(failure_reasons, "nonfinite_statistics") |
+    startsWith(failure_reasons, "component_"))
+  summary$execution_failures <- sum(failure_reasons == "execution")
+  summary$canceled_failures <- sum(failure_reasons == "canceled")
+  summary$failure_counts <- list(
+    timeout = summary$timeout_failures,
+    estimation = summary$estimation_failures,
+    invalid_statistics = summary$invalid_statistic_failures,
+    execution = summary$execution_failures,
+    canceled = summary$canceled_failures
+  )
+  summary$validity_contract <- "all path/loading/weight/HTMT/total-effect statistics finite with matching dimensions and names"
+  summary$valid_positions <- as.integer(valid_positions)
+  summary$seed <- suppressWarnings(as.integer(seed))
+  summary$rng <- "L'Ecuyer-CMRG independent stream per requested position"
+  summary$draw_order <- "requested-position order; invalid draws removed without reordering valid draws"
+  summary
+}
+
+structural_canvas_pls_bootstrap_unavailable_result <- function(
+  requested_nboot, seed = default_seed(), status = c("Pending", "Failed", "Canceled"),
+  failure_message = ""
+) {
+  status <- match.arg(status)
+  requested_nboot <- suppressWarnings(as.integer(requested_nboot %||% 0L))
+  if (!is.finite(requested_nboot) || requested_nboot < 0L) requested_nboot <- 0L
+  empty_summary <- list(
+    bootstrapped_paths = NULL,
+    bootstrapped_weights = NULL,
+    bootstrapped_loadings = NULL,
+    bootstrapped_HTMT = NULL,
+    bootstrapped_total_paths = NULL,
+    bootstrapped_total_indirect_paths = NULL
+  )
+  result <- structural_canvas_pls_bootstrap_contract_metadata(
+    empty_summary,
+    structural_canvas_pls_bootstrap_validity(0L, requested_nboot),
+    character(0), integer(0), seed
+  )
+  result$bootstrap_status <- status
+  result$inference_available <- FALSE
+  result$execution_failures <- as.integer(identical(status, "Failed"))
+  result$canceled_failures <- as.integer(identical(status, "Canceled"))
+  result$failure_counts$execution <- result$execution_failures
+  result$failure_counts$canceled <- result$canceled_failures
+  failure_message <- as.character(failure_message %||% "")
+  result$failure_message <- if (length(failure_message)) trimws(failure_message[[1L]]) else ""
+  class(result) <- "summary.boot_seminr_model"
+  result
+}
+
 structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, seed = default_seed(), progress_file = NULL, apply_plsc = TRUE) {
   nboot <- suppressWarnings(as.integer(nboot %||% 5000L))
   seed <- suppressWarnings(as.integer(seed %||% default_seed()))
@@ -272,8 +419,15 @@ structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, se
   inner_weights <- seminr_model$inner_weights
   original_htmt <- seminr:::HTMT(seminr_model)
   original_total <- seminr:::total_effects(seminr_model$path_coef)
-  boot_vec_len <- length(seminr_model$path_coef) + length(seminr_model$outer_loadings) +
-    length(seminr_model$outer_weights) + length(original_htmt) + length(original_total)
+  reference_components <- list(
+    paths = as.matrix(seminr_model$path_coef),
+    loadings = as.matrix(seminr_model$outer_loadings),
+    weights = as.matrix(seminr_model$outer_weights),
+    htmt = as.matrix(original_htmt),
+    total_paths = as.matrix(original_total)
+  )
+  boot_vec_len <- sum(vapply(reference_components, length, integer(1)))
+  required_statistic_mask <- unlist(structural_canvas_pls_bootstrap_required_masks(reference_components), recursive = FALSE, use.names = FALSE)
   detected_cores <- suppressWarnings(parallel::detectCores(logical = FALSE))
   if (!is.finite(detected_cores) || detected_cores < 2L) detected_cores <- 2L
   workers <- max(1L, min(4L, as.integer(detected_cores) - 1L, nboot))
@@ -306,7 +460,7 @@ structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, se
   reference_loadings <- seminr_model$outer_loadings
   common_factor_constructs <- as.character(seminr_model$statedu_common_factor_constructs %||% character(0))
   rng_streams <- structural_canvas_rng_streams(nboot, seed)
-  estimate_one <- function(index, d, measurement_model, structural_model, inner_weights, rng_stream, apply_plsc, common_factor_constructs, boot_vec_len, reference_loadings) {
+  estimate_one <- function(index, d, measurement_model, structural_model, inner_weights, rng_stream, apply_plsc, common_factor_constructs, boot_vec_len, reference_loadings, reference_components) {
     old_seed_exists <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
     if (old_seed_exists) old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
     on.exit({
@@ -329,13 +483,20 @@ structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, se
         )
         if (isTRUE(apply_plsc)) boot_model <- structural_canvas_apply_plsc(boot_model, common_factor_constructs)
         boot_model <- align_bootstrap_signs(boot_model, reference_loadings)
-        c(
-          c(boot_model$path_coef),
-          c(boot_model$outer_loadings),
-          c(boot_model$outer_weights),
-          c(seminr:::HTMT(boot_model)),
-          c(seminr:::total_effects(boot_model$path_coef))
+        components <- list(
+          paths = as.matrix(boot_model$path_coef),
+          loadings = as.matrix(boot_model$outer_loadings),
+          weights = as.matrix(boot_model$outer_weights),
+          htmt = as.matrix(seminr:::HTMT(boot_model)),
+          total_paths = as.matrix(seminr:::total_effects(boot_model$path_coef))
         )
+        contract <- structural_canvas_pls_bootstrap_components_contract(components, reference_components)
+        if (!isTRUE(contract$valid)) {
+          failed <- rep(NA_real_, boot_vec_len)
+          attr(failed, "failure_reason") <- paste0("invalid_statistics:", contract$reason)
+          return(failed)
+        }
+        unlist(components, recursive = FALSE, use.names = FALSE)
       })
     }, error = function(error) {
       failed <- rep(NA_real_, boot_vec_len)
@@ -350,7 +511,7 @@ structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, se
     on.exit(parallel::stopCluster(cluster), add = TRUE)
     parallel::clusterExport(
       cluster,
-      c("estimate_one", "align_bootstrap_signs", "structural_canvas_apply_plsc", "common_factor_constructs", "d", "measurement_model", "structural_model", "inner_weights", "rng_streams", "apply_plsc", "boot_vec_len", "reference_loadings"),
+      c("estimate_one", "align_bootstrap_signs", "structural_canvas_apply_plsc", "structural_canvas_pls_bootstrap_components_contract", "structural_canvas_pls_bootstrap_required_masks", "common_factor_constructs", "d", "measurement_model", "structural_model", "inner_weights", "rng_streams", "apply_plsc", "boot_vec_len", "reference_loadings", "reference_components"),
       envir = environment()
     )
   }
@@ -359,22 +520,35 @@ structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, se
   for (start in starts) {
     indices <- seq.int(start, min(nboot, start + batch_size - 1L))
     values <- if (is.null(cluster)) {
-      lapply(indices, function(index) estimate_one(index, d, measurement_model, structural_model, inner_weights, rng_streams[[index]], apply_plsc, common_factor_constructs, boot_vec_len, reference_loadings))
+      lapply(indices, function(index) estimate_one(index, d, measurement_model, structural_model, inner_weights, rng_streams[[index]], apply_plsc, common_factor_constructs, boot_vec_len, reference_loadings, reference_components))
     } else {
       parallel::parLapplyLB(cluster, indices, function(index) {
-        estimate_one(index, d, measurement_model, structural_model, inner_weights, rng_streams[[index]], apply_plsc, common_factor_constructs, boot_vec_len, reference_loadings)
+        estimate_one(index, d, measurement_model, structural_model, inner_weights, rng_streams[[index]], apply_plsc, common_factor_constructs, boot_vec_len, reference_loadings, reference_components)
       })
     }
     boot_values[indices] <- values
     structural_canvas_write_bootstrap_progress(progress_file, max(indices), nboot, "resampling", TRUE)
   }
   structural_canvas_write_bootstrap_progress(progress_file, nboot, nboot, "summarizing", TRUE)
-  failure_reasons <- vapply(boot_values, function(value) as.character(attr(value, "failure_reason") %||% ""), character(1))
-  bootmatrix <- do.call(cbind, boot_values)
-  valid <- !is.na(bootmatrix[1L, ])
-  bootmatrix <- bootmatrix[, valid, drop = FALSE]
+  selection <- structural_canvas_pls_bootstrap_select_draws(boot_values, boot_vec_len, required_statistic_mask)
+  failure_reasons <- selection$failure_reasons
+  valid <- selection$valid
+  bootmatrix <- if (length(selection$values)) do.call(cbind, selection$values) else matrix(numeric(0), nrow = boot_vec_len, ncol = 0L)
   valid_n <- ncol(bootmatrix)
-  if (!valid_n) return(NULL)
+  validity <- structural_canvas_pls_bootstrap_validity(valid_n, nboot)
+  if (valid_n < 2L) {
+    empty_summary <- list(
+      bootstrapped_paths = NULL,
+      bootstrapped_weights = NULL,
+      bootstrapped_loadings = NULL,
+      bootstrapped_HTMT = NULL,
+      bootstrapped_total_paths = NULL,
+      bootstrapped_total_indirect_paths = NULL
+    )
+    empty_summary <- structural_canvas_pls_bootstrap_contract_metadata(empty_summary, validity, failure_reasons, which(valid), seed)
+    class(empty_summary) <- "summary.boot_seminr_model"
+    return(empty_summary)
+  }
 
   path_rows <- nrow(seminr_model$path_coef)
   path_cols <- ncol(seminr_model$path_coef)
@@ -383,31 +557,28 @@ structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, se
 
   start <- 1L
   end <- path_rows * path_cols
-  boot_paths <- array(bootmatrix[start:end, , drop = FALSE], dim = c(path_rows, path_cols, valid_n), dimnames = list(rownames(seminr_model$path_coef), colnames(seminr_model$path_coef), seq_len(valid_n)))
+  valid_position_names <- as.character(which(valid))
+  boot_paths <- array(bootmatrix[start:end, , drop = FALSE], dim = c(path_rows, path_cols, valid_n), dimnames = list(rownames(seminr_model$path_coef), colnames(seminr_model$path_coef), valid_position_names))
 
   start <- end + 1L
   end <- start + (mm_rows * mm_cols) - 1L
-  boot_loadings <- array(bootmatrix[start:end, , drop = FALSE], dim = c(mm_rows, mm_cols, valid_n), dimnames = list(rownames(seminr_model$outer_loadings), colnames(seminr_model$outer_loadings), seq_len(valid_n)))
+  boot_loadings <- array(bootmatrix[start:end, , drop = FALSE], dim = c(mm_rows, mm_cols, valid_n), dimnames = list(rownames(seminr_model$outer_loadings), colnames(seminr_model$outer_loadings), valid_position_names))
 
   start <- end + 1L
   end <- start + (mm_rows * mm_cols) - 1L
-  boot_weights <- array(bootmatrix[start:end, , drop = FALSE], dim = c(mm_rows, mm_cols, valid_n), dimnames = list(rownames(seminr_model$outer_weights), colnames(seminr_model$outer_weights), seq_len(valid_n)))
+  boot_weights <- array(bootmatrix[start:end, , drop = FALSE], dim = c(mm_rows, mm_cols, valid_n), dimnames = list(rownames(seminr_model$outer_weights), colnames(seminr_model$outer_weights), valid_position_names))
 
   htmt_rows <- nrow(original_htmt)
   htmt_cols <- ncol(original_htmt)
   start <- end + 1L
   end <- start + (htmt_rows * htmt_cols) - 1L
-  boot_htmt <- array(bootmatrix[start:end, , drop = FALSE], dim = c(htmt_rows, htmt_cols, valid_n), dimnames = list(rownames(original_htmt), colnames(original_htmt), seq_len(valid_n)))
+  boot_htmt <- array(bootmatrix[start:end, , drop = FALSE], dim = c(htmt_rows, htmt_cols, valid_n), dimnames = list(rownames(original_htmt), colnames(original_htmt), valid_position_names))
 
   start <- end + 1L
   end <- start + (path_rows * path_cols) - 1L
-  boot_total_paths <- array(bootmatrix[start:end, , drop = FALSE], dim = c(path_rows, path_cols, valid_n), dimnames = list(rownames(original_total), colnames(original_total), seq_len(valid_n)))
+  boot_total_paths <- array(bootmatrix[start:end, , drop = FALSE], dim = c(path_rows, path_cols, valid_n), dimnames = list(rownames(original_total), colnames(original_total), valid_position_names))
 
   boot_summary <- list(
-    nboot = valid_n,
-    requested_nboot = nboot,
-    timeout_failures = sum(failure_reasons == "timeout"),
-    estimation_failures = sum(failure_reasons == "estimation"),
     bootstrapped_paths = seminr:::parse_boot_array(seminr_model$path_coef, boot_paths, alpha = .05),
     bootstrapped_weights = seminr:::parse_boot_array(seminr_model$outer_weights, boot_weights, alpha = .05),
     bootstrapped_loadings = seminr:::parse_boot_array(seminr_model$outer_loadings, boot_loadings, alpha = .05),
@@ -420,6 +591,16 @@ structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, se
       alpha = .05
     )
   )
+  boot_summary <- structural_canvas_pls_bootstrap_contract_metadata(boot_summary, validity, failure_reasons, which(valid), seed)
+  if (!isTRUE(validity$adequate)) {
+    inferential_tables <- c(
+      "bootstrapped_paths", "bootstrapped_weights", "bootstrapped_loadings",
+      "bootstrapped_HTMT", "bootstrapped_total_paths", "bootstrapped_total_indirect_paths"
+    )
+    for (name in inferential_tables) {
+      boot_summary[[name]] <- structural_canvas_pls_bootstrap_suppress_inference(boot_summary[[name]])
+    }
+  }
   class(boot_summary) <- "summary.boot_seminr_model"
   boot_summary
 }
@@ -434,16 +615,9 @@ structural_canvas_run_pls_bootstrap <- function(analysis_type, pls_bootstrap, re
       value = .05,
       detail = paste0(pls_bootstrap, " seminr bootstrap resamples", if (use_plsc) " with PLSc correction" else "")
     )
-    boot <- if (use_plsc) {
-      structural_canvas_run_plsc_bootstrap(result$fit, pls_bootstrap, pls_seed)
-    } else {
-      seminr::bootstrap_model(
-        seminr_model = result$fit,
-        nboot = pls_bootstrap,
-        cores = 1,
-        seed = as.integer(pls_seed %||% default_seed())
-      )
-    }
+    boot <- structural_canvas_run_plsc_bootstrap(
+      result$fit, pls_bootstrap, pls_seed, apply_plsc = use_plsc
+    )
     structural_canvas_set_progress(
       value = .90,
       detail = "Preparing PLS-SEM bootstrap summaries"

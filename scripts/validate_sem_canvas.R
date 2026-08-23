@@ -7,6 +7,17 @@ if (!requireNamespace("seminr", quietly = TRUE)) {
   stop("seminr is required for PLS-SEM validation.")
 }
 
+decision_rules_source <- paste(readLines(file.path("docs", "SEM_DECISION_RULES_V1_KO.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+installer_checklist_source <- paste(readLines(file.path("docs", "INSTALLER_REGRESSION_CHECKLIST_2026-08-22_KO.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+stopifnot(
+  grepl("새 SEM/CB-SEM 분석의 경로·간접·총효과 bootstrap 기본값은 5,000회", decision_rules_source, fixed = TRUE),
+  grepl("independent_cross_sectional", decision_rules_source, fixed = TRUE),
+  grepl("복합표본·군집·종단 설계를 지원하거나 그 분산을 올바르게 추정했다는 주장이 아니다", decision_rules_source, fixed = TRUE),
+  grepl("Model_Syntax", installer_checklist_source, fixed = TRUE),
+  grepl("Analysis_Record", installer_checklist_source, fixed = TRUE),
+  grepl("R quantile type", installer_checklist_source, fixed = TRUE)
+)
+
 holzinger_swineford <- utils::read.csv(
   file.path("sample", "HolzingerSwineford1939.csv"),
   check.names = FALSE, stringsAsFactors = FALSE
@@ -1015,6 +1026,7 @@ sem_htmt_bootstrap <- structural_canvas_run_htmt_bootstrap("sem", 8L, sem, data,
 stopifnot(is.data.frame(sem_htmt_bootstrap))
 stopifnot(nrow(sem_htmt_bootstrap) == 1L)
 stopifnot(sem_htmt_bootstrap[["Requested replicates"]][[1L]] == 8L)
+stopifnot(identical(sem_htmt_bootstrap[["Quantile type"]][[1L]], "R type 6"))
 
 set.seed(20260821)
 group_n <- 220L
@@ -1110,7 +1122,8 @@ cbsem_effect_bootstrap <- structural_canvas_effect_bootstrap(
 )
 stopifnot(is.data.frame(cbsem_effect_bootstrap))
 stopifnot(any(cbsem_effect_bootstrap$op == ":="))
-stopifnot(all(c("lower", "upper", "p", "beta_estimate", "beta_lower", "beta_upper", "beta_p", "beta_valid", "valid", "requested", "valid_percent", "status") %in% names(cbsem_effect_bootstrap)))
+stopifnot(all(c("lower", "upper", "p", "beta_estimate", "beta_lower", "beta_upper", "beta_p", "beta_valid", "valid", "requested", "valid_percent", "ci_method", "quantile_type", "status") %in% names(cbsem_effect_bootstrap)))
+stopifnot(all(cbsem_effect_bootstrap$quantile_type == 6L))
 stopifnot(all(cbsem_effect_bootstrap$requested == 30L))
 stopifnot(effect_progress_events[[1L]][["done"]] == 0L)
 stopifnot(tail(effect_progress_events, 1L)[[1L]][["done"]] == 30L)
@@ -1132,7 +1145,7 @@ if (requireNamespace("callr", quietly = TRUE)) {
   effect_initial_progress <- readRDS(cancellable_effect_job$progress_file)
   stopifnot(
     cancellable_effect_job$process$is_alive(),
-    identical(effect_initial_progress$phase, "starting"),
+    effect_initial_progress$phase %in% c("starting", "loading_engine", "preparing", "resampling", "screening"),
     identical(effect_initial_progress$total, 100L)
   )
   structural_canvas_stop_effect_bootstrap_job(cancellable_effect_job)
@@ -1172,9 +1185,14 @@ stopifnot(all(c(
 ) %in% names(cbsem_mediation_sheets)))
 cbsem_mediation_audit <- structural_canvas_audit_manifest(cbsem_mediation_bundle, "cbsem")
 stopifnot(
-  identical(cbsem_mediation_audit$schema$version, "1.6"),
+  identical(cbsem_mediation_audit$schema$version, "1.7"),
   grepl("recorded seed", cbsem_mediation_audit$resampling$reproducibility_policy$requirement, fixed = TRUE),
   grepl("data and model fingerprints", cbsem_mediation_audit$resampling$reproducibility_policy$additional_conditions, fixed = TRUE),
+  grepl("quantile type", cbsem_mediation_audit$resampling$reproducibility_policy$quantile_definition, fixed = TRUE),
+  identical(cbsem_mediation_audit$resampling$structural_effects$ci_method, "bias_corrected"),
+  identical(cbsem_mediation_audit$resampling$structural_effects$quantile_type, 6L),
+  identical(cbsem_mediation_audit$resampling$reliability$quantile_type, 6L),
+  identical(cbsem_mediation_audit$resampling$htmt$quantile_type, 6L),
   identical(cbsem_mediation_audit$decision$causal_interpretation$status, "Causal identification not established"),
   isTRUE(cbsem_mediation_audit$decision$causal_interpretation$indirect_chain_detected),
   identical(cbsem_mediation_audit$data_fingerprints$analysis$rows, nrow(mediation_data)),
@@ -1196,8 +1214,9 @@ on.exit(unlink(audit_file), add = TRUE)
 structural_canvas_write_audit_manifest(cbsem_mediation_bundle, audit_file, "cbsem")
 audit_roundtrip <- jsonlite::read_json(audit_file, simplifyVector = TRUE)
 stopifnot(
-  identical(audit_roundtrip$schema$version, "1.6"),
+  identical(audit_roundtrip$schema$version, "1.7"),
   grepl("recorded seed", audit_roundtrip$resampling$reproducibility_policy$requirement, fixed = TRUE),
+  identical(as.integer(audit_roundtrip$resampling$structural_effects$quantile_type), 6L),
   identical(audit_roundtrip$data_fingerprints$analysis$content_sha256, cbsem_mediation_audit$data_fingerprints$analysis$content_sha256)
 )
 cbsem_mediation_result <- function() cbsem_mediation_bundle
@@ -1640,6 +1659,19 @@ stopifnot(
 
 pls_bootstrap <- structural_canvas_run_pls_bootstrap("plssem", 30L, pls, 24680L)
 stopifnot(is.list(pls_bootstrap))
+stopifnot(
+  identical(pls_bootstrap$nboot, 30L),
+  identical(pls_bootstrap$requested_nboot, 30L),
+  identical(pls_bootstrap$valid_ratio, 1),
+  identical(pls_bootstrap$minimum_valid_ratio, .80),
+  identical(pls_bootstrap$minimum_valid_n, 24L),
+  identical(pls_bootstrap$inference_available, TRUE),
+  identical(pls_bootstrap$bootstrap_status, "Adequate"),
+  identical(pls_bootstrap$invalid_statistic_failures, 0L),
+  identical(pls_bootstrap$valid_positions, seq_len(30L)),
+  identical(pls_bootstrap$seed, 24680L),
+  identical(pls_bootstrap$rng, "L'Ecuyer-CMRG independent stream per requested position")
+)
 stopifnot(length(pls_bootstrap$bootstrapped_paths) > 0L)
 stopifnot(length(pls_bootstrap$bootstrapped_loadings) > 0L)
 stopifnot(length(pls_bootstrap$bootstrapped_weights) > 0L)
@@ -1661,7 +1693,7 @@ plsc_bootstrap <- structural_canvas_run_pls_bootstrap("plssem", 5L, plsc, 13579L
 plsc_bootstrap_repeat <- structural_canvas_run_pls_bootstrap("plssem", 5L, plsc, 13579L)
 stopifnot(is.list(plsc_bootstrap))
 stopifnot(identical(plsc_bootstrap$requested_nboot, 5L))
-stopifnot(all(c("timeout_failures", "estimation_failures") %in% names(plsc_bootstrap)))
+stopifnot(all(c("timeout_failures", "estimation_failures", "invalid_statistic_failures", "valid_ratio", "minimum_valid_ratio", "inference_available") %in% names(plsc_bootstrap)))
 stopifnot(length(plsc_bootstrap$bootstrapped_paths) > 0L)
 stopifnot(length(plsc_bootstrap$bootstrapped_loadings) > 0L)
 stopifnot(length(plsc_bootstrap$bootstrapped_weights) > 0L)
@@ -1680,6 +1712,8 @@ pls_boot_result <- function() pls_boot_bundle
 pls_boot_reporting <- structural_canvas_reporting_context_rows(pls_boot_bundle, "plssem")
 stopifnot(grepl("PLS bootstrap R=30", pls_boot_reporting$Value[pls_boot_reporting$Item == "Bootstrap settings"], fixed = TRUE))
 stopifnot(grepl("seed=24680", pls_boot_reporting$Value[pls_boot_reporting$Item == "Bootstrap settings"], fixed = TRUE))
+stopifnot(grepl("valid=30/30", pls_boot_reporting$Value[pls_boot_reporting$Item == "Bootstrap settings"], fixed = TRUE))
+stopifnot(grepl("whole-draw minimum=80%", pls_boot_reporting$Value[pls_boot_reporting$Item == "Bootstrap settings"], fixed = TRUE))
 pls_boot_fit <- structural_canvas_result_table("fit", pls_boot_result, "plssem", labels_fn, language_fn)
 pls_boot_fit_bootstrap <- structural_canvas_result_table("fit_bootstrap", pls_boot_result, "plssem", labels_fn, language_fn)
 pls_boot_validity <- structural_canvas_result_table("validity", pls_boot_result, "plssem", labels_fn, language_fn)

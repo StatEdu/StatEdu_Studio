@@ -46,20 +46,30 @@ structural_canvas_reporting_bootstrap_label <- function(bundle, analysis_type) {
     pls_r <- suppressWarnings(as.integer(bundle$pls_bootstrap %||% 0L))
     if (is.finite(pls_r) && pls_r > 0L) {
       pls_algorithm <- bundle$diagnostics$estimator %||% bundle$estimator %||% "PLS"
-      requested <- c(requested, paste0(pls_algorithm, " bootstrap R=", pls_r, ", seed=", bundle$pls_seed %||% "not recorded"))
+      bootstrap <- bundle$pls_bootstrap_result %||% list()
+      actual <- suppressWarnings(as.integer(bootstrap$nboot %||% 0L))
+      valid_ratio <- suppressWarnings(as.numeric(bootstrap$valid_ratio %||% NA_real_))
+      status <- as.character(bootstrap$bootstrap_status %||% if (is.finite(valid_ratio) && valid_ratio >= .80) "Adequate" else "Not recorded")
+      rng <- as.character(bootstrap$rng %||% "L'Ecuyer-CMRG independent stream per requested position")
+      actual_label <- paste0(", valid=", if (is.finite(actual)) actual else "NA", "/", pls_r, " (", if (is.finite(valid_ratio)) formatC(100 * valid_ratio, format = "fg", digits = 4) else "NA", "%), status=", status)
+      requested <- c(requested, paste0(pls_algorithm, " bootstrap R=", pls_r, ", seed=", bundle$pls_seed %||% "not recorded", ", RNG=", rng, actual_label, ", whole-draw minimum=80%"))
     }
   } else {
     rel_r <- suppressWarnings(as.integer(bundle$reliability_bootstrap %||% 0L))
     htmt_r <- suppressWarnings(as.integer(bundle$htmt_bootstrap %||% 0L))
     bs_r <- suppressWarnings(as.integer(bundle$bollen_stine_bootstrap %||% 0L))
     if (is.finite(rel_r) && rel_r > 0L) {
-      requested <- c(requested, paste0("Reliability/AVE R=", rel_r, ", CI=", bundle$reliability_ci_method %||% "bias_corrected", ", seed=", bundle$reliability_seed %||% "not recorded"))
+      requested <- c(requested, paste0("Reliability/AVE R=", rel_r, ", CI=", bundle$reliability_ci_method %||% "bias_corrected", ", quantile=R type ", structural_canvas_bootstrap_quantile_type(bundle$reliability_ci_method %||% "bias_corrected", "reliability"), ", seed=", bundle$reliability_seed %||% "not recorded"))
     }
     if (is.finite(htmt_r) && htmt_r > 0L) {
-      requested <- c(requested, paste0("HTMT R=", htmt_r, ", CI=", bundle$htmt_ci_method %||% "bias_corrected", ", seed=", bundle$htmt_seed %||% "not recorded"))
+      requested <- c(requested, paste0("HTMT R=", htmt_r, ", CI=", bundle$htmt_ci_method %||% "bias_corrected", ", quantile=R type ", structural_canvas_bootstrap_quantile_type(bundle$htmt_ci_method %||% "bias_corrected", "htmt"), ", seed=", bundle$htmt_seed %||% "not recorded"))
     }
     if (is.finite(bs_r) && bs_r > 0L) {
       requested <- c(requested, paste0("Bollen-Stine R=", bs_r, ", seed=", bundle$bollen_stine_seed %||% "not recorded"))
+    }
+    effect_r <- suppressWarnings(as.integer(bundle$effect_bootstrap %||% 0L))
+    if (is.finite(effect_r) && effect_r > 0L) {
+      requested <- c(requested, paste0("Path/indirect/total-effect R=", effect_r, ", CI=", bundle$effect_bootstrap_ci_method %||% "bias_corrected", ", quantile=R type ", structural_canvas_bootstrap_quantile_type(bundle$effect_bootstrap_ci_method %||% "bias_corrected", "structural_effects"), ", seed=", bundle$effect_bootstrap_seed %||% "not recorded"))
     }
   }
   if (!length(requested)) "Not requested" else paste(requested, collapse = "; ")
@@ -600,9 +610,12 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
     }
     if (is.null(result) || !nrow(result)) return(tags$p(class = "structural-result-note", if (ko) "경로·간접·총효과 bootstrap에서 사용 가능한 반복 적합을 얻지 못했습니다." else "No usable replicate fits were obtained for the path, indirect, and total-effect bootstrap."))
     interval_label <- if (identical(as.character(bundle$effect_bootstrap_ci_method %||% "bias_corrected"), "percentile")) "percentile" else "bias-corrected (BC)"
+    quantile_type <- structural_canvas_bootstrap_quantile_type(bundle$effect_bootstrap_ci_method %||% "bias_corrected", "structural_effects")
     if (!"beta_status" %in% names(result)) result$beta_status <- ifelse(result$op == "modmed", "Not reported: product-indicator index is scale-dependent", "Not available")
-    diagnostics <- unique(result[, c("valid", "requested", "valid_percent", "status"), drop = FALSE])
-    names(diagnostics) <- c("Valid replicates", "Requested replicates", "Valid %", "Status")
+    if (!"quantile_type" %in% names(result)) result$quantile_type <- quantile_type
+    diagnostics <- unique(result[, c("ci_method", "quantile_type", "valid", "requested", "valid_percent", "status"), drop = FALSE])
+    names(diagnostics) <- c("CI method", "Quantile type", "Valid replicates", "Requested replicates", "Valid %", "Status")
+    diagnostics[["Quantile type"]] <- paste0("R type ", diagnostics[["Quantile type"]])
     moderated <- result[result$op == "modmed", c("lhs", "rhs", "estimate", "lower", "upper", "p", "beta_status", "valid", "requested", "valid_percent", "status"), drop = FALSE]
     if (nrow(moderated)) names(moderated) <- c("Indirect path", "Moderator", "Index", "95% CI lower", "95% CI upper", "Bootstrap p", "Standardized index", "Valid replicates", "Requested replicates", "Valid %", "Status")
     div(
@@ -613,7 +626,7 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
         tags$h5(if (ko) "조절된 매개효과 index" else "Index of moderated mediation"),
         structural_canvas_basic_html_table(moderated, class = "table table-striped table-bordered")
       ),
-      tags$p(class = "structural-result-note", if (ko) paste0("사례 재표집 ", interval_label, " 95% CI; seed = ", bundle$effect_bootstrap_seed, ". 직접효과, 특정 간접효과, 간접효과와 총효과의 B와 beta 구간은 각 유효 반복에서 다시 계산됩니다. product-indicator 잠재조절모형의 조절된 매개효과 index는 척도 의존적이며 유일한 표준화 정의가 없으므로 비표준화 index와 bootstrap CI를 주 결과로 보고하고 표준화 index는 보고하지 않습니다. 부적합·미수렴 반복은 제외하며 유효율이 80% 미만이면 주의가 필요합니다.") else paste0("Case-resampling ", interval_label, " 95% CIs; seed = ", bundle$effect_bootstrap_seed, ". B and beta intervals for direct effects, specific indirect effects, indirect effects, and total effects are recomputed in every valid replicate. The moderated-mediation index in a product-indicator latent-moderation model is scale-dependent and has no unique standardization, so the unstandardized index with its bootstrap CI is the primary result and a standardized index is not reported. Inadmissible or nonconverged replicates are excluded; valid rates below 80% require caution."))
+      tags$p(class = "structural-result-note", if (ko) paste0("사례 재표집 ", interval_label, " 95% CI(R quantile type ", quantile_type, "); seed = ", bundle$effect_bootstrap_seed, ". 직접효과, 특정 간접효과, 간접효과와 총효과의 B와 beta 구간은 각 유효 반복에서 다시 계산됩니다. product-indicator 잠재조절모형의 조절된 매개효과 index는 척도 의존적이며 유일한 표준화 정의가 없으므로 비표준화 index와 bootstrap CI를 주 결과로 보고하고 표준화 index는 보고하지 않습니다. 부적합·미수렴 반복은 제외하며 유효율이 80% 미만이면 주의가 필요합니다.") else paste0("Case-resampling ", interval_label, " 95% CIs (R quantile type ", quantile_type, "); seed = ", bundle$effect_bootstrap_seed, ". B and beta intervals for direct effects, specific indirect effects, indirect effects, and total effects are recomputed in every valid replicate. The moderated-mediation index in a product-indicator latent-moderation model is scale-dependent and has no unique standardization, so the unstandardized index with its bootstrap CI is the primary result and a standardized index is not reported. Inadmissible or nonconverged replicates are excluded; valid rates below 80% require caution."))
     )
   })
   output[[paste0(prefix, "_result_redundancy")]] <- renderUI({
@@ -679,12 +692,24 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
       ci_table <- result_table("measurement_bootstrap")
       if (!is.data.frame(ci_table) || !nrow(ci_table)) return(NULL)
       value_columns <- setdiff(names(ci_table), c("Construct", "Construct type", "Indicator", "Mode"))
-      if (!length(value_columns) || !any(nzchar(as.character(unlist(ci_table[value_columns], use.names = FALSE))))) return(NULL)
       ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+      bundle <- fit_result()
+      bootstrap <- bundle$pls_bootstrap_result %||% list()
+      inference_available <- isTRUE(bootstrap$inference_available)
+      valid_n <- suppressWarnings(as.integer(bootstrap$nboot %||% 0L))
+      requested_n <- suppressWarnings(as.integer(bootstrap$requested_nboot %||% bundle$pls_bootstrap %||% 0L))
+      minimum_ratio <- suppressWarnings(as.numeric(bootstrap$minimum_valid_ratio %||% .80))
+      bootstrap_status <- as.character(bootstrap$bootstrap_status %||% "Not recorded")[[1L]]
+      failure_message <- as.character(bootstrap$failure_message %||% "")
+      failure_message <- if (length(failure_message)) trimws(failure_message[[1L]]) else ""
+      if (!is.finite(requested_n) || requested_n <= 0L) return(NULL)
+      has_values <- length(value_columns) && any(nzchar(as.character(unlist(ci_table[value_columns], use.names = FALSE))))
+      if (!has_values && inference_available) return(NULL)
       return(tagList(
         tags$h5(if (ko) paste0("표 ", table_number("measurement"), " 보조: PLS 측정모형 부트스트랩") else paste0("Supplementary Table ", table_number("measurement"), ": PLS measurement bootstrap")),
-        structural_canvas_basic_html_table(ci_table, class = "table table-striped table-bordered structural-pls-measurement-bootstrap-table"),
-        tags$p(class = "structural-result-note", if (ko) "outer loading과 outer weight의 percentile bootstrap CI, t, p 값과 각 검정군별 BH 보정 p값입니다. seminr가 반환한 항목만 표시됩니다." else "Percentile bootstrap CI, t, raw p values, and family-specific BH-adjusted p values for outer loadings and outer weights are shown when seminr returns them.")
+        if (has_values) structural_canvas_basic_html_table(ci_table, class = "table table-striped table-bordered structural-pls-measurement-bootstrap-table"),
+        if (!inference_available) tags$p(class = "structural-result-note structural-result-warning", if (ko) paste0("PLS bootstrap 상태: ", bootstrap_status, ". 유효 재표집은 ", valid_n, "/", requested_n, "회로 최소 ", formatC(100 * minimum_ratio, format = "fg", digits = 3), "% 기준에 미달하여 outer loading·weight의 bootstrap SE, CI, t, p를 보고하지 않습니다.", if (nzchar(failure_message)) paste0(" 상세: ", failure_message) else "") else paste0("PLS bootstrap status: ", bootstrap_status, ". Only ", valid_n, "/", requested_n, " resamples were valid, below the ", formatC(100 * minimum_ratio, format = "fg", digits = 3), "% minimum; outer-loading and weight bootstrap SE, CI, t, and p values are not reported.", if (nzchar(failure_message)) paste0(" Detail: ", failure_message) else "")),
+        if (inference_available) tags$p(class = "structural-result-note", if (ko) "outer loading과 outer weight의 percentile bootstrap CI, t, p 값과 각 검정군별 BH 보정 p값입니다. 전체 통계량 계약을 통과한 반복만 사용합니다." else "Percentile bootstrap CI, t, raw p values, and family-specific BH-adjusted p values for outer loadings and outer weights use only whole-draw contract-valid resamples.")
       ))
     }
     ci_table <- result_table("measurement_ci")

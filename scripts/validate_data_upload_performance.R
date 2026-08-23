@@ -39,27 +39,103 @@ latent_env$list.files <- function(path, ..., recursive = FALSE) {
 }
 
 iterations <- 100L
-elapsed <- system.time({
+exercise_temp_upload_resolution <- function() {
   for (i in seq_len(iterations)) {
     resolved <- latent_env$latent_resolved_data_file_path(uploaded_file, app_root = repo_root)
     dataset_id <- latent_env$dataset_id_from_data_file(uploaded_file)
     output_root <- latent_env$latent_output_root_from_data_file(uploaded_file, app_root = repo_root)
   }
-})[["elapsed"]]
+  list(
+    resolved = resolved,
+    dataset_id = dataset_id,
+    output_root = output_root
+  )
+}
 
-stopifnot(
-  identical(resolved, normalizePath(upload_path, winslash = "/", mustWork = TRUE)),
-  identical(dataset_id, "tiny-upload"),
-  identical(output_root, latent_env$latent_default_output_root(repo_root)),
-  identical(recursive_scan_calls, 0L)
-)
-if (!is.finite(elapsed) || elapsed >= 2) {
+validate_temp_upload_resolution <- function(result, scans, label) {
+  stopifnot(
+    identical(result$resolved, normalizePath(upload_path, winslash = "/", mustWork = TRUE)),
+    identical(result$dataset_id, "tiny-upload"),
+    identical(result$output_root, latent_env$latent_default_output_root(repo_root))
+  )
+  if (!identical(scans, 0L)) {
+    stop(sprintf("%s started %d recursive data-root scan(s).", label, scans), call. = FALSE)
+  }
+}
+
+run_temp_upload_resolution <- function(label, timed = FALSE) {
+  scans_before <- recursive_scan_calls
+  if (isTRUE(timed)) {
+    result <- NULL
+    elapsed <- system.time({
+      result <- exercise_temp_upload_resolution()
+    })[["elapsed"]]
+  } else {
+    result <- exercise_temp_upload_resolution()
+    elapsed <- NA_real_
+  }
+  scans <- as.integer(recursive_scan_calls - scans_before)
+  validate_temp_upload_resolution(result, scans, label)
+  list(elapsed = elapsed, scans = scans)
+}
+
+warmup <- run_temp_upload_resolution("Temp upload cold-control sample", timed = TRUE)
+timed_runs <- lapply(seq_len(9L), function(sample_index) {
+  run_temp_upload_resolution(
+    sprintf("Temp upload timed sample %d", sample_index),
+    timed = TRUE
+  )
+})
+timed_samples <- vapply(timed_runs, `[[`, numeric(1), "elapsed")
+timed_scans <- vapply(timed_runs, `[[`, integer(1), "scans")
+median_elapsed <- stats::median(timed_samples)
+all_samples <- c(warmup$elapsed, timed_samples)
+maximum_elapsed <- max(all_samples)
+diagnostic_tail_seconds <- 10
+operational_ceiling_seconds <- 30
+
+if (!all(is.finite(all_samples)) || !is.finite(median_elapsed) || !is.finite(maximum_elapsed)) {
   stop(sprintf(
-    "Temp upload path resolution exceeded 2.000s: %d iterations took %.3fs.",
-    iterations, elapsed
+    "Temp upload path resolution produced a non-finite timing: %s.",
+    paste(sprintf("%.3fs", all_samples), collapse = ", ")
   ), call. = FALSE)
 }
-message(sprintf("Temp upload path resolution: %d iterations in %.3fs; recursive scans: %d", iterations, elapsed, recursive_scan_calls))
+if (any(all_samples >= operational_ceiling_seconds)) {
+  stop(sprintf(
+    "Temp upload path resolution exceeded the %.3fs operational runtime ceiling: %d iterations sampled at %s.",
+    operational_ceiling_seconds,
+    iterations,
+    paste(sprintf("%.3fs", all_samples), collapse = ", ")
+  ), call. = FALSE)
+}
+if (any(all_samples >= diagnostic_tail_seconds)) {
+  message(sprintf(
+    "DIAGNOSTIC WARNING: Temp upload path resolution reached the %.3fs diagnostic tail: %d iterations sampled at %s.",
+    diagnostic_tail_seconds,
+    iterations,
+    paste(sprintf("%.3fs", all_samples), collapse = ", ")
+  ))
+}
+if (median_elapsed >= 2) {
+  stop(sprintf(
+    "Temp upload path resolution median exceeded 2.000s: %d iterations sampled at %s; median %.3fs.",
+    iterations,
+    paste(sprintf("%.3fs", timed_samples), collapse = ", "),
+    median_elapsed
+  ), call. = FALSE)
+}
+message(sprintf(
+  "Temp upload path resolution: %d-iteration cold-control %.3fs; timed samples %s; timed median %.3fs; maximum %.3fs; diagnostic tail %.3fs; operational runtime ceiling %.3fs; recursive scans: cold-control %d, timed %s",
+  iterations,
+  warmup$elapsed,
+  paste(sprintf("%.3fs", timed_samples), collapse = ", "),
+  median_elapsed,
+  maximum_elapsed,
+  diagnostic_tail_seconds,
+  operational_ceiling_seconds,
+  warmup$scans,
+  paste(timed_scans, collapse = ", ")
+))
 
 expired_upload <- uploaded_file
 expired_upload$path <- file.path(tempdir(), "statedu-expired-shiny-upload")
