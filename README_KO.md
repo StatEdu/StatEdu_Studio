@@ -91,15 +91,15 @@ powershell -ExecutionPolicy Bypass -File scripts\validate_stabilization.ps1 -Ful
 Release candidate 준비 전에는 Shiny 및 Electron smoke check를 실행합니다.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\release_preflight.ps1
-powershell -ExecutionPolicy Bypass -File scripts\smoke_shiny_app.ps1
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\release_preflight.ps1
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\smoke_shiny_app.ps1
 powershell -ExecutionPolicy Bypass -File scripts\smoke_electron_release.ps1 -SkipUnpackedChecks
 ```
 
 Electron packaging이 완료되면 full packaged-output preflight를 실행합니다.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\release_preflight.ps1 -FullElectronSmoke
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\release_preflight.ps1 -FullElectronSmoke
 ```
 
 자동 검사 통과 후에는 [docs/RELEASE_MANUAL_QA.md](docs/RELEASE_MANUAL_QA.md)를 완료하고, 완료된 QA 기록을 release notes 및 validation artifacts와 함께 보관합니다.

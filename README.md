@@ -95,15 +95,15 @@ powershell -ExecutionPolicy Bypass -File scripts\validate_stabilization.ps1 -Ful
 Run the Shiny and Electron smoke checks before preparing a release candidate:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\release_preflight.ps1
-powershell -ExecutionPolicy Bypass -File scripts\smoke_shiny_app.ps1
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\release_preflight.ps1
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\smoke_shiny_app.ps1
 powershell -ExecutionPolicy Bypass -File scripts\smoke_electron_release.ps1 -SkipUnpackedChecks
 ```
 
 After Electron packaging is complete, run the full packaged-output preflight:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\release_preflight.ps1 -FullElectronSmoke
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\release_preflight.ps1 -FullElectronSmoke
 ```
 
 After automated checks pass, complete

@@ -45,6 +45,8 @@ smartpls_evidence_finalizer <- read_text("scripts/finalize_pls_external_evidence
 stabilization <- read_text("scripts/validate_stabilization.ps1")
 preflight <- read_text("scripts/release_preflight.ps1")
 build <- read_text("scripts/build_electron_beta.ps1")
+readme_en <- read_text("README.md")
+readme_ko <- read_text("README_KO.md")
 release_checklist <- read_text("docs/RELEASE_CHECKLIST.md")
 manual_qa <- read_text("docs/RELEASE_MANUAL_QA.md")
 promotion <- read_text("docs/RELEASE_1_2_3_PROMOTION_CHECKLIST.md")
@@ -495,6 +497,52 @@ require_contains(
   "scripts\\validate_installer_regressions.ps1",
   "focused gate in release preflight"
 )
+require_contains(
+  preflight,
+  '$currentPowerShellExecutable = (Get-Process -Id $PID -ErrorAction Stop).Path',
+  "release preflight current PowerShell host resolution"
+)
+require_contains(
+  preflight,
+  '(Get-Command Start-Process -ErrorAction Stop).Parameters.ContainsKey("Environment")',
+  "release preflight PowerShell host capability guard"
+)
+require_contains(
+  preflight,
+  '& $script:currentPowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $Path @Arguments',
+  "release preflight child scripts use the current PowerShell host"
+)
+require_absent(preflight, "& powershell -ExecutionPolicy Bypass", "release preflight Windows PowerShell downgrade")
+require_absent(preflight, "& powershell.exe", "release preflight fixed PowerShell executable")
+release_readmes <- list(English = readme_en, Korean = readme_ko)
+for (readme_name in names(release_readmes)) {
+  release_readme <- release_readmes[[readme_name]]
+  require_contains(
+    release_readme,
+    "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\release_preflight.ps1\n",
+    sprintf("%s README current-host release preflight command", readme_name)
+  )
+  require_contains(
+    release_readme,
+    "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\smoke_shiny_app.ps1\n",
+    sprintf("%s README current-host Shiny smoke command", readme_name)
+  )
+  require_contains(
+    release_readme,
+    "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\release_preflight.ps1 -FullElectronSmoke\n",
+    sprintf("%s README current-host full Electron preflight command", readme_name)
+  )
+  require_absent(
+    release_readme,
+    "powershell -ExecutionPolicy Bypass -File scripts\\release_preflight.ps1",
+    sprintf("%s README legacy Windows PowerShell preflight command", readme_name)
+  )
+  require_absent(
+    release_readme,
+    "powershell -ExecutionPolicy Bypass -File scripts\\smoke_shiny_app.ps1",
+    sprintf("%s README legacy Windows PowerShell Shiny smoke command", readme_name)
+  )
+}
 require_contains(
   build,
   "scripts\\validate_installer_regressions.ps1",

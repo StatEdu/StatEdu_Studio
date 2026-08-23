@@ -13,13 +13,13 @@
 2. 릴리스 후보를 만들기 전 전체 검증을 실행한다.
 
    ```powershell
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\release_preflight.ps1
+   pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\release_preflight.ps1
    ```
 
 3. 설치본을 만든 뒤 Electron 전체 smoke를 포함해 다시 실행한다.
 
    ```powershell
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\release_preflight.ps1 -FullElectronSmoke
+   pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\release_preflight.ps1 -FullElectronSmoke
    ```
 
 4. 아래 수동 점검 결과와 측정 시간을 현재 릴리스의 Manual QA Record 및 Packaged Validation Notes에 기록한다.
