@@ -42,6 +42,17 @@ runtime_budget <- function(name, default) {
   value
 }
 
+runtime_budget_capped <- function(name, default, maximum) {
+  value <- runtime_budget(name, default)
+  if (value > maximum) {
+    stop(sprintf(
+      "%s cannot exceed its strict %.3f-second cap (received %.3fs).",
+      name, maximum, value
+    ), call. = FALSE)
+  }
+  value
+}
+
 elapsed_seconds <- function(started_at) {
   unname(proc.time()[["elapsed"]] - started_at)
 }
@@ -119,9 +130,9 @@ if (worker_budget > 20) {
 }
 worker_hard_max <- 25
 runtime_sample_count <- 3L
-read_budget <- runtime_budget("STATEDU_RUNTIME_RESULT_READ_MAX_SECONDS", 1)
-render_budget <- runtime_budget("STATEDU_RUNTIME_RESULT_RENDER_MAX_SECONDS", 5)
-finalize_budget <- runtime_budget("STATEDU_RUNTIME_FINALIZE_MAX_SECONDS", 5)
+read_budget <- runtime_budget_capped("STATEDU_RUNTIME_RESULT_READ_MAX_SECONDS", 1, 1)
+render_budget <- runtime_budget_capped("STATEDU_RUNTIME_RESULT_RENDER_MAX_SECONDS", 5, 5)
+finalize_budget <- runtime_budget_capped("STATEDU_RUNTIME_FINALIZE_MAX_SECONDS", 5, 5)
 
 message(sprintf(
   paste0(
@@ -452,9 +463,31 @@ message(sprintf(
 ))
 runtime_samples <- vector("list", runtime_sample_count)
 reference_result <- NULL
+result_render_elapsed <- NA_real_
 for (sample_index in seq_len(runtime_sample_count)) {
   sample <- run_runtime_sample(sample_index, reference_result)
-  if (is.null(reference_result)) reference_result <- sample$result
+  if (is.null(reference_result)) {
+    reference_result <- sample$result
+
+    # Production renders after one fresh worker result is read and its job is
+    # cleaned up. Measure that same order before starting timing repeats 2/3.
+    # The render remains uncached, single-shot, and subject to the strict 5s SLA.
+    message("Rendering the first fresh worker result before independent timing repeats...")
+    render_result <- reference_result
+    render_result$custom_model_canvas <- TRUE
+    result_render_started <- proc.time()[["elapsed"]]
+    result_html <- htmltools::renderTags(
+      mediation_moderation_result_ui(render_result, language = "en", dash_nonsignificant = TRUE)
+    )$html
+    result_render_elapsed <- elapsed_seconds(result_render_started)
+    if (!is.finite(result_render_elapsed) || result_render_elapsed > render_budget) {
+      stop(sprintf(
+        "Fresh result HTML render exceeded %.3fs (observed %.3fs).",
+        render_budget, result_render_elapsed
+      ), call. = FALSE)
+    }
+    stopifnot(nchar(result_html, type = "bytes") > 1000L)
+  }
   sample$result <- NULL
   runtime_samples[[sample_index]] <- sample
 }
@@ -482,24 +515,9 @@ if (!is.finite(worker_max) || worker_max > worker_hard_max) {
 if (!all(vapply(runtime_samples, `[[`, logical(1), "cleanup_verified"))) {
   stop("At least one independent runtime sample did not verify process/directory cleanup.", call. = FALSE)
 }
-
-# Render the first fresh worker's exact result once. Re-rendering the same
-# deterministic result after every timing sample would only lengthen this gate;
-# one uncached render preserves the user-visible result latency contract.
-render_result <- reference_result
-render_result$custom_model_canvas <- TRUE
-result_render_started <- proc.time()[["elapsed"]]
-result_html <- htmltools::renderTags(
-  mediation_moderation_result_ui(render_result, language = "en", dash_nonsignificant = TRUE)
-)$html
-result_render_elapsed <- elapsed_seconds(result_render_started)
-if (!is.finite(result_render_elapsed) || result_render_elapsed > render_budget) {
-  stop(sprintf(
-    "Fresh result HTML render exceeded %.3fs (observed %.3fs).",
-    render_budget, result_render_elapsed
-  ), call. = FALSE)
+if (!is.finite(result_render_elapsed)) {
+  stop("The first fresh worker result was not rendered.", call. = FALSE)
 }
-stopifnot(nchar(result_html, type = "bytes") > 1000L)
 
 message(sprintf(
   paste0(

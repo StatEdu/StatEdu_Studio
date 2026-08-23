@@ -441,6 +441,11 @@ runtime_contracts <- c(
   "STATEDU_RUNTIME_RESULT_READ_MAX_SECONDS" = "result-read runtime budget",
   "STATEDU_RUNTIME_RESULT_RENDER_MAX_SECONDS" = "result-render runtime budget",
   "STATEDU_RUNTIME_FINALIZE_MAX_SECONDS" = "finalization runtime budget",
+  "runtime_budget_capped <- function(name, default, maximum)" = "strict runtime-budget ceiling helper",
+  "cannot exceed its strict %.3f-second cap (received %.3fs)" = "precise strict-cap failure",
+  "runtime_budget_capped(\"STATEDU_RUNTIME_RESULT_READ_MAX_SECONDS\", 1, 1)" = "non-overridable one-second result-read cap",
+  "runtime_budget_capped(\"STATEDU_RUNTIME_RESULT_RENDER_MAX_SECONDS\", 5, 5)" = "non-overridable five-second result-render cap",
+  "runtime_budget_capped(\"STATEDU_RUNTIME_FINALIZE_MAX_SECONDS\", 5, 5)" = "non-overridable five-second finalization cap",
   "runtime_finalize_elapsed <- function(phase_samples)" = "finalizing-to-complete interval helper",
   "complete_first_seen - finalizing_first_seen" = "complete progress boundary for finalization",
   "value >= 0 && value <= budget" = "finite nonnegative finalization budget contract",
@@ -469,17 +474,41 @@ runtime_contracts <- c(
   "worker_max <- max(worker_elapsed_values)" = "unmodified maximum statistic",
   "worker_median > worker_budget" = "historical 20-second median target",
   "worker_max > worker_hard_max" = "25-second individual hard maximum",
-  "one uncached render preserves the user-visible result latency contract" = "single fresh HTML render measurement"
+  "result_render_elapsed <- NA_real_" = "fail-closed first-render initialization",
+  "Rendering the first fresh worker result before independent timing repeats" = "production-order first render",
+  "The render remains uncached, single-shot, and subject to the strict 5s SLA" = "unweakened single-render contract",
+  "result_render_elapsed > render_budget" = "strict five-second first-render failure",
+  "Fresh result HTML render exceeded" = "fail-closed first-render error",
+  "The first fresh worker result was not rendered" = "missing first-render failure"
 )
 for (pattern in names(runtime_contracts)) {
   require_contains(runtime_regression, pattern, runtime_contracts[[pattern]])
 }
 require_contains(runtime_regression, 'runtime_budget("STATEDU_RUNTIME_BOOTSTRAP_MAX_SECONDS", 20)', "default 20-second worker budget")
-require_contains(runtime_regression, 'runtime_budget("STATEDU_RUNTIME_RESULT_READ_MAX_SECONDS", 1)', "default 1-second result-read budget")
-require_contains(runtime_regression, 'runtime_budget("STATEDU_RUNTIME_RESULT_RENDER_MAX_SECONDS", 5)', "default 5-second result-render budget")
-require_contains(runtime_regression, 'runtime_budget("STATEDU_RUNTIME_FINALIZE_MAX_SECONDS", 5)', "default 5-second finalization budget")
+require_contains(runtime_regression, 'runtime_budget_capped("STATEDU_RUNTIME_RESULT_READ_MAX_SECONDS", 1, 1)', "strict 1-second result-read budget")
+require_contains(runtime_regression, 'runtime_budget_capped("STATEDU_RUNTIME_RESULT_RENDER_MAX_SECONDS", 5, 5)', "strict 5-second result-render budget")
+require_contains(runtime_regression, 'runtime_budget_capped("STATEDU_RUNTIME_FINALIZE_MAX_SECONDS", 5, 5)', "strict 5-second finalization budget")
 require_contains(runtime_regression, "cannot exceed the historical 20-second target", "fail-closed 20-second override ceiling")
 require_contains(gate, "Exact 10,000-sample custom bootstrap robust runtime", "robust runtime gate label")
+
+runtime_loop_position <- regexpr("for (sample_index in seq_len(runtime_sample_count))", runtime_regression, fixed = TRUE)[[1L]]
+runtime_reference_position <- regexpr("if (is.null(reference_result)) {", runtime_regression, fixed = TRUE)[[1L]]
+runtime_render_position <- regexpr("result_render_started <- proc.time()[[\"elapsed\"]]", runtime_regression, fixed = TRUE)[[1L]]
+runtime_result_drop_position <- regexpr("sample$result <- NULL", runtime_regression, fixed = TRUE)[[1L]]
+runtime_aggregate_position <- regexpr("worker_elapsed_values <- vapply(runtime_samples", runtime_regression, fixed = TRUE)[[1L]]
+if (
+  any(c(runtime_loop_position, runtime_reference_position, runtime_render_position, runtime_result_drop_position, runtime_aggregate_position) < 1L) ||
+    !(runtime_loop_position < runtime_reference_position &&
+      runtime_reference_position < runtime_render_position &&
+      runtime_render_position < runtime_result_drop_position &&
+      runtime_result_drop_position < runtime_aggregate_position)
+) {
+  stop("The first fresh result must render once after sample 1 and before timing repeats 2/3.", call. = FALSE)
+}
+render_measurements <- gregexpr("result_render_started <- proc.time()[[\"elapsed\"]]", runtime_regression, fixed = TRUE)[[1L]]
+if (sum(render_measurements > 0L) != 1L) {
+  stop("The runtime gate must contain exactly one uncached HTML render measurement.", call. = FALSE)
+}
 
 message("Checking fail-closed release and build integration...")
 require_contains(
