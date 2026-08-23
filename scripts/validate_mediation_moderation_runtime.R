@@ -75,6 +75,44 @@ read_progress <- function(path) {
   tryCatch(if (file.exists(path)) suppressWarnings(readRDS(path)) else NULL, error = function(error) NULL)
 }
 
+runtime_phase_first_seen <- function(phase_samples, phase) {
+  values <- phase_samples$first_seen[phase_samples$phase == phase]
+  if (length(values) != 1L || !is.finite(values[[1L]])) return(NA_real_)
+  unname(values[[1L]])
+}
+
+runtime_finalize_elapsed <- function(phase_samples) {
+  finalizing_first_seen <- runtime_phase_first_seen(phase_samples, "finalizing")
+  complete_first_seen <- runtime_phase_first_seen(phase_samples, "complete")
+  unname(complete_first_seen - finalizing_first_seen)
+}
+
+runtime_finalize_within_budget <- function(phase_samples, budget) {
+  value <- runtime_finalize_elapsed(phase_samples)
+  is.finite(value) && value >= 0 && value <= budget
+}
+
+# A worker may remain alive briefly after publishing complete. That exit delay
+# belongs to total worker latency, not to finalizing + serializing. Conversely,
+# a genuinely long finalizing -> complete interval must fail the 5-second gate.
+synthetic_delayed_exit_phases <- data.frame(
+  phase = c("finalizing", "complete"),
+  first_seen = c(4, 5),
+  stringsAsFactors = FALSE
+)
+synthetic_delayed_worker_exit <- 20
+stopifnot(
+  identical(runtime_finalize_elapsed(synthetic_delayed_exit_phases), 1),
+  synthetic_delayed_worker_exit - runtime_phase_first_seen(synthetic_delayed_exit_phases, "complete") > 5,
+  runtime_finalize_within_budget(synthetic_delayed_exit_phases, 5)
+)
+synthetic_slow_finalize_phases <- data.frame(
+  phase = c("finalizing", "complete"),
+  first_seen = c(4, 9.001),
+  stringsAsFactors = FALSE
+)
+stopifnot(!runtime_finalize_within_budget(synthetic_slow_finalize_phases, 5))
+
 worker_budget <- runtime_budget("STATEDU_RUNTIME_BOOTSTRAP_MAX_SECONDS", 20)
 if (worker_budget > 20) {
   stop("STATEDU_RUNTIME_BOOTSTRAP_MAX_SECONDS cannot exceed the historical 20-second target.", call. = FALSE)
@@ -303,12 +341,19 @@ run_runtime_sample <- function(sample_index, reference_result = NULL) {
       sample_index, paste(missing_phases, collapse = ", ")
     ), call. = FALSE)
   }
-  finalizing_started <- phase_samples$first_seen[match("finalizing", phase_samples$phase)]
-  finalize_elapsed <- worker_elapsed - finalizing_started
-  if (!is.finite(finalize_elapsed) || finalize_elapsed > finalize_budget) {
+  complete_started <- runtime_phase_first_seen(phase_samples, "complete")
+  finalize_elapsed <- runtime_finalize_elapsed(phase_samples)
+  post_complete_exit_elapsed <- worker_elapsed - complete_started
+  if (!is.finite(finalize_elapsed) || finalize_elapsed < 0 || finalize_elapsed > finalize_budget) {
     stop(sprintf(
       "Runtime sample %s finalizing + serializing exceeded %.3fs (observed %.3fs).",
       sample_index, finalize_budget, finalize_elapsed
+    ), call. = FALSE)
+  }
+  if (!is.finite(post_complete_exit_elapsed) || post_complete_exit_elapsed < 0) {
+    stop(sprintf(
+      "Runtime sample %s had an invalid post-complete exit interval (observed %.3fs).",
+      sample_index, post_complete_exit_elapsed
     ), call. = FALSE)
   }
 
@@ -381,11 +426,12 @@ run_runtime_sample <- function(sample_index, reference_result = NULL) {
   message(sprintf(
     paste0(
       "Runtime sample %s: worker %.3fs; finalizing + serializing %.3fs; ",
-      "read %.3fs; exact seed/result=%s; process/directory cleanup=%s."
+      "post-complete exit %.3fs; read %.3fs; exact seed/result=%s; process/directory cleanup=%s."
     ),
     sample_index,
     worker_elapsed,
     finalize_elapsed,
+    post_complete_exit_elapsed,
     result_read_elapsed,
     TRUE,
     cleanup_verified
@@ -394,6 +440,7 @@ run_runtime_sample <- function(sample_index, reference_result = NULL) {
     result = result,
     worker_elapsed = worker_elapsed,
     finalize_elapsed = finalize_elapsed,
+    post_complete_exit_elapsed = post_complete_exit_elapsed,
     result_read_elapsed = result_read_elapsed,
     cleanup_verified = cleanup_verified
   )
@@ -457,7 +504,8 @@ stopifnot(nchar(result_html, type = "bytes") > 1000L)
 message(sprintf(
   paste0(
     "Runtime aggregate: worker samples=%s; median %.3fs / %.3fs historical target; ",
-    "max %.3fs / %.3fs hard ceiling; max finalize %.3fs / %.3fs; max read %.3fs / %.3fs; ",
+    "max %.3fs / %.3fs hard ceiling; max finalize-to-complete %.3fs / %.3fs; ",
+    "max post-complete exit %.3fs; max read %.3fs / %.3fs; ",
     "fresh render %.3fs / %.3fs; all exact seed/results and recursive process cleanup verified."
   ),
   paste(format(worker_elapsed_values, digits = 5, nsmall = 3), collapse = ", "),
@@ -467,6 +515,7 @@ message(sprintf(
   worker_hard_max,
   max(vapply(runtime_samples, `[[`, numeric(1), "finalize_elapsed")),
   finalize_budget,
+  max(vapply(runtime_samples, `[[`, numeric(1), "post_complete_exit_elapsed")),
   max(vapply(runtime_samples, `[[`, numeric(1), "result_read_elapsed")),
   read_budget,
   result_render_elapsed,
