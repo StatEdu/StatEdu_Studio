@@ -1,0 +1,66 @@
+{
+  "ko": [
+    "CFA·SEM·PLS-SEM/PLSc의 모형 편집, 추정, 진단과 지원되는 부트스트랩·집단 비교를 공개판에 추가했습니다. 생존분석에서 Kaplan–Meier, RMST, Cox와 지원되는 경쟁위험 분석을 제공합니다.",
+    "PDF·Word·Excel 저장을 공개판에 추가했습니다. 표지는 UI 언어를 따르며 Free는 로고와 기관명을 표시합니다. HTML·PDF에는 네 모형 분석의 결과 그림을 마지막에 포함하고, 화면 배치를 유지해 저장합니다. Free 그림은 300 dpi이며 배경은 투명 또는 흰색입니다.",
+    "매개·조절 사용자모형을 매개·조절효과로 정리하고 기존 회귀의 중복 메뉴를 제거했습니다. 분석 명령어·실행 버튼을 분리하고 저장 버튼, 대화상자 위치, 캔버스 아이콘을 정돈했습니다. 유효한 p ≥ .05 경로의 점선 표시를 네 모형 분석에 공통 적용했습니다.",
+    "세로 방향 표 배치, 잔차 그림의 같은 페이지 배치, 출력 항목에 따른 주석과 위계적 회귀 마지막 표의 주석을 정리했습니다. 구조 모형 결과의 글꼴과 HTML 헤더 줄바꿈을 개선했습니다. 분석·방법론 노트·변경 이력을 8개 UI 언어별로 제공합니다.",
+    "공개 설치본에는 메타분석과 동일 대상 내 처치 반복측정 ANOVA를 포함하지 않습니다. Pro는 이후 버전의 계획이며 개발자·Pro의 그림 해상도 정책은 600 dpi입니다. 검증은 버전과 비교 사례별 근거를 기준으로 설명합니다.",
+    "평가자 일치도, 혼합 반복측정 분석과 매개·조절 사용자모형 등 기존 기능의 공개 이력입니다. 1.3.0에서 개선한 기능과 최초 추가 시점을 구분합니다."
+  ],
+  "en": [
+    "Added public CFA, SEM and PLS-SEM/PLSc model editing, estimation, diagnostics and supported bootstrap/group comparisons. Survival analysis provides Kaplan–Meier, RMST, Cox and supported competing-risk methods.",
+    "Added public PDF, Word and Excel exports. Covers follow the UI language; Free displays the logo and institution name. HTML/PDF append result figures for all four model analyses and preserve the displayed layout. Free images use 300 dpi with transparent or white backgrounds.",
+    "Renamed the custom mediation/moderation workflow to Mediation/Moderation Effects and removed duplicate regression menus. Separated command/run buttons and refined save controls, dialog placement and canvas icons. Dashed paths for valid p ≥ .05 are shared by all four model analyses.",
+    "Improved portrait tables, paired residual plots on one page, output-dependent notes and notes on the final hierarchical regression table. Standardized structural-result fonts and improved HTML header wrapping. Analyses, Method Notes and Version History are provided in all eight UI languages.",
+    "The public installer excludes meta-analysis and within-subject treatment repeated-measures ANOVA. Pro is planned for later; the development/Pro image policy is 600 dpi. Validation describes version-specific cases and evidence.",
+    "Earlier public features include inter-rater agreement, mixed repeated measures and the custom mediation/moderation model workflow. Distinguish their original introduction from improvements in 1.3.0."
+  ],
+  "ja": [
+    "CFA・SEM・PLS-SEM/PLSc のモデル編集、推定、診断、対応するブートストラップ・群間比較を公開版に追加しました。生存時間分析は Kaplan–Meier、RMST、Cox、対応する競合リスク法を提供します。",
+    "公開版に PDF・Word・Excel 保存を追加しました。表紙は UI 言語に従い、Free はロゴと機関名を表示します。HTML・PDF は 4 種類のモデル分析の結果図を末尾に追加し、表示配置を維持します。Free の画像は 300 dpi、背景は透明または白です。",
+    "カスタム媒介・調整モデルを媒介・調整効果に改称し、回帰の重複メニューを削除しました。コマンド・実行ボタンを分離し、保存操作、ダイアログ位置、アイコンを整理しました。有効な p ≥ .05 の経路の破線表示を 4 種類の分析で共通化しました。",
+    "縦向きの表、同一ページの残差図、表示項目に応じた注釈、階層的回帰の最終表への注釈を改善しました。構造モデル結果のフォントと HTML ヘッダーの折返しを整えました。分析・方法論ノート・変更履歴を 8 言語で提供します。",
+    "公開インストーラーはメタ分析と同一対象内の処置反復測定 ANOVA を除外します。Pro は将来の計画で、開発者・Pro の画像方針は 600 dpi です。検証はバージョン別の事例と根拠で説明します。",
+    "従来の公開機能には評価者間一致、混合反復測定、カスタム媒介・調整モデルがあります。初回の追加と 1.3.0 の改善を区別します。"
+  ],
+  "zh": [
+    "公开版新增 CFA、SEM、PLS-SEM/PLSc 模型编辑、估计、诊断及支持的自助法和组间比较。生存分析提供 Kaplan–Meier、RMST、Cox 及支持的竞争风险方法。",
+    "公开版新增 PDF、Word、Excel 保存。封面跟随 UI 语言；Free 显示徽标与机构全名。HTML/PDF 在末尾加入四类模型分析的结果图并保留显示布局。Free 图像为 300 dpi，背景透明或白色。",
+    "将自定义中介与调节模型改为中介与调节效应，移除回归的重复菜单。分开命令与运行按钮，调整保存控件、对话框位置及画布图标。四类模型分析统一以虚线显示有效 p ≥ .05 的路径。",
+    "改进纵向表格、同页成对残差图、按输出指标生成的注释及分层回归最后表格的注释。统一结构模型结果字体，改进 HTML 表头换行。分析、方法说明和版本历史提供全部 8 种 UI 语言。",
+    "公开安装包排除元分析及同一对象内处理的重复测量 ANOVA。Pro 计划后续提供；开发者与 Pro 图像策略为 600 dpi。验证按版本、案例及依据说明。",
+    "此前公开功能包括评定者一致性、混合重复测量和自定义中介与调节模型。应区分首次新增与 1.3.0 的改进。"
+  ],
+  "es": [
+    "Se incorporan a la edición pública la edición, estimación y diagnóstico CFA, SEM y PLS-SEM/PLSc, con bootstrap y comparaciones grupales compatibles. Supervivencia ofrece Kaplan–Meier, RMST, Cox y riesgos competitivos compatibles.",
+    "Se añaden exportaciones públicas PDF, Word y Excel. La portada sigue el idioma de la interfaz; Free muestra logotipo e institución. HTML/PDF añaden al final las figuras de los cuatro análisis de modelos conservando su disposición. Las imágenes Free usan 300 dpi y fondo transparente o blanco.",
+    "El flujo personalizado pasa a llamarse Efectos de mediación/moderación y se eliminan menús de regresión duplicados. Se separan comandos y ejecución y se ajustan guardado, posición de diálogos e iconos. Los cuatro análisis comparten rutas discontinuas para p válido ≥ .05.",
+    "Se mejoran tablas verticales, gráficos residuales en una página, notas según los indicadores mostrados y notas en la última tabla de regresión jerárquica. Se unifican fuentes y saltos de encabezados HTML. Análisis, Notas metodológicas e Historial de versiones se ofrecen en los ocho idiomas de la interfaz.",
+    "El instalador público excluye metaanálisis y ANOVA de tratamientos repetidos en los mismos sujetos. Pro se prevé más adelante; desarrollo/Pro usa una política de 600 dpi. La validación se explica por versión, casos y evidencia.",
+    "Las funciones públicas anteriores incluyen concordancia entre evaluadores, medidas repetidas mixtas y modelos personalizados de mediación/moderación. Se distingue su introducción original de las mejoras de 1.3.0."
+  ],
+  "fr": [
+    "Ajout public de l’édition, estimation et diagnostic CFA, SEM et PLS-SEM/PLSc, avec bootstrap et comparaisons de groupes compatibles. La survie propose Kaplan–Meier, RMST, Cox et les risques concurrents compatibles.",
+    "Ajout des exports publics PDF, Word et Excel. La couverture suit la langue de l’interface ; Free affiche logo et institution. HTML/PDF ajoutent les figures des quatre analyses de modèles en fin de rapport, avec la disposition affichée. Les images Free utilisent 300 dpi et un fond transparent ou blanc.",
+    "Le flux personnalisé devient Effets de médiation/modération et les menus de régression redondants sont supprimés. Commandes et exécution sont séparées ; enregistrement, position des dialogues et icônes sont améliorés. Les quatre analyses partagent les chemins pointillés pour p valide ≥ .05.",
+    "Amélioration des tableaux portrait, graphiques résiduels sur une page, notes selon les indicateurs affichés et notes sur la dernière table de régression hiérarchique. Uniformisation des polices et des retours des en-têtes HTML. Analyses, Notes méthodologiques et Historique sont disponibles dans les huit langues de l’interface.",
+    "L’installateur public exclut la méta-analyse et l’ANOVA des traitements répétés sur les mêmes sujets. Pro est prévu ultérieurement ; développement/Pro suit une politique de 600 dpi. La validation est présentée par version, cas et preuves.",
+    "Les fonctions publiques antérieures incluent accord interévaluateurs, mesures répétées mixtes et modèles personnalisés de médiation/modération. Leur introduction initiale est distinguée des améliorations de 1.3.0."
+  ],
+  "de": [
+    "Öffentliche CFA-, SEM- und PLS-SEM/PLSc-Modellbearbeitung, Schätzung, Diagnostik sowie unterstützte Bootstrap-/Gruppenvergleiche wurden ergänzt. Überlebenszeitanalyse bietet Kaplan–Meier, RMST, Cox und unterstützte konkurrierende Risiken.",
+    "Öffentliche PDF-, Word- und Excel-Exporte wurden ergänzt. Deckblätter folgen der UI-Sprache; Free zeigt Logo und Institution. HTML/PDF hängen die Grafiken aller vier Modellanalysen an und bewahren deren Anordnung. Free-Bilder nutzen 300 dpi und transparente oder weiße Hintergründe.",
+    "Der benutzerdefinierte Ablauf heißt nun Mediations-/Moderationseffekte; doppelte Regressionsmenüs entfallen. Befehle und Ausführen wurden getrennt, Speichersteuerung, Dialogposition und Symbole überarbeitet. Alle vier Modellanalysen nutzen gestrichelte Pfade für gültiges p ≥ .05.",
+    "Hochformattabellen, Residuenplots auf einer Seite, ausgabeabhängige Anmerkungen und Anmerkungen an der letzten hierarchischen Regressionstabelle wurden verbessert. Schriftgrößen und HTML-Kopfzeilenumbrüche wurden vereinheitlicht. Analysen, Methodische Hinweise und Versionsverlauf sind in allen acht UI-Sprachen verfügbar.",
+    "Der öffentliche Installer schließt Metaanalyse und ANOVA wiederholter Behandlungen derselben Personen aus. Pro ist später geplant; Entwicklung/Pro sieht 600 dpi vor. Validierung beschreibt versionsbezogene Fälle und Belege.",
+    "Frühere öffentliche Funktionen umfassen Beurteilerübereinstimmung, gemischte Messwiederholungen und benutzerdefinierte Mediations-/Moderationsmodelle. Ihre ursprüngliche Einführung wird von Verbesserungen in 1.3.0 unterschieden."
+  ],
+  "vi": [
+    "Bổ sung công khai chỉnh sửa, ước lượng và chẩn đoán CFA, SEM, PLS-SEM/PLSc cùng bootstrap và so sánh nhóm được hỗ trợ. Phân tích sống còn cung cấp Kaplan–Meier, RMST, Cox và nguy cơ cạnh tranh được hỗ trợ.",
+    "Bổ sung lưu PDF, Word và Excel cho bản công khai. Bìa theo ngôn ngữ UI; Free hiển thị logo và tên cơ quan. HTML/PDF thêm hình của bốn phân tích mô hình ở cuối, giữ nguyên bố cục. Hình Free dùng 300 dpi, nền trong suốt hoặc trắng.",
+    "Đổi quy trình mô hình tùy chỉnh thành Hiệu ứng trung gian/điều tiết và bỏ menu hồi quy trùng lặp. Tách lệnh và chạy, chỉnh nút lưu, vị trí hộp thoại và biểu tượng. Cả bốn phân tích dùng nét đứt cho đường có p hợp lệ ≥ .05.",
+    "Cải thiện bảng dọc, cặp hình phần dư trên một trang, chú thích theo chỉ số xuất và chú thích ở bảng cuối hồi quy phân cấp. Thống nhất phông chữ và xuống dòng tiêu đề HTML. Phân tích, Ghi chú phương pháp và Lịch sử phiên bản có đủ tám ngôn ngữ UI.",
+    "Bộ cài công khai loại phân tích tổng hợp và ANOVA can thiệp đo lặp trên cùng đối tượng. Pro dự kiến sau; chính sách hình phát triển/Pro là 600 dpi. Xác minh trình bày theo phiên bản, trường hợp và bằng chứng.",
+    "Chức năng công khai trước đó gồm đồng thuận người đánh giá, đo lặp hỗn hợp và mô hình trung gian/điều tiết tùy chỉnh. Phân biệt thời điểm bổ sung ban đầu với cải tiến ở 1.3.0."
+  ]
+}

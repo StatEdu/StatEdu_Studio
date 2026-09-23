@@ -132,7 +132,8 @@ create_prepare_hierarchical_analysis_result_fn <- function(
   sync_dependent_order_fn = NULL,
   control_names_fn = NULL,
   independent_names_fn = NULL,
-  hierarchical_block3_current_fn = NULL
+  hierarchical_block3_current_fn = NULL,
+  hierarchical_block4_fn = function() character(0)
 ) {
   function() {
     shiny::req(current_data_file_fn())
@@ -141,6 +142,7 @@ create_prepare_hierarchical_analysis_result_fn <- function(
     block1 <- as.character(hierarchical_block1_fn() %||% character(0))
     block2 <- as.character(hierarchical_block2_fn() %||% character(0))
     block3 <- as.character(hierarchical_block3_fn() %||% character(0))
+    block4 <- as.character(hierarchical_block4_fn() %||% character(0))
 
     if (length(dependents) == 0 && !is.null(sync_dependent_order_fn)) {
       dependents <- sync_dependent_order_fn(update_input = FALSE)
@@ -150,15 +152,16 @@ create_prepare_hierarchical_analysis_result_fn <- function(
     }
     if (length(block2) == 0 && !is.null(independent_names_fn)) {
       fallback_block3 <- if (!is.null(hierarchical_block3_current_fn)) hierarchical_block3_current_fn() else character(0)
-      block2 <- setdiff(independent_names_fn(), fallback_block3)
+      block2 <- setdiff(independent_names_fn(), c(fallback_block3, block4))
     }
     if (length(block3) == 0 && !is.null(hierarchical_block3_current_fn)) {
       block3 <- hierarchical_block3_current_fn()
     }
-    compacted <- compact_analysis_blocks(block1, block2, block3)
+    compacted <- compact_analysis_blocks(block1, block2, block3, block4)
     block1 <- compacted$block1
     block2 <- compacted$block2
     block3 <- compacted$block3
+    block4 <- compacted$block4
 
     info <- tryCatch(variable_info_table_fn(), error = function(e) NULL)
 
@@ -168,6 +171,7 @@ create_prepare_hierarchical_analysis_result_fn <- function(
       block1 = block1,
       block2 = block2,
       block3 = block3,
+      block4 = block4,
       variable_info = info,
       reference_values = regression_reference_values_static(category_label_values_fn()),
       boot_r = boot_r_fn(),

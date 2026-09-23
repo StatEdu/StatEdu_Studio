@@ -1,4 +1,22 @@
-# Changelog
+# Version History
+
+## v1.3.0 - 2026-09-20
+
+- Added public CFA, SEM and PLS-SEM/PLSc model editing, estimation, diagnostics and supported bootstrap/group comparisons. Survival analysis provides Kaplan–Meier, RMST, Cox and supported competing-risk methods.
+
+- Added public PDF, Word and Excel exports. Covers follow the UI language; Free displays the logo and institution name. HTML/PDF append result figures for all four model analyses and preserve the displayed layout. Free images use 300 dpi with transparent or white backgrounds.
+
+- Renamed the custom mediation/moderation workflow to Mediation/Moderation Effects and removed duplicate regression menus. Separated command/run buttons and refined save controls, dialog placement and canvas icons. Dashed paths for valid p ≥ .05 are shared by all four model analyses.
+
+- Improved portrait tables, paired residual plots on one page, output-dependent notes and notes on the final hierarchical regression table. Standardized structural-result fonts and improved HTML header wrapping. Analyses, Method Notes and Version History are provided in all eight UI languages.
+
+- The public installer excludes meta-analysis and within-subject treatment repeated-measures ANOVA. Pro is planned for later; the development/Pro image policy is 600 dpi. Validation describes version-specific cases and evidence.
+
+- Prepared the 1.3.0 developer installer documentation: linked Overview, User Guide, Analyses, Method Notes, Validation and Version History in eight languages and updated obsolete export instructions.
+
+- Documented case selection, data splitting, collected-result management and direct HWPX writing for Korean collected results, plus Word/HWPX content selection and the HTML cover and linked table list.
+
+- Added IPA: direct ratings and derived importance, overall/independent-group/matched pre-post designs, reference lines, charts and supported difference inference, with eight-language documentation and export guidance.
 
 ## v1.2.0 - 2026-08-06
 

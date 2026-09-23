@@ -6,6 +6,10 @@ if (!file.exists(file.path(repo_root, "R", "app_bootstrap.R"))) {
   repo_root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
 }
 
+if (.Platform$OS.type == "windows") {
+  invisible(try(Sys.setlocale("LC_CTYPE", "English_United States.utf8"), silent = TRUE))
+}
+
 source(file.path(repo_root, "R", "app_bootstrap.R"))
 load_app_packages()
 source_app_modules(dir = file.path(repo_root, "R"))
@@ -13,6 +17,13 @@ library(shiny)
 
 expect_true <- function(value, label) {
   if (!isTRUE(value)) stop(label, call. = FALSE)
+}
+
+render_in_ui_language <- function(language, builder) {
+  previous <- getOption("statedu.app_language", NULL)
+  on.exit(options(statedu.app_language = previous), add = TRUE)
+  options(statedu.app_language = language)
+  as.character(htmltools::renderTags(builder())$html)
 }
 
 message("Checking paired guard conditions...")
@@ -98,6 +109,20 @@ expect_true(is.data.frame(too_few$skipped) && grepl("At least two complete paire
 too_few_html <- as.character(htmltools::renderTags(paired_results_ui(too_few))$html)
 expect_true(grepl("diagnostics-message-table", too_few_html, fixed = TRUE), "Expected paired warning/skipped diagnostics to use message-width table")
 expect_true(grepl("width:58.000% !important", too_few_html, fixed = TRUE), "Expected paired warning/skipped diagnostics Message column to remain widest")
+too_few_html_ko <- render_in_ui_language("ko", function() paired_results_ui(too_few))
+too_few_html_en <- render_in_ui_language("en", function() paired_results_ui(too_few))
+expect_true(
+  grepl("경고 / 제외된 쌍", too_few_html_ko, fixed = TRUE) &&
+    grepl("완전한 대응 사례가 최소 2개 필요합니다.", too_few_html_ko, fixed = TRUE) &&
+    !grepl("At least two complete paired cases are required.", too_few_html_ko, fixed = TRUE),
+  "Expected Korean paired appendix diagnostics to localize the title and dynamic guard reason"
+)
+expect_true(
+  grepl("Warnings / skipped pairs", too_few_html_en, fixed = TRUE) &&
+    grepl("At least two complete paired cases are required.", too_few_html_en, fixed = TRUE) &&
+    !grepl("완전한 대응 사례가 최소 2개 필요합니다.", too_few_html_en, fixed = TRUE),
+  "Expected English paired appendix diagnostics to remain English"
+)
 
 binary <- prepare_paired_results(data, "binary_pre", "binary_post", variable_info, options = list(effect_size = TRUE))
 binary_html <- as.character(htmltools::renderTags(paired_results_ui(binary))$html)
@@ -108,6 +133,19 @@ expect_true(is.data.frame(mismatch$skipped) && any(grepl("different measurement 
 
 ordinal <- prepare_paired_results(data, "ord_pre", "ord_post", variable_info, options = list(assumption_check = TRUE, effect_size = TRUE))
 expect_true(is.data.frame(ordinal$scale_table) && identical(ordinal$scale_table$Method[[1]], "Wilcoxon signed-rank test"), "Expected text ordinal pair to use Wilcoxon")
+ordinal_html_ko <- render_in_ui_language("ko", function() paired_results_ui(ordinal))
+ordinal_html_en <- render_in_ui_language("en", function() paired_results_ui(ordinal))
+expect_true(
+  grepl("모형 개요", ordinal_html_ko, fixed = TRUE) &&
+    grepl("Wilcoxon 부호순위 검정", ordinal_html_ko, fixed = TRUE),
+  "Expected Korean paired model-overview appendix body to follow the UI language"
+)
+expect_true(
+  grepl("Model overview", ordinal_html_en, fixed = TRUE) &&
+    grepl("Wilcoxon", ordinal_html_en, fixed = TRUE) &&
+    !grepl("부호순위 검정", ordinal_html_en, fixed = TRUE),
+  "Expected English paired model-overview appendix body to remain English"
+)
 
 paired_mean_sd <- prepare_paired_results(data, "pre", "post", variable_info, options = list(assumption_check = FALSE, effect_size = TRUE, cohen_d = TRUE, mean_sd = TRUE))
 paired_mean_sd_html <- as.character(htmltools::renderTags(paired_results_ui(paired_mean_sd))$html)
@@ -148,6 +186,79 @@ expect_true(grepl("2 detected \\(IDs: 9, 10\\)", outlier_result$checks$Outliers[
 
 nonparam_ties <- prepare_nonparametric_paired_results(data, "tie_pre", "tie_post", variable_info, options = list(effect_size = TRUE, median_iqr = TRUE))
 expect_true(is.data.frame(nonparam_ties$warnings) && grepl("Tied absolute differences", nonparam_ties$warnings$Warning[[1]], fixed = TRUE), "Expected Wilcoxon tied-difference warning")
+nonparam_ties_html_ko <- render_in_ui_language("ko", function() nonparametric_paired_results_ui(nonparam_ties))
+nonparam_ties_html_en <- render_in_ui_language("en", function() nonparametric_paired_results_ui(nonparam_ties))
+expect_true(
+  grepl("비모수 대응표본 검정", nonparam_ties_html_ko, fixed = TRUE) &&
+    grepl("절대 차이의 동률", nonparam_ties_html_ko, fixed = TRUE) &&
+    !grepl("Tied absolute differences", nonparam_ties_html_ko, fixed = TRUE),
+  "Expected Korean nonparametric paired appendix body and warning to follow the UI language"
+)
+expect_true(
+  grepl("Nonparametric paired test", nonparam_ties_html_en, fixed = TRUE) &&
+    grepl("Tied absolute differences", nonparam_ties_html_en, fixed = TRUE) &&
+    !grepl("비모수 대응표본 검정", nonparam_ties_html_en, fixed = TRUE),
+  "Expected English nonparametric paired appendix body and warning to remain English"
+)
+
+zero_and_tie_data <- data.frame(
+  pre = c(1, 2, 3, 4, 5),
+  post = c(1, 3, 4, 5, 6),
+  stringsAsFactors = FALSE
+)
+zero_and_tie_info <- data.frame(
+  name = names(zero_and_tie_data),
+  measurement = c("ordinal", "ordinal"),
+  stringsAsFactors = FALSE
+)
+zero_and_tie_result <- prepare_paired_results(
+  zero_and_tie_data,
+  "pre",
+  "post",
+  zero_and_tie_info,
+  options = list(assumption_check = FALSE, effect_size = TRUE)
+)
+expect_true(
+  is.data.frame(zero_and_tie_result$warnings) &&
+    identical(
+      zero_and_tie_result$warnings$Warning[[1]],
+      "1 zero difference(s) were omitted from the Wilcoxon signed-rank calculation. Tied absolute differences were present; the large-sample Wilcoxon approximation was used."
+    ),
+  "Expected the actual paired result to retain the parameterized Wilcoxon warning before UI localization"
+)
+zero_and_tie_html_ko <- render_in_ui_language("ko", function() paired_results_ui(zero_and_tie_result))
+zero_and_tie_html_en <- render_in_ui_language("en", function() paired_results_ui(zero_and_tie_result))
+expect_true(
+  grepl("차이가 0인 사례 1개를 Wilcoxon 부호순위 계산에서 제외했습니다.", zero_and_tie_html_ko, fixed = TRUE) &&
+    grepl("절대 차이의 동률이 있어 큰 표본 Wilcoxon 근사를 사용했습니다.", zero_and_tie_html_ko, fixed = TRUE) &&
+    !grepl("zero difference", zero_and_tie_html_ko, fixed = TRUE) &&
+    !grepl("Tied absolute differences", zero_and_tie_html_ko, fixed = TRUE),
+  "Expected the Korean paired appendix HTML to localize the combined parameterized Wilcoxon warning"
+)
+expect_true(
+  grepl('data-result-table-role="main"', zero_and_tie_html_ko, fixed = TRUE) &&
+    grepl('data-result-table-language="en"', zero_and_tie_html_ko, fixed = TRUE) &&
+    grepl("Analysis method: Wilcoxon signed-rank test", zero_and_tie_html_ko, fixed = TRUE) &&
+    grepl("r = Wilcoxon signed-rank effect size", zero_and_tie_html_ko, fixed = TRUE),
+  "Expected the actual Korean-UI result HTML to keep its publication table and note in English"
+)
+expect_true(
+  grepl("1 zero difference(s) were omitted", zero_and_tie_html_en, fixed = TRUE) &&
+    grepl("Tied absolute differences were present", zero_and_tie_html_en, fixed = TRUE) &&
+    !grepl("차이가 0인 사례", zero_and_tie_html_en, fixed = TRUE),
+  "Expected the English paired appendix HTML to retain the combined parameterized Wilcoxon warning"
+)
+expect_true(
+  identical(
+    paired_appendix_text("1 zero difference was omitted from the Wilcoxon signed-rank calculation.", "ko"),
+    "차이가 0인 사례 1개를 Wilcoxon 부호순위 계산에서 제외했습니다."
+  ) &&
+    identical(
+      paired_appendix_text("7 zero differences were omitted from the Wilcoxon signed-rank calculation.", "ko"),
+      "차이가 0인 사례 7개를 Wilcoxon 부호순위 계산에서 제외했습니다."
+    ),
+  "Expected singular and plural saved-result Wilcoxon warning variants to localize with their counts preserved"
+)
 
 rm_result <- prepare_paired_rm_results(
   data,
@@ -179,6 +290,19 @@ expect_true(grepl("pre", rm_marker_html, fixed = TRUE) && grepl(">a</sup>", rm_m
 expect_true(grepl("post1", rm_marker_html, fixed = TRUE) && grepl(">b</sup>", rm_marker_html, fixed = TRUE), "Expected paired RM HTML header to mark post1 as b")
 expect_true(grepl("post2", rm_marker_html, fixed = TRUE) && grepl(">c</sup>", rm_marker_html, fixed = TRUE), "Expected paired RM HTML header to mark post2 as c")
 expect_true(grepl("white-space:nowrap;[^>]*>F</th>", rm_marker_html, perl = TRUE), "Expected paired RM Statistic header to stay on one line")
+rm_marker_html_ko <- render_in_ui_language("ko", function() paired_rm_results_ui(rm_marker_result))
+rm_marker_html_en <- render_in_ui_language("en", function() paired_rm_results_ui(rm_marker_result))
+expect_true(
+  grepl("반복측정 변수", rm_marker_html_ko, fixed = TRUE) &&
+    grepl("반복측정 분산분석", rm_marker_html_ko, fixed = TRUE),
+  "Expected Korean repeated-measures appendix header and method to follow the UI language"
+)
+expect_true(
+  grepl("Repeated variables", rm_marker_html_en, fixed = TRUE) &&
+    grepl("RM ANOVA", rm_marker_html_en, fixed = TRUE) &&
+    !grepl("반복측정 분산분석", rm_marker_html_en, fixed = TRUE),
+  "Expected English repeated-measures appendix header and method to remain English"
+)
 mixed_method_marker_table <- data.frame(Method = c("Friedman test", "RM ANOVA + Wilks' lambda"), stringsAsFactors = FALSE)
 expect_true(identical(unname(paired_rm_method_marker_map(mixed_method_marker_table)), c("1", "2")), "Expected paired RM p-value method markers to use numeric markers")
 wilks_note_table <- data.frame(
@@ -251,6 +375,13 @@ nonparam_rm_result <- prepare_nonparametric_paired_rm_results(
 )
 expect_true(is.data.frame(nonparam_rm_result$display_table) && nrow(nonparam_rm_result$display_table) == 1, "Expected valid nonparametric RM row to still be analyzed")
 expect_true(is.data.frame(nonparam_rm_result$skipped) && grepl("identical within subjects", nonparam_rm_result$skipped$Reason[[1]], fixed = TRUE), "Expected invalid nonparametric RM row to be skipped")
+nonparam_posthoc_display <- nonparametric_paired_posthoc_display_table(nonparam_rm_result)
+expect_true(
+  is.data.frame(nonparam_posthoc_display) &&
+    all(c("ES metric", "ES") %in% names(nonparam_posthoc_display)) &&
+    anyDuplicated(names(nonparam_posthoc_display)) == 0L,
+  "Expected the nonparametric paired post-hoc main table to use distinct SCI effect-size headers"
+)
 
 invisible(capture.output(htmltools::renderTags(paired_results_ui(all_zero))))
 invisible(capture.output(htmltools::renderTags(nonparametric_paired_results_ui(nonparam_ties))))

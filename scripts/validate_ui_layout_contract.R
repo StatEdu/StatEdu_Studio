@@ -79,6 +79,8 @@ transform_ui <- read_project_file("R/data_editor_transform.R")
 missing_ui <- read_project_file("R/data_editor_missing.R")
 easyflow_js <- read_project_file("www/easyflow.js")
 app_server <- read_project_file("R/app_server.R")
+app_bootstrap <- read_project_file("R/app_bootstrap.R")
+run_app <- read_project_file("run_app.R")
 app_misc_ui <- read_project_file("R/app_misc_ui.R")
 ui_helpers <- read_project_file("R/ui_helpers.R")
 utils_r <- read_project_file("R/utils.R")
@@ -127,6 +129,20 @@ assert_contains(app_misc_ui, "statedu_t(\"help.bug_subtitle\"", "Help request pa
 assert_contains(app_misc_ui, "choices = statedu_language_choices(language)", "Preferences language choices from translation table")
 assert_contains(ui_helpers, "window.easyflowSupportedLanguages", "client supported language bootstrap")
 assert_contains(easyflow_js, "window.easyflowSupportedLanguages || ['ko', 'en']", "client dynamic supported language fallback")
+assert_contains(easyflow_js, "return easyflowNavigateToLanguage(language, false);", "language apply preserves the current session")
+assert_contains(easyflow_js, "window.location.replace(nextHref);", "language change navigates to the translated session")
+assert_contains(easyflow_js, "target && target.id === 'app_language'", "preferences language selector triggers language application")
+assert_contains(app_server, 'requested_language <- strsplit(apply_request, ":", fixed = TRUE)[[1]][[1]]', "language apply event carries the authoritative selected language")
+assert_contains(
+  app_server,
+  'active_app_language <- reactiveVal("")',
+  "session language starts unset so bootstrap hints can initialize it"
+)
+assert_contains(
+  app_server,
+  "selected <- if (nzchar(active_language)) {\n      active_language",
+  "confirmed session language takes priority over bootstrap URL and selector hints"
+)
 assert_contains(easyflow_js, "function easyflowApplyResultZoomValue(value)", "client result zoom application")
 assert_contains(easyflow_js, "statedu-apply-result-zoom", "client result zoom custom message")
 assert_contains(css, "zoom: var(--statedu-result-zoom, 1.5) !important;", "result panel zoom variable")
@@ -141,6 +157,10 @@ message("Checking Data tab step controls contract...")
 assert_contains(data_ui_steps, "step2_selection_controls <- function()", "Step 2 selection controls helper")
 assert_contains(data_ui_steps, "actionButton(\"apply_variable_selection\"", "Step 2 apply button")
 assert_contains(data_ui_steps, "actionButton(\"apply_bulk_measurement_type\"", "Step 2 bulk measurement apply button")
+assert_contains(css, "grid-template-columns: minmax(0, 1fr);", "Step 2 selection actions use a language-safe full-width stack")
+assert_contains(css, ".step-block .bulk-measurement-action .btn {\n  align-items: center;", "Step 2 selection action buttons share alignment")
+assert_contains(css, "overflow-wrap: anywhere;", "Step 2 translated action labels stay inside their buttons")
+assert_contains(data_ui_steps, 'selected = "whitespace",\n              width = "100%"', "DAT delimiter control matches the Step 1 control width")
 assert_contains(data_ui_steps, "else if (identical(step, \"step2\") || !isTRUE(applied))", "Step 2 controls stay visible before selection is applied")
 
 message("Checking shared Data Editor geometry contract...")
@@ -245,10 +265,34 @@ for (i in seq_len(nrow(data_editor_lazy_contract))) {
   )
   assert_contains(
     app_server,
-    sprintf("output$%s <- renderUI(%s(app_language()))", lazy_row$output_id, lazy_row$panel_call),
-    sprintf("Data Editor lazy renderUI target: %s", lazy_row$title)
+    sprintf('lazy_ui("%s", function() %s(app_language()))', lazy_row$output_id, lazy_row$panel_call),
+    sprintf("Data Editor visible-only lazy target: %s", lazy_row$title)
   )
 }
+
+message("Checking visible-only lazy output contract...")
+assert_contains(utils_r, "register_visible_ui_output <- function(output, session, output_id, ui_fn)", "shared visible-only output helper")
+assert_contains(utils_r, 'hidden <- session$clientData[[paste0("output_", output_id, "_hidden")]]', "lazy helper reads Shiny hidden state")
+assert_contains(utils_r, "if (!initialized) shiny::req(identical(hidden, FALSE), cancelOutput = TRUE)", "lazy helper waits for first visibility and preserves mounted UI")
+assert_contains(utils_r, "shiny::outputOptions(output, output_id, suspendWhenHidden = TRUE)", "lazy helper suspends hidden outputs")
+assert_contains(app_server, "register_visible_ui_output(output, session, output_id, ui_fn)", "app server routes lazy outputs through shared helper")
+assert_contains(app_server, "register_on_first_menu_visit <- function(menu_values, register_fn)", "deferred server-module registration helper")
+assert_contains(app_server, "ignoreInit = FALSE, once = TRUE", "deferred server modules register only on their first menu visit")
+assert_contains(app_server, "input$easyflow_menu_visit %||% list()", "deferred server modules accept grouped-menu visit signals")
+assert_contains(app_server, '"data_editor_variable_rename"\n  ), function() {', "data-editor handlers are deferred until a data-editor menu is opened")
+assert_contains(app_server, 'paste0("sample_size_", names(sample_size_method_labels()))', "sample-size handlers are deferred until a sample-size menu is opened")
+assert_contains(app_server, 'register_on_first_menu_visit("Regression", function() {', "regression outputs are deferred until regression is opened")
+assert_contains(app_server, 'register_on_first_menu_visit("analysis_complex_design", function() {', "complex-sample design handlers are deferred until the design menu is opened")
+assert_contains(app_server, 'register_on_first_menu_visit("analysis_complex_frequencies", function() {', "complex-sample frequency handlers are deferred until the frequency menu is opened")
+assert_contains(app_server, 'register_on_first_menu_visit("analysis_complex_custom_model", function() {', "complex-sample custom-model handlers are deferred until the custom-model menu is opened")
+assert_not_contains(app_server, 'statedu_log_timing("deferred complex-sample modules"', "legacy bulk complex-sample registration")
+assert_contains(app_server, 'register_on_first_menu_visit("analysis_structural_cfa", function() {', "analysis handlers are deferred until an analysis menu is opened")
+assert_contains(app_bootstrap, "available_packages <- .packages(all.available = TRUE)", "app startup dependency check uses the fast library index")
+assert_not_contains(app_bootstrap, "vapply(packages, requireNamespace", "startup dependency check must not eagerly load every analysis namespace")
+assert_contains(app_bootstrap, "write_combined_app_module_cache <- function(paths, target)", "startup combines app modules into a single source cache")
+assert_contains(app_bootstrap, 'source(cache_paths$source, local = FALSE, encoding = "UTF-8")', "startup loads the combined module cache")
+assert_contains(run_app, "available_package_names <- .packages(all.available = TRUE)", "launcher dependency check uses the fast library index")
+assert_not_contains(run_app, "rownames(utils::installed.packages())", "launcher must not scan every installed package on startup")
 
 message("Checking shared selected-data viewer button contract...")
 assert_contains(analysis_data_viewer_ui, 'analysis_data_viewer_button <- function(id, language = statedu_initial_language())', "selected-data viewer button helper")
@@ -345,8 +389,8 @@ for (i in seq_len(nrow(analysis_lazy_contract))) {
   if (identical(lazy_row$output_id, "lazy_analysis_longitudinal")) {
     assert_contains(
       app_server,
-      'output$lazy_analysis_longitudinal <- renderUI({',
-      "Analysis lazy renderUI target: Longitudinal / Panel Models guarded output"
+      'lazy_ui("lazy_analysis_longitudinal", function() {',
+      "Analysis visible-only lazy target: Longitudinal / Panel Models guarded output"
     )
     assert_contains(
       app_server,
@@ -361,8 +405,8 @@ for (i in seq_len(nrow(analysis_lazy_contract))) {
   } else {
     assert_contains(
       app_server,
-      sprintf("output$%s <- renderUI(tab_panel_content(%s", lazy_row$output_id, lazy_row$panel_call),
-      sprintf("Analysis lazy renderUI target: %s", lazy_row$title)
+      sprintf('lazy_ui("%s", function() tab_panel_content(%s', lazy_row$output_id, lazy_row$panel_call),
+      sprintf("Analysis visible-only lazy target: %s", lazy_row$title)
     )
   }
 }
@@ -375,13 +419,14 @@ complex_lazy_outputs <- c(
   "lazy_analysis_complex_ttest_anova",
   "lazy_analysis_complex_correlation",
   "lazy_analysis_complex_regression",
-  "lazy_analysis_complex_logistic"
+  "lazy_analysis_complex_logistic",
+  "lazy_analysis_complex_custom_model"
 )
 for (output_id in complex_lazy_outputs) {
   assert_contains(
     app_server,
-    sprintf("output$%s <- renderUI(", output_id),
-    sprintf("Complex-sample lazy output is registered: %s", output_id)
+    sprintf('lazy_ui("%s", function()', output_id),
+    sprintf("Complex-sample visible-only output is registered: %s", output_id)
   )
 }
 assert_not_contains(
@@ -389,10 +434,10 @@ assert_not_contains(
   "outputOptions(output, complex_lazy_output, suspendWhenHidden = FALSE)",
   "Complex-sample lazy outputs must not all render while hidden"
 )
-assert_not_contains(
-  r_text,
+assert_contains(
+  read_project_file("R/setup_complex_sample_ui.R"),
   'outputOptions(output, paste0(prefix, "_setup"), suspendWhenHidden = FALSE)',
-  "Complex-sample setup output must not force hidden rendering"
+  "mounted complex-sample setup refreshes language without restoring stale selections"
 )
 assert_not_contains(
   r_text,
@@ -433,8 +478,8 @@ assert_contains(
 )
 assert_contains(
   sample_size_ui,
-  "for (method in methods) {\n    local({\n      method_local <- method\n      output[[paste0(\"lazy_sample_size_\", method_local)]] <- renderUI({\n        tab_panel_content(sample_size_analysis_panel(method_local, sample_size_language()))",
-  "Sample Size lazy renderUI targets are generated from method keys and current language"
+  "for (method in methods) {\n    local({\n      method_local <- method\n      register_visible_ui_output(output, session, paste0(\"lazy_sample_size_\", method_local), function() {\n        tab_panel_content(sample_size_analysis_panel(method_local, sample_size_language(), input))",
+  "Sample Size visible-only targets are generated from method keys and current language"
 )
 assert_contains(
   sample_size_ui,
@@ -448,8 +493,8 @@ assert_contains(
 )
 assert_contains(
   sample_size_ui,
-  "for (effect_method in names(effect_size_method_labels())) {\n    local({\n      effect_method_local <- effect_method\n      output[[paste0(\"lazy_effect_size_\", effect_method_local)]] <- renderUI({\n        tab_panel_content(effect_size_analysis_panel(effect_method_local, sample_size_language()))",
-  "Effect Size lazy renderUI targets are generated from method keys and current language"
+  "for (effect_method in names(effect_size_method_labels())) {\n    local({\n      effect_method_local <- effect_method\n      register_visible_ui_output(output, session, paste0(\"lazy_effect_size_\", effect_method_local), function() {\n        tab_panel_content(effect_size_analysis_panel(effect_method_local, sample_size_language(), input))",
+  "Effect Size visible-only targets are generated from method keys and current language"
 )
 
 message("Checking shared analysis menu geometry contract...")
@@ -469,9 +514,9 @@ assert_contains(css, "width: var(--se-standard-inner-button-width, 300px);\n  mi
 assert_contains(css, "width: var(--se-analysis-workspace-width) !important;", "standard analysis setup/action width variable")
 assert_contains(css, ".analysis-three-block-workspace .analysis-workspace-heading,\n.analysis-three-block-workspace .analysis-data-viewer-panel", "standard analysis heading width selector")
 assert_contains(css, ".analysis-three-block-workspace .analysis-workspace-heading,\n.analysis-three-block-workspace .analysis-data-viewer-panel {\n  width: 100% !important;", "final shared analysis heading uses scoped workspace width")
-assert_contains(css, ".analysis-three-block-workspace .frequencies-setup-grid,\n.analysis-three-block-workspace .reliability-setup-grid,\n.analysis-three-block-workspace .paired-setup-grid,\n.analysis-three-block-workspace .ttest-anova-setup-grid,\n.analysis-three-block-workspace .correlation-setup-grid,\n.analysis-three-block-workspace .frequencies-action-row,\n.analysis-three-block-workspace .reliability-action-row,\n.analysis-three-block-workspace .paired-action-row,\n.analysis-three-block-workspace .ttest-anova-action-row,\n.analysis-three-block-workspace .correlation-action-row {\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;", "final shared four-column analysis grids use standard variables")
+assert_contains(css, ".analysis-three-block-workspace .frequencies-setup-grid,\n.analysis-three-block-workspace .reliability-setup-grid,\n.analysis-three-block-workspace .paired-setup-grid,\n.analysis-three-block-workspace .ttest-anova-setup-grid,\n.analysis-three-block-workspace .correlation-setup-grid,\n.analysis-three-block-workspace .survival-setup-grid,\n.analysis-three-block-workspace .frequencies-action-row,\n.analysis-three-block-workspace .reliability-action-row,\n.analysis-three-block-workspace .paired-action-row,\n.analysis-three-block-workspace .ttest-anova-action-row,\n.analysis-three-block-workspace .correlation-action-row,\n.analysis-three-block-workspace .survival-action-row {\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;", "final shared four-column analysis grids use standard variables")
 assert_contains(css, ".analysis-three-block-workspace .crosstab-setup-grid,\n.analysis-three-block-workspace .regression-setup-grid,\n.analysis-three-block-workspace .hierarchical-setup-grid,\n.analysis-three-block-workspace .logistic-setup-grid,\n.analysis-three-block-workspace .generalized-setup-grid,\n.analysis-three-block-workspace .crosstab-action-row,\n.analysis-three-block-workspace .regression-action-row,\n.analysis-three-block-workspace .hierarchical-action-row,\n.analysis-three-block-workspace .logistic-action-row,\n.analysis-three-block-workspace .generalized-action-row {\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;", "final shared crosstab/regression analysis grids use frequency-style variables")
-assert_contains(css, ".analysis-three-block-workspace .frequencies-setup-grid > .analysis-options-panel,\n.analysis-three-block-workspace .reliability-setup-grid > .analysis-options-panel,\n.analysis-three-block-workspace .paired-setup-grid > .ttest-anova-options-column,\n.analysis-three-block-workspace .ttest-anova-setup-grid > .ttest-anova-options-column,\n.analysis-three-block-workspace .correlation-setup-grid > .correlation-options-column {\n  grid-column: 4 !important;\n  grid-row: 1 !important;", "final shared analysis options stay in top row")
+assert_contains(css, ".analysis-three-block-workspace .frequencies-setup-grid > .analysis-options-panel,\n.analysis-three-block-workspace .reliability-setup-grid > .analysis-options-panel,\n.analysis-three-block-workspace .paired-setup-grid > .ttest-anova-options-column,\n.analysis-three-block-workspace .ttest-anova-setup-grid > .ttest-anova-options-column,\n.analysis-three-block-workspace .survival-setup-grid > .ttest-anova-options-column,\n.analysis-three-block-workspace .correlation-setup-grid > .correlation-options-column {\n  grid-column: 4 !important;\n  grid-row: 1 !important;", "final shared analysis options stay in top row")
 assert_contains(css, ".interrater-agreement-setup-grid > .interrater-options-panel {\n  display: flex !important;\n  flex-direction: column !important;\n  gap: 6px !important;", "Inter-rater options override shared options column gap")
 assert_contains(css, ".complex-sample-workspace-panel .complex-sample-setup-grid > .complex-sample-analysis-options-column {\n  grid-column: 4 !important;\n  grid-row: 1 !important;", "complex sample analysis options stay in top row")
 assert_contains(css, ".longitudinal-action-row {\n  grid-template-columns: 330px 40px 320px 40px 320px 330px !important;", "Longitudinal four-block action row exception")
@@ -592,15 +637,18 @@ assert_contains(css, ".data-editor-workspace .recode-same-action-row:not(.recode
 
 message("Checking grouped menu navigation contract...")
 assert_contains(easyflow_js, "function easyflowGroupedMenuConfigs()", "grouped menu configuration")
+assert_contains(easyflow_js, "title: 'Meta-analysis',\n                  titleKo: '\\uBA54\\uD0C0\\uBD84\\uC11D',\n                  values: ['analysis_meta']", "Meta-analysis owns a dedicated grouped menu")
+assert_not_contains(easyflow_js, "title: 'Evidence Synthesis'", "legacy Evidence Synthesis group removed")
+assert_contains(analysis_menu_ui, 'lazy_tab_panel(structural_automation_title(language), "analysis_structural_automation", "lazy_analysis_structural_automation"),\n    if (isTRUE(analysis_tabs[["meta"]])) lazy_tab_panel(meta_ui_text("title", language), "analysis_meta", "lazy_analysis_meta")', "Meta-analysis follows Structural Equation Modeling in navbar order")
 assert_contains(easyflow_js, "function markNavbarDropdownActive(link)", "grouped menu top-level active helper")
 assert_contains(easyflow_js, "dropdown.closest('.navbar-nav').children('li.active').removeClass('active');", "grouped menu clears stale top-level active state")
 assert_contains(easyflow_js, "dropdown.addClass('active');", "grouped menu activates clicked top-level menu")
 assert_contains(easyflow_js, "menu: 'Analysis'", "Analysis grouped menu config label")
 assert_contains(easyflow_js, "menuLabels: ['Analysis'", "Analysis grouped menu translated labels")
 assert_contains(easyflow_js, "marker: 'analysis'", "Analysis grouped menu config marker")
-assert_contains(easyflow_js, "analysis_custom_model_canvas: 'Mediation / Moderation Custom Model'", "Analysis grouped menu custom model English label")
-assert_contains(easyflow_js, "analysis_custom_model_canvas: '\\uB9E4\\uAC1C\\u00B7\\uC870\\uC808 \\uC0AC\\uC6A9\\uC790 \\uC815\\uC758 \\uBAA8\\uB378'", "Analysis grouped menu custom model Korean label")
-assert_contains(easyflow_js, "values: ['Regression', 'analysis_mediation_moderation', 'analysis_custom_model_canvas', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']", "Analysis grouped menu includes custom model in Regression / Models")
+assert_contains(easyflow_js, "analysis_custom_model_canvas: 'Mediation / Moderation Effects'", "Analysis grouped menu custom model English label")
+assert_contains(easyflow_js, "analysis_custom_model_canvas: '매개·조절효과'", "Analysis grouped menu custom model Korean label")
+assert_contains(easyflow_js, "values: ['Regression', 'analysis_custom_model_canvas', 'Generalized Linear Model (GLM)', 'analysis_penalized', 'analysis_logistic_regression']", "Regression / Models places penalized regression immediately before logistic regression")
 assert_contains(easyflow_js, "menu: 'Sample Size'", "Sample Size grouped menu config label")
 assert_contains(easyflow_js, "menuLabels: ['Sample Size'", "Sample Size grouped menu translated labels")
 assert_contains(easyflow_js, "marker: 'sample-size'", "Sample Size grouped menu config marker")
@@ -611,6 +659,7 @@ assert_contains(easyflow_js, "click.easyflowAnalysisSubmenu", "grouped submenu c
 assert_contains(easyflow_js, "click.easyflowAnalysisDirectItem", "grouped direct-item click handler")
 assert_contains(easyflow_js, "function syncEasyflowTopNavbarActive(link) {", "top navbar active-state sync helper")
 assert_contains(easyflow_js, "event.target.closest('.navbar-nav a[data-value]')", "generic navbar data-value click handler")
+assert_contains(easyflow_js, "Shiny.setInputValue('easyflow_menu_visit'", "grouped navigation emits an explicit first-visit signal")
 assert_contains(easyflow_js, "link.tab('show');", "generic navbar click reopens already-active tab")
 assert_contains(easyflow_js, "syncEasyflowTopNavbarActive(navLink);", "generic navbar click updates top-level active state")
 submenu_click_handler <- extract_between(
@@ -632,6 +681,10 @@ assert_contains(submenu_click_handler, "link.closest('.navbar-nav > li.dropdown'
 assert_contains(direct_click_handler, "link.parent('li').addClass('active');", "grouped direct item active marker")
 assert_contains(direct_click_handler, "markNavbarDropdownActive(link);", "grouped direct item activates owning top-level menu")
 assert_contains(direct_click_handler, "window.setTimeout(markActive, 0);", "grouped direct item reapplies active state after Shiny navigation")
+assert_contains(easyflow_js, "if (Date.now() > (window.easyflowTransferScrollRestoreUntil || 0)) return;", "transfer scroll restoration does not create idle timer storms")
+assert_contains(easyflow_js, "window.easyflowExcelBusyTimers = [0, 50, 150, 350, 750, 1500, 3000].map", "Excel busy-state timers are coalesced")
+assert_contains(easyflow_js, "if (!easyflowHasMathDocument(root)) return;", "Math rendering is skipped outside documentation panels")
+assert_contains(easyflow_js, "window.easyflowEnsureMathJax(root);", "MathJax is requested only after a documentation panel appears")
 assert_contains(direct_click_handler, "link.closest('.navbar-nav > li.dropdown').removeClass('open');", "grouped direct item closes after selection")
 
 message("Checking layout documentation...")

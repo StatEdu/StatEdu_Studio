@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "software": "",
+  "version": "",
+  "run_date": "",
+  "fit_target": "saturated",
+  "weighting_scheme": "path",
+  "standardized_results": false,
+  "converged_before_300": false,
+  "reported_decimal_places": 0,
+  "absolute_tolerance": 0.000001,
+  "relative_tolerance": 0.0001,
+  "data_file": "sample/HolzingerSwineford1939.csv",
+  "data_sha256": "",
+  "model_file": "sample/pls_external_benchmark.stmodel",
+  "model_sha256": "",
+  "statedu_fit_sha256": "",
+  "external_fit_sha256": "",
+  "comparison_sha256": ""
+}

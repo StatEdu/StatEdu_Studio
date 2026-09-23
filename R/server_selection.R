@@ -545,7 +545,7 @@ register_category_label_observers <- function(
       return()
     }
     category_labels <- if (is.function(category_label_table_data_fn)) {
-      collect_category_label_inputs_from_table(category_label_table_data_fn(), input)
+      collect_category_label_event_inputs(category_label_table_data_fn(), input)
     } else {
       NULL
     }

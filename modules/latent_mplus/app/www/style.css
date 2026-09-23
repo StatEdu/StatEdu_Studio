@@ -2,8 +2,8 @@ body {
   background: #f6f8fb;
   color: #1f2933;
   scroll-padding-top: 58px;
-  --latent-b5-portrait-width: 688px;
-  --latent-b5-landscape-width: 972px;
+  --latent-b5-portrait-width: 590px;
+  --latent-b5-landscape-width: 890px;
 }
 
 .latent-brand-text {
@@ -8047,4 +8047,169 @@ select[id$="_active_role"]:focus {
   border-top: 2px solid #1f2937 !important;
   border-bottom: 2px solid #1f2937 !important;
   margin-bottom: 0 !important;
+}
+
+/* Final screen contract for latent LCA/LPA/mixture tables.
+   One independent B5 sheet per table; portrait unless the table is wide. */
+.latent-result-table-section.latent-result-table-b5-page {
+  break-after: page !important;
+  break-inside: avoid !important;
+  display: block !important;
+  font-family: Arial, "Noto Sans KR", "Malgun Gothic", sans-serif !important;
+  margin: 18px 0 28px !important;
+  overflow: hidden !important;
+  padding: 18px 22px 22px !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-portrait {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-landscape {
+  max-width: var(--latent-b5-landscape-width) !important;
+  width: min(100%, var(--latent-b5-landscape-width)) !important;
+}
+
+.latent-result-table-meta {
+  align-items: center;
+  color: #52606d;
+  display: flex;
+  font-family: Arial, "Noto Sans KR", "Malgun Gothic", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  justify-content: space-between;
+  line-height: 1.3;
+  margin: 0 0 7px;
+}
+
+.latent-result-table-role-label {
+  color: #334e68;
+}
+
+.latent-result-table-section.latent-result-table-main,
+.latent-result-table-section.latent-result-table-appendix {
+  font-family: Arial, "Noto Sans KR", "Malgun Gothic", sans-serif !important;
+}
+
+.latent-result-table-page-label {
+  color: #62748a;
+  white-space: nowrap;
+}
+
+.latent-result-table-section.latent-result-table-b5-page .latent-excel-table-wrap,
+.latent-excel-table-wrap.latent-result-table-b5-page {
+  border: 0 !important;
+  border-radius: 0 !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  width: 100% !important;
+}
+
+.latent-excel-table-wrap.latent-result-table-b5-portrait {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-excel-table-wrap.latent-result-table-b5-landscape {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  max-width: var(--latent-b5-landscape-width) !important;
+  width: min(100%, var(--latent-b5-landscape-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-page .latent-excel-table,
+.latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-table {
+  border-collapse: collapse !important;
+  border-top: 2px solid #1f2937 !important;
+  border-bottom: 2px solid #1f2937 !important;
+  color: #172b3a !important;
+  font-family: Arial, "Noto Sans KR", "Malgun Gothic", sans-serif !important;
+  font-size: 12px !important;
+  line-height: 1.32 !important;
+  margin: 0 !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-portrait .latent-excel-table,
+.latent-excel-table-wrap.latent-result-table-b5-portrait .latent-excel-table {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-landscape .latent-excel-table,
+.latent-excel-table-wrap.latent-result-table-b5-landscape .latent-excel-table {
+  min-width: 100% !important;
+  table-layout: auto !important;
+  width: max-content !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-page .latent-excel-table th,
+.latent-result-table-section.latent-result-table-b5-page .latent-excel-table td,
+.latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-table th,
+.latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-table td {
+  font-size: 12px !important;
+  line-height: 1.32 !important;
+  max-width: none;
+  padding: 6px 7px !important;
+  vertical-align: middle !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-page .latent-excel-table th,
+.latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-table th {
+  background: #f4f7fa !important;
+  font-size: 11px !important;
+  overflow-wrap: break-word !important;
+  white-space: normal !important;
+  word-break: normal !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-page .latent-excel-table td,
+.latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-table td {
+  overflow-wrap: normal !important;
+  white-space: nowrap !important;
+  word-break: normal !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-page .latent-excel-table td:first-child,
+.latent-result-table-section.latent-result-table-b5-page .latent-excel-table td:nth-child(2),
+.latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-table td:first-child,
+.latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-table td:nth-child(2),
+.latent-result-table-section.latent-result-table-appendix .latent-excel-table td:not(.latent-excel-numeric) {
+  overflow-wrap: break-word !important;
+  white-space: normal !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-page .latent-excel-title-row td,
+.latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-title-row td {
+  background: #ffffff !important;
+  border-bottom: 2px solid #1f2937 !important;
+  color: #102a43 !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+  padding: 7px 0 9px !important;
+  text-align: left !important;
+  white-space: normal !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-page .latent-excel-note-row td,
+.latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-note-row td {
+  background: #ffffff !important;
+  border-bottom: 0 !important;
+  border-top: 1px solid #1f2937 !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+  padding: 8px 0 2px !important;
+  text-align: left !important;
+  white-space: normal !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-page .latent-excel-numeric,
+.latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-numeric {
+  font-variant-numeric: tabular-nums !important;
+  text-align: right !important;
+  white-space: nowrap !important;
 }

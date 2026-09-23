@@ -1,5 +1,41 @@
 # Principal component analysis helpers.
 
+# psych::principal does not forward ... to its stats::varimax call. Adapt a
+# private copy so its score, sign, ordering and variance calculations stay intact.
+# Never alter the psych namespace; reject dependency changes that need review.
+pca_principal <- local({
+  cached <- NULL
+  function(..., rotate = "varimax") {
+    if (!identical(rotate, "varimax")) {
+      return(psych::principal(..., rotate = rotate))
+    }
+    if (is.null(cached)) {
+      candidate <- psych::principal
+      replacements <- 0L
+      adapt <- function(expr) {
+        if (identical(expr, quote(stats::varimax(loadings)))) {
+          replacements <<- replacements + 1L
+          return(quote(stats::varimax(loadings, eps = 1e-12)))
+        }
+        if (is.call(expr)) {
+          for (i in seq_along(expr)) {
+            if (!identical(expr[[i]], quote(expr = ))) {
+              expr[i] <- list(adapt(expr[[i]]))
+            }
+          }
+        }
+        expr
+      }
+      body(candidate) <- adapt(body(candidate))
+      if (replacements != 1L) {
+        stop("PCA Varimax compatibility check failed; review the psych version.")
+      }
+      cached <<- candidate
+    }
+    cached(..., rotate = rotate)
+  }
+})
+
 pca_matrix_choices <- function() {
   c(
     "Correlation matrix" = "correlation",
@@ -103,13 +139,18 @@ pca_loading_table <- function(result, cutoff = 0.30) {
   hide_small_loadings <- isTRUE(result$options$hide_small_loadings %||% TRUE)
   highlight_problem_values <- isTRUE(result$options$highlight_problem_values %||% TRUE)
   sort_loadings <- isTRUE(result$options$sort_loadings %||% TRUE)
-  loading_abs <- abs(loadings)
+  # Covariance loadings retain their units in the table; cutoffs and diagnostic
+  # colours use standardized values, as they do for correlation-based PCA.
+  diagnostic_sd <- if (identical(result$matrix_type, "covariance")) {
+    sqrt(diag(result$analysis_matrix))[rownames(loadings)]
+  } else stats::setNames(rep(1, nrow(loadings)), rownames(loadings))
+  loading_abs <- abs(loadings / diagnostic_sd[rownames(loadings)])
   primary_component <- max.col(loading_abs, ties.method = "first")
   primary_loading <- loading_abs[cbind(seq_len(nrow(loadings)), primary_component)]
   if (isTRUE(sort_loadings)) {
     row_order <- order(primary_component, -primary_loading, rownames(loadings), na.last = TRUE)
     loadings <- loadings[row_order, , drop = FALSE]
-    loading_abs <- abs(loadings)
+    loading_abs <- abs(loadings / diagnostic_sd[rownames(loadings)])
     primary_component <- max.col(loading_abs, ties.method = "first")
     primary_loading <- loading_abs[cbind(seq_len(nrow(loading_abs)), primary_component)]
   }
@@ -123,15 +164,17 @@ pca_loading_table <- function(result, cutoff = 0.30) {
         primary_component[[row_index]] == component_index &&
         is.finite(primary_loading[[row_index]]) &&
         primary_loading[[row_index]] < cutoff
-      if (!is.finite(value) || (isTRUE(hide_small_loadings) && abs(value) < cutoff && !isTRUE(low_primary))) "" else format_decimal3(value)
+      if (!is.finite(value) || (isTRUE(hide_small_loadings) && loading_abs[row_index, component_index] < cutoff && !isTRUE(low_primary))) "" else format_decimal3(value)
     }, character(1))
   }
   table$`h²` <- vapply(result$communality[rownames(loadings)], format_decimal3, character(1))
   table$Complexity <- vapply(result$complexity[rownames(loadings)], format_decimal3, character(1))
-  cell_styles <- factor_analysis_problem_cell_styles(result, rownames(loadings), table, loadings, cutoff = cutoff)
+  diagnostic_result <- result
+  diagnostic_result$communality <- result$communality / diagnostic_sd[names(result$communality)]^2
+  cell_styles <- factor_analysis_problem_cell_styles(diagnostic_result, rownames(loadings), table, loadings / diagnostic_sd[rownames(loadings)], cutoff = cutoff)
   if (!isTRUE(hide_small_loadings)) {
     bold_cells <- do.call(rbind, lapply(seq_along(components), function(column_index) {
-      rows <- which(abs(loadings[, components[[column_index]]]) >= cutoff)
+      rows <- which(loading_abs[, column_index] >= cutoff)
       if (length(rows) == 0) {
         return(NULL)
       }
@@ -208,6 +251,7 @@ pca_eigen_table <- function(result) {
 }
 
 prepare_pca_results <- function(data, variables, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("variables"))
   variables <- intersect(as.character(variables %||% character(0)), names(data))
   shiny::validate(shiny::need(length(variables) >= 2, "Select at least two variables for principal component analysis."))
 
@@ -260,7 +304,7 @@ prepare_pca_results <- function(data, variables, variable_info = NULL, labels = 
   n_components <- pca_select_component_count(eigenvalues, criterion, options$n_components %||% 1L, cumulative_variance)
 
   fit <- if (identical(matrix_type, "polychoric")) {
-    suppressWarnings(suppressMessages(psych::principal(
+    suppressWarnings(suppressMessages(pca_principal(
       r = analysis_matrix,
       nfactors = n_components,
       rotate = rotation,
@@ -268,11 +312,12 @@ prepare_pca_results <- function(data, variables, variable_info = NULL, labels = 
       covar = FALSE
     )))
   } else {
-    suppressWarnings(suppressMessages(psych::principal(
+    suppressWarnings(suppressMessages(pca_principal(
       complete,
       nfactors = n_components,
       rotate = rotation,
       scores = TRUE,
+      cor = if (identical(matrix_type, "covariance")) "cov" else "cor",
       covar = identical(matrix_type, "covariance")
     )))
   }
@@ -287,7 +332,7 @@ prepare_pca_results <- function(data, variables, variable_info = NULL, labels = 
     scores <- NULL
   }
 
-  suitability_corr <- if (identical(matrix_type, "polychoric")) {
+  suitability_corr <- if (!identical(matrix_type, "covariance")) {
     analysis_matrix
   } else {
     stats::cor(complete, use = "pairwise.complete.obs")

@@ -23,7 +23,9 @@ hierarchical_setup_state <- function(
   show_vif = TRUE,
   options_tab = "Model",
   output_table_style = "standard",
-  language = statedu_initial_language()
+  language = statedu_initial_language(),
+  block4 = character(0),
+  selected_block4 = NULL
 ) {
   language <- normalize_app_language(language)
   selected <- as.character(selected_names %||% character(0))
@@ -31,7 +33,8 @@ hierarchical_setup_state <- function(
   block1 <- intersect(as.character(block1 %||% character(0)), selected)
   block2 <- intersect(as.character(block2 %||% character(0)), selected)
   block3 <- intersect(as.character(block3 %||% character(0)), selected)
-  assigned <- unique(c(ordered_dependents, block1, block2, block3))
+  block4 <- intersect(as.character(block4 %||% character(0)), selected)
+  assigned <- unique(c(ordered_dependents, block1, block2, block3, block4))
   available <- setdiff(selected, assigned)
   bootstrap_choices <- bootstrap_resample_choices(language)
   available_selected <- selected_order_items(selected_available, available)
@@ -39,8 +42,9 @@ hierarchical_setup_state <- function(
   block1_selected <- selected_order_items(selected_block1, block1)
   block2_selected <- selected_order_items(selected_block2, block2)
   block3_selected <- selected_order_items(selected_block3, block3)
+  block4_selected <- selected_order_items(selected_block4, block4)
   active_block <- as.character(active_block %||% "block1")[[1]]
-  if (!active_block %in% c("block1", "block2", "block3")) {
+  if (!active_block %in% c("block1", "block2", "block3", "block4")) {
     active_block <- "block1"
   }
 
@@ -60,6 +64,9 @@ hierarchical_setup_state <- function(
     block3 = block3,
     block3_items = analysis_variable_items(block3, variable_table, labels),
     block3_selected = block3_selected,
+    block4 = block4,
+    block4_items = analysis_variable_items(block4, variable_table, labels),
+    block4_selected = block4_selected,
     active_block = active_block,
     bootstrap_choices = bootstrap_choices,
     current_bootstrap = normalized_bootstrap_resamples(bootstrap_value, bootstrap_choices),
@@ -107,6 +114,17 @@ hierarchical_active_block_setup <- function(setup) {
       move_up_id = "move_hierarchical_block3_up",
       move_down_id = "move_hierarchical_block3_down"
     ),
+    block4 = list(
+      index = 4L,
+      name = "block4",
+      title = sprintf("%s (%s)", analysis_ui_text("Block 4: Independent variables", language), length(setup$block4)),
+      input_id = "hierarchical_block4",
+      items = setup$block4_items,
+      selected = setup$block4_selected,
+      move_id = "hierarchical_block4_move",
+      move_up_id = "move_hierarchical_block4_up",
+      move_down_id = "move_hierarchical_block4_down"
+    ),
     list(
       index = 1L,
       name = "block1",
@@ -138,7 +156,7 @@ hierarchical_block_title_tag <- function(block, can_next = FALSE, language = sta
       if (block$index > 1L) {
         actionButton("hierarchical_block_prev", "\u2039", class = "btn-default btn-sm hierarchical-block-nav-button", title = analysis_ui_text("Previous block", language))
       },
-      if (block$index < 3L && isTRUE(can_next)) {
+      if (block$index < 4L && isTRUE(can_next)) {
         actionButton("hierarchical_block_next", "\u203a", class = "btn-default btn-sm hierarchical-block-nav-button", title = analysis_ui_text("Next block", language))
       }
     )
@@ -163,6 +181,7 @@ hierarchical_target_panel <- function(
     hierarchical_block1 = "hierarchical-block1-panel",
     hierarchical_block2 = "hierarchical-block2-panel",
     hierarchical_block3 = "hierarchical-block3-panel",
+    hierarchical_block4 = "hierarchical-block4-panel",
     ""
   )
   size_class <- paste0("hierarchical-list-size-", max(1, as.integer(size %||% 1)))
@@ -205,11 +224,9 @@ hierarchical_setup_panel <- function(setup, status_message) {
           class = "hierarchical-target-row hierarchical-dependent-row",
           div(
             class = "hierarchical-target-move-cell",
-            actionButton(
+            analysis_variable_move_button(
               "hierarchical_dependent_move",
-              ">",
-              class = "btn btn-default analysis-move-button",
-              disabled = if (setup$move_disabled && length(setup$ordered_dependents) == 0) "disabled" else NULL
+              disabled = setup$move_disabled && length(setup$ordered_dependents) == 0
             )
           ),
           hierarchical_target_panel(
@@ -228,11 +245,9 @@ hierarchical_setup_panel <- function(setup, status_message) {
           class = paste("hierarchical-target-row hierarchical-active-block-row", paste0("hierarchical-active-", active_block$name)),
           div(
             class = "hierarchical-target-move-cell",
-            actionButton(
+            analysis_variable_move_button(
               active_block$move_id,
-              ">",
-              class = "btn btn-default analysis-move-button",
-              disabled = if (setup$move_disabled && length(setup[[active_block$name]]) == 0) "disabled" else NULL
+              disabled = setup$move_disabled && length(setup[[active_block$name]]) == 0
             )
           ),
           hierarchical_target_panel(
@@ -344,6 +359,7 @@ hierarchical_setup_panel <- function(setup, status_message) {
         disabled = if (!can_run) "disabled" else NULL
       ),
       reset_control = uiOutput("hierarchical_reset_control"),
+      command_control = actionButton("hierarchical_open_regression_syntax", if (language == "ko") "분석 명령어" else "Analysis Commands", class = "btn-default"),
       save_control = uiOutput("hierarchical_save_control")
     )
   )

@@ -15,7 +15,10 @@ register_pca_handlers <- function(
 ) {
   pca_variables <- reactiveVal(character(0))
   active_pca_list <- reactiveVal(NULL)
-  pca_result <- reactiveVal(NULL)
+  pca_result <- analysis_scope_result_val(NULL)
+  # Reuse the bounded image cache already used by correlation exports.
+  pca_export_images <- correlation_export_image_cache()
+  session$onSessionEnded(pca_export_images$clear)
 
   current_selected <- reactive({
     as.character(selected_names_fn() %||% character(0))
@@ -146,6 +149,15 @@ register_pca_handlers <- function(
     mark_settings_dirty = mark_settings_dirty
   )
 
+  register_analysis_reorder(input, session, "pca_selected", function(payload) {
+    updated <- analysis_reorder_items(pca_variables(), payload)
+    if (isTRUE(updated$changed)) {
+      pca_variables(updated$order)
+      active_pca_list("pca_selected")
+      mark_settings_dirty()
+    }
+  })
+
   observeEvent(input$pca_move_up, {
     updated <- move_order_item(pca_variables(), input$pca_selected, "up")
     if (isTRUE(updated$changed)) {
@@ -164,7 +176,11 @@ register_pca_handlers <- function(
     }
   })
 
-  observeEvent(input$run_pca, {
+  register_analysis_command_handler(
+    "run_pca", input, output, session,
+    states = list(pca_variables = pca_variables),
+    dataset_fn = dataset_fn, context_fn = function() list(selected = selected_names_fn(), variables = variable_table_fn(), labels = labels_fn(), categories = category_table_fn()),
+    run_fn = function() {
     if (length(pca_variables()) < 2) {
       showNotification(statedu_t("analysis.validation.pca_min_two", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return()
@@ -197,6 +213,7 @@ register_pca_handlers <- function(
       }
     )
     if (!is.null(result)) {
+      pca_export_images$clear()
       pca_result(result)
       if (isTRUE(input$pca_save_component_scores %||% FALSE) && is.function(add_calculated_variable_fn)) {
         saved <- tryCatch(
@@ -266,6 +283,7 @@ register_pca_handlers <- function(
   observeEvent(input$reset_pca_selection, {
     if (length(as.character(pca_variables() %||% character(0))) == 0) return()
     pca_variables(character(0))
+    pca_export_images$clear()
     pca_result(NULL)
     active_pca_list("pca_available")
     session$sendCustomMessage(
@@ -303,11 +321,11 @@ register_pca_handlers <- function(
     }
     tryCatch(
       {
-        write_pca_results_html(result, path)
+        write_pca_results_html(result, path, plot_renderer = pca_export_images$render)
         showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -325,11 +343,11 @@ register_pca_handlers <- function(
     }
     tryCatch(
       {
-        write_pca_results_pdf(result, path)
+        write_pca_results_pdf(result, path, plot_renderer = pca_export_images$render)
         showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -347,11 +365,11 @@ register_pca_handlers <- function(
     }
     tryCatch(
       {
-        save_pca_excel_file(result, path)
+        save_pca_excel_file(result, path, plot_renderer = pca_export_images$render)
         showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -380,7 +398,7 @@ register_pca_handlers <- function(
         showNotification(sprintf(statedu_t("result.figures_saved", statedu_current_language(app_language_fn)), length(saved), directory), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })

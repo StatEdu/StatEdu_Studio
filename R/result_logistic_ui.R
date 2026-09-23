@@ -1,5 +1,196 @@
 # Logistic regression result UI.
 
+logistic_main_table <- function(table) {
+  if (is.data.frame(table)) {
+    attr(table, "result_table_role") <- "main"
+    attr(table, "result_table_language") <- result_main_table_language()
+  }
+  table
+}
+
+logistic_appendix_text <- function(text, language = NULL) {
+  language <- result_appendix_table_language(language)
+  text <- as.character(text %||% "")
+  if (identical(language, "en") || !nzchar(text)) return(text)
+  status_keys <- c("Converged" = "converged", "Not converged" = "not_converged",
+    "Unknown model convergence status" = "unknown")
+  if (text %in% names(status_keys)) return(statedu_t(paste0("analysis.logistic_status.", status_keys[[text]]), language))
+  reference_vif_patterns <- c(
+    "^Binary event for (.+?) is (.+?); reference is (.+)\\.$" = "Binary event for %s is %s; reference is %s.",
+    "^The proportional-odds nominal-effects test was unavailable \\((.+)\\); the cumulative logit model was retained and this assumption requires external review\\.$" = "The proportional-odds nominal-effects test was unavailable (%s); the cumulative logit model was retained and this assumption requires external review.",
+    "^Zero cell found for (.+?) by (.+); separation is possible\\.$" = "Zero cell found for %s by %s; separation is possible.",
+    "^Sparse cells found for (.+?) by (.+)\\.$" = "Sparse cells found for %s by %s.",
+    "^Rare event warning: the smaller outcome class is ([0-9.]+)% of complete cases\\.$" = "Rare event warning: the smaller outcome class is %s%% of complete cases.",
+    "^EPV screening: approximate observations in the smallest outcome class per predictor parameter is ([0-9.]+) \\(<5\\); estimates may be unstable\\.$" = "EPV screening: approximate observations in the smallest outcome class per predictor parameter is %s (<5); estimates may be unstable.",
+    "^EPV screening: approximate observations in the smallest outcome class per predictor parameter is ([0-9.]+) \\(<10\\); interpret estimates cautiously\\.$" = "EPV screening: approximate observations in the smallest outcome class per predictor parameter is %s (<10); interpret estimates cautiously.",
+    "^Reference for (.+?) was not set; minimum value (.+) was used\\.$" = "Reference for %s was not set; minimum value %s was used.",
+    "^max VIF=(.+)$" = "max VIF=%s",
+    "^Multicollinearity warning: VIF exceeds 10 \\(max VIF = (.+)\\)\\. Consider reducing predictors or using penalized logistic regression\\.$" = "Multicollinearity warning: VIF exceeds 10 (max VIF = %s). Consider reducing predictors or using penalized logistic regression.",
+    "^Multicollinearity caution: VIF exceeds 5 \\(max VIF = (.+)\\)\\. Interpret individual coefficients cautiously\\.$" = "Multicollinearity caution: VIF exceeds 5 (max VIF = %s). Interpret individual coefficients cautiously."
+  )
+  for (pattern in names(reference_vif_patterns)) {
+    values <- regmatches(text, regexec(pattern, text))[[1]]
+    if (length(values) > 1L) return(do.call(sprintf, c(list(result_appendix_ui_text(reference_vif_patterns[[pattern]], language)), as.list(values[-1L]))))
+  }
+  linearity <- regmatches(text, regexec("^Linearity in the logit is not established automatically for continuous predictor\\(s\\): (.+)\\. Inspect nonlinear terms or spline sensitivity analyses when scientifically plausible\\.$", text))[[1]]
+  if (length(linearity) == 2L) {
+    template <- "Linearity in the logit is not established automatically for continuous predictor(s): %s. Inspect nonlinear terms or spline sensitivity analyses when scientifically plausible."
+    return(sprintf(result_appendix_ui_text(template, language), linearity[[2]]))
+  }
+  basis_pattern <- "^The proportional-odds decision used an ordinal::clm nominal-effects likelihood-ratio test based on the (specified model|final hierarchical model); the same model family was used for every hierarchical step\\.$"
+  basis <- regmatches(text, regexec(basis_pattern, text))[[1]]
+  if (length(basis) == 2L) {
+    label <- if (basis[[2]] == "specified model") "Specified model" else "Final hierarchical model"
+    template <- "The proportional-odds decision used an ordinal::clm nominal-effects likelihood-ratio test based on the %s; the same model family was used for every hierarchical step."
+    return(sprintf(result_appendix_ui_text(template, language), result_appendix_ui_text(label, language)))
+  }
+  test <- regmatches(text, regexec("^(x²=.+); (Specified model|Final hierarchical model)$", text))[[1]]
+  if (length(test) == 3L) return(paste(test[[2]], result_appendix_ui_text(test[[3]], language), sep = "; "))
+  translated <- result_appendix_ui_text(text, language)
+  if (!identical(language, "ko")) return(translated)
+  korean <- c(
+    "Model diagnostics" = "모형 진단",
+    "Convergence" = "수렴",
+    "Proportional odds" = "비례오즈",
+    "EPV / sparse" = "EPV / 희소 셀",
+    "Separation" = "분리",
+    "VIF" = "VIF",
+    "Functional form" = "함수 형태",
+    "Multinomial IIA" = "다항 로짓 IIA",
+    "Apparent model performance" = "표본 내 모형 성능",
+    "These statistics describe the estimation sample and are not a substitute for internal validation, holdout testing, or external validation." =
+      "이 통계량은 추정 표본의 기술적 성능이며 내부 검증, 홀드아웃 검증 또는 외부 검증을 대신하지 않습니다.",
+    "Converged" = "수렴함",
+    "Not converged" = "수렴하지 않음",
+    "Unknown model convergence status" = "모형 수렴 상태를 확인할 수 없음",
+    "Proportional odds assumption not assessable" = "비례오즈 가정을 평가할 수 없음",
+    "Proportional odds assumption met" = "비례오즈 가정 충족",
+    "Proportional odds assumption not met" = "비례오즈 가정 미충족",
+    "Proportional odds not assessable" = "비례오즈를 평가할 수 없음",
+    "Proportional odds met" = "비례오즈 충족",
+    "Proportional odds not met" = "비례오즈 미충족",
+    "No multicollinearity problem" = "다중공선성 문제 없음",
+    "Multicollinearity warning" = "다중공선성 주의",
+    "Multicollinearity risk" = "다중공선성 위험",
+    "EPV/sparse warning" = "EPV/희소 셀 주의",
+    "Separation warning" = "분리 현상 주의",
+    "No notable issues" = "주요 문제 없음",
+    "Apparent (in-sample); descriptive only" = "표본 내 성능(기술통계 용도)",
+    "Binary logistic regression" = "이분형 로지스틱 회귀분석",
+    "Ordinal logistic regression" = "순서형 로지스틱 회귀분석",
+    "Multinomial logistic regression" = "다항 로지스틱 회귀분석",
+    "Final hierarchical model" = "최종 위계적 모형",
+    "Specified model" = "지정 모형",
+    "AUC (apparent)" = "AUC (표본 내)",
+    "Brier score (apparent)" = "Brier 점수 (표본 내)",
+    "Tjur R² (apparent)" = "Tjur R² (표본 내)",
+    "Log loss (apparent)" = "로그 손실 (표본 내)",
+    "Accuracy (apparent)" = "정확도 (표본 내)",
+    "Ranked probability score (apparent)" = "순위확률점수 (표본 내)",
+    "Multiclass Brier score (apparent)" = "다범주 Brier 점수 (표본 내)",
+    "Very large OR/CI/SE/VIF; unstable model warning." = "매우 큰 OR/CI/SE/VIF로 인해 모형이 불안정할 수 있습니다.",
+    "The proportional odds assumption was not met in the nominal-effects likelihood-ratio test; multinomial logistic regression was fitted instead." =
+      "명목효과 우도비 검정에서 비례오즈 가정이 충족되지 않아 다항 로지스틱 회귀모형을 적합했습니다.",
+    "Very large OR, confidence interval, SE, or VIF indicates an unstable logistic model, commonly caused by sparse cells, quasi/complete separation, or multicollinearity. Interpret these coefficients with caution and consider collapsing categories, reducing predictors, or using penalized/exact logistic regression." =
+      "매우 큰 OR, 신뢰구간, SE 또는 VIF는 희소 셀, 준완전/완전 분리 또는 다중공선성에 따른 불안정한 모형을 시사합니다. 계수를 주의해서 해석하고 범주 통합, 예측변수 축소 또는 규제/정확 로지스틱 회귀를 검토하십시오.",
+    "Complete or quasi-complete separation is possible. Consider collapsing sparse categories, reducing predictors, or using Firth/penalized logistic regression." =
+      "완전 또는 준완전 분리 가능성이 있습니다. 희소 범주 통합, 예측변수 축소 또는 Firth/규제 로지스틱 회귀를 검토하십시오.",
+    "The independence of irrelevant alternatives (IIA) is not established automatically; justify the outcome categories and consider sensitivity analyses if alternatives may be substitutable." =
+      "무관한 대안의 독립성(IIA)은 자동으로 확인되지 않습니다. 결과 범주의 근거를 제시하고 대안 간 대체 가능성이 있으면 민감도 분석을 검토하십시오.",
+    "Odds-ratio confidence intervals use the large-sample Wald method." = "오즈비 신뢰구간은 대표본 Wald 방법을 사용했습니다.",
+    "Performance statistics are apparent (in-sample) diagnostics and do not establish external predictive validity." =
+      "성능 통계량은 표본 내 진단값이며 외적 예측타당도를 입증하지 않습니다.",
+    "Hierarchical models were fitted on the complete cases of the final model (listwise across all blocks); all steps share the same N." =
+      "위계적 모형은 최종 모형의 완전사례(모든 블록에 대한 목록별 제거)로 적합했으며 모든 단계의 N은 같습니다.",
+    "Two outcome levels remained in the final complete-case sample; binary logistic regression was used." =
+      "최종 완전사례 표본에 결과 수준이 두 개 남아 이분형 로지스틱 회귀분석을 사용했습니다."
+  )
+  if (translated %in% names(korean)) return(unname(korean[[translated]]))
+
+  dynamic <- translated
+  replacements <- list(
+    c("^GLM did not converge$", "GLM이 수렴하지 않음"),
+    c("^multinom convergence code (.+)$", "다항 로짓 수렴 코드 \\1"),
+    c("^Convergence failure: (.+)$", "수렴 실패: \\1"),
+    c("^Reference for (.+?) was not set; minimum value (.+?) was used\\.$", "\\1의 기준 범주가 지정되지 않아 최솟값 \\2을(를) 사용했습니다."),
+    c("^max VIF=(.+)$", "최대 VIF=\\1"),
+    c("^(x²=.+); Final hierarchical model$", "\\1; 최종 위계적 모형"),
+    c("^(x²=.+); Specified model$", "\\1; 지정 모형"),
+    c("^Zero cell found for (.+?) by (.+?); separation is possible\\.$", "\\1와 \\2의 교차표에서 빈 셀이 발견되어 분리가 발생할 수 있습니다."),
+    c("^Sparse cells found for (.+?) by (.+?)\\.$", "\\1와 \\2의 교차표에서 희소 셀이 발견되었습니다."),
+    c("^Rare event warning: the smaller outcome class is (.+)% of complete cases\\.$", "희귀사건 주의: 더 작은 결과 범주는 완전사례의 \\1%입니다."),
+    c("^EPV screening: approximate observations in the smallest outcome class per predictor parameter is (.+) \\(<5\\); estimates may be unstable\\.$", "EPV 선별: 예측변수 모수당 작은 결과 범주의 대략적 관측치는 \\1(<5)로 추정치가 불안정할 수 있습니다."),
+    c("^EPV screening: approximate observations in the smallest outcome class per predictor parameter is (.+) \\(<10\\); interpret estimates cautiously\\.$", "EPV 선별: 예측변수 모수당 작은 결과 범주의 대략적 관측치는 \\1(<10)이므로 추정치를 주의해서 해석하십시오."),
+    c("^Multicollinearity warning: VIF exceeds 10 \\(max VIF = (.+)\\)\\. Consider reducing predictors or using penalized logistic regression\\.$", "다중공선성 경고: VIF가 10을 초과합니다(최대 VIF = \\1). 예측변수 축소 또는 규제 로지스틱 회귀를 검토하십시오."),
+    c("^Multicollinearity caution: VIF exceeds 5 \\(max VIF = (.+)\\)\\. Interpret individual coefficients cautiously\\.$", "다중공선성 주의: VIF가 5를 초과합니다(최대 VIF = \\1). 개별 계수를 주의해서 해석하십시오."),
+    c("^Binary event for (.+?) is (.+?); reference is (.+?)\\.$", "\\1의 사건 범주는 \\2이고 기준 범주는 \\3입니다."),
+    c("^Linearity in the logit is not established automatically for continuous predictor\\(s\\): (.+?)\\. Inspect nonlinear terms or spline sensitivity analyses when scientifically plausible\\.$", "연속형 예측변수 \\1의 로짓 선형성은 자동으로 확인되지 않습니다. 과학적으로 타당하면 비선형항 또는 스플라인 민감도 분석을 검토하십시오."),
+    c("^The proportional-odds decision used an ordinal::clm nominal-effects likelihood-ratio test based on the (.+?); the same model family was used for every hierarchical step\\.$", "비례오즈 판정은 \\1에 대한 ordinal::clm 명목효과 우도비 검정을 사용했으며 모든 위계 단계에 같은 모형군을 적용했습니다."),
+    c("^The proportional-odds nominal-effects test was unavailable \\((.+)\\); the cumulative logit model was retained and this assumption requires external review\\.$", "비례오즈 명목효과 검정을 사용할 수 없어(\\1) 누적 로짓 모형을 유지했으며 이 가정은 별도 검토가 필요합니다.")
+  )
+  for (replacement in replacements) {
+    if (grepl(replacement[[1]], dynamic, perl = TRUE)) {
+      dynamic <- sub(replacement[[1]], replacement[[2]], dynamic, perl = TRUE)
+      break
+    }
+  }
+  dynamic
+}
+
+logistic_appendix_table <- function(table, language = NULL) {
+  if (!is.data.frame(table)) return(table)
+  language <- result_appendix_table_language(language)
+  localized <- result_appendix_localize_table(table, language)
+  # Status values have a different meaning from the generic Converged column header.
+  for (index in seq_along(table)) {
+    if (!is.character(table[[index]]) && !is.factor(table[[index]])) next
+    raw <- as.character(table[[index]])
+    # Translate generated prose from its original text before generic replacements.
+    for (row in which(!is.na(raw))) {
+      lines <- strsplit(raw[[row]], "\n", fixed = TRUE)[[1L]]
+      if (!length(lines)) next
+      values <- vapply(lines, logistic_appendix_text, character(1), language = language)
+      if (!identical(unname(values), unname(lines))) localized[[index]][[row]] <- paste(values, collapse = "\n")
+    }
+    status_rows <- which(raw %in% c("Converged", "Not converged", "Unknown model convergence status"))
+    if (length(status_rows)) localized[[index]][status_rows] <- vapply(raw[status_rows], logistic_appendix_text, character(1), language = language)
+  }
+  if (!identical(language, "ko")) return(result_appendix_preserve_data(localized, table))
+  header_map <- c(
+    "Convergence" = "수렴", "Proportional odds" = "비례오즈", "EPV / sparse" = "EPV / 희소 셀",
+    "Separation" = "분리", "VIF" = "VIF", "Functional form" = "함수 형태",
+    "Multinomial IIA" = "다항 로짓 IIA", "Package" = "패키지", "Metric" = "지표",
+    "Basis" = "산출 근거"
+  )
+  original_names <- names(table)
+  names(localized) <- vapply(seq_along(original_names), function(index) {
+    key <- original_names[[index]]
+    if (key %in% names(header_map)) unname(header_map[[key]]) else names(localized)[[index]]
+  }, character(1))
+  translate_cell <- function(value) {
+    lines <- strsplit(as.character(value %||% ""), "\n", fixed = TRUE)[[1L]]
+    paste(vapply(lines, logistic_appendix_text, character(1), language = language), collapse = "\n")
+  }
+  for (index in seq_along(localized)) {
+    if (!is.character(localized[[index]]) && !is.factor(localized[[index]])) next
+    localized[[index]] <- vapply(as.character(localized[[index]]), translate_cell, character(1))
+  }
+  attr(localized, "result_table_role") <- "appendix"
+  attr(localized, "result_table_language") <- language
+  result_appendix_preserve_data(localized, table)
+}
+
+logistic_main_note <- function(methods = NULL, notes = NULL, show_b = FALSE, show_se = FALSE, split_ci = TRUE) {
+  result_sci_note_text(
+    abbreviations = c(if (isTRUE(show_se)) "SE = standard error",
+      if (isTRUE(split_ci)) c("LLCI = lower confidence limit", "ULCI = upper confidence limit"),
+      "VIF = variance inflation factor", if (isTRUE(show_b)) "B = unstandardized log-odds coefficient",
+      "OR = odds ratio; CI = confidence interval"),
+    estimation = methods,
+    symbol = notes
+  )
+}
+
 logistic_format_ci <- function(lower, upper) {
   sprintf("%s-%s", logistic_format_number(lower), logistic_format_number(upper))
 }
@@ -28,7 +219,7 @@ logistic_format_ci_parenthetical <- function(lower, upper) {
 logistic_result_notes <- function(result) {
   notes <- as.character(result$notes %||% character(0))
   if (isTRUE(result$ordinal_fallback)) {
-    notes <- c(notes, "The proportional odds assumption was not met; multinomial logistic regression was fitted instead.")
+    notes <- c(notes, "The proportional odds assumption was not met in the nominal-effects likelihood-ratio test; multinomial logistic regression was fitted instead.")
   }
   instability_note <- logistic_instability_note(result)
   if (nzchar(instability_note)) {
@@ -328,7 +519,7 @@ logistic_fit_rows <- function(result, show_mcfadden = FALSE, show_cox_snell = FA
   }
   rows[[length(rows) + 1L]] <- list(type = "fit", values = list(tags$span(style = "display:inline-block;white-space:normal;", sprintf("AIC=%s, BIC=%s", format_decimal3(result$fit$aic), format_decimal3(result$fit$bic)))))
   if (!is.null(result$parallel)) {
-    rows[[length(rows) + 1L]] <- list(type = "fit", values = list(logistic_stat_line(tagList("Parallel lines ", logistic_x2_label()), sprintf("%s (%s)", format_decimal3(result$parallel$chisq), format_p(result$parallel$p)))))
+    rows[[length(rows) + 1L]] <- list(type = "fit", values = list(logistic_stat_line(tagList("Proportional odds ", logistic_x2_label()), sprintf("%s (%s)", format_decimal3(result$parallel$chisq), format_p(result$parallel$p)))))
   }
   rows
 }
@@ -417,11 +608,11 @@ logistic_result_html_table <- function(result, variable_table = NULL, labels = c
     logistic_coefficient_rows(result, variable_table, labels, category_table, show_b, show_se, split_ci),
     logistic_fit_rows(result, show_mcfadden, show_cox_snell)
   )
-  tags$table(
+  table_tag <- tags$table(
     class = paste("coefficient-table logistic-result-table", paste0("output-table-style-", output_table_style)),
     style = paste0(
       result_table_style(
-        font_size = if (isTRUE(style_params$compact)) style_params$font_size else 12,
+        font_size = 12,
         min_width = if (identical(output_table_style, "wide")) style_params$min_width else 0
       ),
       if (identical(output_table_style, "wide")) {
@@ -440,7 +631,7 @@ logistic_result_html_table <- function(result, variable_table = NULL, labels = c
             if (isTRUE(show_b)) tags$th(style = logistic_header_style(FALSE, bottom = FALSE), ""),
             if (isTRUE(show_se)) tags$th(style = logistic_header_style(FALSE, bottom = FALSE), ""),
             tags$th(style = logistic_header_style(FALSE, bottom = FALSE), ""),
-            tags$th(style = logistic_header_style(FALSE, bottom = TRUE, center = TRUE), colspan = 2, "95% CI"),
+            tags$th(class = "coefficient-ci-group-header", style = logistic_header_style(FALSE, bottom = TRUE, center = TRUE), colspan = 2, span(class = "coefficient-ci-group-label", "95% CI")),
             tags$th(style = logistic_header_style(FALSE, bottom = FALSE), ""),
             tags$th(style = logistic_header_style(FALSE, bottom = FALSE), "")
           ),
@@ -472,6 +663,14 @@ logistic_result_html_table <- function(result, variable_table = NULL, labels = c
         tags$td(style = logistic_body_separator_style(index %in% c(1L, 2L), row_index == length(rows), separator = separator), values[[index]])
       }))
     }))
+  )
+  result_table_apply_contract(
+    table_tag,
+    result_table_contract(
+      role = "main",
+      language = result_main_table_language(),
+      intrinsic_width = max(480L, 180L + length(coef_headers) * 66L)
+    )
   )
 }
 
@@ -519,7 +718,7 @@ logistic_fit_summary_values <- function(result, show_mcfadden = FALSE, show_cox_
     delta_r2 = if (!is.null(result$delta_r2)) sprintf("Delta R\u00B2 = %s", format_decimal3(result$delta_r2)) else "",
     delta_x2 = if (!is.null(result$delta_chisq)) sprintf("Delta x\u00B2(p) = %s (%s)", format_decimal3(result$delta_chisq), format_p(result$delta_p)) else "",
     aic = sprintf("AIC=%s, BIC=%s", format_decimal3(result$fit$aic), format_decimal3(result$fit$bic)),
-    parallel = if (!is.null(result$parallel)) sprintf("Parallel lines x\u00B2(p) = %s (%s)", format_decimal3(result$parallel$chisq), format_p(result$parallel$p)) else ""
+    parallel = if (!is.null(result$parallel)) sprintf("Proportional odds x\u00B2(p) = %s (%s)", format_decimal3(result$parallel$chisq), format_p(result$parallel$p)) else ""
   )
   keep <- vapply(values, function(value) {
     if (inherits(value, "shiny.tag") || inherits(value, "shiny.tag.list")) {
@@ -543,8 +742,8 @@ logistic_overview_column_label <- function(result, variable_table = NULL, labels
 logistic_package_label <- function(result) {
   method <- as.character(result$method %||% "")
   packages <- c("stats")
-  if (grepl("Ordinal", method)) {
-    packages <- c(packages, "MASS")
+  if (grepl("Ordinal", method) || !is.null(result$parallel)) {
+    packages <- c(packages, "ordinal")
   }
   if (grepl("Multinomial", method)) {
     packages <- c(packages, "nnet")
@@ -563,7 +762,7 @@ logistic_model_overview_data_frame <- function(results, variable_table = NULL, l
     notes <- logistic_result_notes(result)
     parts <- character(0)
     if (!is.null(result$parallel)) {
-      parts <- c(parts, if (!is.na(result$parallel$p) && result$parallel$p > .05) "Proportional odds met" else "Proportional odds not met")
+      parts <- c(parts, if (is.na(result$parallel$p)) "Proportional odds not assessable" else if (result$parallel$p > .05) "Proportional odds met" else "Proportional odds not met")
     }
     if (nzchar(logistic_note_match(notes, "EPV|Sparse|Zero cell|Rare event"))) {
       parts <- c(parts, "EPV/sparse warning")
@@ -621,8 +820,15 @@ logistic_parallel_summary <- function(result) {
     return("")
   }
   p <- result$parallel$p
-  decision <- if (!is.na(p) && p > .05) "Proportional odds assumption met" else "Proportional odds assumption not met"
-  sprintf("x\u00B2=%s(%s)\n%s", format_decimal3(result$parallel$chisq), format_p(p), decision)
+  decision <- if (is.na(p)) "Proportional odds assumption not assessable" else if (p > .05) "Proportional odds assumption met" else "Proportional odds assumption not met"
+  basis <- as.character(result$parallel$basis %||% "")[[1L]]
+  sprintf("x\u00B2=%s(%s)%s\n%s", format_decimal3(result$parallel$chisq), format_p(p), if (nzchar(basis)) paste0("; ", basis) else "", decision)
+}
+
+logistic_convergence_summary <- function(result) {
+  convergence <- result$convergence
+  if (is.null(convergence)) return("")
+  if (isTRUE(convergence$ok)) "Converged" else as.character(convergence$message %||% "Not converged")[[1L]]
 }
 
 logistic_vif_summary_text <- function(result) {
@@ -647,7 +853,7 @@ logistic_assumption_review_data_frame <- function(results, variable_table = NULL
   odds_label <- "Proportional odds"
   separation_label <- "Separation"
   package_label <- "Package"
-  rows <- c(odds_label, "EPV / sparse", separation_label, "VIF", package_label)
+  rows <- c("Convergence", odds_label, "EPV / sparse", separation_label, "VIF", "Functional form", "Multinomial IIA", package_label)
   values <- lapply(results, function(result) {
     notes <- logistic_result_notes(result)
     epv_sparse <- paste(c(
@@ -656,10 +862,13 @@ logistic_assumption_review_data_frame <- function(results, variable_table = NULL
     ), collapse = "\n")
     stats::setNames(
       c(
+        logistic_convergence_summary(result),
         logistic_parallel_summary(result),
         epv_sparse,
         logistic_assumption_note_match(notes, "separation"),
         logistic_vif_summary_text(result),
+        logistic_assumption_note_match(notes, "Linearity in the logit|nonlinear terms|spline"),
+        logistic_assumption_note_match(notes, "independence of irrelevant alternatives|IIA"),
         logistic_package_label(result)
       ),
       rows
@@ -672,14 +881,46 @@ logistic_assumption_review_data_frame <- function(results, variable_table = NULL
   table
 }
 
+logistic_performance_data_frame <- function(results, variable_table = NULL, labels = character(0), category_table = NULL) {
+  rows <- lapply(seq_along(results %||% list()), function(index) {
+    result <- results[[index]]
+    metrics <- result$performance
+    if (is.null(metrics) || length(metrics) == 0L) return(NULL)
+    data.frame(
+      Dependent = logistic_dependent_title_label(result$dependent, variable_table, labels, category_table),
+      Model = logistic_model_label(result, index),
+      Method = as.character(result$method %||% ""),
+      Metric = names(metrics),
+      Value = vapply(as.numeric(metrics), format_decimal3, character(1)),
+      Basis = "Apparent (in-sample); descriptive only",
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+  })
+  analysis_bind_rows(rows)
+}
+
+logistic_performance_block <- function(results, variable_table = NULL, labels = character(0), category_table = NULL) {
+  table <- logistic_performance_data_frame(results, variable_table, labels, category_table)
+  if (!is.data.frame(table) || nrow(table) == 0L) return(NULL)
+  table <- logistic_appendix_table(table)
+  div(
+    class = "result-section regression-result-panel logistic-result-panel performance-panel",
+    h3(logistic_appendix_text("Apparent model performance")),
+    model_overview_html_table(table),
+    div(logistic_appendix_text("These statistics describe the estimation sample and are not a substitute for internal validation, holdout testing, or external validation."), class = "result-note")
+  )
+}
+
 logistic_model_overview_block <- function(results, variable_table = NULL, labels = character(0), category_table = NULL) {
   table <- logistic_model_overview_data_frame(results, variable_table, labels, category_table)
   if (!is.data.frame(table) || nrow(table) == 0) {
     return(NULL)
   }
+  table <- logistic_appendix_table(table)
   div(
-    class = "regression-result-panel logistic-result-panel model-overview-panel",
-    h3("Model overview"),
+    class = "result-section regression-result-panel logistic-result-panel model-overview-panel",
+    h3(result_appendix_ui_text("Model overview")),
     model_overview_html_table(table)
   )
 }
@@ -689,10 +930,38 @@ logistic_assumption_review_block <- function(results, variable_table = NULL, lab
   if (!is.data.frame(table) || nrow(table) == 0) {
     return(NULL)
   }
+  table <- logistic_appendix_table(table)
   div(
-    class = "regression-result-panel logistic-result-panel assumption-review-panel",
-    h3("Assumption review"),
+    class = "result-section regression-result-panel logistic-result-panel assumption-review-panel",
+    h3(result_appendix_ui_text("Assumption review")),
     model_overview_html_table(table)
+  )
+}
+
+logistic_model_notes_data_frame <- function(results, variable_table = NULL, labels = character(0), category_table = NULL) {
+  rows <- lapply(seq_along(results %||% list()), function(index) {
+    result <- results[[index]]
+    notes <- logistic_result_notes(result)
+    notes <- notes[nzchar(as.character(notes %||% ""))]
+    if (length(notes) == 0L) return(NULL)
+    data.frame(
+      Model = logistic_overview_column_label(result, variable_table, labels, category_table),
+      Message = as.character(notes),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+  })
+  analysis_bind_rows(rows)
+}
+
+logistic_model_notes_block <- function(results, variable_table = NULL, labels = character(0), category_table = NULL) {
+  table <- logistic_model_notes_data_frame(results, variable_table, labels, category_table)
+  if (!is.data.frame(table) || nrow(table) == 0L) return(NULL)
+  table <- logistic_appendix_table(table)
+  div(
+    class = "result-section regression-result-panel logistic-result-panel logistic-model-notes-panel",
+    h3(logistic_appendix_text("Model diagnostics")),
+    coefficient_html_table(table, table_role = "appendix")
   )
 }
 
@@ -726,7 +995,7 @@ logistic_hierarchical_footer_row <- function(label, values, model_columns, first
   do.call(tags$tr, cells)
 }
 
-logistic_hierarchical_result_table <- function(group, variable_table = NULL, labels = character(0), category_table = NULL, show_b = FALSE, show_se = FALSE, show_mcfadden = FALSE, show_cox_snell = FALSE, split_ci = TRUE, output_table_style = "standard") {
+logistic_hierarchical_result_table <- function(group, variable_table = NULL, labels = character(0), category_table = NULL, show_b = FALSE, show_se = FALSE, show_mcfadden = FALSE, show_cox_snell = FALSE, split_ci = TRUE, output_table_style = "standard", note_line = "") {
   output_table_style <- analysis_output_table_style(output_table_style)
   style_params <- analysis_output_table_style_params(output_table_style)
   coef_headers <- logistic_coef_headers(show_b, show_se, split_ci)
@@ -743,13 +1012,13 @@ logistic_hierarchical_result_table <- function(group, variable_table = NULL, lab
   }, numeric(1))) + max(0, length(group) - 1L) * 10
   table_style <- if (isTRUE(fit_width)) {
     paste0(
-      result_table_style(font_size = if (isTRUE(style_params$compact)) style_params$font_size else if (length(group) >= 3L) 9 else 10, min_width = 0),
+      result_table_style(font_size = 12, min_width = 0),
       "width:100% !important;min-width:0 !important;max-width:100% !important;table-layout:fixed;"
     )
   } else {
     sprintf(
       "%s width:auto; min-width:%dpx; table-layout:fixed;",
-      result_table_style(font_size = 13),
+      result_table_style(font_size = 12),
       table_min_width
     )
   }
@@ -863,7 +1132,7 @@ logistic_hierarchical_result_table <- function(group, variable_table = NULL, lab
     delta_r2 = "Delta R\u00B2",
     delta_x2 = "Delta x\u00B2(p)",
     aic = "AIC, BIC",
-    parallel = "Parallel lines x\u00B2(p)",
+    parallel = "Proportional odds x\u00B2(p)",
     status = "Status"
   )
   footer_rows <- lapply(seq_along(footer_labels), function(index) {
@@ -891,7 +1160,19 @@ logistic_hierarchical_result_table <- function(group, variable_table = NULL, lab
     tags$tbody(body_rows),
     tags$tfoot(footer_rows)
   )
-  div(class = "result-table-with-note hierarchical-table-wrap", div(class = "hierarchical-table-scroll", table))
+  table <- result_table_apply_contract(
+    table,
+    result_table_contract(
+      role = "main",
+      language = result_main_table_language(),
+      intrinsic_width = max(480L, table_min_width)
+    )
+  )
+  result_table_with_notes(
+    table,
+    result_note_tag(note_line),
+    class = "result-table-with-note hierarchical-table-wrap"
+  )
 }
 
 logistic_result_block <- function(result, variable_table = NULL, labels = character(0), category_table = NULL, show_b = FALSE, show_se = FALSE, show_mcfadden = FALSE, show_cox_snell = FALSE, split_ci = TRUE, output_table_style = "standard") {
@@ -902,42 +1183,47 @@ logistic_result_block <- function(result, variable_table = NULL, labels = charac
   div(
     class = "result-section regression-result-panel logistic-result-panel",
     h3(title),
-    logistic_result_html_table(result, variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci, output_table_style),
-    div(logistic_method_label(result), class = "result-note logistic-result-method"),
-    lapply(logistic_result_notes(result), function(note) {
-      div(note, class = "result-note coefficient-warning")
-    })
+    result_table_with_notes(
+      logistic_result_html_table(result, variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci, output_table_style),
+      result_note_tag(logistic_main_note(logistic_method_label(result), show_b = show_b, show_se = show_se, split_ci = split_ci)),
+      class = "result-table-with-note logistic-fit-table-wrap"
+    )
   )
 }
 
 logistic_hierarchical_result_block <- function(group, variable_table = NULL, labels = character(0), category_table = NULL, show_b = FALSE, show_se = FALSE, show_mcfadden = FALSE, show_cox_snell = FALSE, split_ci = TRUE, output_table_style = "standard") {
   first_result <- group[[1]]
   output_table_style <- analysis_output_table_style(output_table_style)
-  notes <- unique(unlist(lapply(group, logistic_result_notes), use.names = FALSE))
   methods <- unique(vapply(group, logistic_method_label, character(1)))
-  table_content <- if (identical(output_table_style, "standard")) {
-    tags$div(
-      class = "hierarchical-standard-table-wrap logistic-standard-table-wrap",
-      lapply(seq_along(group), function(index) {
-        tags$div(
-          class = "hierarchical-standard-model-block logistic-standard-model-block",
-          tags$h4(class = "hierarchical-standard-model-title", logistic_model_label(group[[index]], index)),
-          logistic_result_html_table(group[[index]], variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci, output_table_style)
+  if (identical(output_table_style, "standard")) {
+    return(tagList(lapply(seq_along(group), function(index) {
+      div(
+        class = "result-section regression-result-panel logistic-result-panel logistic-hierarchical-result-panel logistic-standard-table-wrap logistic-standard-model-block",
+        h3(sprintf("%s - %s", logistic_result_title(first_result, variable_table, labels, category_table), logistic_model_label(group[[index]], index))),
+        result_table_with_notes(
+          logistic_result_html_table(group[[index]], variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci, output_table_style),
+          result_note_tag(logistic_main_note(logistic_method_label(group[[index]]), show_b = show_b, show_se = show_se, split_ci = split_ci)),
+          class = "result-table-with-note logistic-fit-table-wrap"
         )
-      })
-    )
-  } else {
-    logistic_hierarchical_result_table(group, variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci, output_table_style)
+      )
+    })))
   }
   div(
-    class = paste(
-      "result-section regression-result-panel logistic-result-panel logistic-hierarchical-result-panel",
-      if (identical(output_table_style, "wide") && length(group) >= 3L) "landscape-table-panel" else ""
-    ),
+    class = "result-section regression-result-panel logistic-result-panel logistic-hierarchical-result-panel",
     h3(logistic_result_title(first_result, variable_table, labels, category_table)),
-    table_content,
-    lapply(methods, function(method) div(method, class = "result-note logistic-result-method")),
-    lapply(notes, function(note) div(note, class = "result-note coefficient-warning"))
+    logistic_hierarchical_result_table(
+      group,
+      variable_table,
+      labels,
+      category_table,
+      show_b,
+      show_se,
+      show_mcfadden,
+      show_cox_snell,
+      split_ci,
+      output_table_style,
+      note_line = logistic_main_note(methods, show_b = show_b, show_se = show_se, split_ci = split_ci)
+    )
   )
 }
 
@@ -967,7 +1253,9 @@ logistic_results_panel <- function(results, variable_table = NULL, labels = char
         logistic_result_block(group[[1]], variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci, output_table_style)
       }
     }),
+    logistic_performance_block(results, variable_table, labels, category_table),
     logistic_assumption_review_block(results, variable_table, labels, category_table),
+    logistic_model_notes_block(results, variable_table, labels, category_table),
     analysis_diagnostics_section(
       warnings,
       skipped,

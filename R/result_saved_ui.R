@@ -21,7 +21,11 @@ saved_results_cover_text <- function() {
   user <- trimws(Sys.getenv("STATEDU_REPORT_USER", ""))
   organization_logo <- trimws(Sys.getenv("STATEDU_REPORT_ORGANIZATION_LOGO", ""))
 
-  if (identical(edition, "development")) {
+  if (identical(edition, "free")) {
+    organization <- ""
+    user <- ""
+    organization_logo <- file.path("www", "statedu_logo.png")
+  } else if (identical(edition, "development")) {
     organization <- if (nzchar(organization)) organization else "statedu.com"
     user <- if (nzchar(user)) user else "StatEdu, Institute of Statistics"
     organization_logo <- if (nzchar(organization_logo)) organization_logo else file.path("www", "statedu_logo.png")
@@ -359,6 +363,13 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     "  .frequency-plot-card img, .residual-plot-card img { display: block !important; width: auto !important; height: 68mm !important; max-width: 100% !important; object-fit: contain !important; margin: 0 auto !important; }",
     "  .correlation-plot-card img { width: 100% !important; }",
     "}",
+    "@media screen {",
+    "  .result-table-with-note.result-table-sheet:is(#statedu-saved-result-sheet, [data-result-table-sheet=\"true\"]) { width: min(100%, var(--result-sheet-width)) !important; max-width: 100% !important; overflow-x: auto !important; font-family: Arial, \"Noto Sans KR\", \"Malgun Gothic\", sans-serif !important; font-size: 12px !important; }",
+    "  .result-table-sheet:is(#statedu-saved-result-sheet, [data-result-table-sheet=\"true\"]) > table.result-table-contract-table { width: max(100%, var(--result-table-intrinsic-width, 480px)) !important; min-width: var(--result-table-intrinsic-width, 480px) !important; max-width: none !important; table-layout: auto !important; }",
+    "  .result-table-sheet:is(#statedu-saved-result-sheet, [data-result-table-sheet=\"true\"]) > table.result-table-contract-table th { font-family: inherit !important; font-size: 11px !important; white-space: normal !important; overflow-wrap: anywhere !important; }",
+    "  .result-table-sheet:is(#statedu-saved-result-sheet, [data-result-table-sheet=\"true\"]) > table.result-table-contract-table td { font-family: inherit !important; font-size: 12px !important; }",
+    "  .result-table-sheet:is(#statedu-saved-result-sheet, [data-result-table-sheet=\"true\"]) .coefficient-note, .result-table-sheet:is(#statedu-saved-result-sheet, [data-result-table-sheet=\"true\"]) .coefficient-warning { font-family: inherit !important; font-size: 11px !important; line-height: 1.4 !important; }",
+    "}",
     sep = "\n"
   )
 }
@@ -443,21 +454,35 @@ saved_results_viewer_css <- function(max_width = 1280) {
     ".frequency-plot-card, .correlation-plot-card, .residual-plot-card { border: 1px solid #d9e2ec; border-radius: 6px; padding: 12px; background: #ffffff; }",
     ".frequency-plot-card h4, .correlation-plot-card h4, .residual-plot-card h4 { margin: 0 0 8px; font-size: 15px; color: #15233a; }",
     ".frequency-plot-card img, .residual-plot-card img, .correlation-plot-card img { display: block; max-width: 100%; height: auto; }",
+    "@media screen {",
+    "  .result-table-with-note.result-table-sheet:is(#statedu-saved-result-sheet, [data-result-table-sheet=\"true\"]) { width: min(100%, var(--result-sheet-width)) !important; max-width: 100% !important; overflow-x: auto !important; font-family: Arial, \"Noto Sans KR\", \"Malgun Gothic\", sans-serif !important; font-size: 12px !important; }",
+    "  .result-table-sheet:is(#statedu-saved-result-sheet, [data-result-table-sheet=\"true\"]) > table.result-table-contract-table { width: max(100%, var(--result-table-intrinsic-width, 480px)) !important; min-width: var(--result-table-intrinsic-width, 480px) !important; max-width: none !important; table-layout: auto !important; }",
+    "  .result-table-sheet:is(#statedu-saved-result-sheet, [data-result-table-sheet=\"true\"]) > table.result-table-contract-table th { font-family: inherit !important; font-size: 11px !important; white-space: normal !important; overflow-wrap: anywhere !important; }",
+    "  .result-table-sheet:is(#statedu-saved-result-sheet, [data-result-table-sheet=\"true\"]) > table.result-table-contract-table td { font-family: inherit !important; font-size: 12px !important; }",
+    "  .result-table-sheet:is(#statedu-saved-result-sheet, [data-result-table-sheet=\"true\"]) .coefficient-note, .result-table-sheet:is(#statedu-saved-result-sheet, [data-result-table-sheet=\"true\"]) .coefficient-warning { font-family: inherit !important; font-size: 11px !important; line-height: 1.4 !important; }",
+    "}",
     sep = "\n"
   )
 }
 
-saved_results_document <- function(title, content, max_width = 1280, css_path = file.path("www", "style.css"), print_landscape = FALSE, report_mode = FALSE) {
-  css <- if (file.exists(css_path)) paste(readLines(css_path, warn = FALSE), collapse = "\n") else ""
+saved_results_report_cover <- function(title, language = NULL) {
   saved_time <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+  if (is.null(language)) language <- if (exists("statedu_current_language", mode = "function")) statedu_current_language() else "en"
+  text <- function(key, fallback) {
+    if (exists("statedu_t", mode = "function")) statedu_t(paste0("report.cover.", key), language, fallback) else fallback
+  }
+  # Application-generated titles follow the UI language; preserve custom titles.
+  if (grepl("^StatEdu Studio", title)) title <- text("title", "Analysis Results Report")
   app_version <- saved_results_app_version()
   app_label <- if (nzchar(app_version)) sprintf("StatEdu Studio v%s", app_version) else "StatEdu Studio"
   logo_uri <- saved_results_image_data_uri(file.path("www", "logo-horizontal.png"))
   cover_text <- saved_results_cover_text()
   organization_logo_uri <- if (nzchar(cover_text$organization_logo)) saved_results_image_data_uri(cover_text$organization_logo) else ""
   cover_target <- if (nzchar(cover_text$organization)) cover_text$organization else "Internal analysis report"
-  cover_user <- if (nzchar(cover_text$user)) cover_text$user else "StatEdu Studio user"
-  cover_license_name <- if (identical(cover_text$edition, "institution") && nzchar(cover_text$organization)) {
+  cover_user <- if (nzchar(cover_text$user)) cover_text$user else text("default_user", "StatEdu Studio user")
+  cover_license_name <- if (identical(cover_text$edition, "free")) {
+    "StatEdu, Institute of Statistics"
+  } else if (identical(cover_text$edition, "institution") && nzchar(cover_text$organization)) {
     cover_text$organization
   } else if (nzchar(cover_text$user)) {
     cover_text$user
@@ -465,43 +490,40 @@ saved_results_document <- function(title, content, max_width = 1280, css_path = 
     ""
   }
   cover_license_label <- if (identical(cover_text$edition, "development")) {
-    "Development owner"
+    text("development", "Development owner")
   } else if (identical(cover_text$edition, "institution")) {
-    "Institution"
+    text("institution", "Institution")
+  } else if (identical(cover_text$edition, "free")) {
+    text("prepared_with", "Prepared with")
   } else {
-    "Licensed user"
+    text("licensed_user", "Licensed user")
   }
-  cover_meta_items <- list()
+  developer_labels <- c(ko = "분석 개발자", en = "Analysis developer", ja = "分析開発者", zh = "分析开发者",
+    es = "Desarrollador del análisis", fr = "Développeur de l’analyse", de = "Entwickler der Analyse", vi = "Nhà phát triển phân tích")
+  developer_label <- unname(developer_labels[language])
+  if (length(developer_label) != 1L || is.na(developer_label)) developer_label <- "Analysis developer"
+  developer_logo_uri <- saved_results_image_data_uri(file.path("www", "statedu_logo.png"))
+  cover_meta_items <- list(div(class = "report-cover-meta-item",
+    span(developer_label, class = "report-cover-meta-label"),
+    span(class = "report-cover-developer report-cover-meta-value",
+      if (nzchar(developer_logo_uri)) tags$img(src = developer_logo_uri, alt = "StatEdu", class = "report-cover-developer-logo"),
+      span(if (identical(language, "ko")) "이일현" else "Il Hyun Lee"))))
   if (!identical(cover_text$edition, "personal") && nzchar(cover_text$organization)) {
-    cover_meta_items <- c(cover_meta_items, list(div(class = "report-cover-meta-item", span("Prepared for", class = "report-cover-meta-label"), span(cover_target, class = "report-cover-meta-value"))))
+    cover_meta_items <- c(cover_meta_items, list(div(class = "report-cover-meta-item", span(text("prepared_for", "Prepared for"), class = "report-cover-meta-label"), span(cover_target, class = "report-cover-meta-value"))))
   }
-  if (!identical(cover_text$edition, "institution") || nzchar(cover_text$user)) {
-    cover_meta_items <- c(cover_meta_items, list(div(class = "report-cover-meta-item", span("Prepared by", class = "report-cover-meta-label"), span(cover_user, class = "report-cover-meta-value"))))
+  if (!identical(cover_text$edition, "free") && (!identical(cover_text$edition, "institution") || nzchar(cover_text$user))) {
+    cover_meta_items <- c(cover_meta_items, list(div(class = "report-cover-meta-item", span(text("prepared_by", "Prepared by"), class = "report-cover-meta-label"), span(cover_user, class = "report-cover-meta-value"))))
   }
   cover_meta_items <- c(
     cover_meta_items,
     list(
-      div(class = "report-cover-meta-item", span("Saved", class = "report-cover-meta-label"), span(saved_time, class = "report-cover-meta-value")),
-      div(class = "report-cover-meta-item", span("Output date", class = "report-cover-meta-label"), span(saved_time, class = "report-cover-meta-value")),
-      div(class = "report-cover-meta-item", span("Application", class = "report-cover-meta-label"), span(app_label, class = "report-cover-meta-value"))
+      div(class = "report-cover-meta-item", span(text("saved", "Saved"), class = "report-cover-meta-label"), span(saved_time, class = "report-cover-meta-value")),
+      div(class = "report-cover-meta-item", span(text("output_date", "Output date"), class = "report-cover-meta-label"), span(saved_time, class = "report-cover-meta-value")),
+      div(class = "report-cover-meta-item", span(text("application", "Application"), class = "report-cover-meta-label"), span(app_label, class = "report-cover-meta-value"))
     )
   )
-  inline_css <- if (isTRUE(report_mode)) {
-    saved_results_inline_css(max_width, print_landscape = print_landscape)
-  } else {
-    saved_results_viewer_css(max_width)
-  }
-  watermark <- if (isTRUE(report_mode) && identical(cover_text$edition, "development")) {
-    saved_results_development_watermark(logo_uri, organization_logo_uri, cover_text$organization)
-  } else {
-    NULL
-  }
-  body_content <- if (isTRUE(report_mode)) {
-    div(
-      class = "page-shell",
-      watermark,
       div(
-        class = "report-cover",
+        class = "report-cover", lang = language,
         div(
           class = "report-cover-brand",
           if (nzchar(logo_uri)) {
@@ -509,13 +531,13 @@ saved_results_document <- function(title, content, max_width = 1280, css_path = 
           } else {
             div("StatEdu Studio", class = "report-cover-kicker")
           },
-          div(cover_text$edition, class = "report-cover-edition")
+          div(text(if (identical(cover_text$edition, "development")) "development_edition" else cover_text$edition, cover_text$edition), class = "report-cover-edition")
         ),
         div(
           class = "report-cover-main",
-          div("Statistical Report", class = "report-cover-kicker"),
+          div(text("kicker", "Statistical Report"), class = "report-cover-kicker"),
           h1(title, class = "report-cover-title"),
-          p("Generated analysis results prepared for review, documentation, and print output.", class = "report-cover-subtitle"),
+          p(text("subtitle", "Analysis results prepared for review, documentation, and printing."), class = "report-cover-subtitle"),
           div(class = "report-cover-divider")
         ),
         if (nzchar(organization_logo_uri) || nzchar(cover_license_name)) {
@@ -536,33 +558,61 @@ saved_results_document <- function(title, content, max_width = 1280, css_path = 
           class = "report-cover-meta",
           cover_meta_items
         ),
-        div(cover_text$footer, class = "report-cover-footer")
-      ),
-      div(
-        class = "report-body",
-        div(class = "report-body-heading", h1(title), div(class = "saved-results-meta", sprintf("Saved: %s", saved_time))),
-        content
+        div(sprintf("Lee, I. H. (2026). StatEdu Studio (Version %s) [Computer software]. https://doi.org/10.22934/statedu.studio", app_version), class = "report-cover-footer")
       )
-    )
-  } else {
-    div(
-      class = "page-shell",
-      watermark,
-      h1(title),
-      div(class = "saved-results-meta", sprintf("Saved: %s", saved_time)),
-      content
-    )
-  }
+}
+
+saved_results_report_cover_css <- function() {
+  paste(
+    ".report-cover { min-height: 720px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid #d9e2ec; border-radius: 8px; margin-bottom: 28px; padding: 42px 48px 38px; background: #fbfdff; box-shadow: 0 12px 28px rgba(16, 42, 67, 0.08); position: relative; overflow: hidden; }",
+    ".report-cover::before { content: ''; position: absolute; left: 0; top: 0; width: 10px; height: 100%; background: #0f766e; }",
+    ".report-cover-brand { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; position: relative; z-index: 1; }",
+    ".report-cover-logo { display: block; width: 280px; max-width: 46%; height: auto; }",
+    ".report-cover-kicker { color: #0f766e; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }",
+    ".report-cover-edition { color: #334e68; border: 1px solid #bcccdc; border-radius: 999px; padding: 7px 12px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; background: #ffffff; white-space: nowrap; }",
+    ".report-cover-main { position: relative; z-index: 1; max-width: 760px; padding: 42px 0 34px; }",
+    ".report-cover-title { color: #102a43; font-size: 46px; font-weight: 700; line-height: 1.08; margin: 14px 0 16px; letter-spacing: 0; }",
+    ".report-cover-subtitle { color: #486581; font-size: 18px; line-height: 1.55; margin: 0; max-width: 620px; }",
+    ".report-cover-divider { width: 96px; height: 3px; background: #0f766e; margin-top: 34px; }",
+    ".report-cover-license { align-items: center; display: flex; gap: 16px; margin-bottom: 18px; position: relative; z-index: 1; }",
+    ".report-cover-license-logo { display: block; max-height: 42px; max-width: 160px; object-fit: contain; }",
+    ".report-cover-license-label { color: #627d98; display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 3px; }",
+    ".report-cover-license-value { color: #102a43; display: block; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }",
+    ".report-cover-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 28px; color: #334e68; font-size: 14px; line-height: 1.45; border-top: 2px solid #102a43; padding-top: 18px; position: relative; z-index: 1; }",
+    ".report-cover-meta-item { min-width: 0; }",
+    ".report-cover-meta-label { color: #627d98; display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }",
+    ".report-cover-meta-value { color: #102a43; font-weight: 600; overflow-wrap: anywhere; }",
+    ".report-cover-developer { display: flex; align-items: center; gap: 10px; }",
+    ".report-cover-developer-logo { display: block; width: 25mm; height: auto; max-height: 10mm; object-fit: contain; }",
+    ".report-cover-footer { color: #627d98; font-size: 12px; margin-top: 20px; position: relative; z-index: 1; }",
+    "@page statedu-report-cover { size: B5 portrait; margin: 3mm; }",
+    ".report-cover { page: statedu-report-cover; box-sizing: border-box; width: 170mm; height: 243mm; min-height: 243mm; margin: 0; padding: 14mm 12mm 12mm; border: 0; border-radius: 0; box-shadow: none; break-after: page; break-inside: avoid; font-family: Arial, \"Malgun Gothic\", sans-serif; }",
+    ".report-cover-logo { width: 70mm; max-width: 70mm; }",
+    ".report-cover-main { padding: 12mm 0 8mm; }",
+    ".report-cover-title { font-size: 28pt; overflow-wrap: anywhere; }",
+    ".report-cover-subtitle { font-size: 11pt; }",
+    ".report-cover-meta { font-size: 9pt; gap: 10px 18px; }",
+    ".report-cover-footer { font-size: 8pt; }",
+    sep = "\n"
+  )
+}
+
+saved_results_document <- function(title, content, max_width = 1280, css_path = file.path("www", "style.css"), print_landscape = FALSE, report_mode = FALSE) {
+  if (isTRUE(report_mode)) return(saved_result_sheet_document(title, content, css_path))
+  css <- if (file.exists(css_path)) paste(readLines(css_path, warn = FALSE), collapse = "\n") else ""
+  canvas_css <- file.path(dirname(css_path), "model-canvas", "canvas.css")
+  if (file.exists(canvas_css)) css <- paste(css, paste(readLines(canvas_css, warn = FALSE), collapse = "\n"), sep = "\n")
+  saved_time <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
   document <- tags$html(
     tags$head(
       tags$meta(charset = "UTF-8"),
       tags$title(title),
       tags$style(htmltools::HTML(css)),
-      tags$style(htmltools::HTML(inline_css))
+      tags$style(htmltools::HTML(saved_results_viewer_css(max_width)))
     ),
     tags$body(
       class = if (isTRUE(print_landscape)) "print-mixed-landscape" else "print-portrait",
-      body_content
+      div(class = "page-shell", content)
     )
   )
   paste0("<!DOCTYPE html>\n", tags_to_html(document))
@@ -580,16 +630,24 @@ saved_analysis_results_html <- function(
   show_vif = FALSE,
   output_table_style = "standard",
   css_path = file.path("www", "style.css"),
-  report_mode = FALSE
+  report_mode = FALSE,
+  plot_renderer = plot_data_uri
 ) {
+  appendix_language <- result_appendix_table_language()
   saved_results_document(
     "StatEdu Studio Results",
     div(
       class = "regression-results",
       div(
-        class = "regression-result-panel model-overview-panel",
-        h3("Model overview"),
-        model_overview_html_table(model_overview_data_frame(results, variable_table, labels))
+        class = "result-section regression-result-panel model-overview-panel",
+        lang = appendix_language,
+        h3(result_appendix_ui_text("Model overview", appendix_language)),
+        model_overview_html_table(
+          regression_appendix_table(
+            model_overview_data_frame(results, variable_table, labels),
+            appendix_language
+          )
+        )
       ),
       lapply(seq_along(results), function(index) {
         regression_coefficient_result_block(
@@ -606,11 +664,18 @@ saved_analysis_results_html <- function(
         )
       }),
       regression_reference_summary_block(results, variable_table, labels, show_sr2, show_f2),
+      regression_bootstrap_diagnostics_block(results, variable_table, labels),
+      regression_assumption_review_block(results, variable_table, labels),
+      analysis_diagnostics_section(
+        attr(results, "warnings"), attr(results, "skipped"),
+        title = regression_appendix_text("Warnings / skipped models"),
+        class = "regression-result-panel"
+      ),
       lapply(seq_along(results), function(index) {
         result <- results[[index]]
         dependent <- all.vars(result$formula)[[1]]
         dependent_label <- display_variable_name_static(dependent, variable_table, labels, label_only = TRUE)
-        saved_plot_result_block(result, dependent_label)
+        saved_plot_result_block(result, dependent_label, plot_renderer = plot_renderer)
       })
     )
     ,
@@ -632,7 +697,8 @@ saved_hierarchical_results_html <- function(
   show_vif = FALSE,
   output_table_style = "standard",
   css_path = file.path("www", "style.css"),
-  report_mode = FALSE
+  report_mode = FALSE,
+  plot_renderer = plot_data_uri
 ) {
   output_table_style <- analysis_output_table_style(output_table_style)
   print_landscape <- identical(output_table_style, "wide") &&
@@ -654,7 +720,7 @@ saved_hierarchical_results_html <- function(
         result <- results[[index]]
         dependent <- all.vars(result$formula)[[1]]
         dependent_label <- display_variable_name_static(dependent, variable_table, labels, label_only = TRUE)
-        saved_plot_result_block(result, dependent_label)
+        saved_plot_result_block(result, dependent_label, plot_renderer = plot_renderer)
       })
     ),
     max_width = if (isTRUE(print_landscape)) 1500 else 1280,
@@ -664,7 +730,27 @@ saved_hierarchical_results_html <- function(
   )
 }
 
-saved_frequency_plot_blocks <- function(result, options) {
+frequency_plot_data_uri <- function(result, type, name, width = 420, height = 320, res = 96) {
+  plot_data_uri(function(plot_result) draw_frequency_plot(plot_result, type, name),
+                result, width = width, height = height, res = res)
+}
+
+frequency_export_image_cache <- function(render = plot_data_uri, max_bytes = 16 * 1024^2,
+                                         max_entries = 64L) {
+  images <- correlation_export_image_cache(render = render, max_bytes = max_bytes,
+                                           max_entries = max_entries)
+  draw <- function(value) value$draw_function(value$result, value$type, value$name)
+  list(
+    clear = images$clear,
+    render = function(result, type, name, width = 420, height = 320, res = 96) {
+      # Keep the wrapper stable; include the actual drawing function in the key.
+      value <- list(result = result, type = type, name = name, draw_function = draw_frequency_plot)
+      images$render(draw, value, width = width, height = height, res = res)
+    }
+  )
+}
+
+saved_frequency_plot_blocks <- function(result, options, plot_renderer = frequency_plot_data_uri) {
   plot_block <- function(type, name) {
     variable_label <- frequency_variable_display_name(name, result$variable_info, result$labels, result$category_table)
     title <- sprintf("%s(%s)", frequency_plot_label(type), variable_label)
@@ -672,7 +758,7 @@ saved_frequency_plot_blocks <- function(result, options) {
       class = "frequency-plot-card",
       tags$h4(title),
       tags$img(
-        src = plot_data_uri(function(plot_result) draw_frequency_plot(plot_result, type, name), result, width = 420, height = 320),
+        src = plot_renderer(result, type, name, width = 420, height = 320),
         width = "420",
         height = "320",
         alt = title
@@ -701,19 +787,15 @@ saved_frequency_plot_blocks <- function(result, options) {
   )
 }
 
-saved_frequencies_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
+saved_frequencies_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE,
+                                           plot_renderer = frequency_plot_data_uri) {
   options <- result$options %||% list(n_percent = TRUE, mean_sd = TRUE)
-  table <- frequency_combined_table(result, options)
   saved_results_document(
     "StatEdu Studio Frequencies Results",
     tags$div(
       class = "regression-results",
-      tags$div(
-        class = "result-section frequencies-result-section regression-result-panel",
-        tags$h3("Frequencies / Descriptives"),
-        tags$div(class = "frequency-table-wrap", coefficient_html_table(table))
-      ),
-      saved_frequency_plot_blocks(result, options)
+      frequency_main_table_sections(result, options),
+      saved_frequency_plot_blocks(result, options, plot_renderer = plot_renderer)
     ),
     max_width = 1500,
     css_path = css_path,
@@ -743,10 +825,10 @@ saved_ttest_anova_results_html <- function(result, css_path = file.path("www", "
   )
 }
 
-saved_ancova_results_html <- function(result, variable_table = NULL, labels = character(0), css_path = file.path("www", "style.css"), report_mode = FALSE) {
+saved_ancova_results_html <- function(result, variable_table = NULL, labels = character(0), css_path = file.path("www", "style.css"), report_mode = FALSE, plot_renderer = plot_data_uri) {
   saved_results_document(
     "StatEdu Studio ANCOVA Results",
-    tags$div(class = "regression-results", ancova_results_ui(result, variable_table, labels)),
+    tags$div(class = "regression-results", ancova_results_ui(result, variable_table, labels, plot_renderer)),
     max_width = 1500,
     css_path = css_path,
     report_mode = report_mode
@@ -796,9 +878,15 @@ saved_paired_rm_results_html <- function(result, css_path = file.path("www", "st
   )
 }
 
-saved_correlation_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
+saved_correlation_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE,
+                                           plot_renderer = plot_data_uri) {
   options <- result$options %||% list()
-  normality_table <- correlation_normality_display_table(result)
+  appendix_language <- result_appendix_table_language()
+  appendix_text <- function(en, ko) statedu_localized_text(appendix_language, en, ko)
+  normality_table <- correlation_appendix_localize_table(
+    correlation_normality_display_table(result),
+    appendix_language
+  )
   variable_count <- length(result$variables %||% character(0))
   print_landscape <- variable_count >= 12L || (isTRUE(options$p_ci) && variable_count >= 6L)
   saved_results_document(
@@ -812,8 +900,13 @@ saved_correlation_results_html <- function(result, css_path = file.path("www", "
       if (isTRUE(options$normality) && is.data.frame(normality_table) && nrow(normality_table) > 0) {
         tags$div(
           class = "result-section correlation-result-section regression-result-panel",
-          tags$h3("Normality"),
-          coefficient_html_table(normality_table)
+          lang = appendix_language,
+          tags$h3(appendix_text("Normality", "정규성")),
+          coefficient_html_table(
+            normality_table,
+            table_role = "appendix",
+            table_language = appendix_language
+          )
         )
       },
       if (isTRUE(options$scatter_plot)) {
@@ -823,7 +916,7 @@ saved_correlation_results_html <- function(result, css_path = file.path("www", "
           tags$div(
             class = "correlation-plot-card",
             tags$img(
-              src = plot_data_uri(draw_correlation_scatter_plot, result, width = 900, height = 900),
+              src = plot_renderer(draw_correlation_scatter_plot, result, width = 900, height = 900),
               width = "720",
               height = "720",
               alt = "Scatter plot matrix"
@@ -839,7 +932,7 @@ saved_correlation_results_html <- function(result, css_path = file.path("www", "
           tags$div(
             class = "correlation-plot-card",
             tags$img(
-              src = plot_data_uri(draw_correlation_heatmap, result, width = 900, height = 900),
+              src = plot_renderer(draw_correlation_heatmap, result, width = 900, height = 900),
               width = "720",
               height = "720",
               alt = "Correlation matrix heatmap"
@@ -897,25 +990,35 @@ saved_logistic_results_html <- function(
   )
 }
 
-saved_factor_analysis_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
+saved_factor_analysis_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE,
+                                               plot_renderer = plot_data_uri) {
   saved_results_document(
     "StatEdu Studio Factor Analysis Results",
-    factor_analysis_results_ui(result, report_mode = TRUE),
+    factor_analysis_results_ui(result, report_mode = TRUE, plot_renderer = plot_renderer),
     max_width = 1500,
     css_path = css_path,
     report_mode = report_mode
   )
 }
 
-saved_pca_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
-  saved_results_document(
-    "StatEdu Studio Principal Component Analysis Results",
-    pca_results_ui(result, report_mode = TRUE),
-    max_width = 1500,
-    css_path = css_path,
-    report_mode = report_mode
-  )
-}
+saved_pca_results_html <- local({
+  render <- function(result, css_path, report_mode, plot_renderer) {
+    saved_results_document(
+      "StatEdu Studio Principal Component Analysis Results",
+      pca_results_ui(result, report_mode = TRUE, plot_renderer = plot_renderer),
+      max_width = 1500,
+      css_path = css_path,
+      report_mode = report_mode
+    )
+  }
+  function(result, css_path = file.path("www", "style.css"), report_mode = FALSE,
+           plot_renderer = plot_data_uri) {
+    # Avoid compiling the presentation tree during this synchronous export.
+    previous_jit <- compiler::enableJIT(0)
+    on.exit(invisible(compiler::enableJIT(previous_jit)), add = TRUE)
+    render(result, css_path, report_mode, plot_renderer)
+  }
+})
 
 saved_crosstab_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   saved_results_document(
@@ -931,7 +1034,11 @@ saved_crosstab_results_html <- function(result, css_path = file.path("www", "sty
 result_accumulator_store <- function(session) {
   store <- session$userData$result_entries
   if (is.null(store) || !is.function(store)) {
-    store <- reactiveVal(list())
+    restored <- tryCatch(read_result_snapshot_store(), error = function(error) {
+      session$userData$result_restore_error <- conditionMessage(error)
+      list()
+    })
+    store <- reactiveVal(restored)
     session$userData$result_entries <- store
   }
   store
@@ -950,6 +1057,10 @@ result_snapshot_store_path <- function() {
   configured <- trimws(Sys.getenv("STATEDU_RESULT_STORE", ""))
   if (nzchar(configured)) {
     return(configured)
+  }
+  user_data <- trimws(Sys.getenv("STATEDU_USER_DATA_DIR", ""))
+  if (nzchar(user_data)) {
+    return(file.path(user_data, "data", "StatEdu_Studio_results.json"))
   }
   file.path("data", "StatEdu_Studio_results.json")
 }
@@ -989,15 +1100,60 @@ normalize_result_snapshot_entries <- function(entries) {
     return(list())
   }
   normalized <- lapply(seq_along(entries), function(index) normalize_result_snapshot_entry(entries[[index]], index))
-  Filter(Negate(is.null), normalized)
+  normalized <- Filter(Negate(is.null), normalized)
+  if (length(normalized)) {
+    ids <- make.unique(vapply(normalized, `[[`, character(1), "id"), sep = "_")
+    for (index in seq_along(normalized)) normalized[[index]]$id <- ids[[index]]
+  }
+  normalized
+}
+
+result_export_error_text <- function(error, language) {
+  message <- conditionMessage(error)
+  figure_keys <- paste0("result.figure_error.", c("prefix", "empty", "filename", "snapshot", "image", "folder", "no_figures", "format"))
+  figure_keys <- c(figure_keys, paste0("survival.input_error.", c("ggplot_survival", "ggplot_forest", "ggplot_survival_export", "ggplot_cox_export")))
+  figure_english <- vapply(figure_keys, function(key) statedu_t(key, "en"), character(1))
+  figure_index <- match(message, figure_english)
+  if (!is.na(figure_index)) return(statedu_t(figure_keys[[figure_index]], language))
+  if (identical(message, "저장할 그림이 없습니다. / No figures to save.")) return(statedu_t("result.figure_error.no_figures", language))
+  patterns <- c(
+    length = "^Invalid PNG snapshot: ([A-Za-z0-9_-]+[.]png) [(]encoded length ([0-9]+)[)]$",
+    named = "^Invalid PNG snapshot: ([A-Za-z0-9_-]+[.]png)$",
+    decode = "^Could not decode PNG snapshot: ([A-Za-z0-9_-]+[.]png)$")
+  for (key in names(patterns)) {
+    matched <- regmatches(message, regexec(patterns[[key]], message))[[1]]
+    if (length(matched)) return(do.call(sprintf, c(list(statedu_t(paste0("result.figure_error.", key), language)), as.list(matched[-1L]))))
+  }
+  keys <- paste0("result.export_error.", c("no_content", "no_tables", "excel_package", "browser", "pdf_path", "office_browser", "pdf_failed"))
+  english <- vapply(keys, function(key) statedu_t(key, "en"), character(1))
+  index <- match(message, english)
+  if (!is.na(index)) return(statedu_t(keys[[index]], language))
+  # PDF subprocess diagnostics follow a fixed first line; preserve their bytes.
+  prefix <- paste0(statedu_t("result.export_error.pdf_failed", "en"), "\n")
+  if (startsWith(message, prefix)) {
+    return(paste0(statedu_t("result.export_error.pdf_failed", language), "\n",
+      substring(message, nchar(prefix) + 1L, nchar(message))))
+  }
+  message
+}
+
+result_history_error_text <- function(error, language) {
+  message <- conditionMessage(error)
+  keys <- paste0("result.history_error.", c("read", "structure", "type", "entries", "migration"))
+  english <- vapply(keys, function(key) statedu_t(key, "en"), character(1))
+  index <- match(message, english)
+  if (is.na(index)) message else statedu_t(keys[[index]], language)
 }
 
 read_result_snapshot_store <- function(path = result_snapshot_store_path()) {
+  migration_target <- NULL
   if (!file.exists(path)) {
     default_path <- result_snapshot_store_path()
-    legacy_path <- legacy_result_snapshot_store_path()
-    if (identical(path, default_path) && file.exists(legacy_path)) {
-      path <- legacy_path
+    legacy_paths <- c(file.path("data", "StatEdu_Studio_results.json"), legacy_result_snapshot_store_path())
+    legacy_paths <- legacy_paths[file.exists(legacy_paths)]
+    if (identical(path, default_path) && !nzchar(trimws(Sys.getenv("STATEDU_RESULT_STORE", ""))) && length(legacy_paths)) {
+      migration_target <- path
+      path <- legacy_paths[[1L]]
     } else {
       return(list())
     }
@@ -1005,13 +1161,24 @@ read_result_snapshot_store <- function(path = result_snapshot_store_path()) {
   if (!file.exists(path)) {
     return(list())
   }
-  payload <- tryCatch(jsonlite::fromJSON(path, simplifyVector = FALSE), error = function(e) NULL)
+  payload <- tryCatch(jsonlite::fromJSON(path, simplifyVector = FALSE), error = function(e) {
+    stop("The saved result history could not be read; the original file was preserved.", call. = FALSE)
+  })
+  if (!is.list(payload)) stop("Invalid result history structure.", call. = FALSE)
   type <- as.character(payload$type %||% "")
   if (nzchar(type) && !identical(type, "easyflow_result_history")) {
     stop("This file is not a StatEdu Studio Result file.", call. = FALSE)
   }
   entries <- if (is.list(payload) && !is.null(payload$entries)) payload$entries else payload
-  normalize_result_snapshot_entries(entries)
+  if (!is.list(entries)) stop("Invalid result history entries.", call. = FALSE)
+  entries <- normalize_result_snapshot_entries(entries)
+  if (!is.null(migration_target)) {
+    dir.create(dirname(migration_target), recursive = TRUE, showWarnings = FALSE)
+    if (!file.copy(path, migration_target, overwrite = FALSE)) {
+      stop("The saved result history could not be migrated; the original file was preserved.", call. = FALSE)
+    }
+  }
+  entries
 }
 
 write_result_snapshot_store <- function(entries, path = result_snapshot_store_path()) {
@@ -1025,6 +1192,13 @@ write_result_snapshot_store <- function(entries, path = result_snapshot_store_pa
   )
   tryCatch(
     {
+      if (file.exists(path)) {
+        readable <- tryCatch({ read_result_snapshot_store(path); TRUE }, error = function(error) FALSE)
+        if (!readable) {
+          backup <- tempfile(paste0(basename(path), ".unreadable-"), tmpdir = dirname(path))
+          if (!file.copy(path, backup, overwrite = FALSE)) return(FALSE)
+        }
+      }
       writeLines(as.character(jsonlite::toJSON(payload, pretty = TRUE, auto_unbox = TRUE)), path, useBytes = TRUE)
       TRUE
     },
@@ -1038,7 +1212,7 @@ append_result_snapshot <- function(session, title, html) {
   index <- length(entries) + 1L
   saved_at <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
   entry <- list(
-    id = paste0("saved_result_", index, "_", as.integer(Sys.time())),
+    id = paste0("saved_result_", basename(tempfile())),
     title = title,
     saved_at = saved_at,
     html = html
@@ -1049,9 +1223,29 @@ append_result_snapshot <- function(session, title, html) {
   entry
 }
 
-saved_result_entry_ui <- function(entry, index) {
+result_collection_edit <- function(entries, id, action) {
+  matches <- which(vapply(entries, function(entry) identical(entry$id, id), logical(1)))
+  if (length(matches) != 1L) return(entries)
+  index <- matches[[1L]]
+  if (identical(action, "delete")) return(entries[-index])
+  target <- switch(action, up = index - 1L, down = index + 1L, index)
+  if (target < 1L || target > length(entries) || target == index) return(entries)
+  order <- seq_along(entries)
+  order[c(index, target)] <- order[c(target, index)]
+  entries[order]
+}
+
+saved_result_entry_ui <- function(entry, index, total = index, language = "ko") {
+  control <- function(action, label, disabled = FALSE) {
+    payload <- jsonlite::toJSON(list(id = entry$id, action = action), auto_unbox = TRUE)
+    tags$button(type = "button", class = paste("btn btn-default btn-sm saved-result-entry-action", paste0("saved-result-entry-", action)),
+      disabled = if (disabled) "disabled" else NULL,
+      `aria-label` = paste(entry$title, label), title = label,
+      onclick = paste0("Shiny.setInputValue('saved_result_entry_action',", payload, ",{priority:'event'});"), label)
+  }
   div(
     class = "saved-result-entry",
+    `data-result-entry-id` = entry$id,
     div(
       class = "saved-result-entry-header",
       div(
@@ -1059,7 +1253,11 @@ saved_result_entry_ui <- function(entry, index) {
         span(sprintf("%02d", index), class = "saved-result-index"),
         span(entry$title)
       ),
-      div(entry$saved_at, class = "saved-result-time")
+      div(entry$saved_at, class = "saved-result-time"),
+      div(class = "saved-result-entry-actions",
+        control("up", statedu_t("result.management.move_up", language), index == 1L),
+        control("down", statedu_t("result.management.move_down", language), index == total),
+        control("delete", statedu_t("result.management.delete_entry", language)))
     ),
     tags$iframe(
       class = "saved-result-frame",
@@ -1070,10 +1268,39 @@ saved_result_entry_ui <- function(entry, index) {
 }
 
 result_entry_document <- function(entry) {
-  tryCatch(
+  document <- tryCatch(
     xml2::read_html(entry$html, options = c("RECOVER", "NOERROR", "NOWARNING")),
     error = function(e) NULL
   )
+  if (is.null(document)) return(NULL)
+  nodes <- xml2::xml_find_all(document, ".//body//*")
+  if (length(nodes)) xml2::xml_set_attr(nodes, "data-result-export-order", as.character(seq_along(nodes)))
+  document
+}
+
+result_node_order <- function(node) as.numeric(xml2::xml_attr(node, "data-result-export-order"))
+
+result_node_html <- function(node) {
+  # libxml's HTML URI escaping can fail on large embedded PNGs. Serialize
+  # placeholders, then restore the same URI escaping without resampling images.
+  images <- xml2::xml_find_all(node, ".//img | self::img")
+  sources <- xml2::xml_attr(images, "src")
+  selected <- which(!is.na(sources) & nchar(sources) > 65536L &
+    grepl("^data:image/(png|jpeg);base64,[A-Za-z0-9+/=\r\n]+$", sources))
+  if (!length(selected)) return(as.character(node))
+  images <- images[selected]
+  original <- sources[selected]
+  on.exit(xml2::xml_set_attr(images, "src", original), add = TRUE)
+  tokens <- paste0("STATEDU_IMAGE_URI_", seq_along(selected), "_END")
+  while (any(tokens %in% sources)) tokens <- paste0(tokens, "_")
+  xml2::xml_set_attr(images, "src", tokens)
+  html <- as.character(node)
+  for (index in seq_along(tokens)) {
+    uri <- gsub("\r", "%0D", original[[index]], fixed = TRUE)
+    uri <- gsub("\n", "%0A", uri, fixed = TRUE)
+    html <- gsub(paste0('src="', tokens[[index]], '"'), paste0('src="', uri, '"'), html, fixed = TRUE)
+  }
+  html
 }
 
 result_entry_body_html <- function(entry) {
@@ -1085,7 +1312,7 @@ result_entry_body_html <- function(entry) {
   if (length(body) == 0 || is.na(xml2::xml_name(body))) {
     return(entry$html)
   }
-  paste(vapply(xml2::xml_children(body), as.character, character(1)), collapse = "\n")
+  paste(vapply(xml2::xml_children(body), result_node_html, character(1)), collapse = "\n")
 }
 
 result_collection_content <- function(entries) {
@@ -1114,13 +1341,211 @@ saved_result_collection_html <- function(entries, css_path = file.path("www", "s
   )
 }
 
+# Apply navigation only at the HTML file boundary. Stored snapshots and the
+# documents consumed by PDF, Word, HWPX and Excel must remain undecorated.
+result_html_export_document <- function(html, language = statedu_current_language()) {
+  document <- xml2::read_html(html, options = c("RECOVER", "NOERROR", "NOWARNING"))
+  xml2::xml_remove(xml2::xml_find_all(document, "//*[@data-statedu-html-navigation]"))
+  body <- xml2::xml_find_first(document, ".//body")
+  head <- xml2::xml_find_first(document, ".//head")
+  tables <- xml2::xml_find_all(body, ".//table")
+  text <- function(key, fallback) statedu_t(paste0("report.cover.", key), language, fallback)
+  used_ids <- xml2::xml_attr(xml2::xml_find_all(document, "//*[@id]"), "id")
+  fresh_id <- function(base) {
+    id <- base
+    while (id %in% used_ids) id <- paste0(id, "-")
+    used_ids <<- c(used_ids, id)
+    id
+  }
+  cover_id <- fresh_id("statedu-html-cover")
+  links <- lapply(seq_along(tables), function(index) {
+    table <- tables[[index]]
+    id <- fresh_id(paste0("statedu-html-table-", index))
+    caption <- xml2::xml_find_first(table, "./caption")
+    label <- if (!inherits(caption, "xml_missing")) result_html_text(caption) else ""
+    if (!nzchar(label)) label <- result_table_title(table, paste(text("table", "Table"), index))
+    navigation <- tags$div(id = id, class = "html-table-navigation",
+      `data-statedu-html-navigation` = "table",
+      tags$a(href = paste0("#", cover_id), text("back_to_cover", "Back to cover")))
+    node <- xml2::xml_find_first(xml2::read_html(as.character(navigation)), ".//body/*")
+    xml2::xml_add_sibling(table, node, .where = "before")
+    tags$li(tags$a(href = paste0("#", id), label))
+  })
+  title <- xml2::xml_text(xml2::xml_find_first(head, "./title"))
+  if (is.na(title) || !nzchar(title)) title <- "StatEdu Studio Result Collection"
+  cover <- saved_results_report_cover(title, language)
+  cover$attribs$id <- cover_id
+  cover$attribs$`data-statedu-html-navigation` <- "cover"
+  contents_id <- fresh_id("statedu-html-contents")
+  if (length(links)) cover$children <- c(cover$children, list(
+    tags$div(class = "html-cover-contents-link",
+      tags$a(href = paste0("#", contents_id), text("table_list", "List of tables")))))
+  cover_node <- xml2::xml_find_first(xml2::read_html(as.character(cover)), ".//body/*")
+  shell <- xml2::xml_find_first(body, ".//*[contains(concat(' ', normalize-space(@class), ' '), ' page-shell ')]")
+  if (inherits(shell, "xml_missing")) shell <- body
+  shell_class <- xml2::xml_attr(shell, "class")
+  if (is.na(shell_class)) shell_class <- ""
+  if (!grepl("(^| )html-result-document( |$)", shell_class)) {
+    xml2::xml_set_attr(shell, "class", trimws(paste(shell_class, "html-result-document")))
+  }
+  inserted_cover <- xml2::xml_add_child(shell, cover_node, .where = 0)
+  # The number of tables must not compress the cover's vertical spacing.
+  # Keep the complete linked contents in the next document section.
+  if (length(links)) {
+    contents <- tags$nav(id = contents_id, class = "html-table-contents",
+      `data-statedu-html-navigation` = "contents",
+      `aria-label` = text("table_list", "List of tables"),
+      tags$h2(text("table_list", "List of tables")), tags$ol(links))
+    contents_node <- xml2::xml_find_first(xml2::read_html(as.character(contents)), ".//body/*")
+    xml2::xml_add_sibling(inserted_cover, contents_node, .where = "after")
+  }
+  css <- paste(saved_results_report_cover_css(),
+    ".html-result-document { box-sizing:border-box; background:#fff; border:1px solid #d9e2ec; border-radius:8px; padding:32px !important; }",
+    ".html-result-document .page-shell { max-width:100%; margin:0; padding:0; }",
+    ".html-result-document > .report-cover[data-statedu-html-navigation] { width:100%; max-width:170mm; height:auto; min-height:243mm; overflow:visible; margin:0 0 32px; padding:0 0 28px; border:0; border-bottom:2px solid #102a43; background:transparent; box-shadow:none; border-radius:0; box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between; }",
+    ".html-result-document > .report-cover::before { display:none; }",
+    ".html-result-document .report-cover-main { max-width:none; padding:56px 0 40px; }",
+    ".html-result-document .report-cover-footer { overflow-wrap:anywhere; }",
+    "@media screen and (max-width:640px) { .html-result-document { margin:12px 8px; padding:18px !important; } .html-result-document .report-cover-brand { flex-wrap:wrap; gap:12px; } .html-result-document .report-cover-logo { max-width:100%; } .html-result-document .report-cover-meta { grid-template-columns:1fr; } }",
+    ".html-table-contents { max-width:170mm; margin:0 0 40px; padding:0 0 28px; border-bottom:1px solid #bcccdc; scroll-margin-top:24px; }",
+    ".html-table-contents h2 { font-size:18px; } .html-table-contents li { margin:8px 0; overflow-wrap:anywhere; }",
+    ".html-table-contents a, .html-table-navigation a, .html-cover-contents-link a { color:#12659b; text-decoration:underline; }",
+    ".html-table-navigation { text-align:right; margin:8px 0; font-size:12px; scroll-margin-top:24px; }",
+    "@media print { .html-table-navigation { display:none; } .report-cover[data-statedu-html-navigation] { break-after:page; } }",
+    sep = "\n")
+  style <- xml2::xml_add_child(head, "style", css)
+  xml2::xml_set_attr(style, "data-statedu-html-navigation", "style")
+  result_node_html(document)
+}
+
+write_result_html_document <- function(text, con, useBytes = TRUE, language = statedu_current_language()) {
+  writeLines(result_html_export_document(text, language), con, useBytes = useBytes)
+}
+
 write_result_collection_html <- function(entries, file) {
-  writeLines(saved_result_collection_html(entries), file, useBytes = TRUE)
+  write_result_html_document(saved_result_collection_html(entries), file, useBytes = TRUE)
   invisible(file)
 }
 
+saved_result_sheet_document <- function(title, content, css_path = file.path("www", "style.css")) {
+  # Reuse the displayed table nodes and their CSS; do not rebuild report tables.
+  document <- xml2::read_html(tags_to_html(content))
+  sort_buttons <- xml2::xml_find_all(document, ".//button[contains(concat(' ', normalize-space(@class), ' '), ' ancova-sort-button ')]")
+  for (button in sort_buttons) xml2::xml_name(button) <- "span"
+  # Keep each model's Q-Q and residual-variance plots together, including its heading.
+  plot_groups <- xml2::xml_find_all(document, ".//div[contains(concat(' ', normalize-space(@class), ' '), ' diagnostic-plots-section ')][.//div[contains(concat(' ', normalize-space(@class), ' '), ' residual-diagnostic-plots ')]]")
+  for (group in plot_groups) {
+    if (length(xml2::xml_find_all(group, ".//img")) == 2L) {
+      xml2::xml_set_attr(group, "data-result-table-sheet", "true")
+      xml2::xml_set_attr(group, "data-result-table-orientation", "portrait")
+      xml2::xml_set_attr(group, "data-pdf-residual-pair", "true")
+    }
+  }
+  text_xpath <- paste0(
+    ".//*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6 or self::p or self::li or self::dt or self::dd or self::div]",
+    "[not(ancestor::table or ancestor::*[@data-result-table-sheet='true'])]",
+    "[not(ancestor-or-self::*[contains(concat(' ',normalize-space(@class),' '),' mm-result-diagram-section ')])]",
+    "[not(.//table or .//img or .//div or .//p or .//li or .//h1 or .//h2 or .//h3 or .//h4 or .//h5 or .//h6)]"
+  )
+  sheets <- xml2::xml_find_all(document, paste(
+    ".//*[@data-result-table-sheet='true' and not(ancestor::*[@data-result-table-sheet='true'])]",
+    ".//table[not(ancestor::*[@data-result-table-sheet='true'])]",
+    ".//img[not(ancestor::*[@data-result-table-sheet='true'])]",
+    ".//div[contains(concat(' ', normalize-space(@class), ' '), ' mm-result-diagram-section ')]",
+    text_xpath, sep = " | "))
+  if (length(sheets) == 0L) stop("No displayed result tables or figures are available to export.")
+  fragments <- list()
+  pending <- list()
+  pages <- list()
+  orientation <- "portrait"
+  wrap_fragment <- function(sheet) {
+    node <- sheet
+    fragment <- htmltools::HTML(result_node_html(sheet))
+    repeat {
+      parent <- xml2::xml_parent(node)
+      if (xml2::xml_name(parent) %in% c("body", "html") || inherits(parent, "xml_missing")) break
+      fragment <- tags$div(
+        class = xml2::xml_attr(parent, "class"),
+        fragment
+      )
+      node <- parent
+    }
+    fragment
+  }
+  flush_page <- function() {
+    if (!length(fragments)) return()
+    pages[[length(pages) + 1L]] <<- tags$section(
+      class = paste("statedu-output-page", paste0("statedu-output-page--", orientation)),
+      `data-orientation` = orientation, tags$div(class = "statedu-output-content", fragments))
+    fragments <<- list()
+  }
+  for (sheet in sheets) {
+    is_content <- xml2::xml_name(sheet) %in% c("table", "img") ||
+      identical(xml2::xml_attr(sheet, "data-result-table-sheet"), "true") ||
+      grepl("mm-result-diagram-section", xml2::xml_attr(sheet, "class") %||% "", fixed = TRUE)
+    if (is.na(is_content)) is_content <- FALSE
+    if (!is_content) {
+      if (!nzchar(result_html_text(sheet))) next
+      if (grepl("^h[1-6]$", xml2::xml_name(sheet)) || length(pending) || !length(fragments)) {
+        pending[[length(pending) + 1L]] <- wrap_fragment(sheet)
+      } else fragments[[length(fragments) + 1L]] <- wrap_fragment(sheet)
+      next
+    }
+    flush_page()
+    orientation <- xml2::xml_attr(sheet, "data-result-table-orientation")
+    if (is.na(orientation) || !orientation %in% c("portrait", "landscape")) orientation <- "portrait"
+    fragments <- c(pending, list(wrap_fragment(sheet)))
+    pending <- list()
+  }
+  fragments <- c(fragments, pending)
+  flush_page()
+  css <- paste(readLines(css_path, warn = FALSE), collapse = "\n")
+  canvas_css <- file.path(dirname(css_path), "model-canvas", "canvas.css")
+  if (file.exists(canvas_css)) css <- paste(css, paste(readLines(canvas_css, warn = FALSE), collapse = "\n"), sep = "\n")
+  pagination <- paste0(
+    "@page statedu-output-portrait {size:B5 portrait;margin:3mm;}",
+    "@page statedu-output-landscape {size:B5 landscape;margin:3mm;}",
+    "html,body{margin:0;padding:0;background:white;}",
+    ".statedu-output-page{break-after:auto;break-inside:avoid;margin-bottom:12px;}",
+    ".statedu-output-page--portrait{page:statedu-output-portrait;width:170mm;}",
+    ".statedu-output-page--landscape{page:statedu-output-landscape;width:244mm;break-before:page;break-after:page;}",
+    ".statedu-output-page--landscape:last-child{break-after:auto;}",
+    ".statedu-output-page .page-shell{width:100%;max-width:100%;margin:0;padding:0;}",
+    ".statedu-output-page .regression-result-panel,.statedu-output-page .regression-results > .regression-result-panel{zoom:1!important;overflow:visible!important;margin:0;}",
+    ".statedu-output-page [data-result-table-sheet='true']{page:auto!important;break-before:auto!important;page-break-before:auto!important;break-after:auto!important;page-break-after:auto!important;overflow:visible!important;}",
+    ".statedu-output-page .regression-result-panel,.statedu-output-page .result-section{page:auto!important;break-before:auto!important;page-break-before:auto!important;break-after:auto!important;page-break-after:auto!important;}",
+    ".statedu-output-page .statedu-output-content{display:block;}",
+    ".statedu-output-page .statedu-output-content div{overflow:visible!important;}",
+    ".statedu-output-page .statedu-output-content div{border:0!important;border-radius:0!important;box-shadow:none!important;}",
+    ".statedu-output-page .regression-results,.statedu-output-page .regression-result-panel,.statedu-output-page .result-section{width:100%!important;min-width:0!important;max-width:none!important;box-sizing:border-box;padding:0!important;}",
+    ".statedu-output-page .result-section.regression-result-panel:has(.result-table-sheet),.statedu-output-page .statedu-output-content .regression-results > .regression-result-panel{width:100%!important;min-width:0!important;max-width:none!important;padding:0!important;}",
+    ".statedu-output-page .regression-results{display:block!important;gap:0!important;}",
+    ".statedu-output-page img{max-width:100%!important;height:auto!important;}",
+    ".statedu-output-page:has([data-pdf-residual-pair]){break-before:page;break-after:page;break-inside:avoid;}",
+    ".statedu-output-page [data-pdf-residual-pair]{width:100%!important;max-width:100%!important;box-sizing:border-box;}",
+    ".statedu-output-page [data-pdf-residual-pair] .residual-diagnostic-plots{display:flex!important;flex-direction:column;gap:3mm;}",
+    ".statedu-output-page [data-pdf-residual-pair] .residual-plot-card{padding:2mm!important;margin:0!important;break-inside:avoid;}",
+    ".statedu-output-page [data-pdf-residual-pair] h4{font-size:10pt!important;margin:0 0 1mm!important;}",
+    ".statedu-output-page [data-pdf-residual-pair] .shiny-plot-output{width:100%!important;height:auto!important;min-height:0!important;}",
+    ".statedu-output-page [data-pdf-residual-pair] img{display:block;width:auto!important;height:94mm!important;max-width:100%!important;object-fit:contain;margin:auto;}",
+    ".statedu-output-page .regression-results,.statedu-output-page .regression-result-panel{overflow:visible!important;}",
+    ".statedu-output-page h3,.statedu-output-page h4{break-after:avoid;}",
+    ".statedu-output-page thead{display:table-header-group;break-inside:avoid;}",
+    ".statedu-output-page .ancova-sort-button{display:inline!important;}",
+    ".statedu-output-page tfoot{display:table-row-group;}",
+    ".statedu-output-page tr{break-inside:avoid;}",
+    ".statedu-output-page--long,.statedu-output-page--long .statedu-output-content,.statedu-output-page--long .page-shell,.statedu-output-page--long .regression-results,.statedu-output-page--long .regression-result-panel,.statedu-output-page--long .result-table-sheet,.statedu-output-page--long table,.statedu-output-page--long tbody{break-inside:auto!important;}",
+    "@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}"
+  )
+  # Fit only horizontal overflow to B5; never shrink a table to fit its height.
+  fit <- "function prepareResultPages(){document.querySelectorAll('.statedu-output-page').forEach(function(p){var c=p.firstElementChild;c.style.zoom=1;var s=Math.min(1,p.getBoundingClientRect().width/c.scrollWidth);c.style.zoom=s;var h=(p.dataset.orientation==='landscape'?170:244)*96/25.4;p.classList.toggle('statedu-output-page--long',c.scrollHeight*s>h);});}document.fonts.ready.then(prepareResultPages);window.addEventListener('beforeprint',prepareResultPages);"
+  tags_to_html(tags$html(tags$head(tags$meta(charset = "UTF-8"), tags$title(title),
+    tags$style(htmltools::HTML(css)), tags$style(htmltools::HTML(saved_results_report_cover_css())), tags$style(htmltools::HTML(pagination))),
+    tags$body(saved_results_report_cover(title), pages, tags$script(htmltools::HTML(fit)))))
+}
+
 write_result_collection_pdf <- function(entries, file) {
-  write_pdf_from_html(saved_result_collection_html(entries, report_mode = TRUE), file)
+  write_pdf_from_html(saved_result_sheet_document("StatEdu Studio", result_collection_content(entries)), file)
 }
 
 result_html_text <- function(node) {
@@ -1131,10 +1556,13 @@ result_html_text <- function(node) {
 result_table_title <- function(table_node, fallback) {
   heading <- xml2::xml_find_first(
     table_node,
-    "ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' regression-result-panel ')][1]//*[self::h1 or self::h2 or self::h3 or self::h4][1]"
+    "preceding::*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6][1]"
   )
   if (length(heading) == 0 || is.na(xml2::xml_name(heading))) {
-    heading <- xml2::xml_find_first(table_node, "preceding::*[self::h1 or self::h2 or self::h3 or self::h4][1]")
+    heading <- xml2::xml_find_first(
+      table_node,
+      "ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' regression-result-panel ')][1]//*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5][1]"
+    )
   }
   title <- if (length(heading) > 0 && !is.na(xml2::xml_name(heading))) result_html_text(heading) else ""
   if (nzchar(title)) title else fallback
@@ -1146,23 +1574,29 @@ result_html_table_cells <- function(table_node) {
     return(NULL)
   }
   grid <- list()
+  occupied <- list()
+  source_cells <- list()
   header_rows <- length(xml2::xml_find_all(table_node, "./thead/tr"))
   max_col <- 0L
   for (row_index in seq_along(rows)) {
     cells <- xml2::xml_find_all(rows[[row_index]], "./th|./td")
     if (length(cells) == 0) next
+    # The text helper preserves each cell's whitespace rules when given a nodeset.
+    cell_values <- result_html_text(cells)
+    has_superscripts <- !inherits(xml2::xml_find_first(rows[[row_index]], ".//sup"), "xml_missing")
     if (length(grid) < row_index) {
       length(grid) <- row_index
     }
     if (is.null(grid[[row_index]])) {
       grid[[row_index]] <- character(0)
     }
+    if (length(occupied) < row_index) length(occupied) <- row_index
     col_index <- 1L
-    for (cell in cells) {
+    for (cell_index in seq_along(cells)) {
+      cell <- cells[[cell_index]]
       while (
-        length(grid[[row_index]]) >= col_index &&
-          !is.na(grid[[row_index]][[col_index]]) &&
-          nzchar(grid[[row_index]][[col_index]] %||% "")
+        length(occupied[[row_index]]) >= col_index &&
+          isTRUE(occupied[[row_index]][[col_index]])
       ) {
         col_index <- col_index + 1L
       }
@@ -1170,18 +1604,26 @@ result_html_table_cells <- function(table_node) {
       rowspan <- suppressWarnings(as.integer(xml2::xml_attr(cell, "rowspan") %||% "1"))
       if (is.na(colspan) || colspan < 1L) colspan <- 1L
       if (is.na(rowspan) || rowspan < 1L) rowspan <- 1L
-      value <- result_html_text(cell)
+      value <- cell_values[[cell_index]]
+      line_nodes <- xml2::xml_find_all(cell, ".//*[contains(concat(' ', normalize-space(@class), ' '), ' coefficient-cell-break ')]/*")
+      if (length(line_nodes) > 1L) value <- paste(result_html_text(line_nodes), collapse = "\n")
+      superscript <- if (has_superscripts) paste(xml2::xml_text(xml2::xml_find_all(cell, ".//sup")), collapse = " ") else ""
+      if (!nzchar(superscript) || !endsWith(trimws(value), superscript)) superscript <- ""
+      source_cells[[length(source_cells) + 1L]] <- list(row = row_index, col = col_index,
+        rowspan = rowspan, colspan = colspan, style = xml2::xml_attr(cell, "style"), superscript = superscript)
       for (row_offset in seq_len(rowspan) - 1L) {
         target_row <- row_index + row_offset
         if (length(grid) < target_row) {
           length(grid) <- target_row
         }
+        if (length(occupied) < target_row) length(occupied) <- target_row
         if (is.null(grid[[target_row]])) {
           grid[[target_row]] <- character(0)
         }
         length(grid[[target_row]]) <- max(length(grid[[target_row]]), col_index + colspan - 1L)
         for (col_offset in seq_len(colspan) - 1L) {
           grid[[target_row]][[col_index + col_offset]] <- value
+          occupied[[target_row]][col_index + col_offset] <- TRUE
         }
       }
       max_col <- max(max_col, col_index + colspan - 1L)
@@ -1199,11 +1641,16 @@ result_html_table_cells <- function(table_node) {
       matrix_values[row_index, seq_along(row)] <- row
     }
   }
-  if (header_rows == 0L) {
+  # Sample-size tables are key/value rows: th is a row label, not a column header.
+  # In particular, a single Power row must remain a body row for editable exports.
+  sample_size_table <- "sample-size-result-table" %in% strsplit(xml2::xml_attr(table_node, "class") %||% "", "\\s+")[[1]]
+  if (header_rows == 0L && !sample_size_table) {
     first_row <- xml2::xml_find_all(rows[[1]], "./th")
     header_rows <- if (length(first_row) > 0) 1L else 0L
   }
-  list(values = matrix_values, header_rows = min(header_rows, nrow(matrix_values)))
+  geometry <- function(attribute) tryCatch(as.numeric(jsonlite::fromJSON(xml2::xml_attr(table_node, attribute))), error = function(e) numeric(0))
+  list(values = matrix_values, header_rows = min(header_rows, nrow(matrix_values)), cells = source_cells,
+    column_widths = geometry("data-result-column-widths"), row_heights = geometry("data-result-row-heights"))
 }
 
 result_docx_format_number <- function(value, digits, drop_zero = TRUE) {
@@ -1313,8 +1760,7 @@ result_docx_split_header_marker <- function(value) {
   c(value = text, marker = "")
 }
 
-result_docx_table_payload <- function(table_node) {
-  parsed <- result_html_table_cells(table_node)
+result_docx_table_payload <- function(table_node, parsed = result_html_table_cells(table_node)) {
   if (is.null(parsed)) {
     return(NULL)
   }
@@ -1355,8 +1801,9 @@ result_docx_table_payload <- function(table_node) {
   list(body = body, headers = headers, col_keys = col_keys, markers = marker_matrix, header_markers = header_marker_matrix)
 }
 
-result_entry_tables <- function(entry, entry_index = 1L) {
-  document <- result_entry_document(entry)
+result_entry_tables <- function(entry, entry_index = 1L, include_docx = TRUE,
+                                document = result_entry_document(entry),
+                                text_items = result_entry_paragraphs(entry, document = document)) {
   if (is.null(document)) {
     return(list())
   }
@@ -1386,17 +1833,49 @@ result_entry_tables <- function(entry, entry_index = 1L) {
       xml2::xml_find_first(table_nodes[[index]], "ancestor::div[contains(@class, 'result-section') or contains(@class, 'regression-result-panel')][1]"),
       "class"
     ) %||% ""
+    quiet_parse <- TRUE
     tables[[index]] <- list(
+      output_order = result_node_order(table_nodes[[index]]),
       title = title,
       sheet_name = excel_sheet_name(sprintf("%02d %s", entry_index, title)),
       table = table,
       class = xml2::xml_attr(table_nodes[[index]], "class") %||% "",
       context_class = context_class,
-      docx = result_docx_table_payload(table_nodes[[index]]),
+      orientation = xml2::xml_attr(xml2::xml_find_first(table_nodes[[index]],
+        "ancestor-or-self::*[@data-result-table-orientation][1]"), "data-result-table-orientation"),
+      screen = parsed <- withCallingHandlers(result_html_table_cells(table_nodes[[index]]),
+        warning = function(w) quiet_parse <<- FALSE, message = function(m) quiet_parse <<- FALSE),
+      # Reuse this table's quiet parse; preserve repeated diagnostics otherwise.
+      docx = if (!include_docx) NULL
+        else if (quiet_parse) result_docx_table_payload(table_nodes[[index]], parsed = parsed)
+        else result_docx_table_payload(table_nodes[[index]]),
       notes = notes
     )
   }
-  Filter(Negate(is.null), tables)
+  tables <- Filter(Negate(is.null), tables)
+  orders <- vapply(tables, `[[`, numeric(1), "output_order")
+  if (length(tables)) {
+    for (index in seq_along(tables)) {
+      tables[[index]]$headings <- character(0)
+      tables[[index]]$before_text <- character(0)
+      tables[[index]]$after_text <- character(0)
+    }
+    last_heading <- -Inf
+    for (item in text_items) {
+      if (isTRUE(item$heading)) last_heading <- item$output_order
+      preceding <- which(orders < item$output_order)
+      following <- which(orders > item$output_order)
+      previous <- if (length(preceding)) tail(preceding, 1L) else NA_integer_
+      next_index <- if (length(following)) following[[1L]] else NA_integer_
+      before <- !is.na(next_index) && (isTRUE(item$heading) || is.na(previous) || last_heading > orders[[previous]])
+      owner <- if (before) next_index else previous
+      if (is.na(owner)) next
+      key <- if (before) "before_text" else "after_text"
+      tables[[owner]][[key]] <- c(tables[[owner]][[key]], item$text)
+      if (isTRUE(item$heading)) tables[[owner]]$headings <- c(tables[[owner]]$headings, item$text)
+    }
+  }
+  tables
 }
 
 result_docx_main_table <- function(table_info) {
@@ -1446,37 +1925,279 @@ result_collection_index_table <- function(entries) {
 save_result_collection_excel_file <- function(entries, file) {
   workbook <- openxlsx::createWorkbook()
   used_sheets <- character(0)
-  used_sheets <- add_excel_table_sheet(
-    workbook,
-    "Result index",
-    result_collection_index_table(entries),
-    used_sheets,
-    title = "Result index"
-  )
+  contents <- list()
+  image_paths <- character(0)
+  on.exit(unlink(image_paths), add = TRUE)
   for (entry_index in seq_along(entries)) {
-    tables <- result_entry_tables(entries[[entry_index]], entry_index)
-    for (table_info in tables) {
-      used_sheets <- add_excel_table_sheet(
-        workbook,
-        table_info$sheet_name,
-        table_info$table,
-        used_sheets,
-        title = sprintf("%02d. %s - %s", entry_index, entries[[entry_index]]$title, table_info$title)
-      )
+    # Excel uses captured screen cells; Word's normalized payload is unnecessary.
+    document <- result_entry_document(entries[[entry_index]])
+    tables <- result_entry_tables(entries[[entry_index]], entry_index, include_docx = FALSE,
+      document = document)
+    images <- result_entry_images(entries[[entry_index]])
+    image_paths <- c(image_paths, vapply(images, `[[`, character(1), "path"))
+    items <- c(tables, images)
+    items <- items[order(vapply(items, `[[`, numeric(1), "output_order"))]
+    for (figure in items) {
+      if (is.null(figure$path)) {
+        used_sheets <- add_screen_excel_table(workbook, figure, used_sheets)
+        contents[[length(contents) + 1L]] <- list(sheet = tail(used_sheets, 1L), title = figure$title,
+          result = entries[[entry_index]]$title, link_row = max(1L, length(figure$before_text)) + 1L,
+          link_col = 1L, link_span = ncol(figure$screen$values))
+        next
+      }
+      sheet <- excel_sheet_name(figure$title, used_sheets)
+      openxlsx::addWorksheet(workbook, sheet, gridLines = FALSE)
+      openxlsx::writeData(workbook, sheet, figure$title, colNames = FALSE)
+      dimensions <- result_docx_image_dimensions(figure)
+      openxlsx::insertImage(workbook, sheet, figure$path, startRow = 3, startCol = 1,
+        width = dimensions$width, height = dimensions$height, units = "in")
+      openxlsx::pageSetup(workbook, sheet, orientation = "portrait", paperSize = 13,
+        fitToWidth = TRUE, fitToHeight = TRUE)
+      used_sheets <- c(used_sheets, sheet)
+      contents[[length(contents) + 1L]] <- list(sheet = sheet, title = figure$title,
+        result = entries[[entry_index]]$title, link_row = 2L, link_col = 1L, link_span = 4L)
+    }
+    displayed_text <- vapply(result_entry_paragraphs(entries[[entry_index]], document = document), `[[`, character(1), "text")
+    table_notes <- unlist(lapply(tables, function(table) c(table$notes, table$before_text, table$after_text)), use.names = FALSE)
+    displayed_text <- displayed_text[!displayed_text %in% table_notes]
+    if (length(displayed_text)) {
+      sheet <- excel_sheet_name(paste0(entries[[entry_index]]$title, " notes"), used_sheets)
+      openxlsx::addWorksheet(workbook, sheet, gridLines = FALSE)
+      openxlsx::writeData(workbook, sheet, data.frame(Text = displayed_text), colNames = FALSE)
+      openxlsx::setColWidths(workbook, sheet, 1L, 85)
+      openxlsx::addStyle(workbook, sheet, openxlsx::createStyle(wrapText = TRUE, valign = "top"),
+        rows = seq_along(displayed_text), cols = 1L, gridExpand = TRUE)
+      openxlsx::pageSetup(workbook, sheet, orientation = "portrait", paperSize = 13, fitToWidth = TRUE)
+      used_sheets <- c(used_sheets, sheet)
+      contents[[length(contents) + 1L]] <- list(sheet = sheet, title = paste(entries[[entry_index]]$title, "—", "Notes / 설명"),
+        result = entries[[entry_index]]$title)
     }
   }
+  if (!length(used_sheets)) stop("No displayed result tables are available to export.")
+  add_result_excel_cover(workbook, contents)
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  result_finalize_excel_package(file)
   invisible(file)
 }
 
-result_entry_images <- function(entry) {
-  document <- result_entry_document(entry)
+result_finalize_excel_package <- function(file) {
+  # openxlsx can emit unused drawing references and an A1-only dimension.
+  # Repair metadata only; preserve actual cells, styles, merges and drawings.
+  archive <- normalizePath(file, winslash = "/", mustWork = TRUE)
+  directory <- tempfile("result-xlsx-"); dir.create(directory)
+  packed <- tempfile(fileext = ".xlsx")
+  on.exit({unlink(directory, recursive = TRUE); unlink(packed)}, add = TRUE)
+  zip::unzip(archive, exdir = directory)
+  sheets <- list.files(file.path(directory, "xl", "worksheets"), pattern = "^sheet[0-9]+[.]xml$", full.names = TRUE)
+  for (sheet in sheets) {
+    doc <- xml2::read_xml(sheet)
+    # Store workbook navigation as native internal hyperlinks. This keeps link
+    # labels visible without formula recalculation and supports Excel Follow.
+    for (formula in xml2::xml_find_all(doc, "//*[local-name()='c']/*[local-name()='f']")) {
+      match <- regmatches(xml2::xml_text(formula), regexec('^HYPERLINK\\("((?:[^"]|"")*)","((?:[^"]|"")*)"\\)$', xml2::xml_text(formula), perl = TRUE))[[1]]
+      if (length(match) != 3L || !startsWith(match[[2]], "#")) next
+      target <- substring(gsub('""', '"', match[[2]], fixed = TRUE), 2L)
+      label <- gsub('""', '"', match[[3]], fixed = TRUE)
+      cell <- xml2::xml_parent(formula)
+      links <- xml2::xml_find_first(doc, "/*/*[local-name()='hyperlinks']")
+      if (inherits(links, "xml_missing")) {
+        anchor <- xml2::xml_find_first(doc, "/*/*[local-name()='printOptions' or local-name()='pageMargins' or local-name()='pageSetup' or local-name()='headerFooter' or local-name()='drawing'][1]")
+        links <- if (inherits(anchor, "xml_missing")) xml2::xml_add_child(xml2::xml_root(doc), "hyperlinks")
+          else xml2::xml_add_sibling(anchor, "hyperlinks", .where = "before")
+      }
+      xml2::xml_add_child(links, "hyperlink", ref = xml2::xml_attr(cell, "r"), location = target, display = label)
+      xml2::xml_remove(xml2::xml_children(cell))
+      xml2::xml_set_attr(cell, "t", "inlineStr")
+      xml2::xml_add_child(xml2::xml_add_child(cell, "is"), "t", label)
+    }
+    relfile <- file.path(dirname(sheet), "_rels", paste0(basename(sheet), ".rels"))
+    if (file.exists(relfile)) {
+      rels <- xml2::read_xml(relfile)
+      for (rel in xml2::xml_find_all(rels, "//*[local-name()='Relationship']")) {
+        if (identical(xml2::xml_attr(rel, "TargetMode"), "External")) next
+        type <- xml2::xml_attr(rel, "Type"); target <- xml2::xml_attr(rel, "Target")
+        if (is.na(type) || is.na(target) || !grepl("/(drawing|vmlDrawing)$", type)) next
+        path <- if (startsWith(target, "/")) file.path(directory, substring(target, 2)) else file.path(dirname(sheet), target)
+        if (!file.exists(path)) {
+          id <- xml2::xml_attr(rel, "Id")
+          nodes <- xml2::xml_find_all(doc, "//*[local-name()='drawing' or local-name()='legacyDrawing' or local-name()='legacyDrawingHF']")
+          for (node in nodes) {
+            attrs <- xml2::xml_attrs(node)
+            if (any(unname(attrs) == id)) xml2::xml_remove(node)
+          }
+          xml2::xml_remove(rel)
+        }
+      }
+      xml2::write_xml(rels, relfile)
+    }
+    cells <- xml2::xml_attr(xml2::xml_find_all(doc, "//*[local-name()='sheetData']//*[local-name()='c']"), "r")
+    merges <- xml2::xml_attr(xml2::xml_find_all(doc, "//*[local-name()='mergeCell']"), "ref")
+    refs <- c(cells, unlist(strsplit(merges, ":", fixed = TRUE)))
+    refs <- refs[!is.na(refs) & grepl("^[A-Z]+[0-9]+$", refs)]
+    if (length(refs)) {
+      maxrow <- max(as.integer(sub("^[A-Z]+", "", refs)))
+      maxcol <- max(openxlsx::convertFromExcelRef(refs))
+      dimension <- xml2::xml_find_first(doc, "/*/*[local-name()='dimension']")
+      if (!inherits(dimension, "xml_missing")) xml2::xml_set_attr(dimension, "ref", paste0("A1:", openxlsx::int2col(maxcol), maxrow))
+    }
+    xml2::write_xml(doc, sheet)
+  }
+  zip::zipr(packed, list.files(directory, recursive = TRUE, all.files = TRUE, no.. = TRUE), root = directory, include_directories = FALSE, mode = "mirror")
+  if (!file.copy(packed, archive, overwrite = TRUE)) stop("Could not finalize Excel package.")
+  invisible(file)
+}
+
+save_screen_excel_file <- function(html, file) {
+  save_result_collection_excel_file(list(list(title = "Results", html = html)), file)
+}
+
+add_screen_excel_table <- function(workbook, info, used_sheets) {
+  sheet <- excel_sheet_name(info$title, used_sheets)
+  source <- info$screen
+  values <- source$values
+  nr <- nrow(values); nc <- ncol(values)
+  wide <- result_docx_wide_table(info)
+  openxlsx::addWorksheet(workbook, sheet, gridLines = FALSE)
+  leading <- info$before_text %||% character(0)
+  if (!length(leading)) leading <- info$title
+  for (index in seq_along(leading)) {
+    openxlsx::writeData(workbook, sheet, leading[[index]], startRow = index, colNames = FALSE)
+    if (nc > 1L) openxlsx::mergeCells(workbook, sheet, cols = seq_len(nc), rows = index)
+    openxlsx::addStyle(workbook, sheet, openxlsx::createStyle(fontName = "Arial", fontSize = 11.25,
+      wrapText = TRUE, textDecoration = if (leading[[index]] %in% c(info$headings, info$title)) "bold" else NULL,
+      fontColour = "#1f2937"), rows = index, cols = seq_len(nc), gridExpand = TRUE)
+  }
+  offset <- length(leading) + 1L
+  # Strings are intentional: preserve displayed precision, p-value thresholds and labels.
+  # Write only source cells so merged continuations do not duplicate their contents.
+  cell_rows <- vapply(source$cells, function(cell) cell$row, numeric(1))
+  cell_cols <- vapply(source$cells, function(cell) cell$col, numeric(1))
+  if (length(cell_rows)) {
+    # Contiguous source cells on one row retain the original shared-string order.
+    starts <- which(c(TRUE, diff(cell_rows) != 0 | diff(cell_cols) != 1))
+    ends <- c(starts[-1L] - 1L, length(cell_rows))
+    for (run in seq_along(starts)) {
+      indices <- seq.int(starts[[run]], ends[[run]])
+      row <- cell_rows[[starts[[run]]]]
+      cols <- cell_cols[indices]
+      openxlsx::writeData(workbook, sheet, matrix(values[row, cols], nrow = 1L),
+        startRow = row + offset, startCol = cols[[1]], colNames = FALSE, rowNames = FALSE)
+    }
+  }
+  # Reuse identical styles only within this sheet; apply them in source-cell order.
+  style_cache <- list()
+  pending_style <- NULL
+  flush_style <- function() {
+    if (!is.null(pending_style)) {
+      openxlsx::addStyle(workbook, sheet, pending_style$style, rows = pending_style$row,
+        cols = seq.int(pending_style$first, pending_style$last), gridExpand = TRUE, stack = TRUE)
+      pending_style <<- NULL
+    }
+  }
+  for (cell in source$cells) {
+    rows <- seq.int(cell$row + offset, cell$row + offset - 1L + cell$rowspan)
+    cols <- seq.int(cell$col, cell$col + cell$colspan - 1L)
+    css <- cell$style
+    if (is.na(css)) css <- ""
+    header <- cell$row <= source$header_rows
+    decoration <- c(if (header || grepl("font-weight:\\s*(bold|[6-9]00)", css)) "bold",
+      if (grepl("font-style:\\s*italic", css)) "italic")
+    align <- if (grepl("text-align:\\s*(left|start)", css)) "left" else if (grepl("text-align:\\s*(right|end)", css)) "right" else if (header || grepl("text-align:\\s*center", css)) "center" else "left"
+    border <- if (cell$row == 1L) c("top", "bottom") else "bottom"
+    dark <- header || max(rows) == nr + offset
+    valign <- if (grepl("vertical-align:\\s*top", css)) "top" else "center"
+    style_key <- paste(header, paste(decoration, collapse = ","), align, valign, cell$row == 1L, dark, sep = "|")
+    style <- style_cache[[style_key]]
+    if (is.null(style)) {
+      style <- openxlsx::createStyle(fontName = "Arial", fontSize = if (header) 8.25 else 9,
+        fontColour = "#2f3a46", textDecoration = if (length(decoration)) decoration else NULL,
+        halign = align, valign = valign,
+        wrapText = TRUE, numFmt = "TEXT", border = border,
+        borderColour = if (dark) "#1f2937" else "#d7dde5", borderStyle = if (dark) "thin" else "hair")
+      style_cache[[style_key]] <- style
+    }
+    # Batch only adjacent unmerged cells with identical styles on the same row.
+    unmerged <- length(rows) == 1L && length(cols) == 1L
+    if (unmerged && !is.null(pending_style) && identical(style_key, pending_style$key) &&
+        rows == pending_style$row && cols == pending_style$last + 1L) {
+      pending_style$last <- cols
+    } else {
+      flush_style()
+      if (unmerged) {
+        pending_style <- list(key = style_key, style = style, row = rows, first = cols, last = cols)
+      } else {
+        openxlsx::mergeCells(workbook, sheet, cols = cols, rows = rows)
+        openxlsx::addStyle(workbook, sheet, style, rows = rows, cols = cols, gridExpand = TRUE, stack = TRUE)
+      }
+    }
+  }
+  flush_style()
+  width_px <- if (wide) 890 else 590
+  # Stable sheet columns with room for label columns and wrapped prose.
+  weights <- vapply(seq_len(nc), function(j) min(40, max(8, max(nchar(values[,j], type = "width")))), numeric(1))
+  fractions <- 0.6 / nc + 0.4 * weights / sum(weights)
+  if (length(source$column_widths) == nc && all(is.finite(source$column_widths) & source$column_widths > 0)) fractions <- source$column_widths / sum(source$column_widths)
+  widths <- pmax(4, (width_px * fractions - 5) / 7)
+  openxlsx::setColWidths(workbook, sheet, cols = seq_len(nc), widths = widths)
+  for (r in seq_len(nr)) {
+    lines <- max(ceiling(nchar(values[r, ], type = "width") / pmax(1, widths - 2)))
+    height <- if (length(source$row_heights) >= r && is.finite(source$row_heights[[r]]) && source$row_heights[[r]] > 0) source$row_heights[[r]] * .75 else max(19, lines * 12 + 6)
+    openxlsx::setRowHeights(workbook, sheet, rows = r + offset, heights = height)
+  }
+  last <- nr + offset
+  trailing <- c(info$after_text, info$notes[!info$notes %in% c(info$before_text, info$after_text)])
+  for (note in trailing) {
+    last <- last + 1L
+    openxlsx::writeData(workbook, sheet, note, startRow = last, colNames = FALSE)
+    if (nc > 1L) openxlsx::mergeCells(workbook, sheet, cols = seq_len(nc), rows = last)
+    openxlsx::addStyle(workbook, sheet, openxlsx::createStyle(fontName = "Arial", fontSize = 8.25,
+      fontColour = "#52606d", wrapText = TRUE, valign = "top"), rows = last, cols = seq_len(nc), gridExpand = TRUE)
+    openxlsx::setRowHeights(workbook, sheet, rows = last,
+      heights = max(18, ceiling(nchar(note, type = "width") / sum(widths)) * 12 + 6))
+  }
+  openxlsx::pageSetup(workbook, sheet, orientation = if (wide) "landscape" else "portrait",
+    paperSize = 13, fitToWidth = TRUE, fitToHeight = TRUE, left = 0.15, right = 0.15, top = 0.15, bottom = 0.15)
+  c(used_sheets, sheet)
+}
+
+result_entry_paragraphs <- function(entry, document = result_entry_document(entry)) {
+  if (is.null(document)) return(list())
+  nodes <- xml2::xml_find_all(document, paste0(
+    ".//*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6 or self::p or self::li or self::dt or self::dd or self::div]",
+    "[not(ancestor::table or ancestor::script or ancestor::style)]",
+    "[not(ancestor-or-self::*[contains(concat(' ',normalize-space(@class),' '),' mm-result-diagram-section ')])]",
+    "[not(.//table or .//img or .//div or .//p or .//li or .//h1 or .//h2 or .//h3 or .//h4 or .//h5 or .//h6)]"
+  ))
+  Filter(function(item) nzchar(item$text), lapply(nodes, function(node) list(
+    text = result_html_text(node),
+    heading = grepl("^h[1-6]$", xml2::xml_name(node)),
+    level = if (grepl("^h[1-6]$", xml2::xml_name(node))) as.integer(sub("h", "", xml2::xml_name(node))) else NA_integer_,
+    output_order = result_node_order(node)
+  )))
+}
+
+result_entry_images <- function(entry, document = result_entry_document(entry)) {
   if (is.null(document)) {
     return(list())
   }
+  # Office embeds the displayed HTML/SVG diagram as a figure; PDF keeps its native nodes.
+  diagrams <- xml2::xml_find_all(document, ".//div[contains(concat(' ', normalize-space(@class), ' '), ' mm-result-diagram-section ')]")
+  if (length(diagrams) && !missing(document)) {
+    # Diagram replacement must not mutate the document shared by table/notes
+    # extraction. Copy the parsed tree without parsing the HTML again.
+    copy <- xml2::xml_new_document()
+    document <- xml2::xml_add_child(copy, xml2::xml_root(document), .copy = TRUE)
+    diagrams <- xml2::xml_find_all(document, ".//div[contains(concat(' ', normalize-space(@class), ' '), ' mm-result-diagram-section ')]")
+  }
+  for (diagram in diagrams) {
+    uri <- result_diagram_image_uri(diagram)
+    replacement <- xml2::read_html(paste0('<img class="analysis-plot-image" alt="Model diagram" width="860" height="608" src="', uri, '">'))
+    xml2::xml_set_attr(xml2::xml_find_first(replacement, './/img'), "data-result-export-order", as.character(result_node_order(diagram)))
+    xml2::xml_replace(diagram, xml2::xml_find_first(replacement, './/img'))
+  }
   image_nodes <- xml2::xml_find_all(
     document,
-    ".//*[contains(concat(' ', normalize-space(@class), ' '), ' residual-plot-card ') or contains(concat(' ', normalize-space(@class), ' '), ' frequency-plot-card ') or contains(concat(' ', normalize-space(@class), ' '), ' correlation-plot-card ')]//img[starts-with(@src, 'data:image/')]"
+    ".//img[starts-with(@src, 'data:image/')]"
   )
   if (length(image_nodes) == 0) {
     return(list())
@@ -1485,19 +2206,43 @@ result_entry_images <- function(entry) {
     src <- xml2::xml_attr(image_nodes[[index]], "src") %||% ""
     mime <- sub("^data:([^;]+);base64,.*$", "\\1", src)
     payload <- sub("^data:[^;]+;base64,", "", src)
+    payload <- gsub("%0A|%0D", "", payload, ignore.case = TRUE)
+    payload <- gsub("[[:space:]]+", "", payload)
     extension <- switch(mime, "image/jpeg" = ".jpg", "image/webp" = ".webp", ".png")
     path <- tempfile("statedu_result_image_", fileext = extension)
     writeBin(jsonlite::base64_dec(payload), path)
     alt <- xml2::xml_attr(image_nodes[[index]], "alt") %||% sprintf("Figure %s", index)
+    if (is.na(alt) || !nzchar(trimws(alt))) alt <- sprintf("Figure %s", index)
     width <- suppressWarnings(as.numeric(xml2::xml_attr(image_nodes[[index]], "width") %||% ""))
     height <- suppressWarnings(as.numeric(xml2::xml_attr(image_nodes[[index]], "height") %||% ""))
-    list(path = path, title = alt, width_px = width, height_px = height)
+    # Older snapshots may have dimensions only in inline CSS. Preserve the
+    # displayed ratio instead of silently treating every such image as square.
+    style <- xml2::xml_attr(image_nodes[[index]], "style")
+    css_px <- function(property) {
+      if (is.na(style)) return(NA_real_)
+      parts <- regmatches(style, regexec(paste0("(?:^|;)\\s*", property, "\\s*:\\s*([0-9.]+)px"), style, perl = TRUE))[[1]]
+      if (length(parts) > 1L) as.numeric(parts[[2]]) else NA_real_
+    }
+    if (!is.finite(width) || width <= 0) width <- css_px("width")
+    if (!is.finite(height) || height <= 0) height <- css_px("height")
+    if ((!is.finite(width) || !is.finite(height)) && identical(mime, "image/png") && requireNamespace("png", quietly = TRUE)) {
+      pixels <- tryCatch(dim(png::readPNG(path, native = TRUE)), error = function(e) NULL)
+      if (length(pixels) >= 2L) {
+        if (is.finite(width)) height <- width * pixels[[1]] / pixels[[2]] else
+          if (is.finite(height)) width <- height * pixels[[2]] / pixels[[1]] else {
+            width <- pixels[[2]]; height <- pixels[[1]]
+          }
+      }
+    }
+    list(path = path, title = alt, width_px = width, height_px = height,
+      orientation = xml2::xml_attr(xml2::xml_find_first(image_nodes[[index]], "ancestor-or-self::*[@data-result-table-orientation][1]"), "data-result-table-orientation"),
+      output_order = result_node_order(image_nodes[[index]]))
   })
 }
 
-result_docx_page_spec <- function(landscape = FALSE) {
-  width <- if (isTRUE(landscape)) 10.12 else 7.17
-  height <- if (isTRUE(landscape)) 7.17 else 10.12
+result_document_page_spec <- function(landscape = FALSE) {
+  width <- (if (isTRUE(landscape)) 250 else 176) / 25.4
+  height <- (if (isTRUE(landscape)) 176 else 250) / 25.4
   table_width <- if (isTRUE(landscape)) 890 / 96 else 590 / 96
   margin <- max(0.25, (width - table_width) / 2)
   list(
@@ -1510,6 +2255,8 @@ result_docx_page_spec <- function(landscape = FALSE) {
     table_width = table_width
   )
 }
+
+result_docx_page_spec <- function(landscape = FALSE) result_document_page_spec(landscape)
 
 result_docx_apply_b5_section <- function(document) {
   spec <- result_docx_page_spec()
@@ -1562,6 +2309,8 @@ result_docx_portrait_section <- function() {
 }
 
 result_docx_wide_table <- function(table_info) {
+  if (identical(table_info$orientation, "landscape")) return(TRUE)
+  if (identical(table_info$orientation, "portrait")) return(FALSE)
   table_class <- as.character(table_info$class %||% "")
   context_class <- as.character(table_info$context_class %||% "")
   title <- as.character(table_info$title %||% "")
@@ -1815,8 +2564,8 @@ result_docx_table <- function(table_info) {
   }
   if (is.list(payload) && !is.null(payload$headers) && nrow(payload$headers) >= 2L) {
     ft <- flextable::align(ft, i = 1, align = "center", part = "header")
-    ft <- flextable::align(ft, i = 1, j = 1, align = "left", part = "header")
   }
+  ft <- flextable::align(ft, align = "center", part = "header")
   widths <- result_docx_column_widths(table, spec$table_width, table_info)
   ft <- flextable::width(ft, width = widths)
   table_prop_width <- if (grepl("correlation / association coefficients", tolower(as.character(table_info$title %||% "")), fixed = TRUE)) 1 else 0.98
@@ -1930,53 +2679,158 @@ result_docx_methods_page <- function(document, entries, entry_tables) {
   officer::body_add_break(document, pos = "after")
 }
 
-write_result_collection_docx <- function(entries, file) {
-  document <- result_docx_apply_b5_section(officer::read_docx())
-  entry_tables <- lapply(seq_along(entries), function(entry_index) {
-    Filter(result_docx_main_table, result_entry_tables(entries[[entry_index]], entry_index))
-  })
-  document <- result_docx_methods_page(document, entries, entry_tables)
-  content_count <- 0L
-  for (entry_index in seq_along(entries)) {
-    entry <- entries[[entry_index]]
-    tables <- entry_tables[[entry_index]] %||% list()
-    for (table_info in tables) {
-      wide_table <- result_docx_wide_table(table_info)
-      if (content_count > 0L && !isTRUE(wide_table)) {
-        document <- officer::body_add_break(document, pos = "after")
-      }
-      if (isTRUE(wide_table)) {
-        document <- officer::body_end_block_section(document, value = result_docx_portrait_section())
-      }
-      document <- officer::body_add_par(document, table_info$title, style = "heading 2")
-      table <- result_docx_table(table_info)
-      document <- flextable::body_add_flextable(document, table)
-      for (note in as.character(table_info$notes %||% character(0))) {
-        if (nzchar(note)) {
-          document <- result_docx_add_note(document, note)
-        }
-      }
-      if (isTRUE(wide_table)) {
-        document <- officer::body_end_block_section(document, value = result_docx_landscape_section())
-      }
-      content_count <- content_count + 1L
+result_docx_screen_section <- function(landscape = FALSE) {
+  spec <- result_docx_page_spec(landscape)
+  officer::prop_section(type = "nextPage",
+    page_size = officer::page_size(width = spec$width, height = spec$height,
+      orient = if (landscape) "landscape" else "portrait"),
+    page_margins = officer::page_mar(top = spec$margin_top, bottom = spec$margin_bottom,
+      left = spec$margin_left, right = spec$margin_right, header = 0, footer = 0))
+}
+
+result_document_table <- function(info, layout_only = FALSE) {
+  source <- info$screen
+  values <- source$values
+  nh <- source$header_rows
+  body <- as.data.frame(values[seq.int(nh + 1L, nrow(values)), , drop = FALSE], stringsAsFactors = FALSE)
+  names(body) <- paste0("col", seq_len(ncol(body)))
+  ft <- flextable::flextable(body)
+  if (nh > 0L) {
+    # set_header_df measures the unstyled header, then autofit measures it
+    # again after formatting. Build the same rows and measure only at the end.
+    ft <- flextable::delete_part(ft, part = "header")
+    for (i in seq_len(nh)) ft <- flextable::add_header_row(ft, values = unname(values[i, ]), top = FALSE)
+  } else ft <- flextable::delete_part(ft, part = "header")
+  theme <- result_document_table_style()
+  ft <- flextable::font(ft, fontname = theme$font, part = "all")
+  ft <- flextable::fontsize(ft, size = theme$size, part = "all")
+  ft <- flextable::bold(ft, bold = FALSE, part = "all")
+  ft <- flextable::color(ft, color = "#2f3a46", part = "all")
+  ft <- flextable::padding(ft, padding = theme$padding_pt, part = "all")
+  ft <- flextable::border_remove(ft)
+  borders <- list(outer = officer::fp_border(color = "#1f2937", width = theme$outer_pt),
+    inner = officer::fp_border(color = "#000000", width = theme$inner_pt))
+  formats <- if (!layout_only) setNames(lapply(seq_len(4L), function(i)
+    matrix(NA_character_, nrow(values), ncol(values))), c("align", "valign", "top", "bottom"))
+  for (cell in source$cells) {
+    part <- if (cell$row <= nh) "header" else "body"
+    row <- if (part == "header") cell$row else cell$row - nh
+    rows <- seq.int(row, row + cell$rowspan - 1L)
+    cols <- seq.int(cell$col, cell$col + cell$colspan - 1L)
+    if (cell$rowspan > 1L || cell$colspan > 1L) ft <- flextable::merge_at(ft, i = rows, j = cols, part = part)
+    style <- cell$style
+    if (is.na(style)) style <- ""
+    if (!layout_only) {
+      rules <- result_document_cell_rules(source, cell)
+      source_rows <- seq.int(cell$row, length.out = cell$rowspan)
+      if (rules$top != "none") formats$top[min(source_rows), cols] <- rules$top
+      if (rules$bottom != "none") formats$bottom[max(source_rows), cols] <- rules$bottom
+      align <- if (grepl("text-align:\\s*(left|start)", style)) "left" else if (grepl("text-align:\\s*(right|end)", style)) "right" else if (part == "header" || grepl("text-align:\\s*center", style)) "center" else "left"
+      formats$align[source_rows, cols] <- align
+      formats$valign[source_rows, cols] <- if (grepl("vertical-align:\\s*top", style)) "top" else "center"
     }
-    images <- result_entry_images(entry)
-    image_count <- 0L
-    for (image in images) {
-      if (file.exists(image$path)) {
-        if (content_count > 0L && image_count %% 2L == 0L) {
-          document <- officer::body_add_break(document, pos = "after")
-        }
-        dimensions <- result_docx_image_dimensions(image)
-        document <- officer::body_add_par(document, image$title, style = "heading 2")
-        document <- officer::body_add_img(document, src = image$path, width = dimensions$width, height = dimensions$height)
-        image_count <- image_count + 1L
-        content_count <- content_count + 1L
-      }
+    marker <- cell$superscript %||% ""
+    if (nzchar(marker)) {
+      value <- trimws(values[cell$row, cell$col])
+      base <- trimws(substr(value, 1L, nchar(value) - nchar(marker)))
+      ft <- flextable::compose(ft, i = row, j = cell$col, part = part,
+        value = flextable::as_paragraph(flextable::as_chunk(base), flextable::as_sup(marker)))
     }
-    unlink(vapply(images, `[[`, character(1), "path"))
   }
+  if (!layout_only) ft <- result_document_apply_cell_formats(ft, formats, nh, borders)
+  # Fit the editable Word grid to the same B5 sheet width, without rewriting values.
+  geometry <- result_document_table_geometry(info, fallback = FALSE)
+  if (!is.null(geometry)) {
+    if (nh > 0L) ft <- flextable::height(ft, height = geometry$heights[seq_len(nh)], part = "header")
+    ft <- flextable::height(ft, height = geometry$heights[seq.int(nh + 1L, nrow(values))], part = "body")
+    for (part in c("header", "body")) if (nrow(ft[[part]]$dataset) > 0L)
+      names(ft[[part]]$colwidths) <- ft$col_keys
+    widths <- geometry$widths
+  } else {
+    ft <- flextable::autofit(ft)
+    target <- result_docx_page_spec(result_docx_wide_table(info))$table_width
+    widths <- ft$body$colwidths
+    # Keep short label columns usable when another column contains long prose.
+    minimum <- target * 0.6 / length(widths)
+    captured <- info$screen$column_widths
+    widths <- if (length(captured) == length(widths) && all(is.finite(captured) & captured >= 0) && sum(captured) > 0) {
+      # Captured hierarchical tables include zero-width separator columns. They
+      # must not invalidate the real widths and become ordinary data columns.
+      weights <- pmax(captured, 0.001)
+      target * weights / sum(weights)
+    } else minimum + target * 0.4 * widths / sum(widths)
+  }
+  ft <- flextable::width(ft, width = widths)
+  flextable::set_table_properties(ft, layout = "fixed", align = "left",
+    opts_word = list(split = FALSE, keep_with_next = TRUE))
+}
+
+result_docx_screen_table <- function(info) result_document_table(info)
+
+write_result_collection_docx <- function(entries, file, contents = NULL) {
+  model <- result_document_model(entries, contents)
+  on.exit(result_document_cleanup(model),add=TRUE)
+  document <- result_docx_apply_b5_section(officer::read_docx())
+  table_writer <- result_docx_shared_table_writer(document)
+  previous_wide <- FALSE; content_count <- 0L
+  for (node in model$nodes) {
+    if(content_count>0L && !identical(node$landscape,previous_wide))
+      document <- officer::body_end_block_section(document,officer::block_section(result_docx_screen_section(previous_wide)))
+    previous_wide <- node$landscape
+    if(node$kind=="gap") {
+      document <- officer::body_add_fpar(document,officer::fpar(
+        officer::ftext("",officer::fp_text(font.family="Arial",font.size=10)),
+        fp_p=officer::fp_par(line_spacing=1,padding=0,keep_with_next=FALSE)))
+      next
+    }
+    if(node$kind=="paragraph") {
+      if(node$heading)document <- officer::body_add_fpar(document,officer::fpar(
+        officer::ftext(node$text,officer::fp_text(font.family="Arial",font.size=11.25,bold=TRUE)),
+        fp_p=officer::fp_par(keep_with_next=TRUE,padding.bottom=6)))
+      else document <- result_docx_add_note(document,node$text)
+    } else if(node$kind=="image") {
+      document <- officer::body_add_img(document,src=node$image$path,width=node$dimensions$width,height=node$dimensions$height)
+    } else document <- table_writer$add(document,node$table)
+    content_count <- content_count+1L
+  }
+  document <- officer::body_set_default_section(document, result_docx_screen_section(previous_wide))
+  # Hancom needs explicit widths on merged cells as well as the Word table grid.
+  # Without tcW, a colspan/rowspan header can import with an unsigned negative width.
+  body_xml <- officer::docx_body_xml(document)
+  word_ns <- xml2::xml_ns(body_xml)
+  margins <- xml2::xml_find_all(body_xml, "//w:tbl/w:tr/w:tc/w:tcPr/w:tcMar/*", ns = word_ns)
+  xml2::xml_set_attr(margins, "w:w", as.character(round(result_document_table_style()$padding_pt * 20)))
+  for (table_node in xml2::xml_find_all(body_xml, "//w:tbl", ns = word_ns)) {
+    grid <- as.numeric(xml2::xml_attr(xml2::xml_find_all(table_node, "./w:tblGrid/w:gridCol", ns = word_ns), "w:w", ns = word_ns))
+    rows <- xml2::xml_find_all(table_node, "./w:tr", ns = word_ns)
+    cells <- xml2::xml_find_all(rows, "./w:tc", ns = word_ns)
+    props <- xml2::xml_find_all(table_node, "./w:tr/w:tc/w:tcPr", ns = word_ns)
+    stopifnot(length(props) == length(cells))
+    spans <- vapply(props, function(prop) {
+      children <- xml2::xml_children(prop)
+      span <- children[xml2::xml_name(children) == "gridSpan"]
+      if (!length(span)) return(1L)
+      suppressWarnings(as.integer(xml2::xml_attr(span[[1L]], "w:val", ns = word_ns)))
+    }, integer(1))
+    spans[is.na(spans)] <- 1L
+    row_counts <- lengths(xml2::xml_find_all(rows, "./w:tc", ns = word_ns, flatten = FALSE))
+    widths <- numeric(length(cells)); offset <- 0L
+    for (count in row_counts) {
+      if (!count) next
+      indexes <- seq.int(offset + 1L, length.out = count)
+      ends <- cumsum(spans[indexes]); starts <- ends - spans[indexes] + 1L
+      widths[indexes] <- vapply(seq_along(indexes), function(i) sum(grid[seq.int(starts[i], ends[i])]), numeric(1))
+      offset <- offset + count
+    }
+    valid <- which(is.finite(widths) & widths > 0)
+    if (length(valid) == length(props)) {
+      xml2::xml_remove(xml2::xml_find_all(table_node, "./w:tr/w:tc/w:tcPr/w:tcW", ns = word_ns))
+    } else for (i in valid) xml2::xml_remove(xml2::xml_find_all(props[[i]], "./w:tcW", ns = word_ns))
+    for (i in valid) {
+      xml2::xml_add_child(props[[i]], "w:tcW", `w:type` = "dxa", `w:w` = as.character(as.integer(widths[i])))
+    }
+  }
+  table_writer$finish()
   print(document, target = file)
   invisible(file)
 }
@@ -2007,15 +2861,24 @@ result_collection_exception_features <- function(entries) {
 
 register_result_accumulator_outputs <- function(input, output, session, app_language_fn = NULL) {
   store <- result_accumulator_store(session)
+  undo_entries <- reactiveVal(NULL)
   current_language <- function() {
     statedu_current_language(app_language_fn)
   }
+  if (!is.null(session$userData$result_restore_error)) session$onFlushed(function() {
+    message <- statedu_t("result.history_error.restore", current_language())
+    showNotification(message, type = "warning", duration = NULL, session = session)
+  }, once = TRUE)
 
   output$saved_results_list <- renderUI({
     entries <- store()
     language <- current_language()
+    undo <- undo_entries()
+    undo_control <- if (!is.null(undo) && identical(entries, undo$after)) {
+      actionButton("undo_saved_result_edit", statedu_t("result.management.undo_edit", language))
+    }
     if (length(entries) == 0) {
-      return(saved_results_empty_ui(language))
+      return(tagList(saved_results_empty_ui(language), undo_control))
     }
     tagList(
       div(class = "saved-result-count", sprintf(
@@ -2024,10 +2887,37 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
       )),
       div(
         class = "saved-result-list",
-        lapply(seq_along(entries), function(index) saved_result_entry_ui(entries[[index]], index))
-      )
+        lapply(seq_along(entries), function(index) saved_result_entry_ui(entries[[index]], index, length(entries), language))
+      ),
+      undo_control
     )
   })
+
+  observeEvent(input$saved_result_entry_action, {
+    request <- input$saved_result_entry_action
+    if (!is.list(request) || length(request$action) != 1L || !request$action %in% c("up", "down", "delete")) return()
+    before <- store()
+    after <- result_collection_edit(before, request$id, request$action)
+    if (identical(before, after)) return()
+    if (!isTRUE(write_result_snapshot_store(after))) {
+      showNotification(statedu_t("result.write_failed", current_language()), type = "error")
+      return()
+    }
+    undo_entries(list(before = before, after = after))
+    store(after)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$undo_saved_result_edit, {
+    undo <- undo_entries()
+    if (is.null(undo) || !identical(store(), undo$after)) return()
+    before <- undo$before
+    if (!isTRUE(write_result_snapshot_store(before))) {
+      showNotification(statedu_t("result.write_failed", current_language()), type = "error")
+      return()
+    }
+    store(before)
+    undo_entries(NULL)
+  }, ignoreInit = TRUE)
 
   output$result_export_controls <- renderUI({
     language <- current_language()
@@ -2037,11 +2927,17 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
       analysis_save_button("save_result_collection_html_dialog", statedu_ui_label("save_html", language), "html", class = "btn-default", included_features = included_features),
       analysis_save_button("save_result_collection_pdf_dialog", statedu_ui_label("save_pdf", language), "pdf", class = "btn-default", included_features = included_features),
       analysis_save_button("save_result_collection_excel_dialog", statedu_ui_label("save_excel", language), "excel", class = "btn-default", included_features = included_features),
-      analysis_save_button("save_result_collection_word_dialog", statedu_ui_label("save_word", language), "word", class = "btn-default", included_features = included_features)
+      analysis_save_button("save_result_collection_word_dialog", statedu_ui_label("save_word", language), "word", class = "btn-default", included_features = included_features),
+      if (identical(language, "ko")) analysis_save_button("save_result_collection_hwpx_dialog", "HWPX 저장", "word", class = "btn-default", included_features = included_features)
     )
   })
 
+  observeEvent(input$result_document_select_all, {
+    updateCheckboxGroupInput(session, "result_document_contents", selected = result_document_content_types())
+  }, ignoreInit = TRUE)
+
   observeEvent(input$clear_saved_results, {
+    undo_entries(NULL)
     store(list())
     write_result_snapshot_store(list())
     showNotification(statedu_t("result.cleared", current_language()), type = "message", duration = 3)
@@ -2052,7 +2948,7 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
       {
         language <- current_language()
         entries <- result_entries_for_export(store, language)
-        path <- choose_result_history_save_path()
+        path <- choose_result_history_save_path(language = language)
         if (length(path) == 0 || !nzchar(path[[1]])) {
           showNotification(statedu_t("result.save_dialog_canceled", language), type = "warning", duration = 5)
           return(invisible(NULL))
@@ -2075,7 +2971,7 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
     tryCatch(
       {
         language <- current_language()
-        path <- choose_result_history_open_path()
+        path <- choose_result_history_open_path(language = language)
         if (length(path) == 0 || !nzchar(path[[1]])) {
           showNotification(statedu_t("result.open_dialog_canceled", language), type = "warning", duration = 5)
           return(invisible(NULL))
@@ -2089,7 +2985,7 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
         showNotification(sprintf(statedu_t("result.opened_path", language), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.open_failed", current_language()), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.open_failed", current_language()), result_history_error_text(e, current_language())), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
@@ -2111,7 +3007,7 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
         showNotification(sprintf(statedu_t("result.collection_saved", language), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.collection_save_failed", current_language()), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.collection_save_failed", current_language()), result_export_error_text(e, current_language())), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
@@ -2138,7 +3034,7 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
         showNotification(sprintf(statedu_t("result.collection_saved", language), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.collection_save_failed", current_language()), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.collection_save_failed", current_language()), result_export_error_text(e, current_language())), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
@@ -2165,36 +3061,61 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
         showNotification(sprintf(statedu_t("result.collection_saved", language), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.collection_save_failed", current_language()), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.collection_save_failed", current_language()), result_export_error_text(e, current_language())), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
 
+  pending_document_export <- reactiveVal(NULL)
+  document_contents <- reactiveVal("main")
+  document_cache <- result_document_export_cache()
+  session$onSessionEnded(document_cache$clear)
+  open_document_export <- function(format) {
+    language <- current_language()
+    if (identical(format, "hwpx")) shiny::req(identical(language, "ko"))
+    entries <- result_entries_for_export(store, language)
+    shiny::req(analysis_save_feature_enabled("word", included_features = result_collection_exception_features(entries)))
+    pending_document_export(list(format = format, entries = entries))
+    save_label <- if (identical(format, "hwpx")) "HWPX 저장" else statedu_ui_label("save_word", language)
+    showModal(modalDialog(
+      title = save_label, size = "s", easyClose = TRUE,
+      tags$style(HTML("#shiny-modal .modal-dialog { margin-top: max(80px, 10vh); }")),
+      checkboxGroupInput("result_document_contents", statedu_t("result.document.contents", language),
+        choices = setNames(result_document_content_types(), vapply(result_document_content_types(),
+          function(key) statedu_t(paste0("result.document.", key), language), character(1))),
+        selected = document_contents(), inline = TRUE),
+      actionButton("result_document_select_all", statedu_t("result.document.all", language), class = "btn-default btn-sm"),
+      footer = tagList(modalButton(statedu_t("result.document.cancel", language)),
+        actionButton("confirm_document_export", save_label, class = "btn-primary"))
+    ))
+  }
   observeEvent(input$save_result_collection_word_dialog, {
-    tryCatch(
-      {
-        language <- current_language()
-        entries <- result_entries_for_export(store, language)
-        included_features <- result_collection_exception_features(entries)
-        if (!isTRUE(analysis_save_feature_enabled("word", included_features = included_features))) {
-          showNotification(statedu_t("result.collection_word_disabled", language), type = "warning", duration = 5)
-          return(invisible(NULL))
-        }
-        path <- choose_word_save_path()
-        if (length(path) == 0 || !nzchar(path[[1]])) {
-          showNotification(statedu_t("result.save_dialog_canceled", language), type = "warning", duration = 5)
-          return(invisible(NULL))
-        }
-        if (!grepl("\\.docx$", path, ignore.case = TRUE)) {
-          path <- paste0(path, ".docx")
-        }
-        write_result_collection_docx(entries, path)
-        showNotification(sprintf(statedu_t("result.collection_saved", language), path), type = "message")
-      },
-      error = function(e) {
-        showNotification(paste(statedu_t("result.collection_save_failed", current_language()), conditionMessage(e)), type = "error", duration = 8)
+    open_document_export("word")
+  }, ignoreInit = TRUE)
+  observeEvent(input$save_result_collection_hwpx_dialog, {
+    open_document_export("hwpx")
+  }, ignoreInit = TRUE)
+  observeEvent(input$confirm_document_export, {
+    tryCatch({
+      pending <- pending_document_export()
+      shiny::req(!is.null(pending))
+      language <- current_language()
+      contents <- input$result_document_contents %||% character()
+      if (!length(contents)) {
+        showNotification(statedu_t("result.document.no_selection", language), type = "warning")
+        return()
       }
-    )
+      document_contents(contents)
+      path <- if (pending$format == "hwpx") choose_hwpx_save_path() else choose_word_save_path()
+      if (!length(path) || !nzchar(path[[1L]])) return()
+      extension <- if (pending$format == "hwpx") ".hwpx" else ".docx"
+      if (!endsWith(tolower(path), extension)) path <- paste0(path, extension)
+      document_cache$save(pending$entries, path, pending$format, contents, language)
+      removeModal()
+      pending_document_export(NULL)
+      showNotification(sprintf(statedu_t("result.collection_saved", language), path))
+    }, error = function(e) showNotification(paste(statedu_t("result.collection_save_failed", current_language()),
+      result_export_error_text(e, current_language())), type = "error", duration = 8))
   }, ignoreInit = TRUE)
 
   invisible(TRUE)
@@ -2209,7 +3130,7 @@ result_snapshot_document_html <- function(title, html) {
   )
 }
 
-register_add_result_snapshot <- function(input, session, button_id, title, output_id = NULL, html_fn = NULL, app_language_fn = NULL) {
+register_add_result_snapshot <- function(input, session, button_id, title, output_id = NULL, html_fn = NULL, app_language_fn = NULL, canvas_root_id = NULL) {
   if (is.null(button_id) || !nzchar(button_id)) {
     return(invisible(FALSE))
   }
@@ -2247,6 +3168,7 @@ register_add_result_snapshot <- function(input, session, button_id, title, outpu
             list(
               outputId = output_id,
               inputId = snapshot_input_id,
+              canvasRootId = canvas_root_id,
               nonce = as.numeric(Sys.time())
             )
           )

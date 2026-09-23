@@ -92,6 +92,7 @@ $process = Start-Process `
   -FilePath $RscriptPath `
   -ArgumentList $arguments `
   -WorkingDirectory $RepoRoot `
+  -Environment @{ LC_ALL = "English_United States.utf8"; LANG = "English_United States.utf8" } `
   -RedirectStandardOutput $stdoutLog `
   -RedirectStandardError $stderrLog `
   -WindowStyle Hidden `

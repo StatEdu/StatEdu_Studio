@@ -1,0 +1,6 @@
+source('scripts/spss_syntax_helpers.R',encoding='UTF-8')
+stopifnot(identical(spss_header_factors('MIXED y BY group time\n  /FIXED=group time'),c('group','time')))
+stopifnot(identical(spss_header_factors('MIXED y BY group\n time\n WITH age\n /FIXED=group time age'),c('group','time')))
+stopifnot(identical(spss_header_factors('GENLIN y BY group time (ORDER=ASCENDING)\n /MODEL group time'),c('group','time')))
+stopifnot(length(spss_header_factors('MIXED y WITH age\n /FIXED=age'))==0L)
+cat('SPSS categorical header parsing: newline, WITH, ordering, and no-BY cases passed.\n')

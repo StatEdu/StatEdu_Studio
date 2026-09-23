@@ -4,6 +4,23 @@
   if (is.null(x)) y else x
 }
 
+statedu_category_label_max_pairs <- function() 11L
+
+# Stop a supervised callr job together with any PSOCK workers it created.
+# A parent-only kill can leave child R processes consuming CPU after the user
+# presses Stop, changes models, closes the session, or a release gate times out.
+statedu_stop_background_process_tree <- function(process) {
+  if (is.null(process)) return(invisible(FALSE))
+  alive <- tryCatch(isTRUE(process$is_alive()), error = function(error) FALSE)
+  if (!alive) return(invisible(FALSE))
+  kill_tree <- tryCatch(process$kill_tree, error = function(error) NULL)
+  stopped <- tryCatch({
+    if (is.function(kill_tree)) kill_tree() else process$kill()
+    TRUE
+  }, error = function(error) FALSE)
+  invisible(stopped)
+}
+
 normalize_app_language <- function(language) {
   value <- tolower(as.character(language %||% "ko")[[1]])
   aliases <- unlist(unname(lapply(statedu_language_registry(), function(spec) {
@@ -146,6 +163,43 @@ statedu_query_value <- function(query_string, key) {
     }
   }
   ""
+}
+
+statedu_request_token <- function(request = NULL) {
+  if (is.null(request)) {
+    return("")
+  }
+  request_value <- function(key) request[[key]] %||% ""
+  query_candidates <- c(
+    request_value("QUERY_STRING"),
+    statedu_url_query(request_value("REQUEST_URI"))
+  )
+  for (query_string in query_candidates) {
+    token <- statedu_query_value(query_string, "token")
+    if (nzchar(token)) {
+      return(token)
+    }
+  }
+  ""
+}
+
+statedu_request_token_authorized <- function(
+  request = NULL,
+  expected_token = Sys.getenv("STATEDU_TOKEN", "")
+) {
+  expected_token <- as.character(expected_token %||% "")[[1L]]
+  if (!nzchar(expected_token)) {
+    return(TRUE)
+  }
+  identical(statedu_request_token(request), expected_token)
+}
+
+statedu_token_rejection_response <- function() {
+  shiny::httpResponse(
+    status = 403L,
+    content_type = "text/plain; charset=UTF-8",
+    content = "Forbidden"
+  )
 }
 
 statedu_url_query <- function(value) {
@@ -354,6 +408,8 @@ statedu_write_persisted_preferences <- function(preferences) {
 }
 
 normalize_output_decimal_digits <- function(value) {
+  if (is.integer(value) && !is.object(value) && length(value) == 1L &&
+      !is.na(value) && value >= 0L && value <= 5L) return(value[[1L]])
   if (is.null(value) || length(value) == 0) {
     return(statedu_default_preferences()$output_decimal_digits)
   }
@@ -365,6 +421,7 @@ normalize_output_decimal_digits <- function(value) {
 }
 
 normalize_p_value_format <- function(value) {
+  if (identical(value, "apa") || identical(value, "leading_zero")) return(value)
   value <- tolower(as.character(value %||% "apa")[[1]])
   if (value %in% c("leading_zero", "leading-zero", "zero", "0")) {
     return("leading_zero")
@@ -501,8 +558,35 @@ statedu_current_language <- function(language_fn = NULL, request = NULL) {
 }
 
 statedu_text <- function(language, en, ko = en) {
-  if (identical(normalize_app_language(language), "ko")) ko else en
+  statedu_localized_text(language, en, ko)
 }
+
+# Translate application-owned phrases only; never walk user data or labels.
+statedu_localized_text <- local({
+  index <- NULL
+  function(language, en, ko = en) {
+    language <- normalize_app_language(language)
+    if (identical(language, "ko")) return(ko)
+    if (identical(language, "en") || !length(en)) return(en)
+    if (length(en) > 1L) return(vapply(seq_along(en), function(i) statedu_localized_text(language, en[[i]], rep_len(ko, length(en))[[i]]), character(1)))
+    if (is.na(en) || !nzchar(en)) return(en)
+    if (is.null(index)) {
+      rows <- statedu_translation_table()
+      index <<- split(names(rows), vapply(rows, function(row) {
+        value <- row["en"]
+        if (is.na(value) || !nzchar(value)) "" else as.character(value)
+      }, character(1)))
+    }
+    key <- gsub("^_+|_+$", "", gsub("[^a-z0-9]+", "_", tolower(trimws(en))))
+    keys <- unique(c(paste0("analysis.ui.", key), index[[en]]))
+    for (candidate in keys) {
+      row <- statedu_translation_table()[[candidate]]
+      value <- row[language]
+      if (length(value) && !is.na(value) && nzchar(value) && !identical(unname(value), en)) return(unname(value))
+    }
+    en
+  }
+})
 
 statedu_t <- function(key, language = statedu_initial_language(), fallback = NULL) {
   if (exists("statedu_translate", mode = "function")) {
@@ -513,17 +597,13 @@ statedu_t <- function(key, language = statedu_initial_language(), fallback = NUL
 
 statedu_measurement_choices <- function(language = statedu_initial_language()) {
   if (identical(normalize_app_language(language), "ko")) {
-    return(stats::setNames(
-      c("binary", "category", "ordered", "continuous"),
-      c(
-        statedu_utf8("ec9db4ebb684ed9895"),
-        statedu_utf8("ebb294eca3bced9895"),
-        statedu_utf8("ec889cec849ced9895"),
-        statedu_utf8("ec97b0ec868ded9895")
-      )
+    return(c(
+      "\uc774\ubd84\ud615" = "binary", "\ubc94\uc8fc\ud615" = "category",
+      "\uc21c\uc11c\ud615" = "ordered", "\uc5f0\uc18d\ud615" = "continuous"
     ))
   }
-  c("binary" = "binary", "category" = "category", "ordinal" = "ordered", "continuous" = "continuous")
+  stats::setNames(c("binary", "category", "ordered", "continuous"),
+    vapply(c("binary", "categorical", "ordinal", "continuous"), function(value) statedu_localized_text(language, value), character(1)))
 }
 
 statedu_measurement_label <- function(value, language = statedu_initial_language()) {
@@ -566,6 +646,22 @@ statedu_time_expr <- function(label, expr, detail = "") {
   start <- Sys.time()
   on.exit(statedu_log_timing(label, start, detail), add = TRUE)
   force(expr)
+}
+
+register_visible_ui_output <- function(output, session, output_id, ui_fn) {
+  force(output_id)
+  force(ui_fn)
+  initialized <- FALSE
+  output[[output_id]] <- shiny::renderUI({
+    hidden <- session$clientData[[paste0("output_", output_id, "_hidden")]]
+    # Only gate the first render. After mounting, Shiny's output suspension
+    # handles visibility; aborting an invalidated render can cache stale UI.
+    if (!initialized) shiny::req(identical(hidden, FALSE), cancelOutput = TRUE)
+    initialized <<- TRUE
+    ui_fn()
+  })
+  shiny::outputOptions(output, output_id, suspendWhenHidden = TRUE)
+  invisible(TRUE)
 }
 
 named_value <- function(x, name, default = "") {
@@ -611,22 +707,30 @@ format_p <- function(p) {
   if (is.na(value)) return(NA_character_)
   if (value < .001) return(if (isTRUE(leading_zero)) "<0.001" else "<.001")
   text <- sprintf("%.3f", value)
-  if (isTRUE(leading_zero)) text else sub("^0\\.", ".", text)
+  if (isTRUE(leading_zero) || !startsWith(text, "0.")) text else substring(text, 2L)
+}
+
+statedu_strip_decimal_zero <- function(text) {
+  if (length(text) == 1L && !is.na(text)) {
+    if (startsWith(text, "-0.")) return(paste0("-", substring(text, 3L)))
+    if (startsWith(text, "0.")) return(substring(text, 2L))
+    return(text)
+  }
+  text <- sub("^-0\\.", "-.", text)
+  sub("^0\\.", ".", text)
 }
 
 format_decimal3 <- function(x) {
   if (is.na(x)) return("")
   digits <- statedu_output_decimal_digits()
-  text <- sprintf(paste0("%.", digits, "f"), x)
-  text <- sub("^-0\\.", "-.", text)
-  sub("^0\\.", ".", text)
+  text <- sprintf("%.*f", digits, x)
+  statedu_strip_decimal_zero(text)
 }
 
 format_decimal2 <- function(x) {
   if (is.na(x)) return("")
   text <- sprintf("%.2f", x)
-  text <- sub("^-0\\.", "-.", text)
-  sub("^0\\.", ".", text)
+  statedu_strip_decimal_zero(text)
 }
 
 format_effect_size <- function(x) {

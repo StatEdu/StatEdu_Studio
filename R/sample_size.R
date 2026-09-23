@@ -4479,7 +4479,7 @@ sample_size_sem_parameter_power <- function(
     hits <- hits + sum(p_values < alpha)
     completed <- completed + current
     if (is.function(progress)) {
-      progress(completed / simulations, sprintf("SEM Monte Carlo... %s%%", round(100 * completed / simulations)))
+      progress(completed / simulations, sprintf("Approximate SEM parameter-power simulation... %s%%", round(100 * completed / simulations)))
     }
   }
   hits / simulations
@@ -4674,9 +4674,9 @@ sample_size_sem <- function(
       complex = "complex",
       "moderate"
     )
-    design_label <- sprintf("SEM/CFA parameter-level Monte Carlo (%s)", parameter_label)
+    design_label <- sprintf("SEM/CFA approximate parameter-power simulation (%s)", parameter_label)
     method_note <- sprintf(
-      "Monte Carlo power for a %s of %.2f using %s model complexity and %s simulations per evaluated sample size.",
+      "Approximate power simulation for a %s of %.2f using a large-sample standard-error approximation, a %s complexity adjustment, and %s draws per evaluated sample size. This is not a full SEM data-generation and model-refitting Monte Carlo study.",
       parameter_label,
       parameter,
       complexity_label,

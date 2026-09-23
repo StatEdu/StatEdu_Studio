@@ -527,6 +527,8 @@ A7_disp <- trim_table_for_docx(A7, "A7")
 A8_disp <- trim_table_for_docx(A8, "A8")
 
 S1_disp <- trim_table_for_docx(S1, "S1")
+S2_disp <- trim_table_for_docx(S2, "S2")
+S3_disp <- trim_table_for_docx(S3, "S3")
 S5_disp <- trim_table_for_docx(S5, "S5")
 S6_disp <- trim_table_for_docx(S6, "S6")
 
@@ -567,6 +569,8 @@ appendix_table_specs <- list(
   table_spec("A7", "A7. Auxiliary classification table", A7_disp, keep_empty = FALSE),
   table_spec("A8", "A8. Misclassification matrix", A8_disp),
   table_spec("S1", "S1. Overview of auxiliary analyses", S1_disp),
+  table_spec("S2", "S2. BCH pairwise Wald tests", S2_disp),
+  table_spec("S3", "S3. Covariate cell frequencies by modal profile (sparse-cell diagnostics)", S3_disp),
   table_spec("S5", "S5. Primary multinomial results", S5_disp),
   table_spec("S6", "S6. Multinomial model details", S6_disp)
 )

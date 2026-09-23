@@ -31,7 +31,7 @@ ttest_anova_setup_state <- function(
   post_hoc_method = NULL,
   nonparametric_post_hoc_method = NULL,
   post_hoc = FALSE,
-  ordered_significance = FALSE,
+  ordered_significance = TRUE,
   effect_size = TRUE,
   show_df = FALSE,
   mean_sd = FALSE,

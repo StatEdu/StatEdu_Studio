@@ -24,23 +24,26 @@ logistic_dependent_candidates <- function(selected_names, variable_table = NULL)
   selected[vapply(selected, function(name) named_value(measurements, name, "") %in% logistic_dependent_measurements(), logical(1))]
 }
 
-logistic_model_family_label <- function(dependents, variable_table = NULL) {
+logistic_error_ui_text <- function(message, language = statedu_initial_language()) {
+  keys <- c("Select at least one dependent variable." = "missing_dependent",
+    "Select at least one Block 1 variable." = "missing_block")
+  if (length(message) != 1L || is.na(message)) return(message)
+  key <- unname(keys[message])
+  if (is.na(key)) return(message)
+  statedu_t(paste0("analysis.logistic_setup.", key), language)
+}
+
+logistic_model_family_label <- function(dependents, variable_table = NULL, language = "en") {
   dependents <- as.character(dependents %||% character(0))
   dependents <- dependents[nzchar(dependents)]
   measurements <- logistic_variable_measurements(variable_table)
   dependent_measurements <- unique(vapply(dependents, function(name) named_value(measurements, name, ""), character(1)))
   dependent_measurements <- dependent_measurements[nzchar(dependent_measurements)]
   if (length(dependent_measurements) == 0) {
-    return("Select a binary, ordered, or categorical dependent variable.")
+    return(statedu_t("analysis.logistic_setup.select_type", language))
   }
   labels <- vapply(dependent_measurements, function(measurement) {
-    switch(
-      measurement,
-      binary = "Binary logistic regression",
-      ordered = "Ordinal logistic regression",
-      category = "Multinomial logistic regression",
-      ""
-    )
+    if (measurement %in% c("binary", "ordered", "category")) statedu_t(paste0("analysis.logistic_setup.", measurement), language) else ""
   }, character(1))
   paste(labels[nzchar(labels)], collapse = "; ")
 }
@@ -100,7 +103,7 @@ logistic_setup_state <- function(
     block3_items = analysis_variable_items(block3, variable_table, labels),
     block3_selected = selected_order_items(selected_block3, block3),
     active_block = active_block,
-    model_family = logistic_model_family_label(dependents, variable_table),
+    model_family = logistic_model_family_label(dependents, variable_table, language),
     show_b_se = if (is.null(show_b_se)) isTRUE(show_b) || isTRUE(show_se) else isTRUE(show_b_se),
     show_extra_r2 = if (is.null(show_extra_r2)) isTRUE(show_mcfadden) || isTRUE(show_cox_snell) else isTRUE(show_extra_r2),
     split_ci = isTRUE(split_ci),
@@ -267,7 +270,7 @@ logistic_setup_panel <- function(setup, status_message = NULL) {
         class = "analysis-options-column analysis-options-panel hierarchical-options logistic-options",
         div(
           class = "analysis-option-group",
-          div(class = "analysis-option-title", "Model options"),
+          div(class = "analysis-option-title", statedu_t("analysis.logistic_setup.options", language)),
           div(class = "analysis-option-subtitle", setup$model_family)
         ),
         analysis_output_table_style_tabs("logistic_output_table_style", setup$output_table_style, language, include_compact_xm = FALSE),

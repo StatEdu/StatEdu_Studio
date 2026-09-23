@@ -21,6 +21,11 @@ Use this checklist before creating a public beta installer, release candidate, o
 - For the current release, update the matching decision log, such as `docs/RELEASE_1_2_DECISION_LOG.md`, with any distribution, license, update, DOI, website, or packaging decisions.
 - During a release-candidate preparation pass, do not add new analysis features unless they are required to fix correctness, data safety, packaging, or validation coverage.
 - Before changing release metadata, complete the matching version bump checklist, such as `docs/RELEASE_1_2_VERSION_BUMP_CHECKLIST.md`, so package names, installer names, smoke-test expectations, DOI checks, and public claims move together.
+- For the 1.2.3 release line, complete `docs/RELEASE_1_2_3_PROMOTION_CHECKLIST.md` and retain the blocked/approved decision in `docs/RELEASE_1_2_3_DECISION_LOG.md`; the published 1.2.0 evidence remains historical and must not be overwritten.
+- Before publishing 1.2.3, run `scripts\validate_sem_release_promotion.R`; it must independently recompute the external PLS/PLSc comparison and verify the evidence and package checksums.
+- Complete `docs/RELEASE_1_2_3_VERSION_BUMP_CHECKLIST.md` before changing the 1.2.3 development metadata, and run `scripts\validate_sem_public_claims.R` before finalizing public release text.
+- For public 1.2.3, complete `docs/RELEASE_1_2_3_PACKAGED_VALIDATION_NOTES.md` and `docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md` against the same checksum-recorded final installer.
+- Record explicit 1.2.3 publication authorization in `docs/RELEASE_1_2_3_APPROVAL_RECORD.md`; passing automation is not authorization to publish.
 
 ## Brand and Compatibility
 
@@ -36,18 +41,55 @@ Use this checklist before creating a public beta installer, release candidate, o
 
 ## Runtime and Packaging
 
+- Run `scripts\validate_installer_regressions.ps1` and complete the packaged timing/visual checks in `docs/INSTALLER_REGRESSION_CHECKLIST_2026-08-22_KO.md`; any recurrence of the documented startup, data-load, canvas, bootstrap-status, result, or Delta R-squared defects blocks installer creation.
 - Run `scripts/validate_stabilization.ps1` for the core stabilization suite.
 - Run `scripts/validate_stabilization.ps1 -Full` before packaging a public beta or release candidate.
+  The full suite must execute `validate_bundled_runtime_package_versions.R`,
+  `validate_bundled_validation_packages.R`, and
+  `validate_bundled_validation_lock_contract.R` with the repository's bundled
+  `R-4.5.3` executable and only its `library` directory. The lock-contract test
+  must prove missing, extra, changed-version, schema, order, checksum, and
+  base/recommended-package mutations all fail closed.
+- The core stabilization runner must also execute
+  `validate_structural_bootstrap_performance.R` with that exact bundled R and
+  library. General analysis validators may use the development library because
+  the pruned release runtime intentionally omits package example datasets, but
+  the structural-bootstrap fast-path gate must resolve bundled `lavaan 0.7-2`.
 - Run `scripts/release_preflight.ps1` before preparing a release candidate; after packaging, run it with `-FullElectronSmoke`.
 - Build from a clean R runtime where possible.
 - Confirm the bundled Windows runtime is `R-4.5.3`.
+- Confirm the bundled runtime package-version gate reports exactly `lavaan 0.7-2`;
+  this pin protects the audited structural-bootstrap metadata fast path.
+- Confirm `scripts/bundled_validation_packages.expected.csv` is the approved,
+  canonical 72-package non-base cSEM dependency lock. Its Package/Version rows,
+  row order, LF-only bytes (`.gitattributes`: `text eol=lf`), and sealed SHA-256
+  must match both the staged runtime dependency closure and
+  `bundled_validation_packages.lock.csv`; missing, extra, or changed dependencies
+  block packaging.
 - For public packaging, use `scripts\build_electron_release.ps1`; it
   delegates to the compatibility build implementation that selects package
   names from `VERSION`.
 - Confirm the build runs `scripts/prune_r_runtime.R` before license notice generation.
+- Provide the isolated cSEM 0.6.1 library with `-BundledValidationLibrary`,
+  `STATEDU_BUNDLED_VALIDATION_LIBRARY`, or the standard TEMP validation-library
+  location. The build must not download packages; it stages the recursive
+  closure, writes `bundled_validation_packages.lock.csv`, and reruns the required
+  cSEM oracle using only the bundled runtime library.
+- Confirm both the Electron build and packaged smoke test run
+  `scripts/run_bundled_pls_focused_regressions.R` from the staged/packaged app
+  against that exact app's bundled `R-4.5.3`. `R_LIBS`, `R_LIBS_USER`, and
+  `R_LIBS_SITE` must all resolve only to the bundled runtime library, and every
+  child validator must start with `--vanilla`; a missing staged validator,
+  external library path, timeout, or nonzero exit blocks packaging.
+- Keep the private SmartPLS evidence and TAM comparison gates separate from the
+  bundled-runtime focused driver. Passing the bundled driver does not waive any
+  externally required SmartPLS release evidence.
 - Confirm `runtime_prune_report.csv` exists and contains only `keep` rows, unless an intentional exception is documented.
 - Confirm `electron` and `electron-builder` are exact version pins in `packaging/electron/package.json`.
 - Run `npm ci` from `packaging/electron` before packaging.
+- If npm is unavailable but pnpm and Node.js are available, pass their explicit
+  paths to `build_electron_release.ps1` with `-PnpmPath` and `-NodePath`; the
+  build uses pinned npm 10.9.2 through pnpm and preserves `package-lock.json` semantics.
 - Confirm `dist/electron` contains only the current StatEdu Studio setup `.exe`, its `.blockmap`, and `win-unpacked`; remove legacy EasyFlow installers and debug artifacts before publishing.
 - For 0.9.x beta builds, `StatEdu Studio Beta` and `StatEdu_Studio_Beta_Setup_*` are expected. For public builds, `StatEdu Studio` and `StatEdu_Studio_Setup_*` are expected.
 - Run `scripts\get_release_checksums.ps1` and copy the installer SHA256 into the current packaged validation notes.
@@ -57,6 +99,7 @@ Use this checklist before creating a public beta installer, release candidate, o
 - Confirm the staged app contains:
   - `THIRD-PARTY-NOTICES.txt`
   - `license_report.csv`
+  - `bundled_validation_packages.lock.csv`
   - `LICENSES/`
 - Confirm Electron output contains:
   - `LICENSE.electron.txt`
@@ -87,4 +130,6 @@ Use this checklist before creating a public beta installer, release candidate, o
 - Confirm the app starts with Electron hardware acceleration disabled by default; only re-enable it for a targeted support test with `STATEDU_ENABLE_HARDWARE_ACCELERATION=true`.
 - Confirm data import works with paths containing spaces and Korean characters.
 - Confirm at least one analysis and one export path work.
+- Before publishing the 1.2.1 installer, switch the packaged app between Korean and English in both directions, restart after each selection, and confirm the saved language is restored.
+- Treat any blank Analysis page or missing Analysis submenu after a packaged-app language change as a release blocker; open every first-level Analysis group and verify its child menu renders in the selected language.
 - Confirm closing the Electron window stops the bundled R/Shiny process.

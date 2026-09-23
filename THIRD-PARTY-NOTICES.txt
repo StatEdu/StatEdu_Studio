@@ -1,0 +1,288 @@
+Third-Party Notices
+===================
+
+StatEdu Studio bundles third-party software components, including Electron, Chromium, R, and CRAN packages.
+This notice is generated from the bundled R runtime at build time.
+
+License summary:
+- Bundled validation package: 1
+- R runtime: 1
+- R base/recommended: 24
+- Direct StatEdu Studio package: 43
+- Bundled dependency: 183
+
+License risk summary:
+- LGPL: 6
+- GPL: 115
+- permissive-or-other: 131
+
+R runtime:
+- R 4.5.3 -- GPL-2 | GPL-3; LGPL applies to selected R libraries where stated
+
+Direct StatEdu Studio R packages:
+- agricolae 1.3-7 -- GPL
+- car 3.1-5 -- GPL (>= 2)
+- cmprsk 2.2-12 -- GPL (>= 2)
+- flextable 0.9.11 -- GPL-3
+- foreign 0.8-91 -- GPL (>= 2)
+- geepack 1.3.13 -- GPL (>= 3)
+- glmnet 5.0 -- GPL-2
+- htmltools 0.5.9 -- GPL (>= 2)
+- lavaan 0.7-2 -- GPL (>= 2)
+- lme4 2.0-1 -- GPL (>= 2)
+- lmerTest 3.2-1 -- GPL (>= 2)
+- lmtest 0.9-40 -- GPL-2 | GPL-3
+- longpower 1.0.27 -- GPL (>= 2)
+- MASS 7.3-65 -- GPL-2 | GPL-3
+- mice 3.19.0 -- GPL (>= 2)
+- nnet 7.3-20 -- GPL-2 | GPL-3
+- nortest 1.0-4 -- GPL (>= 2)
+- ordinal 2025.12-29 -- GPL (>= 2)
+- plm 2.6-7 -- GPL (>= 2)
+- polycor 0.8-2 -- GPL (>= 2)
+- psych 2.6.5 -- GPL (>= 2)
+- sandwich 3.1-1 -- GPL-2 | GPL-3
+- seminr 2.5.0 -- GPL-3
+- survey 4.5 -- GPL-2 | GPL-3
+- TOSTER 0.8.6 -- GPL-3
+- WebPower 0.9.4 -- GPL (>= 3)
+- survival 3.8-6 -- LGPL (>= 2)
+- boot 1.3-32 -- Unlimited
+- callr 3.7.6 -- MIT + file LICENSE
+- cellranger 1.1.0 -- MIT + file LICENSE
+- DT 0.34.0 -- MIT + file LICENSE
+- ggplot2 4.0.2 -- MIT + file LICENSE
+- haven 2.5.5 -- MIT + file LICENSE
+- jsonlite 2.0.0 -- MIT + file LICENSE
+- markdown 2.0 -- MIT + file LICENSE
+- mmrm 0.3.18 -- Apache License 2.0
+- officer 0.7.3 -- MIT + file LICENSE
+- openxlsx 4.2.8.1 -- MIT + file LICENSE
+- readr 2.2.0 -- MIT + file LICENSE
+- readxl 1.4.5 -- MIT + file LICENSE
+- rvest 1.0.5 -- MIT + file LICENSE
+- shiny 1.13.0 -- MIT + file LICENSE
+- xml2 1.5.2 -- MIT + file LICENSE
+
+Bundled release-validation R packages:
+- cSEM 0.6.1 -- GPL-3
+
+Bundled R package dependencies:
+- admisc 0.40 -- GPL (>= 3)
+- alabama 2025.1.0 -- GPL (>= 2)
+- AlgDesign 1.2.1.2 -- GPL (>= 2)
+- backports 1.5.0 -- GPL-2 | GPL-3
+- base64enc 0.1-6 -- GPL-2 | GPL-3
+- bit 4.6.0 -- GPL-2 | GPL-3
+- bit64 4.6.0-1 -- GPL-2 | GPL-3
+- carData 3.0-6 -- GPL (>= 2)
+- clipr 0.8.0 -- GPL-3
+- collapse 2.1.7 -- GPL (>= 2) | file LICENSE
+- combinat 0.0-8 -- GPL-2
+- cowplot 1.2.0 -- GPL-2
+- cubature 2.1.4-1 -- GPL-3
+- Deriv 4.2.0 -- GPL (>= 3)
+- diffobj 0.3.6 -- GPL-2 | GPL-3
+- digest 0.6.39 -- GPL (>= 2)
+- distributional 0.7.0 -- GPL-3
+- doBy 4.7.1 -- GPL (>= 2)
+- expm 1.0-0 -- GPL (>= 2)
+- fontquiver 0.2.1 -- GPL-3 | file LICENSE
+- forecast 9.0.2 -- GPL-3
+- Formula 1.2-5 -- GPL-2 | GPL-3
+- fracdiff 1.5-4 -- GPL (>= 2)
+- future.apply 1.20.2 -- GPL (>= 2)
+- gdtools 0.5.0 -- GPL-3 | file LICENSE
+- ggdist 3.3.3 -- GPL (>= 3)
+- gmp 0.7-5.1 -- GPL (>= 2)
+- GPArotation 2026.4-1 -- GPL (>= 2)
+- highr 0.11 -- GPL
+- httpuv 1.6.17 -- GPL (>= 2) | file LICENSE
+- igraph 2.3.3 -- GPL (>= 2)
+- jmvcore 2.7.7 -- GPL (>= 2)
+- jomo 2.7-6 -- GPL-2
+- knitr 1.51 -- GPL
+- lazyeval 0.2.3 -- GPL-3
+- matrixcalc 1.0-6 -- GPL (>= 2)
+- MatrixModels 0.5-4 -- GPL (>= 2)
+- maxLik 1.5-2.2 -- GPL (>= 2)
+- mime 0.13 -- GPL
+- minqa 1.2.8 -- GPL-2
+- miscTools 0.6-30 -- GPL (>= 2)
+- mitml 0.4-5 -- GPL (>= 2)
+- mitools 2.4 -- GPL-2
+- mnormt 2.1.2 -- GPL-2 | GPL-3
+- modelr 0.1.11 -- GPL-3
+- mpoly 1.1.2 -- GPL-2
+- multipol 1.0-9 -- GPL
+- mvtnorm 1.3-3 -- GPL-2
+- nleqslv 3.3.7 -- GPL (>= 2)
+- numDeriv 2016.8-1.1 -- GPL-2
+- orthopolynom 1.0-6.1 -- GPL (>= 2)
+- pan 1.9 -- GPL-3
+- partitions 1.10-9 -- GPL
+- pbivnorm 0.6.0 -- GPL (>= 2)
+- pbkrtest 0.5.5 -- GPL (>= 2)
+- PearsonDS 1.3.2 -- GPL (>= 2)
+- polynom 1.4-1 -- GPL-2
+- qrng 0.0-11 -- GPL-2 | GPL-3
+- quadprog 1.5-8 -- GPL (>= 2)
+- quantreg 6.1 -- GPL (>= 2)
+- rbibutils 2.4.1 -- GPL-2
+- Rcpp 1.1.1 -- GPL (>= 2)
+- RcppArmadillo 15.2.4-1 -- GPL (>= 2)
+- RcppEigen 0.3.4.0.2 -- GPL (>= 2) | file LICENSE
+- Rdpack 2.6.6 -- GPL (>= 2)
+- reformulas 0.4.4 -- GPL-3
+- rmarkdown 2.30 -- GPL-3
+- sets 1.0-25 -- GPL-2
+- shape 1.4.6.1 -- GPL (>= 3)
+- SparseM 1.84-2 -- GPL (>= 2)
+- symmoments 1.2.2 -- GPL
+- timeDate 4052.112 -- GPL (>= 2)
+- TMB 1.9.25 -- GPL-2
+- TruncatedNormal 2.3 -- GPL-3
+- ucminf 1.2.3 -- GPL (>= 2)
+- urca 1.3-4 -- GPL (>= 2)
+- xtable 1.8-8 -- GPL (>= 2)
+- zoo 1.8-15 -- GPL-2 | GPL-3
+- bdsmatrix 1.3-7 -- LGPL-2
+- DBI 1.3.0 -- LGPL (>= 2.1)
+- globals 0.19.1 -- LGPL (>= 2.1)
+- nloptr 2.2.1 -- LGPL (>= 3)
+- parallelly 1.48.0 -- LGPL (>= 2.1)
+- abind 1.4-8 -- MIT + file LICENSE
+- askpass 1.2.1 -- MIT + file LICENSE
+- brio 1.1.5 -- MIT + file LICENSE
+- broom 1.0.12 -- MIT + file LICENSE
+- bslib 0.10.0 -- MIT + file LICENSE
+- cachem 1.1.0 -- MIT + file LICENSE
+- checkmate 2.3.4 -- BSD_3_clause + file LICENSE
+- cli 3.6.5 -- MIT + file LICENSE
+- colorspace 2.1-2 -- BSD_3_clause + file LICENSE
+- commonmark 2.0.0 -- BSD_2_clause + file LICENSE
+- cpp11 0.5.3 -- MIT + file LICENSE
+- crayon 1.5.3 -- MIT + file LICENSE
+- crosstalk 1.2.2 -- MIT + file LICENSE
+- curl 7.0.0 -- MIT + file LICENSE
+- data.table 1.18.2.1 -- MPL-2.0 | file LICENSE
+- desc 1.4.3 -- MIT + file LICENSE
+- DiagrammeR 1.0.12 -- MIT + file LICENSE
+- DiagrammeRsvg 0.1 -- MIT + file LICENSE
+- dplyr 1.2.0 -- MIT + file LICENSE
+- evaluate 1.0.5 -- MIT + file LICENSE
+- farver 2.1.2 -- MIT + file LICENSE
+- fastmap 1.2.0 -- MIT + file LICENSE
+- fontawesome 0.5.3 -- MIT + file LICENSE
+- fontBitstreamVera 0.1.1 -- file LICENCE
+- fontLiberation 0.1.0 -- file LICENSE
+- forcats 1.0.1 -- MIT + file LICENSE
+- foreach 1.5.2 -- Apache License (== 2.0)
+- fs 1.6.6 -- MIT + file LICENSE
+- future 1.75.0 -- Apache License (>= 2)
+- generics 0.1.4 -- MIT + file LICENSE
+- glue 1.8.0 -- MIT + file LICENSE
+- gtable 0.3.6 -- MIT + file LICENSE
+- hms 1.1.4 -- MIT + file LICENSE
+- htmlwidgets 1.6.4 -- MIT + file LICENSE
+- httr 1.4.8 -- MIT + file LICENSE
+- isoband 0.3.0 -- MIT + file LICENSE
+- iterators 1.0.14 -- Apache License (== 2.0)
+- jquerylib 0.1.4 -- MIT + file LICENSE
+- labeling 0.4.3 -- MIT + file LICENSE | Unlimited
+- later 1.4.8 -- MIT + file LICENSE
+- lifecycle 1.0.5 -- MIT + file LICENSE
+- listenv 1.0.0 -- Apache License (>= 2)
+- litedown 0.9 -- MIT + file LICENSE
+- magrittr 2.0.4 -- MIT + file LICENSE
+- matrixStats 1.5.0 -- Artistic-2.0
+- memoise 2.0.1 -- MIT + file LICENSE
+- microbenchmark 1.5.0 -- BSD_2_clause + file LICENSE
+- openssl 2.3.4 -- MIT + file LICENSE
+- otel 0.2.0 -- MIT + file LICENSE
+- pillar 1.11.1 -- MIT + file LICENSE
+- pkgbuild 1.4.8 -- MIT + file LICENSE
+- pkgconfig 2.0.3 -- MIT + file LICENSE
+- pkgload 1.5.2 -- MIT + file LICENSE
+- plyr 1.8.9 -- MIT + file LICENSE
+- praise 1.0.0 -- MIT + file LICENSE
+- prettyunits 1.2.0 -- MIT + file LICENSE
+- processx 3.8.6 -- MIT + file LICENSE
+- progress 1.2.3 -- MIT + file LICENSE
+- progressr 1.0.0 -- Apache License (>= 2)
+- promises 1.5.0 -- MIT + file LICENSE
+- ps 1.9.1 -- MIT + file LICENSE
+- purrr 1.2.1 -- MIT + file LICENSE
+- R6 2.6.1 -- MIT + file LICENSE
+- ragg 1.5.0 -- MIT + file LICENSE
+- rappdirs 0.3.4 -- MIT + file LICENSE
+- RColorBrewer 1.1-3 -- Apache License 2.0
+- rematch 2.0.0 -- MIT + file LICENSE
+- rlang 1.1.7 -- MIT + file LICENSE
+- rprojroot 2.1.1 -- MIT + file LICENSE
+- rstudioapi 0.18.0 -- MIT + file LICENSE
+- S7 0.2.1 -- MIT + file LICENSE
+- sass 0.4.10 -- MIT + file LICENSE
+- scales 1.4.0 -- MIT + file LICENSE
+- selectr 0.5-1 -- BSD_3_clause + file LICENCE
+- sourcetools 0.1.7-2 -- MIT + file LICENSE
+- spacefillr 0.4.0 -- MIT + file LICENSE
+- stringi 1.8.7 -- file LICENSE
+- stringr 1.6.0 -- MIT + file LICENSE
+- sys 3.4.3 -- MIT + file LICENSE
+- systemfonts 1.3.1 -- MIT + file LICENSE
+- testthat 3.3.2 -- MIT + file LICENSE
+- textshaping 1.0.4 -- MIT + file LICENSE
+- tibble 3.3.1 -- MIT + file LICENSE
+- tidyr 1.3.2 -- MIT + file LICENSE
+- tidyselect 1.2.1 -- MIT + file LICENSE
+- tinytex 0.58 -- MIT + file LICENSE
+- translations 4.5.3 -- Part of R 4.5.3
+- tzdb 0.5.0 -- MIT + file LICENSE
+- utf8 1.2.6 -- Apache License (== 2.0) | file LICENSE
+- uuid 1.2-2 -- MIT + file LICENSE
+- V8 8.0.1 -- MIT + file LICENSE
+- vctrs 0.7.1 -- MIT + file LICENSE
+- viridisLite 0.4.3 -- MIT + file LICENSE
+- visNetwork 2.1.4 -- MIT + file LICENSE
+- vroom 1.7.0 -- MIT + file LICENSE
+- waldo 0.6.2 -- MIT + file LICENSE
+- withr 3.0.2 -- MIT + file LICENSE
+- xfun 0.56 -- MIT + file LICENSE
+- yaml 2.3.12 -- BSD_3_clause + file LICENSE
+- zip 2.3.3 -- MIT + file LICENSE
+
+R base/recommended packages bundled with the runtime:
+- class 7.3-23 -- GPL-2 | GPL-3
+- cluster 2.1.8.2 -- GPL (>= 2)
+- codetools 0.2-20 -- GPL
+- lattice 0.22-9 -- GPL (>= 2)
+- Matrix 1.7-4 -- GPL (>= 2) | file LICENCE
+- mgcv 1.9-4 -- GPL (>= 2)
+- nlme 3.1-168 -- GPL (>= 2)
+- rpart 4.1.24 -- GPL-2 | GPL-3
+- spatial 7.3-18 -- GPL-2 | GPL-3
+- base 4.5.3 -- Part of R 4.5.3
+- compiler 4.5.3 -- Part of R 4.5.3
+- datasets 4.5.3 -- Part of R 4.5.3
+- graphics 4.5.3 -- Part of R 4.5.3
+- grDevices 4.5.3 -- Part of R 4.5.3
+- grid 4.5.3 -- Part of R 4.5.3
+- KernSmooth 2.23-26 -- Unlimited
+- methods 4.5.3 -- Part of R 4.5.3
+- parallel 4.5.3 -- Part of R 4.5.3
+- splines 4.5.3 -- Part of R 4.5.3
+- stats 4.5.3 -- Part of R 4.5.3
+- stats4 4.5.3 -- Part of R 4.5.3
+- tcltk 4.5.3 -- Part of R 4.5.3
+- tools 4.5.3 -- Part of R 4.5.3
+- utils 4.5.3 -- Part of R 4.5.3
+
+Full package license metadata is available in license_report.csv.
+License text files copied from bundled packages are available in LICENSES/.
+Electron and Chromium license files are generated by electron-builder in the application output directory.
+
+Source availability:
+StatEdu Studio public releases must include source code, documentation, example data, and validation notes.
+GPL/LGPL components remain under their original licenses. Modifications to third-party components, if any, must follow those licenses.
+

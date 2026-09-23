@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const { spawn, spawnSync } = require("child_process");
 const crypto = require("crypto");
 const fs = require("fs");
@@ -6,6 +6,8 @@ const net = require("net");
 const path = require("path");
 
 const enableHardwareAcceleration = /^(1|true|yes)$/i.test(process.env.STATEDU_ENABLE_HARDWARE_ACCELERATION || "");
+const enableRendererDiagnostics = /^(1|true|yes)$/i.test(process.env.STATEDU_RENDERER_DIAGNOSTICS || "");
+const STARTUP_LOG_MAX_BYTES = 5 * 1024 * 1024;
 if (!enableHardwareAcceleration) {
   app.disableHardwareAcceleration();
   app.commandLine.appendSwitch("disable-gpu");
@@ -17,8 +19,131 @@ let mainWindow = null;
 let shinyProcess = null;
 let isQuitting = false;
 let startupLogPath = null;
+let startupLogPrepared = false;
 let launchStudioFile = "";
 let isReloadingStudioFile = false;
+let currentDataDirectory = "";
+
+const CANVAS_FILE_EXTENSIONS = new Set([
+  "streg", "stcfa", "stsem", "stpls",
+  "stmmr", "stcfar", "stsemr", "stplsr"
+]);
+const DATA_FILE_EXTENSIONS = new Set(["sav", "sas7bdat", "xpt", "dta", "xlsx", "xls", "csv", "dat"]);
+
+function trustedRenderer(event) {
+  if (!mainWindow || !event || event.sender !== mainWindow.webContents) return false;
+  const senderUrl = String(event.senderFrame && event.senderFrame.url || event.sender.getURL() || "");
+  return senderUrl.startsWith("http://127.0.0.1") || senderUrl.startsWith("http://localhost");
+}
+
+function normalizedDialogExtensions(values, fallback) {
+  const allowed = new Set([...CANVAS_FILE_EXTENSIONS, "png"]);
+  const result = (Array.isArray(values) ? values : [])
+    .map((value) => String(value || "").trim().replace(/^\./, "").toLowerCase())
+    .filter((value) => allowed.has(value));
+  return result.length ? [...new Set(result)] : [fallback];
+}
+
+function isSessionTemporaryDirectory(directory) {
+  return /(^|[\\/])Rtmp[^\\/]+([\\/]|$)/i.test(String(directory || ""));
+}
+
+function canvasDialogDirectory() {
+  if (currentDataDirectory && !isSessionTemporaryDirectory(currentDataDirectory) && fs.existsSync(currentDataDirectory)) return currentDataDirectory;
+  const configured = defaultSaveDirectory();
+  if (configured && !isSessionTemporaryDirectory(configured) && fs.existsSync(configured)) return configured;
+  return app.getPath("documents");
+}
+
+function safeSuggestedName(value, fallback) {
+  const name = path.basename(String(value || "").trim());
+  return name && name !== "." && name !== path.sep ? name : fallback;
+}
+
+ipcMain.on("statedu:data-file-path", (event, filePath) => {
+  if (!trustedRenderer(event)) return;
+  const resolved = path.resolve(String(filePath || ""));
+  if (isSessionTemporaryDirectory(resolved)) return;
+  const extension = path.extname(resolved).slice(1).toLowerCase();
+  if (!DATA_FILE_EXTENSIONS.has(extension) || !fs.existsSync(resolved)) return;
+  currentDataDirectory = path.dirname(resolved);
+});
+
+ipcMain.on("statedu:data-directory", (event, directory) => {
+  if (!trustedRenderer(event)) return;
+  if (isSessionTemporaryDirectory(directory)) return;
+  currentDataDirectory = "";
+  if (typeof directory !== "string" || !directory || !path.isAbsolute(directory)) return;
+  try {
+    const resolved = path.resolve(directory);
+    if (fs.statSync(resolved).isDirectory()) currentDataDirectory = resolved;
+  } catch (_) {}
+});
+
+ipcMain.handle("statedu:canvas-open-text", async (event, options = {}) => {
+  if (!trustedRenderer(event)) throw new Error("Untrusted file-open request");
+  const extensions = normalizedDialogExtensions(options.extensions, "streg").filter((extension) => extension !== "png");
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: String(options.title || "Open model canvas"),
+    defaultPath: canvasDialogDirectory(),
+    properties: ["openFile"],
+    filters: [{ name: String(options.description || "StatEdu Model Canvas"), extensions }]
+  });
+  if (result.canceled || !result.filePaths.length) return { canceled: true };
+  return { canceled: false, text: fs.readFileSync(result.filePaths[0], "utf8") };
+});
+
+ipcMain.handle("statedu:canvas-save", async (event, options = {}) => {
+  if (!trustedRenderer(event)) throw new Error("Untrusted file-save request");
+  const extensions = normalizedDialogExtensions(options.extensions, options.binary ? "png" : "streg");
+  const fallbackName = options.binary ? "model-canvas.png" : `model-canvas.${extensions[0]}`;
+  const suggestedName = safeSuggestedName(options.suggestedName, fallbackName);
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: String(options.title || "Save model canvas"),
+    defaultPath: path.join(canvasDialogDirectory(), suggestedName),
+    filters: [{ name: String(options.description || "StatEdu Model Canvas"), extensions }]
+  });
+  if (result.canceled || !result.filePath) return { canceled: true };
+  let targetPath = result.filePath;
+  const chosenExtension = path.extname(targetPath).slice(1).toLowerCase();
+  if (!extensions.includes(chosenExtension)) {
+    targetPath = path.join(path.dirname(targetPath), `${path.basename(targetPath, path.extname(targetPath))}.${extensions[0]}`);
+  }
+  const payload = options.binary ? Buffer.from(options.data || []) : String(options.text || "");
+  fs.writeFileSync(targetPath, payload);
+  return { canceled: false, filePath: targetPath };
+});
+
+ipcMain.handle("statedu:result-choose-open", async (event, options = {}) => {
+  if (!trustedRenderer(event)) throw new Error("Untrusted analysis-result open request");
+  const extensions = normalizedDialogExtensions(options.extensions, "stsemr").filter((extension) => extension !== "png");
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: String(options.title || "Open analysis result"),
+    defaultPath: canvasDialogDirectory(),
+    properties: ["openFile"],
+    filters: [{ name: String(options.description || "StatEdu Analysis Result"), extensions }]
+  });
+  if (result.canceled || !result.filePaths.length) return { canceled: true };
+  return { canceled: false, filePath: result.filePaths[0] };
+});
+
+ipcMain.handle("statedu:result-choose-save", async (event, options = {}) => {
+  if (!trustedRenderer(event)) throw new Error("Untrusted analysis-result save request");
+  const extensions = normalizedDialogExtensions(options.extensions, "stsemr").filter((extension) => extension !== "png");
+  const suggestedName = safeSuggestedName(options.suggestedName, `analysis-result.${extensions[0]}`);
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: String(options.title || "Save analysis result"),
+    defaultPath: path.join(canvasDialogDirectory(), suggestedName),
+    filters: [{ name: String(options.description || "StatEdu Analysis Result"), extensions }]
+  });
+  if (result.canceled || !result.filePath) return { canceled: true };
+  let targetPath = result.filePath;
+  const chosenExtension = path.extname(targetPath).slice(1).toLowerCase();
+  if (!extensions.includes(chosenExtension)) {
+    targetPath = path.join(path.dirname(targetPath), `${path.basename(targetPath, path.extname(targetPath))}.${extensions[0]}`);
+  }
+  return { canceled: false, filePath: targetPath };
+});
 
 function normalizeStudioFileArg(value) {
   const raw = String(value || "").trim().replace(/^"|"$/g, "");
@@ -26,7 +151,7 @@ function normalizeStudioFileArg(value) {
     return "";
   }
   const resolved = path.resolve(raw);
-  if (path.extname(resolved).toLowerCase() !== ".studio") {
+  if (![".studio", ".streg", ".stcfa", ".stsem", ".stpls", ".stmm"].includes(path.extname(resolved).toLowerCase())) {
     return "";
   }
   return fs.existsSync(resolved) ? resolved : "";
@@ -51,8 +176,42 @@ function startupLogFile() {
   return startupLogPath;
 }
 
+function prepareStartupLog() {
+  if (startupLogPrepared) {
+    return startupLogFile();
+  }
+  const file = startupLogFile();
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  try {
+    if (fs.existsSync(file) && fs.statSync(file).size >= STARTUP_LOG_MAX_BYTES) {
+      const rotated = `${file}.1`;
+      fs.rmSync(rotated, { force: true });
+      fs.renameSync(file, rotated);
+    }
+  } catch (error) {
+    // Log rotation must never prevent startup.
+  }
+  startupLogPrepared = true;
+  return file;
+}
+
 function appLanguageFile() {
   return path.join(app.getPath("userData"), "settings", "app-language.txt");
+}
+
+function normalizeAppLanguage(value) {
+  const language = String(value || "").trim().toLowerCase();
+  if (language === "english" || language === "eng") return "en";
+  if (language === "korean" || language === "korea" || language === "kr") return "ko";
+  return /^[a-z][a-z0-9_-]*$/.test(language) ? language : "";
+}
+
+function readAppLanguage() {
+  try {
+    return normalizeAppLanguage(fs.readFileSync(appLanguageFile(), "utf8").split(/\r?\n/, 1)[0]);
+  } catch (error) {
+    return "";
+  }
 }
 
 function resultZoomFile() {
@@ -84,6 +243,10 @@ function defaultSaveDirectory() {
 
 function configureDownloadSavePath(webContents) {
   webContents.session.on("will-download", (event, item) => {
+    if (currentDataDirectory && fs.existsSync(currentDataDirectory)) {
+      item.setSaveDialogOptions({ defaultPath: path.join(currentDataDirectory, path.basename(item.getFilename())) });
+      return;
+    }
     const directory = defaultSaveDirectory();
     if (!directory) {
       return;
@@ -98,9 +261,11 @@ function configureDownloadSavePath(webContents) {
 }
 
 function installRendererDiagnostics(webContents) {
-  webContents.on("console-message", (event, level, message, line, sourceId) => {
-    logStartup(`renderer console level=${level} ${sourceId || ""}:${line || 0} ${message}`);
-  });
+  if (enableRendererDiagnostics) {
+    webContents.on("console-message", (event, level, message, line, sourceId) => {
+      logStartup(`renderer console level=${level} ${sourceId || ""}:${line || 0} ${message}`);
+    });
+  }
   webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => {
     logStartup(`renderer did-fail-load code=${errorCode} url=${validatedURL || ""} ${errorDescription || ""}`);
   });
@@ -109,9 +274,11 @@ function installRendererDiagnostics(webContents) {
   });
   webContents.on("did-finish-load", () => {
     logStartup("renderer did-finish-load");
-    logRendererSnapshot(webContents, "did-finish-load");
-    setTimeout(() => logRendererSnapshot(webContents, "after-10s"), 10000);
-    setTimeout(() => logRendererSnapshot(webContents, "after-30s"), 30000);
+    if (enableRendererDiagnostics) {
+      logRendererSnapshot(webContents, "did-finish-load");
+      setTimeout(() => logRendererSnapshot(webContents, "after-10s"), 10000);
+      setTimeout(() => logRendererSnapshot(webContents, "after-30s"), 30000);
+    }
   });
   webContents.on("render-process-gone", (event, details) => {
     logStartup(`renderer process gone reason=${details.reason || ""} exitCode=${details.exitCode ?? ""}`);
@@ -153,9 +320,8 @@ function logRendererSnapshot(webContents, label) {
 function logStartup(message) {
   const line = `${new Date().toISOString()} ${message}\n`;
   try {
-    const file = startupLogFile();
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.appendFileSync(file, line, "utf8");
+    const file = prepareStartupLog();
+    fs.appendFile(file, line, "utf8", () => {});
   } catch (error) {
     // Logging must never block app startup.
   }
@@ -166,12 +332,17 @@ function logStartupEnvironment() {
   logStartup(`electron=${process.versions.electron} chrome=${process.versions.chrome} node=${process.versions.node}`);
   logStartup(`platform=${process.platform} arch=${process.arch} windowsRelease=${require("os").release()}`);
   logStartup(`hardwareAcceleration=${enableHardwareAcceleration ? "enabled" : "disabled"}`);
+  logStartup(`rendererDiagnostics=${enableRendererDiagnostics ? "enabled" : "disabled"}`);
   logStartup(`userData=${app.getPath("userData")}`);
   logStartup(`appPath=${app.getAppPath()}`);
 }
 
 function appBaseDir() {
-  return app.getAppPath();
+  const appPath = app.getAppPath();
+  if (appPath.toLowerCase().endsWith(".asar")) {
+    return `${appPath}.unpacked`;
+  }
+  return appPath;
 }
 
 function bundledAppDir() {
@@ -270,6 +441,10 @@ function waitForShiny(port, timeoutMs = DEFAULT_SHINY_STARTUP_TIMEOUT_MS) {
 function runRscriptProbe(rscript, appDir) {
   const result = spawnSync(rscript, ["--version"], {
     cwd: appDir,
+    env: {
+      ...process.env,
+      ...(process.platform === "win32" ? { LC_ALL: "English_United States.utf8", LANG: "English_United States.utf8" } : {})
+    },
     encoding: "utf8",
     windowsHide: true
   });
@@ -310,9 +485,10 @@ async function startShiny() {
 
   const port = await getFreePort();
   const token = crypto.randomBytes(32).toString("hex");
-  const initialLanguage = process.env.STATEDU_APP_LANGUAGE || "ko";
+  const initialLanguage = normalizeAppLanguage(process.env.STATEDU_APP_LANGUAGE) || readAppLanguage() || "ko";
   const env = {
     ...process.env,
+    ...(process.platform === "win32" ? { LC_ALL: "English_United States.utf8", LANG: "English_United States.utf8" } : {}),
     STATEDU_PORT: String(port),
     STATEDU_APP_DIR: appDir,
     STATEDU_LAUNCH_BROWSER: "false",
@@ -325,8 +501,10 @@ async function startShiny() {
     STATEDU_APP_PREFERENCES_FILE: appPreferencesFile(),
     STATEDU_OPEN_STUDIO_FILE: launchStudioFile,
     STATEDU_PUBLIC_RELEASE: process.env.STATEDU_PUBLIC_RELEASE || publicReleaseFlag(),
+    STATEDU_ENABLE_LATENT_MPLUS: process.env.STATEDU_ENABLE_LATENT_MPLUS || "1",
     STATEDU_USER_DATA_DIR: app.getPath("userData"),
     STATEDU_ENABLE_CUSTOM_MODEL_CANVAS: process.env.STATEDU_ENABLE_CUSTOM_MODEL_CANVAS || "1",
+    STATEDU_SINGLE_SESSION: "true",
     R_HOME: path.join(appBaseDir(), "runtime", "R-4.5.3"),
     R_LIBS_USER: bundledRLibraryPath(),
     PATH: `${bundledRBinPath()};${process.env.PATH || ""}`
@@ -453,6 +631,7 @@ async function createWindow() {
     title: windowTitle(),
     autoHideMenuBar: true,
     webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true

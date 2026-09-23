@@ -1,0 +1,258 @@
+{
+  "ko": {
+    "analysis_methods": {
+      "title": "분석",
+      "subtitle": "StatEdu Studio 1.3.0 공개판의 분석 범위와 출력입니다.",
+      "path": "docs/ANALYSIS_METHODS_KO.md"
+    },
+    "method_notes": {
+      "title": "방법론 노트",
+      "subtitle": "추정 원리, 가정, 산식, 진단과 해석을 기존 방법론 노트에서 확장합니다.",
+      "path": "docs/METHOD_NOTES_KO.md"
+    },
+    "version_history": {
+      "title": "변경 이력",
+      "subtitle": "최초 버전부터 현재까지의 추가 기능, 변경 사항과 수정 이력입니다.",
+      "path": "CHANGELOG_KO.md"
+    },
+    "overview": {
+      "title": "개요",
+      "subtitle": "StatEdu Studio 1.3.0 — 개요",
+      "path": "docs/OVERVIEW_KO.md"
+    },
+    "user_guide": {
+      "title": "사용자 안내서",
+      "subtitle": "StatEdu Studio 1.3.0의 추가 분석, 사용 절차와 검증 범위.",
+      "path": "docs/USER_GUIDE_KO.md"
+    },
+    "validation": {
+      "title": "검증",
+      "subtitle": "StatEdu Studio 1.3.0의 추가 분석, 사용 절차와 검증 범위.",
+      "path": "docs/VALIDATION_KO.md"
+    }
+  },
+  "en": {
+    "analysis_methods": {
+      "title": "Analyses",
+      "subtitle": "Analysis scope and output in StatEdu Studio 1.3.0 public release.",
+      "path": "docs/ANALYSIS_METHODS_EN.md"
+    },
+    "method_notes": {
+      "title": "Method Notes",
+      "subtitle": "Estimation principles, assumptions, formulas, diagnostics and interpretation, expanded from the original Method Notes.",
+      "path": "docs/METHOD_NOTES_EN.md"
+    },
+    "version_history": {
+      "title": "Version History",
+      "subtitle": "Additions, changes and fixes from the first release to the current version.",
+      "path": "CHANGELOG.md"
+    },
+    "overview": {
+      "title": "Overview",
+      "subtitle": "StatEdu Studio 1.3.0 — Overview",
+      "path": "docs/OVERVIEW_EN.md"
+    },
+    "user_guide": {
+      "title": "User Guide",
+      "subtitle": "New analyses, operating steps and validation scope for StatEdu Studio 1.3.0.",
+      "path": "docs/USER_GUIDE_EN.md"
+    },
+    "validation": {
+      "title": "Validation",
+      "subtitle": "New analyses, operating steps and validation scope for StatEdu Studio 1.3.0.",
+      "path": "docs/VALIDATION_EN.md"
+    }
+  },
+  "ja": {
+    "analysis_methods": {
+      "title": "分析",
+      "subtitle": "StatEdu Studio 1.3.0 公開版の分析範囲と出力です。",
+      "path": "docs/ANALYSIS_METHODS_JA.md"
+    },
+    "method_notes": {
+      "title": "方法論ノート",
+      "subtitle": "既存の方法論ノートを拡張し、推定原理、仮定、数式、診断と解釈を説明します。",
+      "path": "docs/METHOD_NOTES_JA.md"
+    },
+    "version_history": {
+      "title": "変更履歴",
+      "subtitle": "初版から現在までの機能追加、変更、修正の履歴です。",
+      "path": "CHANGELOG_JA.md"
+    },
+    "overview": {
+      "title": "概要",
+      "subtitle": "StatEdu Studio 1.3.0 — 概要",
+      "path": "docs/OVERVIEW_JA.md"
+    },
+    "user_guide": {
+      "title": "ユーザーガイド",
+      "subtitle": "StatEdu Studio 1.3.0 の追加分析、操作手順と検証範囲。",
+      "path": "docs/USER_GUIDE_JA.md"
+    },
+    "validation": {
+      "title": "検証",
+      "subtitle": "StatEdu Studio 1.3.0 の追加分析、操作手順と検証範囲。",
+      "path": "docs/VALIDATION_JA.md"
+    }
+  },
+  "zh": {
+    "analysis_methods": {
+      "title": "分析",
+      "subtitle": "StatEdu Studio 1.3.0 公开版的分析范围与输出。",
+      "path": "docs/ANALYSIS_METHODS_ZH.md"
+    },
+    "method_notes": {
+      "title": "方法说明",
+      "subtitle": "在原有方法论笔记基础上扩展估计原理、假设、公式、诊断和解释。",
+      "path": "docs/METHOD_NOTES_ZH.md"
+    },
+    "version_history": {
+      "title": "版本历史",
+      "subtitle": "从首个版本至今的新增功能、变更与修复记录。",
+      "path": "CHANGELOG_ZH.md"
+    },
+    "overview": {
+      "title": "概述",
+      "subtitle": "StatEdu Studio 1.3.0 — 概述",
+      "path": "docs/OVERVIEW_ZH.md"
+    },
+    "user_guide": {
+      "title": "用户指南",
+      "subtitle": "StatEdu Studio 1.3.0 新增分析、操作步骤与验证范围。",
+      "path": "docs/USER_GUIDE_ZH.md"
+    },
+    "validation": {
+      "title": "验证",
+      "subtitle": "StatEdu Studio 1.3.0 新增分析、操作步骤与验证范围。",
+      "path": "docs/VALIDATION_ZH.md"
+    }
+  },
+  "es": {
+    "analysis_methods": {
+      "title": "Análisis",
+      "subtitle": "Alcance y resultados de StatEdu Studio 1.3.0, edición pública.",
+      "path": "docs/ANALYSIS_METHODS_ES.md"
+    },
+    "method_notes": {
+      "title": "Notas metodológicas",
+      "subtitle": "Ampliación de las notas originales: principios de estimación, supuestos, fórmulas, diagnóstico e interpretación.",
+      "path": "docs/METHOD_NOTES_ES.md"
+    },
+    "version_history": {
+      "title": "Historial de versiones",
+      "subtitle": "Funciones añadidas, cambios y correcciones desde la primera versión hasta la actual.",
+      "path": "CHANGELOG_ES.md"
+    },
+    "overview": {
+      "title": "Descripción general",
+      "subtitle": "StatEdu Studio 1.3.0 — Descripción general",
+      "path": "docs/OVERVIEW_ES.md"
+    },
+    "user_guide": {
+      "title": "Guía del usuario",
+      "subtitle": "Nuevos análisis, pasos de uso y alcance de validación de StatEdu Studio 1.3.0.",
+      "path": "docs/USER_GUIDE_ES.md"
+    },
+    "validation": {
+      "title": "Validación",
+      "subtitle": "Nuevos análisis, pasos de uso y alcance de validación de StatEdu Studio 1.3.0.",
+      "path": "docs/VALIDATION_ES.md"
+    }
+  },
+  "fr": {
+    "analysis_methods": {
+      "title": "Analyses",
+      "subtitle": "Périmètre et résultats de StatEdu Studio 1.3.0, édition publique.",
+      "path": "docs/ANALYSIS_METHODS_FR.md"
+    },
+    "method_notes": {
+      "title": "Notes méthodologiques",
+      "subtitle": "Développement des notes originales : principes d’estimation, hypothèses, formules, diagnostics et interprétation.",
+      "path": "docs/METHOD_NOTES_FR.md"
+    },
+    "version_history": {
+      "title": "Historique des versions",
+      "subtitle": "Ajouts, modifications et corrections depuis la première version jusqu’à la version actuelle.",
+      "path": "CHANGELOG_FR.md"
+    },
+    "overview": {
+      "title": "Présentation",
+      "subtitle": "StatEdu Studio 1.3.0 — Présentation",
+      "path": "docs/OVERVIEW_FR.md"
+    },
+    "user_guide": {
+      "title": "Guide utilisateur",
+      "subtitle": "Nouvelles analyses, utilisation et périmètre de validation de StatEdu Studio 1.3.0.",
+      "path": "docs/USER_GUIDE_FR.md"
+    },
+    "validation": {
+      "title": "Validation",
+      "subtitle": "Nouvelles analyses, utilisation et périmètre de validation de StatEdu Studio 1.3.0.",
+      "path": "docs/VALIDATION_FR.md"
+    }
+  },
+  "de": {
+    "analysis_methods": {
+      "title": "Analysen",
+      "subtitle": "Analyseumfang und Ausgabe der öffentlichen Version StatEdu Studio 1.3.0.",
+      "path": "docs/ANALYSIS_METHODS_DE.md"
+    },
+    "method_notes": {
+      "title": "Methodische Hinweise",
+      "subtitle": "Erweiterung der ursprünglichen Methodennotizen: Schätzprinzipien, Annahmen, Formeln, Diagnostik und Interpretation.",
+      "path": "docs/METHOD_NOTES_DE.md"
+    },
+    "version_history": {
+      "title": "Versionsverlauf",
+      "subtitle": "Ergänzungen, Änderungen und Fehlerbehebungen von der ersten bis zur aktuellen Version.",
+      "path": "CHANGELOG_DE.md"
+    },
+    "overview": {
+      "title": "Überblick",
+      "subtitle": "StatEdu Studio 1.3.0 — Überblick",
+      "path": "docs/OVERVIEW_DE.md"
+    },
+    "user_guide": {
+      "title": "Benutzerhandbuch",
+      "subtitle": "Neue Analysen, Bedienung und Validierungsumfang von StatEdu Studio 1.3.0.",
+      "path": "docs/USER_GUIDE_DE.md"
+    },
+    "validation": {
+      "title": "Validierung",
+      "subtitle": "Neue Analysen, Bedienung und Validierungsumfang von StatEdu Studio 1.3.0.",
+      "path": "docs/VALIDATION_DE.md"
+    }
+  },
+  "vi": {
+    "analysis_methods": {
+      "title": "Phân tích",
+      "subtitle": "Phạm vi phân tích và đầu ra của StatEdu Studio 1.3.0 bản công khai.",
+      "path": "docs/ANALYSIS_METHODS_VI.md"
+    },
+    "method_notes": {
+      "title": "Ghi chú phương pháp",
+      "subtitle": "Mở rộng ghi chú phương pháp gốc: nguyên lý ước lượng, giả định, công thức, chẩn đoán và diễn giải.",
+      "path": "docs/METHOD_NOTES_VI.md"
+    },
+    "version_history": {
+      "title": "Lịch sử phiên bản",
+      "subtitle": "Các tính năng bổ sung, thay đổi và sửa lỗi từ phiên bản đầu tiên đến hiện tại.",
+      "path": "CHANGELOG_VI.md"
+    },
+    "overview": {
+      "title": "Tổng quan",
+      "subtitle": "StatEdu Studio 1.3.0 — Tổng quan",
+      "path": "docs/OVERVIEW_VI.md"
+    },
+    "user_guide": {
+      "title": "Hướng dẫn sử dụng",
+      "subtitle": "Phân tích bổ sung, thao tác và phạm vi kiểm chứng của StatEdu Studio 1.3.0.",
+      "path": "docs/USER_GUIDE_VI.md"
+    },
+    "validation": {
+      "title": "Kiểm chứng",
+      "subtitle": "Phân tích bổ sung, thao tác và phạm vi kiểm chứng của StatEdu Studio 1.3.0.",
+      "path": "docs/VALIDATION_VI.md"
+    }
+  }
+}

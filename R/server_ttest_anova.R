@@ -43,7 +43,7 @@ register_ttest_anova_handlers <- function(
   post_hoc_method_value <- reactiveVal("scheffe")
   nonparametric_post_hoc_method_value <- reactiveVal(statedu_multiple_correction_default())
   trend_analysis_value <- reactiveVal(FALSE)
-  ordered_significance_value <- reactiveVal(FALSE)
+  ordered_significance_value <- reactiveVal(TRUE)
   effect_size_value <- reactiveVal(TRUE)
   show_df_value <- reactiveVal(FALSE)
   mean_sd_value <- reactiveVal(FALSE)
@@ -324,6 +324,15 @@ register_ttest_anova_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
+  register_analysis_reorder(input, session, "ttest_dependents", function(payload) {
+    updated <- analysis_reorder_items(dependent_variables(), payload)
+    if (isTRUE(updated$changed)) {
+      dependent_variables(updated$order)
+      active_ttest_list("ttest_dependents")
+      mark_settings_dirty()
+    }
+  })
+
   observeEvent(input$ttest_dependent_up, {
     updated <- move_order_item(dependent_variables(), input$ttest_dependents, "up")
     if (isTRUE(updated$changed)) {
@@ -338,6 +347,15 @@ register_ttest_anova_handlers <- function(
     if (isTRUE(updated$changed)) {
       dependent_variables(updated$order)
       active_ttest_list("ttest_dependents")
+      mark_settings_dirty()
+    }
+  })
+
+  register_analysis_reorder(input, session, "ttest_factors", function(payload) {
+    updated <- analysis_reorder_items(factor_variables(), payload)
+    if (isTRUE(updated$changed)) {
+      factor_variables(updated$order)
+      active_ttest_list("ttest_factors")
       mark_settings_dirty()
     }
   })
@@ -427,9 +445,13 @@ register_ttest_anova_handlers <- function(
     if (changed) mark_settings_dirty()
   }, ignoreInit = TRUE)
 
-  ttest_anova_result <- reactiveVal(NULL)
+  ttest_anova_result <- analysis_scope_result_val(NULL)
 
-  observeEvent(input$run_ttest_anova, {
+  register_analysis_command_handler(
+    "run_ttest_anova", input, output, session,
+    states = list(dependent_variables = dependent_variables, factor_variables = factor_variables),
+    dataset_fn = dataset_fn, context_fn = function() list(selected = selected_names_fn(), variables = variable_table_fn(), labels = labels_fn(), categories = category_table_fn()),
+    run_fn = function() {
     if (length(dependent_variables()) == 0 || length(factor_variables()) == 0) {
       showNotification(statedu_t("analysis.validation.select_dependent_and_group", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return()
@@ -555,7 +577,7 @@ register_ttest_anova_handlers <- function(
         showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -577,7 +599,7 @@ register_ttest_anova_handlers <- function(
         showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -599,7 +621,7 @@ register_ttest_anova_handlers <- function(
         showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })

@@ -22,7 +22,7 @@ register_mixed_rm_anova_handlers <- function(
   within_group_comparison <- reactiveVal(TRUE)
   between_time_group_comparison <- reactiveVal(FALSE)
   adjustment <- reactiveVal(statedu_multiple_correction_default())
-  mixed_rm_anova_result <- reactiveVal(NULL)
+  mixed_rm_anova_result <- analysis_scope_result_val(NULL)
 
   current_selected <- reactive(as.character(selected_names_fn() %||% character(0)))
   current_variable_table <- reactive(variable_table_fn())
@@ -247,6 +247,15 @@ register_mixed_rm_anova_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
+  register_analysis_reorder(input, session, "mixed_rm_anova_repeated", function(payload) {
+    updated <- analysis_reorder_items(repeated_variables(), payload)
+    if (isTRUE(updated$changed)) {
+      repeated_variables(updated$order)
+      active_list("mixed_rm_anova_repeated")
+      mark_settings_dirty()
+    }
+  })
+
   observeEvent(input$mixed_rm_anova_up, {
     updated <- move_order_item(repeated_variables(), input$mixed_rm_anova_repeated, "up")
     if (isTRUE(updated$changed)) {
@@ -327,7 +336,11 @@ register_mixed_rm_anova_handlers <- function(
     }
   }, ignoreInit = TRUE)
 
-  observeEvent(input$run_mixed_rm_anova, {
+  register_analysis_command_handler(
+    "run_mixed_rm_anova", input, output, session,
+    states = list(group_variable = group_variable, repeated_variables = repeated_variables, covariates = covariates),
+    dataset_fn = dataset_fn, context_fn = function() list(selected = selected_names_fn(), variables = variable_table_fn(), labels = labels_fn(), categories = category_table_fn()),
+    run_fn = function() {
     if (length(group_variable()) < 1L || length(repeated_variables()) < 2L) {
       showNotification("Select at least one independent variable and at least two repeated-measures variables.", type = "warning", duration = 5)
       return()

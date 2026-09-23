@@ -39,6 +39,126 @@ analysis_excel_styles <- function() {
 
 regression_excel_styles <- analysis_excel_styles
 
+# Add navigation after all result sheets exist, without moving captured cells.
+add_result_excel_cover <- function(workbook, contents = NULL, language = statedu_current_language()) {
+  sheets <- names(workbook)
+  if (!length(sheets)) return(invisible(workbook))
+  ko <- identical(normalize_app_language(language), "ko")
+  label <- function(en, kr) if (ko) kr else en
+  cover <- excel_sheet_name(label("Cover", "표지"), sheets)
+  if (is.null(contents)) {
+    contents <- lapply(sheets, function(sheet) list(sheet = sheet, title = sheet, result = ""))
+  }
+  stopifnot(identical(vapply(contents, `[[`, character(1), "sheet"), sheets))
+  hyperlink <- function(sheet, text) {
+    target <- paste0("#'", gsub("'", "''", sheet, fixed = TRUE), "'!A1")
+    quote <- function(x) gsub('"', '""', x, fixed = TRUE)
+    sprintf('HYPERLINK("%s","%s")', quote(target), quote(text))
+  }
+  link_style <- openxlsx::createStyle(fontColour = "#0563C1", textDecoration = "underline", wrapText = TRUE, valign = "top")
+  for (item in contents) {
+    # Table writers can use an existing blank spacer row. Other exports place
+    # navigation beyond the populated columns so values/formulas stay intact.
+    row <- item$link_row %||% 1L
+    col <- item$link_col
+    if (is.null(col)) {
+      data <- openxlsx::readWorkbook(workbook, sheet = item$sheet, colNames = FALSE, fillMergedCells = TRUE)
+      col <- max(1L, ncol(data)) + 2L
+      openxlsx::setColWidths(workbook, item$sheet, cols = col, widths = 22)
+    }
+    openxlsx::writeFormula(workbook, item$sheet, hyperlink(cover, label("Back to cover", "표지로 이동")), startRow = row, startCol = col)
+    if (!is.null(item$link_span) && item$link_span > 1L) {
+      openxlsx::mergeCells(workbook, item$sheet, cols = seq.int(col, length.out = item$link_span), rows = row)
+    }
+    if (!is.null(item$link_row)) openxlsx::setRowHeights(workbook, item$sheet, rows = row, heights = 24)
+    openxlsx::addStyle(workbook, item$sheet, link_style, rows = row, cols = col, stack = TRUE)
+  }
+  openxlsx::addWorksheet(workbook, cover, gridLines = FALSE)
+  # Reuse PDF cover content so edition, author, institution and citation follow
+  # the same rules as the printed report, including configured license fields.
+  report_titles <- unique(Filter(nzchar, vapply(contents, function(item) item$result %||% "", character(1))))
+  report_title <- if (length(report_titles) == 1L && !identical(report_titles, "Results")) report_titles else "StatEdu Studio"
+  pdf_cover <- xml2::read_html(as.character(saved_results_report_cover(report_title, language)))
+  cover_text <- function(cls) result_html_text(xml2::xml_find_first(pdf_cover, sprintf(".//*[@class='%s']", cls)))
+  band <- function(row, value, size = 11, color = "#486581", bold = FALSE, height = 25) {
+    openxlsx::writeData(workbook, cover, value, startRow = row, colNames = FALSE)
+    openxlsx::mergeCells(workbook, cover, cols = 1:4, rows = row)
+    openxlsx::addStyle(workbook, cover, openxlsx::createStyle(fontName = "Arial", fontSize = size,
+      fontColour = color, textDecoration = if (bold) "bold" else NULL, wrapText = TRUE, valign = "center"), rows = row, cols = 1)
+    openxlsx::setRowHeights(workbook, cover, rows = row, heights = height)
+  }
+  # Use the same brand assets as the PDF/HTML cover. Reserve image-only rows
+  # so workbook viewers never draw floating logos over text or hyperlinks.
+  insert_cover_logo <- function(path, row, width, height) {
+    if (length(path) != 1L || !nzchar(path) || !file.exists(path)) return(FALSE)
+    dimensions <- tryCatch(dim(png::readPNG(path, native = TRUE)), error = function(e) NULL)
+    if (!is.null(dimensions)) {
+      ratio <- dimensions[2] / dimensions[1]
+      width <- min(width, height * ratio)
+      height <- width / ratio
+    }
+    tryCatch({
+      openxlsx::insertImage(workbook, cover, path, startRow = row, startCol = 1,
+        width = width, height = height, units = "in")
+      TRUE
+    }, error = function(e) FALSE)
+  }
+  band(1, "", height = 64)
+  if (!insert_cover_logo(file.path("www", "logo-horizontal.png"), 1, 2.8, 0.8)) {
+    openxlsx::writeData(workbook, cover, "StatEdu Studio", startRow = 1, colNames = FALSE)
+  }
+  band(2, paste0("StatEdu Studio v", saved_results_app_version()), 11, "#102A43", TRUE)
+  band(3, cover_text("report-cover-edition"), 10, "#0F766E", TRUE)
+  band(4, cover_text("report-cover-kicker"), 11, "#0F766E", TRUE)
+  band(5, cover_text("report-cover-title"), 26, "#102A43", TRUE,
+    max(55, ceiling(nchar(report_title, type = "width") / 40) * 34))
+  band(6, cover_text("report-cover-subtitle"), height = 35)
+  organization_logo <- saved_results_cover_text()$organization_logo
+  if (length(organization_logo) == 1L && nzchar(organization_logo) && file.exists(organization_logo)) {
+    openxlsx::setRowHeights(workbook, cover, rows = 7, heights = 42)
+    insert_cover_logo(organization_logo, 7, 1.8, 0.5)
+  }
+  license <- cover_text("report-cover-license-value")
+  band(8, if (nzchar(license)) paste(cover_text("report-cover-license-label"), license, sep = ": ") else "", color = "#102A43", bold = TRUE)
+  openxlsx::setRowHeights(workbook, cover, rows = 9, heights = 32)
+  insert_cover_logo(file.path("www", "statedu_logo.png"), 9, 1.35, 0.36)
+  meta <- xml2::xml_find_all(pdf_cover, ".//*[@class='report-cover-meta-item']")
+  for (i in seq_along(meta)) {
+    key <- result_html_text(xml2::xml_find_first(meta[[i]], ".//*[contains(@class,'report-cover-meta-label')]"))
+    value <- result_html_text(xml2::xml_find_first(meta[[i]], ".//*[contains(@class,'report-cover-meta-value')]"))
+    band(9L + i, paste(key, value, sep = ": "), color = "#334E68",
+      height = max(23, ceiling(nchar(paste(key, value), type = "width") / 92) * 16))
+  }
+  footer_row <- 11L + length(meta)
+  band(footer_row, cover_text("report-cover-footer"), 9, height = 30)
+  band(footer_row + 2L, label("Result contents", "결과 목차"), 15, "#102A43", TRUE, 30)
+  guide_row <- footer_row + 3L
+  openxlsx::writeData(workbook, cover, label("Click a sheet name to open the result. Use Back to cover on each sheet to return.",
+    "시트명을 클릭하면 해당 결과로 이동합니다. 각 시트의 ‘표지로 이동’을 클릭하면 돌아옵니다."), startRow = guide_row, colNames = FALSE)
+  openxlsx::mergeCells(workbook, cover, cols = 1:4, rows = guide_row)
+  openxlsx::addStyle(workbook, cover, openxlsx::createStyle(wrapText = TRUE, fontColour = "#475569"), rows = guide_row, cols = 1)
+  openxlsx::setRowHeights(workbook, cover, rows = guide_row, heights = 32)
+  header_row <- guide_row + 2L
+  headings <- c(label("No.", "번호"), label("Result", "분석 결과"), label("Table / content", "결과 표 / 내용"), label("Go to sheet", "시트로 이동"))
+  openxlsx::writeData(workbook, cover, matrix(headings, nrow = 1), startRow = header_row, colNames = FALSE)
+  openxlsx::addStyle(workbook, cover, openxlsx::createStyle(fgFill = "#0F766E", fontColour = "#FFFFFF", textDecoration = "bold"), rows = header_row, cols = 1:4, gridExpand = TRUE)
+  openxlsx::setRowHeights(workbook, cover, rows = header_row, heights = 25)
+  for (i in seq_along(contents)) {
+    item <- contents[[i]]; row <- i + header_row
+    openxlsx::writeData(workbook, cover, matrix(c(as.character(i), item$result %||% "", item$title, item$sheet), nrow = 1), startRow = row, colNames = FALSE)
+    openxlsx::addStyle(workbook, cover, openxlsx::createStyle(wrapText = TRUE, valign = "top", fgFill = if (i %% 2L) "#F1F5F9" else "#FFFFFF"), rows = row, cols = 1:4, gridExpand = TRUE)
+    openxlsx::writeFormula(workbook, cover, hyperlink(item$sheet, item$sheet), startRow = row, startCol = 4)
+    openxlsx::addStyle(workbook, cover, link_style, rows = row, cols = 4, stack = TRUE)
+    lines <- max(1, ceiling(nchar(item$result %||% "", type = "width") / 21), ceiling(nchar(item$title, type = "width") / 40), ceiling(nchar(item$sheet, type = "width") / 27))
+    openxlsx::setRowHeights(workbook, cover, rows = row, heights = min(409, max(30, lines * 16)))
+  }
+  openxlsx::setColWidths(workbook, cover, cols = 1:4, widths = c(6, 23, 42, 29))
+  openxlsx::pageSetup(workbook, cover, orientation = "portrait", paperSize = 9, fitToWidth = TRUE, fitToHeight = FALSE)
+  openxlsx::worksheetOrder(workbook) <- c(length(sheets) + 1L, seq_along(sheets))
+  openxlsx::activeSheet(workbook) <- length(sheets) + 1L
+  invisible(workbook)
+}
+
 excel_p_value_column <- function(column) {
   key <- tolower(gsub("[^a-z0-9]+", "", as.character(column %||% "")))
   key %in% c("p", "pvalue", "padjusted", "pfortrend", "ggp") ||
@@ -344,11 +464,17 @@ save_analysis_excel_workbook <- function(
   if (is.data.frame(assumption_review_table) && nrow(assumption_review_table) > 0) {
     used_sheets <- add_excel_table_sheet(workbook, "Assumption review", assumption_review_table, used_sheets, title = "Assumption review")
   }
+  bootstrap_diagnostics <- regression_bootstrap_diagnostics_data_frame(results)
+  if (is.data.frame(bootstrap_diagnostics) && nrow(bootstrap_diagnostics) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Bootstrap diagnostics", bootstrap_diagnostics, used_sheets, title = "Bootstrap diagnostics")
+  }
   warnings <- attr(results, "warnings")
   skipped <- attr(results, "skipped")
   used_sheets <- add_analysis_warning_skipped_sheets(workbook, used_sheets, warnings, skipped, skipped_title = "Skipped models")
 
+  add_result_excel_cover(workbook)
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  result_finalize_excel_package(file)
 }
 
 saved_coefficients_table <- function(results, variable_table = NULL, labels = character(0), category_table = NULL) {
@@ -409,9 +535,10 @@ write_analysis_results_html <- function(
   show_sr2 = FALSE,
   show_f2 = FALSE,
   show_vif = FALSE,
-  output_table_style = "standard"
+  output_table_style = "standard",
+  plot_renderer = plot_data_uri
 ) {
-  writeLines(
+  write_result_html_document(
     saved_analysis_results_html(
       results,
       variable_table = variable_table,
@@ -422,7 +549,8 @@ write_analysis_results_html <- function(
       show_sr2 = show_sr2,
       show_f2 = show_f2,
       show_vif = show_vif,
-      output_table_style = output_table_style
+      output_table_style = output_table_style,
+      plot_renderer = plot_renderer
     ),
     file,
     useBytes = TRUE
@@ -438,7 +566,8 @@ write_analysis_results_pdf <- function(
   show_sr2 = FALSE,
   show_f2 = FALSE,
   show_vif = FALSE,
-  output_table_style = "standard"
+  output_table_style = "standard",
+  plot_renderer = plot_data_uri
 ) {
   html <- saved_analysis_results_html(
     results,
@@ -451,6 +580,7 @@ write_analysis_results_pdf <- function(
     show_f2 = show_f2,
     show_vif = show_vif,
     output_table_style = output_table_style,
+      plot_renderer = plot_renderer,
     report_mode = TRUE
   )
   write_pdf_from_html(html, file)
@@ -465,9 +595,10 @@ write_hierarchical_results_html <- function(
   show_sr2 = FALSE,
   show_f2 = FALSE,
   show_vif = FALSE,
-  output_table_style = "standard"
+  output_table_style = "standard",
+  plot_renderer = plot_data_uri
 ) {
-  writeLines(
+  write_result_html_document(
     saved_hierarchical_results_html(
       results,
       variable_table = variable_table,
@@ -478,7 +609,8 @@ write_hierarchical_results_html <- function(
       show_sr2 = show_sr2,
       show_f2 = show_f2,
       show_vif = show_vif,
-      output_table_style = output_table_style
+      output_table_style = output_table_style,
+      plot_renderer = plot_renderer
     ),
     file,
     useBytes = TRUE
@@ -494,7 +626,8 @@ write_hierarchical_results_pdf <- function(
   show_sr2 = FALSE,
   show_f2 = FALSE,
   show_vif = FALSE,
-  output_table_style = "standard"
+  output_table_style = "standard",
+  plot_renderer = plot_data_uri
 ) {
   html <- saved_hierarchical_results_html(
     results,
@@ -507,21 +640,22 @@ write_hierarchical_results_pdf <- function(
     show_f2 = show_f2,
     show_vif = show_vif,
     output_table_style = output_table_style,
+      plot_renderer = plot_renderer,
     report_mode = TRUE
   )
   write_pdf_from_html(html, file)
 }
 
-write_frequencies_results_html <- function(result, file) {
-  writeLines(
-    saved_frequencies_results_html(result),
+write_frequencies_results_html <- function(result, file, plot_renderer = frequency_plot_data_uri) {
+  write_result_html_document(
+    saved_frequencies_results_html(result, plot_renderer = plot_renderer),
     file,
     useBytes = TRUE
   )
 }
 
 write_reliability_results_html <- function(result, file) {
-  writeLines(
+  write_result_html_document(
     saved_reliability_results_html(result),
     file,
     useBytes = TRUE
@@ -529,23 +663,23 @@ write_reliability_results_html <- function(result, file) {
 }
 
 write_ttest_anova_results_html <- function(result, file) {
-  writeLines(
+  write_result_html_document(
     saved_ttest_anova_results_html(result),
     file,
     useBytes = TRUE
   )
 }
 
-write_ancova_results_html <- function(result, file, variable_table = NULL, labels = character(0)) {
-  writeLines(
-    saved_ancova_results_html(result, variable_table, labels),
+write_ancova_results_html <- function(result, file, variable_table = NULL, labels = character(0), plot_renderer = plot_data_uri) {
+  write_result_html_document(
+    saved_ancova_results_html(result, variable_table, labels, plot_renderer = plot_renderer),
     file,
     useBytes = TRUE
   )
 }
 
 write_nonparametric_results_html <- function(result, file) {
-  writeLines(
+  write_result_html_document(
     saved_nonparametric_results_html(result),
     file,
     useBytes = TRUE
@@ -553,7 +687,7 @@ write_nonparametric_results_html <- function(result, file) {
 }
 
 write_nonparametric_paired_results_html <- function(result, file) {
-  writeLines(
+  write_result_html_document(
     saved_nonparametric_paired_results_html(result),
     file,
     useBytes = TRUE
@@ -561,7 +695,7 @@ write_nonparametric_paired_results_html <- function(result, file) {
 }
 
 write_paired_results_html <- function(result, file) {
-  writeLines(
+  write_result_html_document(
     saved_paired_results_html(result),
     file,
     useBytes = TRUE
@@ -569,16 +703,16 @@ write_paired_results_html <- function(result, file) {
 }
 
 write_paired_rm_results_html <- function(result, file) {
-  writeLines(
+  write_result_html_document(
     saved_paired_rm_results_html(result),
     file,
     useBytes = TRUE
   )
 }
 
-write_correlation_results_html <- function(result, file) {
-  writeLines(
-    saved_correlation_results_html(result),
+write_correlation_results_html <- function(result, file, plot_renderer = plot_data_uri) {
+  write_result_html_document(
+    saved_correlation_results_html(result, plot_renderer = plot_renderer),
     file,
     useBytes = TRUE
   )
@@ -597,7 +731,7 @@ write_logistic_results_html <- function(
   split_ci = TRUE,
   output_table_style = "standard"
 ) {
-  writeLines(
+  write_result_html_document(
     saved_logistic_results_html(
       results,
       variable_table = variable_table,
@@ -615,8 +749,8 @@ write_logistic_results_html <- function(
   )
 }
 
-write_frequencies_results_pdf <- function(result, file) {
-  write_pdf_from_html(saved_frequencies_results_html(result, report_mode = TRUE), file)
+write_frequencies_results_pdf <- function(result, file, plot_renderer = frequency_plot_data_uri) {
+  write_pdf_from_html(saved_frequencies_results_html(result, report_mode = TRUE, plot_renderer = plot_renderer), file)
 }
 
 write_reliability_results_pdf <- function(result, file) {
@@ -627,8 +761,8 @@ write_ttest_anova_results_pdf <- function(result, file) {
   write_pdf_from_html(saved_ttest_anova_results_html(result, report_mode = TRUE), file)
 }
 
-write_ancova_results_pdf <- function(result, file, variable_table = NULL, labels = character(0)) {
-  write_pdf_from_html(saved_ancova_results_html(result, variable_table, labels, report_mode = TRUE), file)
+write_ancova_results_pdf <- function(result, file, variable_table = NULL, labels = character(0), plot_renderer = plot_data_uri) {
+  write_pdf_from_html(saved_ancova_results_html(result, variable_table, labels, report_mode = TRUE, plot_renderer = plot_renderer), file)
 }
 
 write_nonparametric_results_pdf <- function(result, file) {
@@ -647,8 +781,8 @@ write_paired_rm_results_pdf <- function(result, file) {
   write_pdf_from_html(saved_paired_rm_results_html(result, report_mode = TRUE), file)
 }
 
-write_correlation_results_pdf <- function(result, file) {
-  write_pdf_from_html(saved_correlation_results_html(result, report_mode = TRUE), file)
+write_correlation_results_pdf <- function(result, file, plot_renderer = plot_data_uri) {
+  write_pdf_from_html(saved_correlation_results_html(result, report_mode = TRUE, plot_renderer = plot_renderer), file)
 }
 
 write_logistic_results_pdf <- function(
@@ -682,32 +816,32 @@ write_logistic_results_pdf <- function(
   )
 }
 
-write_factor_analysis_results_html <- function(result, file) {
-  writeLines(
-    saved_factor_analysis_results_html(result),
+write_factor_analysis_results_html <- function(result, file, plot_renderer = plot_data_uri) {
+  write_result_html_document(
+    saved_factor_analysis_results_html(result, plot_renderer = plot_renderer),
     file,
     useBytes = TRUE
   )
 }
 
-write_pca_results_html <- function(result, file) {
-  writeLines(
-    saved_pca_results_html(result),
+write_pca_results_html <- function(result, file, plot_renderer = plot_data_uri) {
+  write_result_html_document(
+    saved_pca_results_html(result, plot_renderer = plot_renderer),
     file,
     useBytes = TRUE
   )
 }
 
-write_factor_analysis_results_pdf <- function(result, file) {
-  write_pdf_from_html(saved_factor_analysis_results_html(result, report_mode = TRUE), file)
+write_factor_analysis_results_pdf <- function(result, file, plot_renderer = plot_data_uri) {
+  write_pdf_from_html(saved_factor_analysis_results_html(result, report_mode = TRUE, plot_renderer = plot_renderer), file)
 }
 
-write_pca_results_pdf <- function(result, file) {
-  write_pdf_from_html(saved_pca_results_html(result, report_mode = TRUE), file)
+write_pca_results_pdf <- function(result, file, plot_renderer = plot_data_uri) {
+  write_pdf_from_html(saved_pca_results_html(result, report_mode = TRUE, plot_renderer = plot_renderer), file)
 }
 
 write_crosstab_results_html <- function(result, file) {
-  writeLines(
+  write_result_html_document(
     saved_crosstab_results_html(result),
     file,
     useBytes = TRUE
@@ -776,37 +910,12 @@ regression_excel_export_payload <- function(
   )
 }
 
-save_analysis_excel_file <- function(
-  results,
-  file,
-  variable_table = NULL,
-  labels = character(0),
-  category_table = NULL,
-  show_sr2 = FALSE,
-  show_f2 = FALSE,
-  show_vif = FALSE
-) {
-  payload <- regression_excel_export_payload(
-    results,
-    variable_table,
-    labels,
-    category_table,
-    show_sr2 = show_sr2,
-    show_f2 = show_f2,
-    show_vif = show_vif
-  )
-  save_analysis_excel_workbook(
-    results,
-    file,
-    payload$model_overview,
-    payload$coefficient_tables,
-    payload$sheet_names,
-    payload$titles,
-    assumption_review_table = regression_assumption_review_data_frame(results, variable_table, labels),
-    show_vif = show_vif,
-    show_sr2 = show_sr2,
-    show_f2 = show_f2
-  )
+save_analysis_excel_file <- function (results, file, variable_table = NULL, labels = character(0), category_table = NULL, show_sr2 = FALSE,
+    show_f2 = FALSE, show_vif = FALSE, output_table_style = "standard", plot_renderer = plot_data_uri)
+{
+    save_screen_excel_file(saved_analysis_results_html(results = results, variable_table = variable_table, labels = labels,
+        category_table = category_table, show_sr2 = show_sr2, show_f2 = show_f2, show_vif = show_vif,
+        output_table_style = output_table_style, plot_renderer = plot_renderer), file)
 }
 
 hierarchical_export_table <- function(
@@ -849,10 +958,10 @@ hierarchical_export_table <- function(
   }
 
   summary_values <- hierarchical_summary_values(group)
-  summary_labels <- c("F(p)", "R\u00B2(adj. R\u00B2)")
+  summary_labels <- c(attr(summary_values, "f_label", exact = TRUE) %||% "F(p)", "R\u00B2(adj. R\u00B2)")
   summary_keys <- c("f", "r2")
   if (length(group) > 1) {
-    summary_labels <- c(summary_labels, attr(summary_values, "delta_label", exact = TRUE) %||% "Delta R\u00B2(F change p)")
+    summary_labels <- c(summary_labels, attr(summary_values, "delta_label", exact = TRUE) %||% "\u0394 R\u00B2(F change p)")
     summary_keys <- c(summary_keys, "delta")
   }
   if (isTRUE(attr(summary_values, "any_residual_diagnostics", exact = TRUE))) {
@@ -986,57 +1095,13 @@ add_hierarchical_result_sheet <- function(workbook, sheet_name, table, note, mod
   c(used_sheets, sheet_name)
 }
 
-save_hierarchical_excel_file <- function(
-  results,
-  file,
-  variable_table = NULL,
-  labels = character(0),
-  category_table = NULL,
-  show_sr2 = FALSE,
-  show_f2 = FALSE,
-  show_vif = FALSE
-) {
-  workbook <- openxlsx::createWorkbook()
-  used_sheets <- character(0)
-  used_sheets <- add_excel_table_sheet(
-    workbook,
-    "Model overview",
-    model_overview_data_frame(results, variable_table, labels),
-    used_sheets,
-    merge_shared_independent = TRUE
-  )
-  groups <- hierarchical_result_groups(results)
-  for (group in groups) {
-    final_index <- length(group)
-    dependent <- hierarchical_result_dependent_name(group[[1]])
-    dependent_label <- display_variable_name_static(dependent, variable_table, labels, label_only = TRUE)
-    used_sheets <- add_hierarchical_result_sheet(
-      workbook,
-      dependent_label,
-      hierarchical_export_table(
-        group,
-        variable_table = variable_table,
-        labels = labels,
-        category_table = category_table,
-        show_sr2 = show_sr2,
-        show_f2 = show_f2,
-        show_vif = show_vif
-      ),
-      hierarchical_coefficient_note_line(group[[final_index]], show_vif, show_sr2, show_f2),
-      hierarchical_model_note_lines(group, variable_table, labels),
-      used_sheets,
-      title = sprintf("Hierarchical Regression(%s)", dependent_label)
-    )
-  }
-  assumption_review <- regression_assumption_review_data_frame(results, variable_table, labels)
-  if (is.data.frame(assumption_review) && nrow(assumption_review) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Assumption review", assumption_review, used_sheets, title = "Assumption review")
-  }
-  warnings <- attr(results, "warnings")
-  skipped <- attr(results, "skipped")
-  used_sheets <- add_analysis_warning_skipped_sheets(workbook, used_sheets, warnings, skipped, skipped_title = "Skipped models")
-  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-  invisible(file)
+save_hierarchical_excel_file <- function (results, file, variable_table = NULL, labels = character(0), category_table = NULL, show_sr2 = FALSE,
+    show_f2 = FALSE, show_vif = FALSE, output_table_style = "standard", plot_renderer = plot_data_uri)
+{
+    save_screen_excel_file(saved_hierarchical_results_html(results = results, variable_table = variable_table,
+        labels = labels, category_table = category_table, show_sr2 = show_sr2, show_f2 = show_f2, show_vif = show_vif,
+        output_table_style = output_table_style, plot_renderer = plot_renderer),
+        file)
 }
 
 logistic_export_table <- function(
@@ -1070,10 +1135,10 @@ logistic_export_table <- function(
   summary_labels <- c(
     x2 = "x\u00B2(p)",
     r2 = "R\u00B2",
-    delta_r2 = "Delta R\u00B2",
+    delta_r2 = "\u0394 R\u00B2",
     delta_x2 = "Delta x\u00B2(p)",
     aic = "AIC, BIC",
-    parallel = "Parallel lines x\u00B2(p)",
+    parallel = "Proportional odds x\u00B2(p)",
     status = "Status"
   )
   for (key in names(summaries)) {
@@ -1088,74 +1153,17 @@ logistic_export_table <- function(
   as.data.frame(do.call(rbind, table_rows), stringsAsFactors = FALSE, check.names = FALSE)
 }
 
-save_logistic_excel_file <- function(
-  results,
-  file,
-  variable_table = NULL,
-  labels = character(0),
-  category_table = NULL,
-  show_b = FALSE,
-  show_se = FALSE,
-  show_mcfadden = FALSE,
-  show_cox_snell = FALSE,
-  split_ci = TRUE
-) {
-  workbook <- openxlsx::createWorkbook()
-  used_sheets <- character(0)
-  overview <- logistic_model_overview_data_frame(results, variable_table, labels, category_table)
-  if (is.data.frame(overview) && nrow(overview) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Model overview", overview, used_sheets, title = "Model overview")
-  }
-  for (index in seq_along(results %||% list())) {
-    result <- results[[index]]
-    title <- logistic_result_title(result, variable_table, labels, category_table)
-    if (!is.null(result$hierarchical_step) && nzchar(result$hierarchical_step %||% "")) {
-      title <- sprintf("%s - %s", title, result$hierarchical_step)
-    }
-    sheet_name <- sprintf("%s %s", logistic_dependent_title_label(result$dependent, variable_table, labels, category_table), logistic_model_label(result, index))
-    table <- logistic_export_table(
-      result,
-      variable_table = variable_table,
-      labels = labels,
-      category_table = category_table,
-      show_b = show_b,
-      show_se = show_se,
-      show_mcfadden = show_mcfadden,
-      show_cox_snell = show_cox_snell,
-      split_ci = split_ci
-    )
-    used_sheets <- add_excel_table_sheet(workbook, sheet_name, table, used_sheets, title = title)
-  }
-  assumption_review <- logistic_assumption_review_data_frame(results, variable_table, labels, category_table)
-  if (is.data.frame(assumption_review) && nrow(assumption_review) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Assumption review", assumption_review, used_sheets, title = "Assumption review")
-  }
-  used_sheets <- add_analysis_warning_skipped_sheets(
-    workbook,
-    used_sheets,
-    attr(results, "warnings"),
-    attr(results, "skipped"),
-    skipped_title = "Skipped models"
-  )
-  if (length(used_sheets) == 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Logistic regression", data.frame(Message = "No logistic regression results.", stringsAsFactors = FALSE), used_sheets)
-  }
-  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-  invisible(file)
+save_logistic_excel_file <- function (results, file, variable_table = NULL, labels = character(0), category_table = NULL, show_b = FALSE, show_se = FALSE,
+    show_mcfadden = FALSE, show_cox_snell = FALSE, split_ci = TRUE, output_table_style = "standard")
+{
+    save_screen_excel_file(saved_logistic_results_html(results = results, variable_table = variable_table, labels = labels,
+        category_table = category_table, show_b = show_b, show_se = show_se, show_mcfadden = show_mcfadden, show_cox_snell = show_cox_snell,
+        split_ci = split_ci, output_table_style = output_table_style), file)
 }
 
-save_frequencies_excel_file <- function(result, file) {
-  table <- frequency_combined_table(result, result$options %||% list(n_percent = TRUE, mean_sd = TRUE))
-  workbook <- openxlsx::createWorkbook()
-  used_sheets <- character(0)
-  used_sheets <- add_excel_table_sheet(
-    workbook,
-    "Frequencies Descriptives",
-    table,
-    used_sheets
-  )
-  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-  invisible(file)
+save_frequencies_excel_file <- function (result, file, plot_renderer = frequency_plot_data_uri)
+{
+    save_screen_excel_file(saved_frequencies_results_html(result = result, plot_renderer = plot_renderer), file)
 }
 
 add_reliability_excel_sheet <- function(workbook, sheet_name, table, note, used_sheets) {
@@ -1189,150 +1197,24 @@ add_excel_table_sheet_with_note <- function(workbook, sheet_name, table, note, u
   used_sheets
 }
 
-save_reliability_excel_file <- function(result, file) {
-  workbook <- openxlsx::createWorkbook()
-  used_sheets <- character(0)
-  if (identical(result$type %||% "", "reliability_factors")) {
-    used_sheets <- add_reliability_excel_sheet(
-      workbook,
-      "Reliability",
-      reliability_factor_overview_table(result),
-      "",
-      used_sheets
-    )
-    for (item in result$factors %||% list()) {
-      if (is.data.frame(item$normality_table) && nrow(item$normality_table) > 0) {
-        normality <- data.frame(Subfactor = item$subfactor %||% "", item$normality_table, check.names = FALSE)
-        used_sheets <- add_excel_table_sheet(workbook, paste0(item$subfactor, " Normality"), normality, used_sheets)
-      }
-    }
-    item_analysis <- reliability_factor_item_analysis_table(result)
-    if (is.data.frame(item_analysis) && nrow(item_analysis) > 0) {
-      item_note <- reliability_item_analysis_note((result$factors %||% list(result$total))[[1]])
-      if ("Total items if item deleted" %in% names(item_analysis)) {
-        item_note <- paste(
-          item_note,
-          "Total items if item deleted is calculated from all items across subfactors after removing each item."
-        )
-      }
-      used_sheets <- add_reliability_excel_sheet(
-        workbook,
-        "Item analysis",
-        item_analysis,
-        item_note,
-        used_sheets
-      )
-    }
-    openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-    return(invisible(file))
-  }
-  used_sheets <- add_reliability_excel_sheet(
-    workbook,
-    "Reliability",
-    reliability_overview_table(result),
-    reliability_method_note(result),
-    used_sheets
-  )
-  if (is.data.frame(result$normality_table) && nrow(result$normality_table) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Normality", result$normality_table, used_sheets)
-  }
-  item_analysis <- reliability_item_analysis_table(result)
-  if (is.data.frame(item_analysis) && nrow(item_analysis) > 0) {
-    used_sheets <- add_reliability_excel_sheet(
-      workbook,
-      "Item analysis",
-      item_analysis,
-      reliability_item_analysis_note(result),
-      used_sheets
-    )
-  }
-  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-  invisible(file)
+save_reliability_excel_file <- function (result, file)
+{
+    save_screen_excel_file(saved_reliability_results_html(result = result), file)
 }
 
-save_correlation_excel_file <- function(result, file) {
-  workbook <- openxlsx::createWorkbook()
-  used_sheets <- character(0)
-  significance_note <- if (isTRUE(result$options$significance_levels)) "* p < .05; ** p < .01; *** p < .001" else ""
-  used_sheets <- add_excel_table_sheet_with_note(
-    workbook,
-    "Correlations",
-    correlation_matrix_display_table(result),
-    significance_note,
-    used_sheets
-  )
-  if (isTRUE(result$options$p_ci)) {
-    used_sheets <- add_excel_table_sheet(
-      workbook,
-      "p-value CI",
-      correlation_p_matrix_display_table(result),
-      used_sheets
-    )
-  }
-  overview_table <- correlation_model_overview_matrix_display_table(result)
-  if (is.data.frame(overview_table) && nrow(overview_table) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Model overview", overview_table, used_sheets)
-  }
-  normality_table <- correlation_normality_display_table(result)
-  if (isTRUE(result$options$normality) && is.data.frame(normality_table) && nrow(normality_table) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Normality", normality_table, used_sheets)
-  }
-  omitted_table <- correlation_omitted_display_table(result)
-  if (is.data.frame(omitted_table) && nrow(omitted_table) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Omitted variables", omitted_table, used_sheets)
-  }
-  if (is.list(result$latent)) {
-    used_sheets <- add_excel_table_sheet(
-      workbook,
-      "Latent correlations",
-      correlation_matrix_display_table(result, result$latent),
-      used_sheets
-    )
-  }
-  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-  invisible(file)
+save_correlation_excel_file <- function (result, file, plot_renderer = plot_data_uri)
+{
+    save_screen_excel_file(saved_correlation_results_html(result = result, plot_renderer = plot_renderer), file)
 }
 
-save_factor_analysis_excel_file <- function(result, file) {
-  workbook <- openxlsx::createWorkbook()
-  used_sheets <- character(0)
-  used_sheets <- add_excel_table_sheet(workbook, "Overview", result$overview, used_sheets, title = "Factor analysis")
-  used_sheets <- add_excel_table_sheet(workbook, "Loadings", result$loadings_table, used_sheets, title = "Pattern / loading matrix")
-  if (is.data.frame(result$structure_table) && nrow(result$structure_table) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Structure", result$structure_table, used_sheets, title = "Structure matrix")
-  }
-  used_sheets <- add_optional_excel_table_sheet(workbook, "Warnings", result$warnings, used_sheets)
-  used_sheets <- add_excel_table_sheet(workbook, "Suitability", result$suitability$overview, used_sheets)
-  if (is.data.frame(result$normality_table) && nrow(result$normality_table) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Normality", result$normality_table, used_sheets)
-  }
-  if (is.data.frame(result$variance_table) && nrow(result$variance_table) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Variance", result$variance_table, used_sheets, title = "Variance explained")
-  }
-  if (is.data.frame(result$factor_correlation_table) && nrow(result$factor_correlation_table) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Factor correlations", result$factor_correlation_table, used_sheets)
-  }
-  used_sheets <- add_excel_table_sheet(workbook, "Eigenvalues", result$eigen_table, used_sheets)
-  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-  invisible(file)
+save_factor_analysis_excel_file <- function (result, file, plot_renderer = plot_data_uri)
+{
+    save_screen_excel_file(saved_factor_analysis_results_html(result = result, plot_renderer = plot_renderer), file)
 }
 
-save_pca_excel_file <- function(result, file) {
-  workbook <- openxlsx::createWorkbook()
-  used_sheets <- character(0)
-  used_sheets <- add_excel_table_sheet(workbook, "Overview", result$overview, used_sheets, title = "Principal component analysis")
-  used_sheets <- add_excel_table_sheet(workbook, "Loadings", result$loadings_table, used_sheets, title = "Component loadings")
-  used_sheets <- add_optional_excel_table_sheet(workbook, "Warnings", result$warnings, used_sheets)
-  used_sheets <- add_excel_table_sheet(workbook, "Suitability", result$suitability$overview, used_sheets)
-  if (is.data.frame(result$variance_table) && nrow(result$variance_table) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Variance", result$variance_table, used_sheets, title = "Variance explained")
-  }
-  if (is.data.frame(result$component_correlation_table) && nrow(result$component_correlation_table) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Component correlations", result$component_correlation_table, used_sheets)
-  }
-  used_sheets <- add_excel_table_sheet(workbook, "Eigenvalues", result$eigen_table, used_sheets)
-  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-  invisible(file)
+save_pca_excel_file <- function (result, file, plot_renderer = plot_data_uri)
+{
+    save_screen_excel_file(saved_pca_results_html(result = result, plot_renderer = plot_renderer), file)
 }
 
 crosstab_excel_group_table <- function(results) {
@@ -1414,23 +1296,9 @@ crosstab_excel_group_note <- function(results) {
   paste(c(method_lines, effect_lines, trend_lines), collapse = "\n")
 }
 
-save_crosstab_excel_file <- function(result, file) {
-  results <- crosstab_result_list(result)
-  workbook <- openxlsx::createWorkbook()
-  used_sheets <- character(0)
-  for (group in crosstab_results_by_column(results)) {
-    first <- group[[1]]
-    used_sheets <- add_excel_table_sheet_with_note(
-      workbook,
-      first$col_label,
-      crosstab_excel_group_table(group),
-      crosstab_excel_group_note(group),
-      used_sheets,
-      title = sprintf("Cross-tabulation: %s", first$col_label)
-    )
-  }
-  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-  invisible(file)
+save_crosstab_excel_file <- function (result, file)
+{
+    save_screen_excel_file(saved_crosstab_results_html(result = result), file)
 }
 
 add_ttest_anova_result_sheet <- function(workbook, sheet_name, table, note, used_sheets, title = NULL) {
@@ -1718,445 +1586,28 @@ add_paired_rm_grouped_excel_sheet <- function(workbook, sheet_name, table, used_
   c(used_sheets, sheet_name)
 }
 
-save_ttest_anova_excel_file <- function(result, file) {
-  workbook <- openxlsx::createWorkbook()
-  used_sheets <- character(0)
-  if (is.data.frame(result$assumption_review) && nrow(result$assumption_review) > 0) {
-    used_sheets <- add_excel_table_sheet(
-      workbook,
-      "Assumption review",
-      result$assumption_review,
-      used_sheets,
-      title = "Assumption review"
-    )
-  }
-  used_sheets <- add_excel_table_sheet(
-    workbook,
-    "Model overview",
-    result$overview,
-    used_sheets,
-    title = "Model overview"
-  )
-  used_sheets <- add_analysis_warning_skipped_sheets(workbook, used_sheets, result$warnings, result$skipped, skipped_title = "Skipped analyses")
-  for (item in result$results %||% list()) {
-    used_sheets <- add_ttest_anova_result_sheet(
-      workbook,
-      item$title %||% "Result",
-      item$table,
-      item$note %||% "",
-      used_sheets,
-      title = item$title %||% "Result"
-    )
-    if (is.data.frame(item$posthoc) && nrow(item$posthoc) > 0) {
-      used_sheets <- add_ttest_anova_result_sheet(
-        workbook,
-        paste(item$title %||% "Result", "posthoc"),
-        item$posthoc,
-        "",
-        used_sheets,
-        title = paste(item$title %||% "Result", "Post-hoc")
-      )
-    }
-  }
-  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-  invisible(file)
+save_ttest_anova_excel_file <- function (result, file)
+{
+    save_screen_excel_file(saved_ttest_anova_results_html(result = result), file)
 }
 
-save_ancova_excel_file <- function(result, file, variable_table = NULL, labels = character(0)) {
-  workbook <- openxlsx::createWorkbook()
-  used_sheets <- character(0)
-  overview <- ancova_model_overview_table(result, variable_table, labels)
-  if (is.data.frame(overview) && nrow(overview) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Model overview", overview, used_sheets, title = "Model overview")
-  }
-  combined <- ancova_combined_result_table(result, variable_table, labels)
-  if (is.data.frame(combined) && nrow(combined) > 0) {
-    used_sheets <- add_ttest_anova_result_sheet(
-      workbook,
-      "ANCOVA table",
-      combined,
-      ancova_combined_note(result, variable_table, labels),
-      used_sheets,
-      title = "ANCOVA table"
-    )
-  }
-  assumption <- ancova_assumption_review_table(result, variable_table, labels)
-  if (is.data.frame(assumption) && nrow(assumption) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Assumption summary", assumption, used_sheets, title = "Assumption summary")
-  }
-  normality <- ancova_normality_review_table(result, variable_table, labels)
-  if (is.data.frame(normality) && nrow(normality) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Normality diagnostics", normality, used_sheets, title = "Normality diagnostics")
-  }
-  interaction_terms <- ancova_interaction_terms_review_table(result, variable_table, labels)
-  if (is.data.frame(interaction_terms) && nrow(interaction_terms) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Interaction terms", interaction_terms, used_sheets, title = "Interaction terms")
-  }
-  slope_homogeneity <- ancova_slope_homogeneity_review_table(result, variable_table, labels)
-  if (is.data.frame(slope_homogeneity) && nrow(slope_homogeneity) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Slope homogeneity", slope_homogeneity, used_sheets, title = "Regression slope homogeneity")
-  }
-  simple_effects <- ancova_simple_effects_review_table(result, variable_table, labels)
-  if (is.data.frame(simple_effects) && nrow(simple_effects) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Simple effects", simple_effects, used_sheets, title = "Simple group effects")
-  }
-  linearity <- ancova_linearity_review_table(result, variable_table, labels)
-  if (is.data.frame(linearity) && nrow(linearity) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Linearity diagnostics", linearity, used_sheets, title = "Covariate linearity check")
-  }
-  collinearity <- ancova_collinearity_review_table(result, variable_table, labels)
-  if (is.data.frame(collinearity) && nrow(collinearity) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Collinearity diagnostics", collinearity, used_sheets, title = "Collinearity diagnostics")
-  }
-  influence <- ancova_influence_review_table(result, variable_table, labels)
-  if (is.data.frame(influence) && nrow(influence) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Influence diagnostics", influence, used_sheets, title = "Influence diagnostics")
-  }
-  influence_sensitivity <- ancova_influence_sensitivity_review_table(result, variable_table, labels)
-  if (is.data.frame(influence_sensitivity) && nrow(influence_sensitivity) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Influence sensitivity", influence_sensitivity, used_sheets, title = "Influence sensitivity analysis")
-  }
-  used_sheets <- add_analysis_warning_skipped_sheets(workbook, used_sheets, NULL, result$skipped, skipped_title = "Skipped analyses")
-  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-  invisible(file)
+save_ancova_excel_file <- function (result, file, variable_table = NULL, labels = character(0), plot_renderer = plot_data_uri)
+{
+    save_screen_excel_file(saved_ancova_results_html(result = result, variable_table = variable_table, labels = labels, plot_renderer = plot_renderer),
+        file)
 }
 
-save_nonparametric_paired_excel_file <- function(result, file) {
-  workbook <- openxlsx::createWorkbook()
-  used_sheets <- character(0)
-  write_paired_guard_sheets <- function(part, prefix = "") {
-    if (is.data.frame(part$warnings) && nrow(part$warnings) > 0) {
-      used_sheets <<- add_ttest_anova_result_sheet(workbook, paste0(prefix, "Warnings"), part$warnings, "", used_sheets, title = "Warnings")
-    }
-    if (is.data.frame(part$skipped) && nrow(part$skipped) > 0) {
-      used_sheets <<- add_ttest_anova_result_sheet(workbook, paste0(prefix, "Skipped"), part$skipped, "", used_sheets, title = "Skipped pairs")
-    }
-  }
-  write_part <- function(part, prefix = "") {
-    if (identical(part$type, "nonparametric_paired_rm")) {
-      if (is.data.frame(part$display_table) && nrow(part$display_table) > 0) {
-        table <- part$display_table
-        attr(table, "median_iqr") <- isTRUE(part$options$median_iqr)
-        if (!isTRUE(part$options$effect_size)) {
-          drop_columns <- c("ES_overall", "ES_overall_label", "PairwiseEffectSizeLabel", "EffectSizeLabel", grep("^ES_[0-9]+_[0-9]+(_label)?$", names(table), value = TRUE))
-          table <- table[, setdiff(names(table), drop_columns), drop = FALSE]
-        }
-        used_sheets <<- add_paired_rm_grouped_excel_sheet(
-          workbook,
-          paste0(prefix, "Repeated summary"),
-          table,
-          used_sheets,
-          note = paired_rm_table_method_note(table),
-          title = "Nonparametric paired test: continuous / ordinal",
-          type = "scale"
-        )
-      }
-      if (is.data.frame(part$count_table) && nrow(part$count_table) > 0) {
-        used_sheets <<- add_paired_rm_grouped_excel_sheet(
-          workbook,
-          paste0(prefix, "Repeated n"),
-          part$count_table,
-          used_sheets,
-          note = paired_rm_table_method_note(part$count_table),
-          title = "Nonparametric paired test: binary",
-          type = "count"
-        )
-      }
-      if (is.data.frame(part$posthoc) && nrow(part$posthoc) > 0) {
-        used_sheets <<- add_ttest_anova_result_sheet(
-          workbook,
-          paste0(prefix, "Posthoc"),
-          nonparametric_paired_posthoc_display_table(part),
-          paired_rm_posthoc_note(part),
-          used_sheets,
-          title = "Post-hoc pairwise comparisons"
-        )
-      }
-      write_paired_guard_sheets(part, prefix)
-    } else {
-      if (is.data.frame(part$scale_table) && nrow(part$scale_table) > 0) {
-        table <- part$scale_table
-        attr(table, "median_iqr") <- isTRUE(part$options$median_iqr)
-        used_sheets <<- add_paired_grouped_excel_sheet(
-          workbook,
-          paste0(prefix, "Paired summary"),
-          table,
-          used_sheets,
-          title = "Nonparametric paired test: summary",
-          type = "scale",
-          note = paired_method_note(table, show_effect_size = isTRUE(part$options$effect_size)),
-          show_effect_size = isTRUE(part$options$effect_size)
-        )
-      }
-      if (is.data.frame(part$count_table) && nrow(part$count_table) > 0) {
-        used_sheets <<- add_paired_grouped_excel_sheet(
-          workbook,
-          paste0(prefix, "Paired n"),
-          part$count_table,
-          used_sheets,
-          title = "Nonparametric paired test: n by level",
-          type = "count",
-          note = paired_count_method_note(part, show_effect_size = isTRUE(part$options$effect_size)),
-          show_effect_size = isTRUE(part$options$effect_size)
-        )
-      }
-      write_paired_guard_sheets(part, prefix)
-    }
-  }
-  if (identical(result$type, "nonparametric_paired_combined")) {
-    write_part(result$paired, "Two ")
-    write_part(result$paired_rm, "Repeated ")
-  } else {
-    write_part(result)
-  }
-  if (length(used_sheets) == 0) {
-    used_sheets <- add_ttest_anova_result_sheet(workbook, "Nonparametric paired", result$table, "", used_sheets, title = "Nonparametric paired test")
-  }
-  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-  invisible(file)
+save_nonparametric_paired_excel_file <- function (result, file)
+{
+    save_screen_excel_file(saved_nonparametric_paired_results_html(result = result), file)
 }
 
-save_paired_excel_file <- function(result, file) {
-  if (identical(result$type, "paired_rm")) {
-    return(save_paired_rm_excel_file(result, file))
-  }
-  workbook <- openxlsx::createWorkbook()
-  used_sheets <- character(0)
-  write_paired_guard_sheets <- function(part, prefix = "") {
-    if (is.data.frame(part$warnings) && nrow(part$warnings) > 0) {
-      used_sheets <<- add_ttest_anova_result_sheet(workbook, paste0(prefix, "Warnings"), part$warnings, "", used_sheets, title = "Warnings")
-    }
-    if (is.data.frame(part$skipped) && nrow(part$skipped) > 0) {
-      used_sheets <<- add_ttest_anova_result_sheet(workbook, paste0(prefix, "Skipped"), part$skipped, "", used_sheets, title = "Skipped pairs")
-    }
-  }
-  if (identical(result$type, "paired_combined")) {
-    paired_part <- result$paired
-    rm_part <- result$paired_rm
-    paired_overview <- paired_model_overview_table(paired_part)
-    paired_assumption_review <- paired_assumption_review_table(paired_part)
-    rm_overview <- paired_rm_model_overview_table(rm_part)
-    rm_assumption_review <- paired_rm_assumption_review_table(rm_part)
-    if (is.data.frame(paired_overview) && nrow(paired_overview) > 0) {
-      used_sheets <- add_excel_table_sheet(workbook, "Paired overview", paired_overview, used_sheets, title = "Model overview")
-    }
-    if (is.data.frame(rm_overview) && nrow(rm_overview) > 0) {
-      used_sheets <- add_excel_table_sheet(workbook, "Repeated overview", rm_overview, used_sheets, title = "Model overview")
-    }
-    if (is.data.frame(paired_part$scale_table) && nrow(paired_part$scale_table) > 0) {
-      used_sheets <- add_paired_grouped_excel_sheet(
-        workbook,
-        "Paired M SD",
-        paired_scale_display_table(paired_part),
-        used_sheets,
-        title = "Paired test: M and SD",
-        type = "scale",
-        note = paired_method_note(paired_scale_display_table(paired_part), show_effect_size = isTRUE(paired_part$options$effect_size)),
-        show_effect_size = isTRUE(paired_part$options$effect_size)
-      )
-    }
-    if (is.data.frame(paired_part$count_table) && nrow(paired_part$count_table) > 0) {
-      used_sheets <- add_paired_grouped_excel_sheet(
-        workbook,
-        "Paired n",
-        paired_part$count_table,
-        used_sheets,
-        title = "Paired test: n by level",
-        type = "count",
-        note = paired_count_method_note(paired_part, show_effect_size = isTRUE(paired_part$options$effect_size)),
-        show_effect_size = isTRUE(paired_part$options$effect_size)
-      )
-    }
-    if (isTRUE(paired_part$options$assumption_check) && is.data.frame(paired_part$checks) && nrow(paired_part$checks) > 0) {
-      used_sheets <- add_ttest_anova_result_sheet(
-        workbook,
-        "Paired assumptions",
-        paired_part$checks,
-        "Outliers were evaluated using values beyond 3*IQR from the paired difference distribution.",
-        used_sheets,
-        title = "Paired assumption check"
-      )
-    }
-    if (is.data.frame(paired_assumption_review) && nrow(paired_assumption_review) > 0) {
-      used_sheets <- add_excel_table_sheet(workbook, "Paired assumption review", paired_assumption_review, used_sheets, title = "Assumption review")
-    }
-    write_paired_guard_sheets(paired_part, "Paired ")
-    if (is.data.frame(rm_part$display_table) && nrow(rm_part$display_table) > 0) {
-      table <- paired_rm_table_with_options(rm_part$display_table, rm_part$options)
-      used_sheets <- add_paired_rm_grouped_excel_sheet(
-        workbook,
-        "Repeated M SD",
-        table,
-        used_sheets,
-        note = paired_rm_table_method_note(table),
-        title = "Repeated-measures test: continuous / ordinal",
-        type = "scale"
-      )
-    }
-    if (is.data.frame(rm_part$count_table) && nrow(rm_part$count_table) > 0) {
-      used_sheets <- add_paired_rm_grouped_excel_sheet(
-        workbook,
-        "Repeated n",
-        rm_part$count_table,
-        used_sheets,
-        note = paired_rm_table_method_note(rm_part$count_table),
-        title = "Repeated-measures test: binary",
-        type = "count"
-      )
-    }
-    if (is.data.frame(rm_part$posthoc) && nrow(rm_part$posthoc) > 0) {
-      used_sheets <- add_ttest_anova_result_sheet(
-        workbook,
-        "Repeated posthoc",
-        rm_part$posthoc,
-        paired_rm_posthoc_note(rm_part),
-        used_sheets,
-        title = "Post-hoc pairwise comparisons"
-      )
-    }
-    if (isTRUE(rm_part$options$assumption_check) && is.data.frame(rm_part$assumption) && nrow(rm_part$assumption) > 0) {
-      used_sheets <- add_ttest_anova_result_sheet(
-        workbook,
-        "Repeated assumptions",
-        rm_part$assumption,
-        "",
-        used_sheets,
-        title = "Repeated-measures assumption check"
-      )
-    }
-    if (is.data.frame(rm_assumption_review) && nrow(rm_assumption_review) > 0) {
-      used_sheets <- add_excel_table_sheet(workbook, "Repeated assumption review", rm_assumption_review, used_sheets, title = "Assumption review")
-    }
-    if (is.data.frame(rm_part$skipped) && nrow(rm_part$skipped) > 0) {
-      used_sheets <- add_ttest_anova_result_sheet(workbook, "Repeated skipped", rm_part$skipped, "", used_sheets, title = "Skipped repeated-measures rows")
-    }
-    openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-    return(invisible(file))
-  }
-  overview <- paired_model_overview_table(result)
-  assumption_review <- paired_assumption_review_table(result)
-  if (is.data.frame(overview) && nrow(overview) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Model overview", overview, used_sheets, title = "Model overview")
-  }
-  if (is.data.frame(result$scale_table) && nrow(result$scale_table) > 0) {
-    used_sheets <- add_paired_grouped_excel_sheet(
-      workbook,
-      "Paired M SD",
-      paired_scale_display_table(result),
-      used_sheets,
-      title = "Paired test: M and SD",
-      type = "scale",
-      note = paired_method_note(paired_scale_display_table(result), show_effect_size = isTRUE(result$options$effect_size)),
-      show_effect_size = isTRUE(result$options$effect_size)
-    )
-  }
-  if (is.data.frame(result$count_table) && nrow(result$count_table) > 0) {
-    used_sheets <- add_paired_grouped_excel_sheet(
-      workbook,
-      "Paired n",
-      result$count_table,
-      used_sheets,
-      title = "Paired test: n by level",
-      type = "count",
-      note = paired_count_method_note(result, show_effect_size = isTRUE(result$options$effect_size)),
-      show_effect_size = isTRUE(result$options$effect_size)
-    )
-  }
-  if (length(used_sheets) == 0) {
-    used_sheets <- add_ttest_anova_result_sheet(
-      workbook,
-      "Paired test",
-      result$table,
-      "",
-      used_sheets,
-      title = "Paired test"
-    )
-  }
-  if (isTRUE(result$options$assumption_check) && is.data.frame(result$checks) && nrow(result$checks) > 0) {
-    used_sheets <- add_ttest_anova_result_sheet(
-      workbook,
-      "Assumption check",
-      result$checks,
-      "Outliers were evaluated using values beyond 3*IQR from the paired difference distribution.",
-      used_sheets,
-      title = "Assumption check"
-    )
-  }
-  if (is.data.frame(assumption_review) && nrow(assumption_review) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Assumption review", assumption_review, used_sheets, title = "Assumption review")
-  }
-  write_paired_guard_sheets(result)
-  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-  invisible(file)
+save_paired_excel_file <- function (result, file)
+{
+    save_screen_excel_file(saved_paired_results_html(result = result), file)
 }
 
-save_paired_rm_excel_file <- function(result, file) {
-  workbook <- openxlsx::createWorkbook()
-  used_sheets <- character(0)
-  overview <- paired_rm_model_overview_table(result)
-  assumption_review <- paired_rm_assumption_review_table(result)
-  if (is.data.frame(overview) && nrow(overview) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Model overview", overview, used_sheets, title = "Model overview")
-  }
-  if (is.data.frame(result$display_table) && nrow(result$display_table) > 0) {
-    table <- paired_rm_table_with_options(result$display_table, result$options)
-    used_sheets <- add_paired_rm_grouped_excel_sheet(
-      workbook,
-      "Repeated M SD",
-      table,
-      used_sheets,
-      note = paired_rm_table_method_note(table),
-      title = "Repeated-measures test: continuous / ordinal",
-      type = "scale"
-    )
-  }
-  if (is.data.frame(result$count_table) && nrow(result$count_table) > 0) {
-    used_sheets <- add_paired_rm_grouped_excel_sheet(
-      workbook,
-      "Repeated n",
-      result$count_table,
-      used_sheets,
-      note = paired_rm_table_method_note(result$count_table),
-      title = "Repeated-measures test: binary",
-      type = "count"
-    )
-  }
-  if (length(used_sheets) == 0) {
-    used_sheets <- add_ttest_anova_result_sheet(
-      workbook,
-      "Repeated test",
-      result$table,
-      paired_rm_method_note(result),
-      used_sheets,
-      title = "Repeated-measures test"
-    )
-  }
-  if (is.data.frame(result$posthoc) && nrow(result$posthoc) > 0) {
-    used_sheets <- add_ttest_anova_result_sheet(
-      workbook,
-      "Posthoc",
-      result$posthoc,
-      paired_rm_posthoc_note(result),
-      used_sheets,
-      title = "Post-hoc pairwise comparisons"
-    )
-  }
-  if (isTRUE(result$options$assumption_check) && is.data.frame(result$assumption) && nrow(result$assumption) > 0) {
-    used_sheets <- add_ttest_anova_result_sheet(
-      workbook,
-      "Assumptions",
-      result$assumption,
-      "",
-      used_sheets,
-      title = "Assumption check"
-    )
-  }
-  if (is.data.frame(assumption_review) && nrow(assumption_review) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Assumption review", assumption_review, used_sheets, title = "Assumption review")
-  }
-  if (is.data.frame(result$skipped) && nrow(result$skipped) > 0) {
-    used_sheets <- add_ttest_anova_result_sheet(workbook, "Skipped", result$skipped, "", used_sheets, title = "Skipped repeated-measures rows")
-  }
-  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-  invisible(file)
+save_paired_rm_excel_file <- function (result, file)
+{
+    save_screen_excel_file(saved_paired_rm_results_html(result = result), file)
 }

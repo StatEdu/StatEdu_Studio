@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.1",
+  "public_text_hash_normalization": "CRLF and CR normalized to LF before SHA-256",
+  "purpose": "External SmartPLS/ADANCO saturated-model numerical comparison",
+  "profile": {
+    "id": "holzinger-swineford-first100-smartpls-student",
+    "intended_scope": "Deterministic first-100-row benchmark executed under the SmartPLS Student license (free limited, non-Professional)"
+  },
+  "generated_at_utc": "2026-08-23 01:16:27 UTC",
+  "statedu": {
+    "version": "1.2.4-dev",
+    "R": "R version 4.5.3 (2026-03-11 ucrt)",
+    "seminr": "2.5.0",
+    "lavaan": "0.7.2"
+  },
+  "data": {
+    "file": "HolzingerSwineford1939_first100_x1_x9.txt",
+    "sha256": "f95e19ec5474cda087f42d348fcee447ff3aa271009e021e43f9ed0c6cc52c32",
+    "source_file": "sample/HolzingerSwineford1939.csv",
+    "source_sha256": "140519c3e46920b38191d4cd9415fa33ddc40633294e6d3e30af82242f7b6204",
+    "rows": 100,
+    "indicators": ["x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9"],
+    "missing_cells": 0,
+    "row_selection": {
+      "index_basis": "1-based data rows excluding the header",
+      "start": 1,
+      "end": 100,
+      "count": 100,
+      "order": "source-file order preserved"
+    },
+    "external_format": "semicolon-delimited UTF-8 text without quoting",
+    "source": "lavaan::HolzingerSwineford1939",
+    "export": "utils::write.csv(lavaan::HolzingerSwineford1939, row.names = FALSE)",
+    "preprocessing": "seminr default mean replacement with standardized PLS results"
+  },
+  "model": {
+    "file": "sample/pls_external_benchmark.stmodel",
+    "sha256": "7c0ff1437e0f886ef174c4d3a943b979c65052dc0230e588c5e4500e1cabb5b6",
+    "constructs": {
+      "visual": ["x1", "x2", "x3"],
+      "textual": ["x4", "x5", "x6"],
+      "speed": ["x7", "x8", "x9"]
+    },
+    "structural_paths": ["visual -> textual", "visual -> speed", "textual -> speed"],
+    "ontology": "All constructs are reflective common factors initialized with Mode A weights"
+  },
+  "algorithm": {
+    "weighting_scheme": "path",
+    "maximum_iterations": 300,
+    "stop_criterion": 1e-07,
+    "missing_data": "mean replacement",
+    "sign_changes": "seminr default",
+    "fit_target": "saturated",
+    "fit_definition": "Local reflective measurement-model approximation with all construct correlations free; no estimated structural-model fit is claimed",
+    "external_iteration_note": "SmartPLS 4 uses a fixed 3,000-iteration maximum; numerical comparison is valid only when both implementations converge before StatEdu/seminr's 300-iteration maximum"
+  },
+  "external_run_required": {
+    "software": null,
+    "version": null,
+    "run_date": null,
+    "settings_confirmation": "Record the exact external software version; use standardized results, path weighting, +1 initial outer weights, the fixed 1e-7 stop criterion, and saturated-model output. SmartPLS 4 fixes its maximum at 3,000 iterations, so confirm convergence occurred before 300 iterations to match the StatEdu/seminr ceiling. The benchmark data contain no missing cells.",
+    "output_file": "external_fit_template.csv"
+  }
+}

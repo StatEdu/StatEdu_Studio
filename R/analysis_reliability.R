@@ -78,14 +78,63 @@ reliability_pearson_correlation <- function(matrix) {
   corr
 }
 
-reliability_polychoric_correlation <- function(matrix) {
+reliability_polychoric_pair_engine <- function() {
+  fallback <- list(fit = psych::polychoric, cached = FALSE)
+  result <- tryCatch({
+    if (as.character(utils::packageVersion("psych")) != "2.6.5" ||
+        as.character(utils::packageVersion("mnormt")) != "2.1.2") return(fallback)
+    ns <- asNamespace("psych")
+    expected <- c(
+      polychoric = "c34eddfeae4cf9d141ed825a6d296271246a24f4dc38c1213c1e3dd2e9ff2f3e",
+      polyc = "0ef6705cb458ea4deffebf23c9d25a46c4b73545b375170182a82308b77e61ba",
+      polyF = "79c96eecae8490207cf0b0b6b3b7d0e18ac33a1ecbb289c57a4d3bbc9de23ec6",
+      polyBinBvn = "6d16a0e9326d3db5240dabb5714511852afcfa8927951c8470671abb98dc2d73",
+      tableFast = "2c7b39b56591cd1eba441636d31f7936c347d3048fac14aa817c4e122fe0f381"
+    )
+    actual <- vapply(names(expected), function(name) {
+      f <- get(name, ns)
+      digest::digest(list(formals(f), body(f)), algo = "sha256")
+    }, character(1))
+    if (!identical(actual, expected)) return(fallback)
+    original <- get("polyc", ns)
+    cache <- new.env(parent = emptyenv())
+    order <- character(0)
+    cached <- function(...) {
+      args <- list(...)
+      key <- digest::digest(args, algo = "sha256")
+      entry <- cache[[key]]
+      if (!is.null(entry) && identical(args, entry$args, num.eq = FALSE)) return(entry$value)
+      quiet <- TRUE
+      seed_before <- get0(".Random.seed", .GlobalEnv, inherits = FALSE)
+      value <- withCallingHandlers(do.call(original, args),
+        warning = function(w) quiet <<- FALSE, message = function(m) quiet <<- FALSE)
+      if (quiet && identical(seed_before, get0(".Random.seed", .GlobalEnv, inherits = FALSE), num.eq = FALSE)) {
+        if (length(order) >= 128L) {
+          rm(list = order[[1L]], envir = cache)
+          order <<- order[-1L]
+        }
+        cache[[key]] <- list(args = args, value = value)
+        order <<- c(order, key)
+      }
+      value
+    }
+    env <- new.env(parent = ns)
+    env$polyc <- cached
+    fit <- get("polychoric", ns)
+    environment(fit) <- env
+    list(fit = fit, cached = TRUE)
+  }, error = function(e) NULL, warning = function(w) NULL)
+  if (is.null(result)) fallback else result
+}
+
+reliability_polychoric_correlation <- function(matrix, polychoric_fit = psych::polychoric) {
   matrix <- reliability_complete_matrix(matrix)
   ordered_matrix <- as.data.frame(lapply(matrix, function(values) ordered(values)), check.names = FALSE)
   names(ordered_matrix) <- names(matrix)
   rho <- NULL
   invisible(utils::capture.output({
     rho <- suppressWarnings(suppressMessages(tryCatch(
-      psych::polychoric(ordered_matrix, correct = 0)$rho,
+      polychoric_fit(ordered_matrix, correct = 0)$rho,
       error = function(e) NULL
     )))
   }))
@@ -167,9 +216,9 @@ reliability_pearson_values <- function(matrix) {
   )
 }
 
-reliability_ordinal_values <- function(matrix) {
+reliability_ordinal_values <- function(matrix, polychoric_fit = psych::polychoric) {
   matrix <- reliability_complete_matrix(matrix)
-  corr <- reliability_polychoric_correlation(matrix)
+  corr <- reliability_polychoric_correlation(matrix, polychoric_fit)
   c(
     ordinal_alpha = reliability_psych_alpha_from_correlation(corr, nrow(matrix)),
     ordinal_omega = reliability_psych_omega_from_correlation(corr, nrow(matrix))
@@ -225,12 +274,12 @@ reliability_item_descriptives <- function(matrix, variables, variable_info = NUL
   do.call(rbind, rows)
 }
 
-reliability_compute_value <- function(matrix, method, measurement) {
+reliability_compute_value <- function(matrix, method, measurement, polychoric_fit = psych::polychoric) {
   switch(
     method,
     kr20 = reliability_kr20_value(matrix),
     pearson = reliability_pearson_values(matrix),
-    ordinal = reliability_ordinal_values(matrix),
+    ordinal = reliability_ordinal_values(matrix, polychoric_fit),
     reliability_pearson_values(matrix)
   )
 }
@@ -256,7 +305,7 @@ reliability_format_decimal <- function(value) {
   format_decimal3(value[[1]])
 }
 
-reliability_item_diagnostics <- function(matrix, variables, method, measurement, variable_info = NULL, labels = character(0), category_table = NULL) {
+reliability_item_diagnostics <- function(matrix, variables, method, measurement, variable_info = NULL, labels = character(0), category_table = NULL, include_deleted_reliability = TRUE, polychoric_fit = psych::polychoric) {
   complete <- reliability_complete_matrix(matrix)
   total <- if (nrow(complete) > 0) rowSums(complete) else numeric(0)
   rows <- lapply(seq_along(variables), function(index) {
@@ -276,8 +325,14 @@ reliability_item_diagnostics <- function(matrix, variables, method, measurement,
     } else {
       NA_real_
     }
-    deletion_matrix <- matrix[, setdiff(variables, name), drop = FALSE]
-    deletion_value <- reliability_compute_value(deletion_matrix, method, measurement)
+    # KR-20 deletion estimates are deterministic and unused in a correlation-only
+    # report. Keep other estimators on their existing fitting/RNG path.
+    deletion_value <- if (identical(method, "kr20") && !isTRUE(include_deleted_reliability)) {
+      NA_real_
+    } else {
+      deletion_matrix <- matrix[, setdiff(variables, name), drop = FALSE]
+      reliability_compute_value(deletion_matrix, method, measurement, polychoric_fit)
+    }
     reliability_cells <- if (identical(method, "ordinal")) {
       list(
         `Ordinal alpha if item deleted` = reliability_format_decimal(deletion_value[["ordinal_alpha"]]),
@@ -303,6 +358,7 @@ reliability_item_diagnostics <- function(matrix, variables, method, measurement,
 }
 
 prepare_reliability_results <- function(data, variables, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("variables"))
   variables <- intersect(as.character(variables %||% character(0)), names(data))
   shiny::validate(shiny::need(length(variables) >= 2, "Select at least two items for reliability analysis."))
 
@@ -357,10 +413,17 @@ prepare_reliability_results <- function(data, variables, variable_info = NULL, l
   shiny::validate(shiny::need(!isTRUE(include_omega) || !identical(method, "pearson") || length(variables) >= 3, "Pearson omega requires at least three items."))
   shiny::validate(shiny::need(!isTRUE(include_omega) || !identical(method, "ordinal") || length(variables) >= 3, "Ordinal omega requires at least three items."))
 
-  value <- reliability_compute_value(matrix, method, measurement)
   details_enabled <- isTRUE(options$reliability_if_deleted) || isTRUE(options$item_total_correlation)
+  polychoric_fit <- if (identical(method, "ordinal")) psych::polychoric else NULL
+  if (identical(method, "ordinal") && details_enabled &&
+      ncol(matrix) >= 3L && ncol(matrix) <= 16L && nrow(matrix) >= 64L &&
+      all(vapply(matrix, function(x) !is.object(x) && all(is.finite(x)), logical(1)))) {
+    polychoric_fit <- reliability_polychoric_pair_engine()$fit
+  }
+  value <- reliability_compute_value(matrix, method, measurement, polychoric_fit)
   diagnostics <- if (details_enabled) {
-    reliability_item_diagnostics(matrix, variables, method, measurement, variable_info, labels, category_table)
+    reliability_item_diagnostics(matrix, variables, method, measurement, variable_info, labels, category_table,
+      include_deleted_reliability = isTRUE(options$reliability_if_deleted), polychoric_fit = polychoric_fit)
   } else {
     NULL
   }

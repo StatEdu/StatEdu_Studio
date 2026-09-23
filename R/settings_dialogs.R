@@ -258,36 +258,39 @@ open_file_dialog <- function(title, filetypes) {
   path
 }
 
-open_settings_file <- function() {
-  filetypes <- "{{StatEdu Studio Settings} {.studio}}"
+open_settings_file <- function(language = statedu_initial_language()) {
+  label <- statedu_t("file_dialog.settings_files", language)
+  filetypes <- paste0("{{", label, "} {.studio}}")
   attr(filetypes, "windows_filters") <- matrix(
     c(
-      "StatEdu Studio Settings", "*.studio"
+      label, "*.studio"
     ),
     ncol = 2,
     byrow = TRUE
   )
-  open_file_dialog("Open StatEdu Studio Settings", filetypes)
+  open_file_dialog(statedu_t("file_dialog.open_settings", language), filetypes)
 }
 
-open_data_file <- function() {
+open_data_file <- function(language = statedu_initial_language()) {
   filetypes <- "{{Data files} {.sav .sas7bdat .xpt .dta .xlsx .xls .csv .dat}} {{SPSS SAV} {.sav}} {{SAS} {.sas7bdat .xpt}} {{Stata} {.dta}} {{Excel} {.xlsx .xls}} {{CSV} {.csv}} {{DAT} {.dat}} {{All files} *}"
+  filetypes <- sub("Data files", statedu_t("file_dialog.data_files", language), filetypes, fixed=TRUE)
+  filetypes <- sub("All files", statedu_t("file_dialog.all_files", language), filetypes, fixed=TRUE)
   attr(filetypes, "windows_filters") <- matrix(
     c(
-      "Data files", "*.sav;*.sas7bdat;*.xpt;*.dta;*.xlsx;*.xls;*.csv;*.dat",
+      statedu_t("file_dialog.data_files", language), "*.sav;*.sas7bdat;*.xpt;*.dta;*.xlsx;*.xls;*.csv;*.dat",
       "SPSS SAV", "*.sav",
       "SAS", "*.sas7bdat;*.xpt",
       "Stata", "*.dta",
       "Excel", "*.xlsx;*.xls",
       "CSV", "*.csv",
       "DAT", "*.dat",
-      "All files", "*.*"
+      statedu_t("file_dialog.all_files", language), "*.*"
     ),
     ncol = 2,
     byrow = TRUE
   )
   path <- open_file_dialog(
-    "Open StatEdu Studio Data",
+    statedu_t("file_dialog.open_data", language),
     filetypes
   )
   if (is.null(path) || !supported_data_file_extension(path)) {
@@ -322,11 +325,13 @@ settings_save_initial_dir <- function(initial_dir = NULL) {
   if (dir.exists(initial_dir)) initial_dir else ""
 }
 
-save_settings_file <- function(initial_dir = NULL) {
+save_settings_file <- function(initial_dir = NULL, language = statedu_initial_language()) {
   initial_dir <- settings_save_initial_dir(initial_dir)
-  windows_filters <- matrix(c("StatEdu Studio Settings", "*.studio"), ncol = 2, byrow = TRUE)
+  title <- statedu_t("file_dialog.save_settings", language)
+  label <- statedu_t("file_dialog.settings_files", language)
+  windows_filters <- matrix(c(label, "*.studio"), ncol = 2, byrow = TRUE)
   windows_result <- windows_save_file_dialog(
-    "Save StatEdu Studio Settings",
+    title,
     windows_filters,
     initial_dir = initial_dir,
     default_ext = "studio"
@@ -345,10 +350,10 @@ save_settings_file <- function(initial_dir = NULL) {
         on.exit(try(tcltk::tkdestroy(parent), silent = TRUE), add = TRUE)
         args <- list(
           parent = parent,
-          title = "Save StatEdu Studio Settings",
+          title = title,
           initialfile = "",
           defaultextension = ".studio",
-          filetypes = "{{StatEdu Studio Settings} {.studio}}"
+          filetypes = paste0("{{", label, "} {.studio}}")
         )
         if (nzchar(initial_dir)) {
           args$initialdir <- initial_dir
@@ -358,9 +363,9 @@ save_settings_file <- function(initial_dir = NULL) {
         default_path <- if (nzchar(initial_dir)) file.path(initial_dir, "") else ""
         utils::choose.files(
           default = default_path,
-          caption = "Save StatEdu Studio Settings",
+          caption = title,
           multi = FALSE,
-          filters = matrix(c("StatEdu Studio Settings", "*.studio"), ncol = 2, byrow = TRUE)
+          filters = windows_filters
         )
       } else {
         character(0)
@@ -393,23 +398,26 @@ normalize_complex_sample_design_save_path <- function(path) {
   paste0(path, ".stdesign")
 }
 
-open_complex_sample_design_file <- function() {
-  filetypes <- "{{StatEdu Complex Sample Design} {.stdesign}}"
+open_complex_sample_design_file <- function(language = statedu_initial_language()) {
+  label <- statedu_t("file_dialog.design_files", language)
+  filetypes <- paste0("{{", label, "} {.stdesign}}")
   attr(filetypes, "windows_filters") <- matrix(
     c(
-      "StatEdu Complex Sample Design", "*.stdesign"
+      label, "*.stdesign"
     ),
     ncol = 2,
     byrow = TRUE
   )
-  open_file_dialog("Open StatEdu Complex Sample Design", filetypes)
+  open_file_dialog(statedu_t("file_dialog.open_design", language), filetypes)
 }
 
-save_complex_sample_design_file <- function(initial_dir = NULL) {
+save_complex_sample_design_file <- function(initial_dir = NULL, language = statedu_initial_language()) {
   initial_dir <- settings_save_initial_dir(initial_dir)
-  windows_filters <- matrix(c("StatEdu Complex Sample Design", "*.stdesign"), ncol = 2, byrow = TRUE)
+  title <- statedu_t("file_dialog.save_design", language)
+  label <- statedu_t("file_dialog.design_files", language)
+  windows_filters <- matrix(c(label, "*.stdesign"), ncol = 2, byrow = TRUE)
   windows_result <- windows_save_file_dialog(
-    "Save StatEdu Complex Sample Design",
+    title,
     windows_filters,
     initial_dir = initial_dir,
     default_ext = "stdesign"
@@ -428,10 +436,10 @@ save_complex_sample_design_file <- function(initial_dir = NULL) {
         on.exit(try(tcltk::tkdestroy(parent), silent = TRUE), add = TRUE)
         args <- list(
           parent = parent,
-          title = "Save StatEdu Complex Sample Design",
+          title = title,
           initialfile = "",
           defaultextension = ".stdesign",
-          filetypes = "{{StatEdu Complex Sample Design} {.stdesign}}"
+          filetypes = paste0("{{", label, "} {.stdesign}}")
         )
         if (nzchar(initial_dir)) {
           args$initialdir <- initial_dir
@@ -441,9 +449,9 @@ save_complex_sample_design_file <- function(initial_dir = NULL) {
         default_path <- if (nzchar(initial_dir)) file.path(initial_dir, "") else ""
         utils::choose.files(
           default = default_path,
-          caption = "Save StatEdu Complex Sample Design",
+          caption = title,
           multi = FALSE,
-          filters = matrix(c("StatEdu Complex Sample Design", "*.stdesign"), ncol = 2, byrow = TRUE)
+          filters = windows_filters
         )
       } else {
         character(0)
@@ -459,8 +467,8 @@ save_complex_sample_design_file <- function(initial_dir = NULL) {
   normalize_complex_sample_design_save_path(path[[1]])
 }
 
-choose_default_save_dir <- function(initial_dir = NULL) {
-  title <- "Choose default file save location"
+choose_default_save_dir <- function(initial_dir = NULL, language = statedu_initial_language()) {
+  title <- statedu_t("file_dialog.choose_default_folder", language)
   initial_dir <- settings_save_initial_dir(initial_dir)
   windows_result <- windows_select_directory_dialog(title, initial_dir)
   if (isTRUE(windows_result$attempted)) {

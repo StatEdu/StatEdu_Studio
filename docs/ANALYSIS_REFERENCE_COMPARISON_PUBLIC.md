@@ -1,16 +1,88 @@
-# Validation Reference Comparison
+# Validation results
 
-This public-facing validation summary lists reference checks for features exposed in the public 1.2 application.
+Reference version: **1.3.0**
 
-## Summary
+## 1. Assessment and scope
 
-- Analysis calculations are compared with base R, contributed R packages, or explicit automatic decision rules.
-- Sample-size calculations are compared with G*Power-equivalent formulas, public R packages, or literature-based formulas.
-- Effect-size calculations are compared with `effectsize` or equivalent standard formulas.
+**Major results generally agreed with the comparators under the tested data and analysis conditions. Identified calculation and display issues were corrected and retested; remaining differences and execution limits are retained in the comparison tables.**
 
-## Public 1.2 Analysis Reference Checks
+This page summarizes cumulative validation incorporated into public release 1.3.0, including comparisons performed during its development. The version column identifies the release incorporating the findings, not a claim that every case was newly rerun on the final 1.3.0 installer.
 
-The public 1.2 validation set covers direct analysis calculations and automatic decision paths for the visible Analysis menu. Automatic paths include sparse-cell Fisher switching, non-normal correlation switching to Spearman, t-test/ANOVA switching to Mann-Whitney, Welch, or Kruskal-Wallis, inter-rater agreement recommended-index selection, mixed repeated-measures ANOVA assumption checks, GLM family detection, count-model overdispersion selection, and Mediation / Moderation Custom Model canvas mapping.
+**1.3.0 rerun:** Fresh HS100 PLS and PLSc runs in SmartPLS 4.1.1.8 Student matched **6/6 displayed saturated SRMR, d_ULS and d_G values**, within three-decimal rounding precision (absolute error ≤ .0005). Both runs took 26 iterations. Historical TAM results below are not counted as rerun evidence.
+
+- Agreement means agreement for the tested items under the stated conditions and tolerance.
+- Cases are runs, models or conditions, not independent projects or sample sizes.
+- Reruns, numeric cells and export formats are not added into an overall case count or pass rate.
+- Archived-case comparisons, fixed benchmarks, R/formula checks and export checks are distinct evidence.
+
+## 2. Numerical comparisons using archived cases
+
+SPSS, AMOS and SmartPLS case comparisons and GEE follow-up checks contributed to 1.3.0. Checks with different data or conditions remain separate.
+
+### General analyses, regression and structural models
+
+| Analysis | Cases / unit | Comparator | Result and remaining conditions | Release incorporating validation |
+|---|---|---|---|---|
+| Descriptives | 31 runs | SPSS | 3,141/3,141 cells agree | 1.3.0 |
+| Frequencies | 28 runs | SPSS | 503/503 cells agree | 1.3.0 |
+| Pearson correlation | 8 runs | SPSS | 1,662/1,662 cells agree | 1.3.0 |
+| Crosstabs | 21 runs | SPSS | 228/228 cells agree | 1.3.0 |
+| Reliability | 40 runs | SPSS | 692/692 cells agree | 1.3.0 |
+| Independent / paired t tests | 42 runs | SPSS | 3,496/3,496 cells agree | 1.3.0 |
+| One-way ANOVA | 115 runs | SPSS | 3,100/3,100 cells agree | 1.3.0 |
+| ANOVA post hoc tests | 284 runs | SPSS | 13,184/13,184 adjusted p-value cells agree; Scheffe and Games–Howell | 1.3.0 |
+| ANCOVA | 55 runs | SPSS | 1,090/1,090 cells agree; one-factor additive Type III models | 1.3.0 |
+| Linear regression | 9 runs | SPSS | 436/436 cells agree | 1.3.0 |
+| Binary logistic regression | 7 runs | SPSS | 455/455 cells agree after precision correction | 1.3.0 |
+| Repeated-measures ANOVA, limited scope | 2 runs | SPSS | 36/36 cells agree | 1.3.0 |
+| Mixed repeated-measures ANOVA | 35 runs | SPSS | 1,610/1,610 cells agree after sphericity/GG/HF correction | 1.3.0 |
+| Mann–Whitney U | 5 runs | SPSS | 24/24 cells agree after aligning displayed z and p conventions | 1.3.0 |
+| Kruskal–Wallis | 5 runs | SPSS | 54/54 cells agree | 1.3.0 |
+| Friedman | 36 runs | SPSS | 144/144 cells agree | 1.3.0 |
+| Wilcoxon signed-rank | 1 run | SPSS | One p-value difference remains due to continuity correction; uncorrected diagnostic agrees | 1.3.0 |
+| Cox regression | 11 runs | SPSS | 66/66 cells agree under stricter SPSS convergence; 17 default-setting differences remain | 1.3.0 |
+| LMM | 90 models | SPSS / independent calculation | 2,854/2,895 values agree; independent checks support Studio for the remaining 41, but raw differences are retained | 1.3.0 |
+| PCA / Varimax | 50 models | SPSS / common rerotation | Common rerotation agrees in 49/50; original-loading maximum difference is within 1e-4 in 9/50; 10 item assignments differ in one model | 1.3.0 |
+| CFA / SEM combined | 55 targets; 50 comparable | Archived AMOS output | 49/50 agree within 0.0005; one coding issue needs confirmation, five lack data; bootstrap excluded | 1.3.0 |
+| PLS-SEM / PLSc | 9 report models | Archived SmartPLS output | Original-sample paths agree in 7/9; two estimation refusals; bootstrap and predictive checks excluded | 1.3.0 |
+| PLS-SEM, separate report | 1 model | Archived research report | 7/7 structural paths agree at three-decimal precision; separate from the nine SmartPLS models | 1.3.0 |
+
+CFA and SEM retain the combined unit in the source record. AMOS and SmartPLS case comparisons concern original-sample results, not a full bootstrap replication.
+
+### GEE: default package path and SPSS comparison records
+
+The current default geepack checks are distinct from the experimental SPSS-compatible path and corrected-data checks. Model counts across these rows are not summed.
+
+| Analysis | Cases / unit | Comparator | Result and remaining conditions | Release incorporating validation |
+|---|---|---|---|---|
+| GEE, archived-model follow-up | 80 attempted models | SPSS-compatible options | 72 successful, 2,388/2,388 values agree; 8 failures retained at that stage | 1.3.0 |
+| GEE, corrected data | 3 models × 2 convergence settings | Actual SPSS reruns | 160/160 cells agree; separate from the original-data failures | 1.3.0 |
+| GEE, experimental implementation | 5 models | SPSS comparison records | 264/264 cells agree; distinct from the default geepack path | 1.3.0 |
+| GEE, default package path | 16 conditions | Direct geepack | 96 metric groups / 9,936 numeric elements agree; maximum difference 0 | 1.3.0 |
+| GEE, weights / offset / missingness | 12 conditions | Direct geepack | 72 metric groups agree; three integration rechecks are not additional independent cases | 1.3.0 |
+
+
+## 3. Fixed cross-software benchmarks
+
+### Validation Evidence and Cross-Software Agreement
+
+These benchmarks fix data, models, missing-data handling and estimation options. They are separate from the archived-case counts above, with software conventions matched explicitly.
+
+| External software | Validation scope | Agreement | Numerical evidence |
+|---|---|---|---|
+| IBM SPSS Statistics 31.0.1.0 | Crosstabs, correlation, reliability, t/ANOVA, rank tests, linear/logistic regression, ANCOVA, repeated measures | Match | 66/66 core values pass; maximum absolute error 2.19e-8 |
+| IBM SPSS Statistics 31.0.1.0 | Kaplan–Meier, log-rank, Cox regression | Match | 50/50 KM event-time values pass; maximum Cox error 3.81e-12 |
+| IBM SPSS Amos 23.0.0.0 | Holzinger–Swineford three-factor ML-CFA | Match | 30/30 values pass under Wishart ML; maximum absolute error 1.03e-6 |
+| SmartPLS 4.1.1.8 | TAM 100-row PLS/PLSc | Match | SRMR, d_G, d_ULS, and seven structural paths pass; non-estimable PLSc d_G is N/A in both |
+| SmartPLS 4.1.1.8 | TAM 100-row ML-CB-SEM | Match | 25/25 displayed fit and structural-path values pass |
+
+Normal/Wishart ML, percentile algorithms and Mann–Whitney display rules require matched definitions. Numerical agreement does not establish research-design assumptions or causal validity.
+
+## 4. R and formula reference checks
+
+### Analysis calculations and automatic decisions
+
+PASS below refers to the specified R references and decision paths. It does not override the remaining SPSS default-output differences above.
 
 | Menu | Case | Metric | Status |
 |---|---|---|---|
@@ -45,9 +117,9 @@ The public 1.2 validation set covers direct analysis calculations and automatic 
 | Factor Analysis | PAF one-factor loadings | absolute loadings | PASS |
 | Mediation / Moderation Custom Model | Canvas snapshot mapping | node roles, paths, moderators, and invalid-edge filtering | PASS |
 
-## Sample Size Reference Checks
+### Sample-size calculators
 
-The following public calculators have representative validation checks:
+Representative conditions are compared with reference formulas and packages. G*Power-equivalent denotes equivalent formulas, not an actual G*Power run. GEE, LMM, Cox and SEM entries here concern planning calculators, not fitted analysis engines.
 
 | Scope | Method | Comparator | Decision |
 |---|---|---|---|
@@ -71,11 +143,9 @@ The following public calculators have representative validation checks:
 | Beyond G*Power | Precision / CI | normal CI precision formula | match |
 | Beyond G*Power | SEM / CFA | `WebPower::wp.sem.rmsea` | match |
 
-GEE, LMM, survival/Cox, cluster, and SEM/CFA entries above refer to Sample Size calculators, not to public 1.2 Analysis workflows.
+### Effect-size calculators
 
-## Effect Size Reference Checks
-
-The following public calculator checks compare representative StatEdu Studio effect-size results with the `effectsize` package or equivalent standard formulas. SEM/CFA is not shown in the Effect Size menu because those quantities are planning diagnostics rather than conventional reportable effect-size outputs.
+All 27 representative items agreed with `effectsize` or standard formulas using the same definitions. SEM/CFA planning diagnostics are distinct from conventional reportable effects and are not included in this menu.
 
 | Method | Compared effect size | Condition | StatEdu Studio value | Reference value | Difference | Decision |
 |---|---|---|---:|---:|---:|---|
@@ -107,4 +177,40 @@ The following public calculator checks compare representative StatEdu Studio eff
 | Reliability / Agreement | Alpha difference | alpha=.80 vs reference=.70, items=5 | 0.100000 | 0.100000 | 0 | match |
 | Reliability / Agreement | Average inter-item r | alpha=.80 vs reference=.70, items=5 | 0.444444 | 0.444444 | 0 | match |
 
-Summary: all 27 public effect-size comparison items matched the reference definition.
+## 5. Analysis export validation
+
+In 1.3.0, content and structure checks passed for 179 cases across 22 analysis families and 716 HTML/PDF/Word/Excel files. Subsequent regeneration used the same cases and is not counted again. This is neither visual inspection of every page nor an external numerical comparison.
+
+| Analysis family | Cases | Files across four formats |
+|---|---:|---:|
+| Frequencies / descriptives | 5 | 20 |
+| Reliability | 7 | 28 |
+| Correlation | 8 | 32 |
+| Crosstabs | 8 | 32 |
+| t tests / ANOVA | 8 | 32 |
+| ANCOVA | 8 | 32 |
+| Paired tests | 9 | 36 |
+| Paired / repeated measures | 8 | 32 |
+| One-group repeated-measures ANOVA | 8 | 32 |
+| Mixed repeated-measures ANOVA | 8 | 32 |
+| Nonparametric tests | 8 | 32 |
+| Paired nonparametric tests | 9 | 36 |
+| Regression | 8 | 32 |
+| Hierarchical regression | 8 | 32 |
+| Logistic regression | 8 | 32 |
+| Exploratory factor analysis | 8 | 32 |
+| PCA | 9 | 36 |
+| Mediation / moderation | 8 | 32 |
+| Generalized models | 9 | 36 |
+| Longitudinal models | 9 | 36 |
+| Survival analysis | 9 | 36 |
+| Inter-rater agreement | 9 | 36 |
+
+### Subsequent export and interface checks
+
+| Release incorporating validation | Scope |
+|---|---|
+| 1.3.0 | Preserved eight figures, 13 tables / 413 cells and four notes from one representative survival result; checked 40 Word/Excel guidance items in the existing nine longitudinal cases |
+| 1.3.0 | Checked four model canvases, button placement, PNG exports, report figures, regression notes and PDF covers/layout |
+
+These are export/interface checks, not additional external numerical-comparison cases.

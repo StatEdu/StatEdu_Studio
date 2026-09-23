@@ -1383,6 +1383,14 @@ register_recode_same_handlers <- function(
     mark_settings_dirty = mark_settings_dirty
   )
 
+  register_analysis_reorder(input, session, "recode_same_selected", function(payload) {
+    updated <- analysis_reorder_items(selected_variables(), payload)
+    if (isTRUE(updated$changed)) {
+      selected_variables(updated$order)
+      mark_settings_dirty()
+    }
+  })
+
   observeEvent(input$recode_same_up, {
     updated <- move_order_item(selected_variables(), input$recode_same_selected, "up")
     if (isTRUE(updated$changed)) {
@@ -1840,6 +1848,14 @@ register_coding_error_check_handlers <- function(
     }
   )
 
+  register_analysis_reorder(input, session, "coding_error_selected", function(payload) {
+    updated <- analysis_reorder_items(selected_variables(), payload)
+    if (isTRUE(updated$changed)) {
+      selected_variables(updated$order)
+      mark_settings_dirty()
+    }
+  })
+
   observeEvent(input$coding_error_up, {
     updated <- move_order_item(selected_variables(), input$coding_error_selected, "up")
     if (isTRUE(updated$changed)) {
@@ -2262,6 +2278,14 @@ register_recode_different_handlers <- function(
     }
   )
 
+  register_analysis_reorder(input, session, "recode_different_selected", function(payload) {
+    updated <- analysis_reorder_items(selected_variables(), payload)
+    if (isTRUE(updated$changed)) {
+      selected_variables(updated$order)
+      mark_settings_dirty()
+    }
+  })
+
   observeEvent(input$recode_different_up, {
     updated <- move_order_item(selected_variables(), input$recode_different_selected, "up")
     if (isTRUE(updated$changed)) {
@@ -2529,6 +2553,17 @@ register_variable_calculation_handlers <- function(
       reliability_result(NULL)
     }
   )
+
+  register_analysis_reorder(input, session, "variable_calculation_selected", function(payload) {
+    updated <- analysis_reorder_items(selected_variables(), payload)
+    if (isTRUE(updated$changed)) {
+      selected_variables(updated$order)
+      preview_data(data.frame(check.names = FALSE))
+      output_variables(character(0))
+      reliability_result(NULL)
+      mark_settings_dirty()
+    }
+  })
 
   observeEvent(input$variable_calculation_up, {
     updated <- move_order_item(selected_variables(), input$variable_calculation_selected, "up")

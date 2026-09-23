@@ -25,7 +25,8 @@ longitudinal_correlation_choices <- function() {
     "Exchangeable" = "exchangeable",
     "AR(1)" = "ar1",
     "Independence" = "independence",
-    "Unstructured" = "unstructured"
+    "Unstructured" = "unstructured",
+    "Experimental: SPSS compatibility (custom GEE)" = "unstructured_adjusted"
   )
 }
 
@@ -525,7 +526,7 @@ longitudinal_fit_count_screen_model <- function(
   }
   if (identical(model_type, "glmm")) {
     random <- longitudinal_mixed_random_terms(id, time, cluster, random_slope)
-    mixed_formula <- stats::as.formula(paste(deparse(formula), "+", paste(random, collapse = " + ")))
+    mixed_formula <- stats::as.formula(paste(paste(deparse(formula), collapse = " "), "+", paste(random, collapse = " + ")))
     return(tryCatch({
       if (identical(family, "negative_binomial")) {
         if (is.null(weights)) {
@@ -782,7 +783,9 @@ longitudinal_missing_by_time_summary <- function(raw_prepared, time, outcome, va
       check.names = FALSE
     )
   })
-  analysis_bind_rows(rows)
+  output <- analysis_bind_rows(rows)
+  attr(output, "result_user_columns") <- "Time"
+  output
 }
 
 longitudinal_prepare_data <- function(
@@ -997,6 +1000,104 @@ longitudinal_coef_table_from_matrix <- function(coef_matrix, exponentiate = FALS
   table
 }
 
+# Refine the same REML objective using automatic-differentiation gradient/Hessian.
+longitudinal_reml_newton <- function(par, fn, gr, hessian) {
+  warm <- optim(par, fn, gr, method='BFGS', control=list(reltol=1e-12,maxit=1000))
+  par <- warm$par
+  for (iteration in seq_len(50)) {
+    g <- drop(gr(par)); H <- hessian(par)
+    if(any(!is.finite(g)) || any(!is.finite(H)))stop('Nonfinite REML derivatives')
+    if(max(abs(g))<1e-8)break
+    step <- drop(solve(H,g));old <- fn(par); accepted<-FALSE
+    for (j in 0:25) {
+      trial <- par-step*2^-j; value<-fn(trial)
+      if(is.finite(value) && value <= old+1e-12*max(1,abs(old)) && max(abs(gr(trial)))<max(abs(g))) {
+        par<-trial;accepted<-TRUE;break
+      }
+    }
+    if(!accepted)break
+  }
+  gradient <- max(abs(gr(par)))
+  curvature <- eigen(hessian(par), symmetric = TRUE, only.values = TRUE)$values
+  list(par=par,objective=fn(par),convergence=if(gradient<1e-7 && min(curvature)>0)0L else 1L,
+       message=paste('REML gradient maximum',format(gradient,digits=16)),iterations=iteration,
+       gradient_max=gradient)
+}
+attr(longitudinal_reml_newton,'use_hessian') <- TRUE
+
+# Shared computational backend for the repeated-covariance LMM modes.
+longitudinal_repeated_lmm <- function(data, outcome, id, time, terms,
+                                      covariance = c("UN", "AR1")) {
+  covariance <- match.arg(covariance)
+  if (!requireNamespace("mmrm", quietly = TRUE)) {
+    stop("Repeated LMM requires the mmrm package.", call. = FALSE)
+  }
+  formula <- longitudinal_formula(outcome, terms)
+  frame <- model.frame(formula, data, na.action = na.fail)
+  response <- model.response(frame)
+  design <- model.matrix(formula, frame)
+  if (!is.numeric(response) || is.matrix(response) || any(!is.finite(response)) ||
+      qr(design)$rank != ncol(design)) {
+    stop("Repeated LMM requires a finite numeric outcome and full-rank design.", call. = FALSE)
+  }
+  pairs <- data[, c(id, time), drop = FALSE]
+  if (anyNA(pairs) || anyDuplicated(pairs)) {
+    stop("Repeated LMM requires unique, nonmissing subject/time pairs.", call. = FALSE)
+  }
+  response_scale <- sd(response)
+  if (!is.finite(response_scale) || response_scale <= 0) {
+    stop("Repeated LMM requires outcome variation.", call. = FALSE)
+  }
+  x <- design[, -1, drop = FALSE]
+  scales <- apply(x, 2, sd)
+  scales[!is.finite(scales) | scales == 0] <- 1
+  d <- data.frame(.response = response / response_scale,
+                  .subject = factor(data[[id]]),
+                  .occasion = factor(data[[time]], levels = sort(unique(data[[time]]))))
+  if (nlevels(d$.occasion) < 2) stop("Repeated LMM requires at least two occasions.", call. = FALSE)
+  xnames <- if (ncol(x)) paste0(".x", seq_len(ncol(x))) else character(0)
+  if (ncol(x)) d[xnames] <- as.data.frame(sweep(x, 2, scales, `/`))
+  model_formula <- as.formula(paste(".response ~", paste(c("1", xnames,
+    if (covariance == "UN") "us(.occasion | .subject)" else "ar1(.occasion | .subject)"), collapse = " + ")))
+  model <- mmrm::mmrm(model_formula, data = d, reml = TRUE,
+    control = mmrm::mmrm_control(method = "Satterthwaite", accept_singular = FALSE,
+      start = if (covariance == "UN") mmrm::emp_start else mmrm::std_start,
+      optimizers = list(Newton = longitudinal_reml_newton)))
+  cf <- summary(model)$coefficients
+  cf[, 1:2] <- cf[, 1:2] * (response_scale / c(1, scales))
+  rownames(cf) <- colnames(design)
+  if (any(!is.finite(cf)) || any(cf[, 2] <= 0) || any(cf[, 3] <= 0)) {
+    stop("Repeated LMM returned invalid coefficient inference.", call. = FALSE)
+  }
+  critical <- qt(.975, cf[, 3])
+  table <- data.frame(Term = rownames(cf), B = cf[, 1], SE = cf[, 2],
+    df = cf[, 3], Statistic = cf[, 4], p = cf[, 5],
+    LLCI = cf[, 1] - critical * cf[, 2], ULCI = cf[, 1] + critical * cf[, 2],
+    row.names = NULL, check.names = FALSE)
+  adapter <- stats::lm(formula, data = data)
+  adapter$coefficients <- setNames(cf[, 1], colnames(design))
+  adapter$fitted.values <- drop(design %*% adapter$coefficients)
+  adapter$residuals <- response - adapter$fitted.values
+  adapter$repeated_coefficients <- cf
+  multiplier <- response_scale / c(1, scales)
+  adapter$repeated_vcov <- stats::vcov(model) * outer(multiplier, multiplier)
+  dimnames(adapter$repeated_vcov) <- list(colnames(design), colnames(design))
+  adapter$repeated_covariance <- covariance
+  adapter$gradient_max <- model$opt_details$gradient_max
+  class(adapter) <- c("statedu_repeated_lmm", class(adapter))
+  list(model = adapter, coef_table = table, covariance = covariance, method = "REML",
+       df_method = "Satterthwaite", gradient_max = model$opt_details$gradient_max)
+}
+
+summary.statedu_repeated_lmm <- function(object, ...) list(coefficients = object$repeated_coefficients)
+vcov.statedu_repeated_lmm <- function(object, ...) object$repeated_vcov
+logLik.statedu_repeated_lmm <- function(object, ...) structure(NA_real_, class = "logLik", df = length(coef(object)), nobs = nobs(object))
+predict.statedu_repeated_lmm <- function(object, newdata = NULL, se.fit = FALSE, interval = "none", ...) {
+  if (isTRUE(se.fit) || !identical(interval, "none")) stop("Repeated LMM prediction intervals are not implemented.", call. = FALSE)
+  class(object) <- setdiff(class(object), "statedu_repeated_lmm")
+  stats::predict(object, newdata = newdata, se.fit = FALSE, interval = "none", ...)
+}
+
 longitudinal_lmm_coef_table <- function(model) {
   longitudinal_coef_table_from_matrix(summary(model)$coefficients, exponentiate = FALSE)
 }
@@ -1026,12 +1127,12 @@ longitudinal_panel_coef_table <- function(model) {
   longitudinal_coef_table_from_matrix(test, exponentiate = FALSE)
 }
 
-longitudinal_panel_driscoll_kraay_summary <- function(model) {
-  hc1 <- lmtest::coeftest(model, vcov. = plm::vcovHC(model, type = "HC1", cluster = "group"))
+longitudinal_panel_driscoll_kraay_summary <- function(model, hc1_table = NULL) {
+  hc1 <- if (is.null(hc1_table)) lmtest::coeftest(model, vcov. = plm::vcovHC(model, type = "HC1", cluster = "group")) else NULL
   dk <- lmtest::coeftest(model, vcov. = plm::vcovSCC(model, type = "HC1"))
-  hc1_se <- suppressWarnings(as.numeric(hc1[, 2]))
+  hc1_se <- if (is.null(hc1_table)) suppressWarnings(as.numeric(hc1[, 2])) else hc1_table$SE
   dk_se <- suppressWarnings(as.numeric(dk[, 2]))
-  names(hc1_se) <- rownames(hc1)
+  names(hc1_se) <- if (is.null(hc1_table)) rownames(hc1) else hc1_table$Term
   names(dk_se) <- rownames(dk)
   shared <- intersect(names(hc1_se), names(dk_se))
   ratios <- dk_se[shared] / hc1_se[shared]
@@ -1045,6 +1146,195 @@ longitudinal_panel_driscoll_kraay_summary <- function(model) {
     longitudinal_format_number_static(stats::median(ratios)),
     length(ratios)
   )
+}
+
+longitudinal_gee_check_unstructured <- function(alpha) {
+  if (!length(alpha)) return(invisible(NULL))
+  k <- (1 + sqrt(1 + 8 * length(alpha))) / 2
+  if (k != as.integer(k) || any(!is.finite(alpha))) {
+    stop("GEE returned an invalid working correlation matrix; estimates were not accepted.", call. = FALSE)
+  }
+  correlation <- diag(as.integer(k))
+  # geepack orders pairs 1:2, 1:3, ..., 2:3, matching the lower triangle.
+  correlation[lower.tri(correlation)] <- alpha
+  correlation <- correlation + t(correlation) - diag(as.integer(k))
+  values <- eigen(correlation, symmetric = TRUE, only.values = TRUE)$values
+  if (min(values) <= sqrt(.Machine$double.eps) * max(values)) {
+    stop(paste0("GEE working correlation is singular or numerically non-positive-definite; ",
+      "estimates were not accepted. Check within-subject outcome variation and repeated measurements."), call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+longitudinal_gee_adjusted <- function(formula, data, family) {
+  # Pearson scale uses N-p; each observed time-pair moment uses n_pair-p.
+  # Iterate the marginal score, then compute the subject-level sandwich covariance.
+  # This path intentionally supports unweighted observations only.
+ f <- formula; d <- data
+  mf <- model.frame(f, d, na.action = na.fail)
+  x <- model.matrix(f, mf); y <- model.response(mf)
+  offset <- model.offset(mf); if (is.null(offset)) offset <- rep(0, length(y))
+  n <- length(y); p <- ncol(x)
+  if (!is.numeric(y) || is.matrix(y) || any(!is.finite(y)) || qr(x)$rank < p || n <= p)
+    stop('Adjusted GEE requires a finite numeric outcome and full-rank design.', call. = FALSE)
+  if (!family$family %in% c('gaussian', 'binomial', 'Gamma', 'poisson'))
+    stop('Unsupported adjusted GEE family.', call. = FALSE)
+  if (identical(family$family, 'Gamma') && any(y <= 0))
+    stop(sprintf('Gamma GEE requires strictly positive outcomes; %d analyzed rows contain zero or negative values. Review the outcome and family; values were not replaced.', sum(y <= 0)), call. = FALSE)
+  if (anyNA(d[, c('.statedu_gee_id', '.statedu_gee_waves'), drop = FALSE]))
+    stop('Adjusted GEE requires nonmissing subject IDs and times.', call. = FALSE)
+ groups<-split(seq_len(n),d$.statedu_gee_id);wave<-match(d$.statedu_gee_waves,sort(unique(d$.statedu_gee_waves)));k<-max(wave)
+ if(anyDuplicated(data.frame(d$.statedu_gee_id,wave)))stop('duplicate subject/time')
+ fit<-glm(f,d,family=family,control=glm.control(epsilon=1e-12,maxit=100));beta<-coef(fit)
+ # Solve the score in scaled coordinates, then restore the original parameters.
+ original_x <- x
+ scale_x <- apply(x, 2, stats::sd)
+ scale_x[!is.finite(scale_x) | scale_x == 0] <- 1
+ transform_x <- diag(1 / scale_x, ncol(x))
+ intercept_x <- match('(Intercept)', colnames(x))
+ if (!is.na(intercept_x)) {
+   centers_x <- colMeans(x); centers_x[intercept_x] <- 0
+   transform_x[intercept_x, ] <- transform_x[intercept_x, ] - centers_x / scale_x
+ }
+ x <- original_x %*% transform_x
+ beta <- drop(solve(transform_x, beta))
+ compute<-function(beta){
+  eta<-drop(x%*%beta)+offset;mu<-family$linkinv(eta);v<-family$variance(mu);der<-family$mu.eta(eta)
+  if(any(!is.finite(v)|v<=0))stop('invalid variance')
+  r<-(y-mu)/sqrt(v);phi<-sum(r^2)/(n-p)
+  sums<-counts<-matrix(0,k,k)
+  for(ii in groups){w<-wave[ii];sums[w,w]<-sums[w,w]+outer(r[ii],r[ii]);counts[w,w]<-counts[w,w]+1}
+  if (!is.finite(phi) || phi <= 0 || any(counts[row(counts)!=col(counts)] <= p))
+    stop('Adjusted GEE requires more observed subjects per time pair than regression parameters.', call. = FALSE)
+  corr<-sums/((counts-p)*phi);diag(corr)<-1
+  if(any(!is.finite(corr)))stop('unestimable correlation', call. = FALSE)
+  bread<-matrix(0,p,p);score<-numeric(p);meat<-matrix(0,p,p)
+  for(ii in groups){
+   vv<-corr[wave[ii],wave[ii],drop=FALSE]*outer(sqrt(v[ii]),sqrt(v[ii]))*phi
+   di<-x[ii,,drop=FALSE]*der[ii];wi<-solve(vv);u<-drop(t(di)%*%wi%*%(y[ii]-mu[ii]))
+   bread<-bread+crossprod(di,wi%*%di);score<-score+u;meat<-meat+outer(u,u)
+  }
+  list(bread=bread,score=score,meat=meat,corr=corr,phi=phi)
+ }
+ converged<-FALSE
+ for(iter in 1:100){s<-compute(beta);step<-drop(solve(s$bread,s$score));beta<-beta+step
+  if(max(abs(step))<1e-10){converged<-TRUE;break}
+ }
+ if(!converged)stop(sprintf('Adjusted GEE did not converge after %d iterations (maximum scaled coefficient step %.6g; required < 1e-10). Estimates were not accepted. Review the model and working correlation.', iter, max(abs(step))), call. = FALSE)
+ s<-compute(beta);inv<-solve(s$bread);cov<-inv%*%s$meat%*%inv
+ ev<-eigen(s$corr,symmetric=TRUE,only.values=TRUE)$values
+ if(min(ev)<=sqrt(.Machine$double.eps)*max(ev))stop(sprintf('Adjusted GEE working correlation is %s (minimum eigenvalue %.6g). Estimates were not accepted. Review within-subject variation and the working correlation structure.', if (min(ev) < 0) 'not positive definite' else 'singular or numerically near-singular', min(ev)), call. = FALSE)
+ beta <- drop(transform_x %*% beta)
+ names(beta) <- colnames(original_x)
+ cov <- transform_x %*% cov %*% t(transform_x)
+ x <- original_x
+ se<-sqrt(diag(cov));wald<-(beta/se)^2
+  if (any(!is.finite(se) | se <= 0)) stop('Invalid adjusted GEE coefficient variances.', call. = FALSE)
+  fit$coefficients <- beta
+  fit$linear.predictors <- drop(x %*% beta) + offset
+  fit$fitted.values <- family$linkinv(fit$linear.predictors)
+  fit$residuals <- (y - fit$fitted.values) / family$mu.eta(fit$linear.predictors)
+  fit$deviance <- sum(family$dev.resids(y, fit$fitted.values, rep(1, n)))
+  fit$iter <- iter; fit$converged <- TRUE; fit$aic <- NA_real_
+  fit$geese <- list(error = 0, alpha = s$corr[lower.tri(s$corr)], gamma = s$phi, vbeta = cov)
+  fit$adjusted_coefficients <- cbind(Estimate = beta, `Std. Error` = se, Wald = wald,
+                                    `Pr(>|W|)` = pchisq(wald, 1, lower.tail = FALSE))
+  attr(fit, 'statedu_requested_corstr') <- 'unstructured_adjusted'
+  class(fit) <- c('statedu_adjusted_gee', class(fit))
+  fit
+}
+
+summary.statedu_adjusted_gee <- function(object, ...) {
+  list(coefficients = object$adjusted_coefficients, dispersion = object$geese$gamma)
+}
+
+vcov.statedu_adjusted_gee <- function(object, ...) {
+  result <- object$geese$vbeta
+  dimnames(result) <- list(names(coef(object)), names(coef(object)))
+  result
+}
+
+predict.statedu_adjusted_gee <- function(object, newdata = NULL, type = c("link", "response", "terms"), se.fit = FALSE, ...) {
+  if (isTRUE(se.fit)) stop("Prediction standard errors are not implemented for adjusted GEE.", call. = FALSE)
+  type <- match.arg(type)
+  class(object) <- setdiff(class(object), "statedu_adjusted_gee")
+  stats::predict(object, newdata = newdata, type = type, se.fit = FALSE, ...)
+}
+
+logLik.statedu_adjusted_gee <- function(object, ...) {
+  structure(NA_real_, class = "logLik", df = length(coef(object)), nobs = nobs(object))
+}
+
+longitudinal_gee_check_simple_correlation <- function(corstr, alpha, id, waves) {
+  if (!corstr %in% c("exchangeable", "ar1")) return(invisible(NULL))
+  if (length(alpha) != 1L || !is.finite(alpha)) {
+    stop("GEE returned an invalid working correlation parameter; estimates were not accepted.", call. = FALSE)
+  }
+  groups <- split(waves, id)
+  previous_correlation <- NULL
+  for (wave in groups) {
+    if (length(wave) < 2L) next
+    correlation <- if (identical(corstr, "exchangeable")) {
+      value <- matrix(alpha, length(wave), length(wave))
+      diag(value) <- 1
+      value
+    } else outer(wave, wave, function(a, b) alpha^abs(a - b))
+    if (any(!is.finite(correlation))) {
+      stop("GEE returned an invalid working correlation matrix; estimates were not accepted.", call. = FALSE)
+    }
+    # Identical matrices have already passed the same eigenvalue check in this call.
+    if (identical(correlation, previous_correlation, num.eq = FALSE)) next
+    values <- eigen(correlation, symmetric = TRUE, only.values = TRUE)$values
+    if (min(values) <= sqrt(.Machine$double.eps) * max(values)) {
+      stop(sprintf("GEE %s working correlation is singular or numerically non-positive-definite (minimum eigenvalue %.6g); estimates were not accepted.", corstr, min(values)), call. = FALSE)
+    }
+    previous_correlation <- correlation
+  }
+  invisible(NULL)
+}
+
+longitudinal_gee_fit <- function(formula, data, family, corstr, weighted = FALSE) {
+  requested <- corstr
+  if (identical(corstr, "unstructured_adjusted")) {
+    if (isTRUE(weighted)) stop("Adjusted unstructured GEE does not yet support observation weights.", call. = FALSE)
+    return(longitudinal_gee_adjusted(formula, data, family))
+  }
+  if (identical(corstr, "unstructured")) {
+    pairs <- data[, c(".statedu_gee_id", ".statedu_gee_waves"), drop = FALSE]
+    if (anyNA(pairs) || anyDuplicated(pairs)) {
+      stop("Unstructured GEE requires a unique, nonmissing time for each subject observation.", call. = FALSE)
+    }
+    wave_count <- length(unique(pairs$.statedu_gee_waves))
+    # With two occasions there is exactly one correlation parameter in either model.
+    if (wave_count == 2L) corstr <- "exchangeable"
+    if (wave_count < 2L) corstr <- "independence"
+  }
+  arguments <- list(formula = formula, data = data, family = family,
+                    id = data$.statedu_gee_id, waves = data$.statedu_gee_waves,
+                    corstr = corstr, control = geepack::geese.control(epsilon = 1e-10, maxit = 100))
+  if (isTRUE(weighted)) arguments$weights <- data$.statedu_weights
+  model <- if (identical(corstr, "unstructured")) {
+    # Native geepack failures cannot be caught by tryCatch in the Shiny process.
+    tryCatch(callr::r(function(arguments) {
+      do.call(geepack::geeglm, arguments)
+    }, args = list(arguments = arguments), libpath = .libPaths(), timeout = 120),
+    error = function(e) stop(paste0("Unstructured GEE could not complete in its isolated R process. ",
+      "No replacement correlation model was fitted. Details: ", conditionMessage(e)), call. = FALSE))
+  } else do.call(geepack::geeglm, arguments)
+  if (!is.null(model$geese$error) && model$geese$error != 0) {
+    stop("GEE did not converge; estimates were not accepted. Review the model and working correlation.", call. = FALSE)
+  }
+  if (identical(requested, "unstructured")) {
+    longitudinal_gee_check_unstructured(model$geese$alpha)
+  }
+  longitudinal_gee_check_simple_correlation(corstr, model$geese$alpha, data$.statedu_gee_id, data$.statedu_gee_waves)
+  variances <- diag(model$geese$vbeta)
+  if (any(!is.finite(stats::coef(model))) || length(variances) == 0L ||
+      any(!is.finite(variances) | variances <= 0)) {
+    stop("GEE returned invalid coefficient variances; estimates were not accepted.", call. = FALSE)
+  }
+  attr(model, "statedu_requested_corstr") <- requested
+  model
 }
 
 longitudinal_fit_model <- function(data, outcome, id, time, terms, model_type, family, corstr, random_slope = FALSE, exponentiate = FALSE, weights = NULL, cluster = character(0), offset = character(0)) {
@@ -1078,31 +1368,25 @@ longitudinal_fit_model <- function(data, outcome, id, time, terms, model_type, f
     }
     data$.statedu_gee_id <- data[[id]]
     data$.statedu_gee_waves <- data[[time]]
-    model <- if (is.null(weights)) {
-      geepack::geeglm(
-        formula,
-        id = .statedu_gee_id,
-        waves = .statedu_gee_waves,
-        data = data,
-        family = longitudinal_family_object(family, formula, data, weights),
-        corstr = corstr
-      )
-    } else {
-      geepack::geeglm(
-        formula,
-        id = .statedu_gee_id,
-        waves = .statedu_gee_waves,
-        data = data,
-        weights = .statedu_weights,
-        family = longitudinal_family_object(family, formula, data, weights),
-        corstr = corstr
-      )
-    }
-    return(list(model = model, formula = formula, coef_table = longitudinal_gee_coef_table(model, exponentiate), aic = NA_real_, bic = NA_real_, fit_note = NULL))
+    model <- longitudinal_gee_fit(formula, data,
+      longitudinal_family_object(family, formula, data, weights), corstr,
+      weighted = !is.null(weights))
+    return(list(model = model, formula = formula, coef_table = longitudinal_gee_coef_table(model, exponentiate), aic = NA_real_, bic = NA_real_, fit_note = if (identical(corstr, "unstructured_adjusted"))
+      c("Experimental SPSS compatibility mode: custom GEE estimator, not the geepack estimator. This mode is not the default analysis.",
+        "Unstructured GEE with parameter-count correlation correction (SPSS ADJUSTCORR=YES), Pearson scale divided by N-p, and robust sandwich standard errors. Observation weights are not supported in this mode.") else NULL))
   }
   if (identical(model_type, "lmm")) {
+    if (corstr %in% c("reml_un", "reml_ar1")) {
+      if (!is.null(weights) || length(cluster) || length(offset) || isTRUE(random_slope)) {
+        stop("Repeated REML LMM supports one subject ID without observation weights, offsets, or additional random effects.", call. = FALSE)
+      }
+      repeated <- longitudinal_repeated_lmm(data, outcome, id, time, terms,
+        if (corstr == "reml_un") "UN" else "AR1")
+      return(list(model = repeated$model, formula = formula, coef_table = repeated$coef_table,
+        aic = NA_real_, bic = NA_real_, fit_note = sprintf("Repeated-measures LMM: REML, %s residual covariance, Satterthwaite degrees of freedom and t-based confidence intervals. No random effects were fitted.", repeated$covariance)))
+    }
     random <- longitudinal_mixed_random_terms(id, time, cluster, random_slope)
-    mixed_formula <- stats::as.formula(paste(deparse(formula), "+", paste(random, collapse = " + ")))
+    mixed_formula <- stats::as.formula(paste(paste(deparse(formula), collapse = " "), "+", paste(random, collapse = " + ")))
     model <- if (is.null(weights)) {
       lmerTest::lmer(mixed_formula, data = data, REML = FALSE)
     } else {
@@ -1112,7 +1396,7 @@ longitudinal_fit_model <- function(data, outcome, id, time, terms, model_type, f
   }
   if (identical(model_type, "glmm")) {
     random <- longitudinal_mixed_random_terms(id, time, cluster, random_slope)
-    mixed_formula <- stats::as.formula(paste(deparse(formula), "+", paste(random, collapse = " + ")))
+    mixed_formula <- stats::as.formula(paste(paste(deparse(formula), collapse = " "), "+", paste(random, collapse = " + ")))
     if (identical(family, "negative_binomial")) {
       model <- if (is.null(weights)) {
         lme4::glmer.nb(
@@ -1302,7 +1586,7 @@ longitudinal_check_random_effect_group <- function(id, time = NULL, random_slope
   } else {
     ""
   }
-  longitudinal_assumption_row(
+  row <- longitudinal_assumption_row(
     "Random-effects structure",
     "Reviewed",
     interpretation = if (isTRUE(random_slope)) {
@@ -1316,6 +1600,10 @@ longitudinal_check_random_effect_group <- function(id, time = NULL, random_slope
       "Add a random slope only when subject-specific time trends are substantively expected and supported by the data."
     }
   )
+  attr(row, "longitudinal_structure_messages") <- list(list(
+    source = row$Interpretation, id = id_label, time = time_label,
+    slope = isTRUE(random_slope), cluster = if (nzchar(cluster_text)) cluster_label else NULL))
+  row
 }
 
 longitudinal_check_mixed_convergence <- function(model) {
@@ -1565,7 +1853,37 @@ longitudinal_check_cross_section_dependence <- function(model, model_type) {
   )
 }
 
-longitudinal_check_hausman <- function(data, formula, id, time, model_type) {
+longitudinal_hausman_test <- function(data, formula, id, time) {
+  fixed <- plm::plm(formula, data = data, index = c(id, time), model = "within", effect = "individual")
+  random <- plm::plm(formula, data = data, index = c(id, time), model = "random", effect = "individual")
+  plm::phtest(fixed, random)
+}
+
+longitudinal_hausman_provider <- function(data, formula, id, time) {
+  force(data); force(formula); force(id); force(time)
+  ready <- FALSE
+  cached <- NULL
+  rng_state <- function() {
+    if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) get(".Random.seed", envir = .GlobalEnv) else NULL
+  }
+  function() {
+    if (ready) return(cached)
+    quiet <- TRUE
+    before <- rng_state()
+    value <- withCallingHandlers(
+      longitudinal_hausman_test(data, formula, id, time),
+      warning = function(w) quiet <<- FALSE,
+      message = function(m) quiet <<- FALSE
+    )
+    if (quiet && identical(before, rng_state())) {
+      cached <<- value
+      ready <<- TRUE
+    }
+    value
+  }
+}
+
+longitudinal_check_hausman <- function(data, formula, id, time, model_type, hausman_provider = NULL) {
   if (!model_type %in% c("panel_fe", "panel_re")) {
     return(longitudinal_assumption_row(
       "FE vs RE assumption",
@@ -1583,9 +1901,7 @@ longitudinal_check_hausman <- function(data, formula, id, time, model_type) {
     ))
   }
   test <- tryCatch({
-    fixed <- plm::plm(formula, data = data, index = c(id, time), model = "within", effect = "individual")
-    random <- plm::plm(formula, data = data, index = c(id, time), model = "random", effect = "individual")
-    plm::phtest(fixed, random)
+    if (is.null(hausman_provider)) longitudinal_hausman_test(data, formula, id, time) else hausman_provider()
   }, error = function(e) NULL)
   if (is.null(test)) {
     return(longitudinal_assumption_row(
@@ -1632,9 +1948,18 @@ longitudinal_assumption_checks <- function(
   cluster = character(0),
   random_slope = FALSE,
   variable_info = NULL,
-  check_options = NULL
+  check_options = NULL,
+  hausman_provider = NULL
 ) {
   residuals <- longitudinal_residual_values(model, model_type)
+  if (inherits(model, "statedu_repeated_lmm")) {
+    checks <- list(longitudinal_assumption_row("REML convergence", "Verified",
+      statistic = model$gradient_max, interpretation = "The REML gradient and positive curvature checks passed."),
+      longitudinal_assumption_row("Repeated covariance", "Reviewed",
+        interpretation = paste("Residual covariance:", model$repeated_covariance, "; no random effects fitted.")))
+    if (longitudinal_check_enabled(check_options, "residual_normality")) checks[[3]] <- longitudinal_check_normality(residuals, family)
+    return(list(checks = analysis_bind_rows(checks), recommendations = "Review residual plots and the scientific suitability of the selected repeated covariance."))
+  }
   checks <- switch(
     as.character(model_type %||% "gee")[[1]],
     gee = list(
@@ -1663,11 +1988,11 @@ longitudinal_assumption_checks <- function(
       if (longitudinal_check_enabled(check_options, "heteroskedasticity")) longitudinal_check_heteroskedasticity(data, formula, family) else NULL,
       if (longitudinal_check_enabled(check_options, "serial_correlation")) longitudinal_check_serial_correlation(model, model_type, data, residuals, id, time) else NULL,
       if (longitudinal_check_enabled(check_options, "cross_section")) longitudinal_check_cross_section_dependence(model, model_type) else NULL,
-      if (longitudinal_check_enabled(check_options, "hausman")) longitudinal_check_hausman(data, formula, id, time, model_type) else NULL
+      if (longitudinal_check_enabled(check_options, "hausman")) longitudinal_check_hausman(data, formula, id, time, model_type, hausman_provider) else NULL
     ),
     panel_re = list(
       if (longitudinal_check_enabled(check_options, "exogeneity")) longitudinal_check_panel_exogeneity(model_type) else NULL,
-      if (longitudinal_check_enabled(check_options, "hausman")) longitudinal_check_hausman(data, formula, id, time, model_type) else NULL,
+      if (longitudinal_check_enabled(check_options, "hausman")) longitudinal_check_hausman(data, formula, id, time, model_type, hausman_provider) else NULL,
       if (longitudinal_check_enabled(check_options, "heteroskedasticity")) longitudinal_check_heteroskedasticity(data, formula, family) else NULL,
       if (longitudinal_check_enabled(check_options, "serial_correlation")) longitudinal_check_serial_correlation(model, model_type, data, residuals, id, time) else NULL,
       if (longitudinal_check_enabled(check_options, "cross_section")) longitudinal_check_cross_section_dependence(model, model_type) else NULL
@@ -1677,7 +2002,10 @@ longitudinal_assumption_checks <- function(
     )
   )
   checks <- Filter(Negate(is.null), checks)
+  structure_messages <- unlist(lapply(checks, attr,
+    which = "longitudinal_structure_messages", exact = TRUE), recursive = FALSE)
   checks <- analysis_bind_rows(checks)
+  if (length(structure_messages)) attr(checks, "longitudinal_structure_messages") <- structure_messages
   if (!is.data.frame(checks) || nrow(checks) == 0) {
     return(list(
       checks = data.frame(),
@@ -1754,6 +2082,10 @@ longitudinal_format_number_static <- function(value) {
 }
 
 longitudinal_fit_details <- function(model, model_type) {
+  if (inherits(model, "statedu_repeated_lmm")) {
+    return(data.frame(Item = c("Estimator", "Residual covariance", "Degrees of freedom", "Maximum REML gradient"),
+      Value = c("REML (mmrm)", model$repeated_covariance, "Satterthwaite", format(model$gradient_max, digits = 8)), check.names = FALSE))
+  }
   details <- data.frame(Item = character(0), Value = character(0), stringsAsFactors = FALSE, check.names = FALSE)
   add_row <- function(item, value) {
     details <<- rbind(details, data.frame(Item = item, Value = as.character(value %||% ""), stringsAsFactors = FALSE, check.names = FALSE))
@@ -1865,8 +2197,11 @@ longitudinal_sensitivity_analysis_results <- function(
   exponentiate = FALSE,
   weights = NULL,
   cluster = character(0),
-  offset = character(0)
+  offset = character(0),
+  selected_fit = NULL,
+  hausman_provider = NULL
 ) {
+  if (identical(model_type, "lmm") && corstr %in% c("reml_un", "reml_ar1")) return(data.frame())
   rows <- list()
   add_row <- function(...) {
     rows[[length(rows) + 1L]] <<- longitudinal_sensitivity_row(...)
@@ -1875,7 +2210,8 @@ longitudinal_sensitivity_analysis_results <- function(
     correlation_structures <- unique(c(corstr, "independence", "exchangeable", "ar1"))
     for (candidate in correlation_structures) {
       fit <- tryCatch(
-        longitudinal_fit_model(data, outcome, id, time, terms, "gee", family, candidate, random_slope = FALSE, exponentiate = exponentiate, weights = weights, cluster = cluster, offset = offset),
+        if (!is.null(selected_fit) && identical(candidate, corstr)) selected_fit else
+          longitudinal_fit_model(data, outcome, id, time, terms, "gee", family, candidate, random_slope = FALSE, exponentiate = exponentiate, weights = weights, cluster = cluster, offset = offset),
         error = function(e) e
       )
       if (inherits(fit, "error")) {
@@ -1898,7 +2234,8 @@ longitudinal_sensitivity_analysis_results <- function(
     for (candidate_slope in slope_options) {
       label <- if (isTRUE(candidate_slope)) "Random intercept + random slope for time" else "Random intercept only"
       fit <- tryCatch(
-        longitudinal_fit_model(data, outcome, id, time, terms, model_type, family, corstr, random_slope = candidate_slope, exponentiate = exponentiate, weights = weights, cluster = cluster, offset = offset),
+        if (!is.null(selected_fit) && identical(candidate_slope, random_slope)) selected_fit else
+          longitudinal_fit_model(data, outcome, id, time, terms, model_type, family, corstr, random_slope = candidate_slope, exponentiate = exponentiate, weights = weights, cluster = cluster, offset = offset),
         error = function(e) e
       )
       if (inherits(fit, "error")) {
@@ -1917,9 +2254,19 @@ longitudinal_sensitivity_analysis_results <- function(
       }
     }
   } else if (model_type %in% c("panel_fe", "panel_re")) {
+    panel_rng_state <- function() {
+      if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) get(".Random.seed", envir = .GlobalEnv) else NULL
+    }
     for (candidate_type in c("panel_fe", "panel_re")) {
+      panel_quiet <- TRUE
+      panel_rng_before <- panel_rng_state()
       fit <- tryCatch(
-        longitudinal_fit_model(data, outcome, id, time, terms, candidate_type, family, corstr, random_slope = FALSE, exponentiate = FALSE, weights = weights, cluster = cluster, offset = offset),
+        withCallingHandlers(
+          if (!is.null(selected_fit) && identical(candidate_type, model_type)) selected_fit else
+            longitudinal_fit_model(data, outcome, id, time, terms, candidate_type, family, corstr, random_slope = FALSE, exponentiate = FALSE, weights = weights, cluster = cluster, offset = offset),
+          warning = function(w) panel_quiet <<- FALSE,
+          message = function(m) panel_quiet <<- FALSE
+        ),
         error = function(e) e
       )
       label <- if (identical(candidate_type, "panel_fe")) "Panel fixed effects" else "Panel random effects"
@@ -1934,7 +2281,9 @@ longitudinal_sensitivity_analysis_results <- function(
           "Available",
           "Compare FE and RE estimates and interpret with the Hausman test and study design."
         )
-        dk_summary <- tryCatch(longitudinal_panel_driscoll_kraay_summary(fit$model), error = function(e) e)
+        hc1_table <- if (panel_quiet && identical(panel_rng_before, panel_rng_state()) &&
+          all(c("Term", "SE") %in% names(fit$coef_table))) fit$coef_table else NULL
+        dk_summary <- tryCatch(longitudinal_panel_driscoll_kraay_summary(fit$model, hc1_table), error = function(e) e)
         if (inherits(dk_summary, "error")) {
           add_row(
             "Panel covariance sensitivity",
@@ -1958,9 +2307,7 @@ longitudinal_sensitivity_analysis_results <- function(
     }
     hausman <- tryCatch({
       formula <- longitudinal_formula(outcome, terms, offset = offset)
-      fixed <- plm::plm(formula, data = data, index = c(id, time), model = "within", effect = "individual")
-      random <- plm::plm(formula, data = data, index = c(id, time), model = "random", effect = "individual")
-      plm::phtest(fixed, random)
+      if (is.null(hausman_provider)) longitudinal_hausman_test(data, formula, id, time) else hausman_provider()
     }, error = function(e) e)
     if (inherits(hausman, "error")) {
       add_row("Panel model sensitivity", "Hausman FE vs RE", "Failed", "p-value", "", conditionMessage(hausman))
@@ -1975,7 +2322,9 @@ longitudinal_sensitivity_analysis_results <- function(
       )
     }
   }
-  analysis_bind_rows(rows)
+  table <- analysis_bind_rows(rows)
+  attr(table, "longitudinal_sensitivity_comparison") <- TRUE
+  table
 }
 
 longitudinal_trim_weights <- function(weights, trim = "none") {
@@ -2036,7 +2385,7 @@ longitudinal_ipw_diagnostics <- function(probability, weights, clipped_probabili
   } else {
     NA_integer_
   }
-  data.frame(
+  output <- data.frame(
     Item = c(
       "IPW observation model variables",
       "Predicted observation probability: min",
@@ -2062,6 +2411,8 @@ longitudinal_ipw_diagnostics <- function(probability, weights, clipped_probabili
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+  if (length(model_terms) > 0) attr(output, "result_user_cells") <- matrix(c(1, 2), ncol = 2)
+  output
 }
 
 longitudinal_weight_summary_table <- function(
@@ -2105,7 +2456,13 @@ longitudinal_weight_summary_table <- function(
   ) |>
     (function(table) {
       if (is.data.frame(ipw_diagnostics) && nrow(ipw_diagnostics) > 0) {
-        rbind(table, ipw_diagnostics)
+        output <- rbind(table, ipw_diagnostics)
+        cells <- attr(ipw_diagnostics, "result_user_cells", exact = TRUE)
+        if (is.matrix(cells) && ncol(cells) == 2L && nrow(cells) > 0L) {
+          cells[, 1L] <- cells[, 1L] + nrow(table)
+          attr(output, "result_user_cells") <- cells
+        }
+        output
       } else {
         table
       }
@@ -2673,7 +3030,7 @@ longitudinal_manuscript_text <- function(result) {
   } else {
     "Software and package versions should be reported."
   }
-  data.frame(
+  table <- data.frame(
     Section = c("Methods", "Results", "Assumptions", "Sensitivity", "Software"),
     SuggestedText = c(
       sprintf("%s %s %s %s %s", result$model_rationale %||% "", data_summary, missing_summary, weight_sentence, missing_engine_sentence),
@@ -2685,10 +3042,23 @@ longitudinal_manuscript_text <- function(result) {
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+  # Retain generated message boundaries for UI localization. Do not infer them
+  # later from periods, which may belong to variable names or package versions.
+  attr(table, "longitudinal_manuscript_parts") <- list(
+    source = table$SuggestedText,
+    rows = list(
+      c(result$model_rationale %||% "", data_summary, missing_summary, weight_sentence, missing_engine_sentence),
+      c(effect_sentence, exp_sentence), assumption_sentence,
+      c(sensitivity_result_sentence, result$sensitivity_recommendations %||% "Sensitivity analyses should be reported when feasible."),
+      software_summary))
+  table
 }
 
 longitudinal_publication_notes <- function(result) {
-  estimand <- if (identical(result$model_type, "gee")) {
+  repeated_reml <- identical(result$model_type, "lmm") && result$corstr %in% c("reml_un", "reml_ar1")
+  estimand <- if (isTRUE(repeated_reml)) {
+    "marginal mean effects"
+  } else if (identical(result$model_type, "gee")) {
     "population-averaged effects"
   } else if (result$model_type %in% c("lmm", "glmm")) {
     "subject-specific effects"
@@ -2699,7 +3069,9 @@ longitudinal_publication_notes <- function(result) {
   } else {
     "longitudinal model estimates"
   }
-  se_note <- if (identical(result$model_type, "gee")) {
+  se_note <- if (isTRUE(repeated_reml)) {
+    "REML model-based standard errors, Satterthwaite degrees of freedom, and t-based 95% confidence intervals are reported."
+  } else if (identical(result$model_type, "gee")) {
     "GEE standard errors use robust sandwich inference."
   } else if (result$model_type %in% c("panel_fe", "panel_re")) {
     "Panel regression coefficient standard errors use group-clustered HC1 robust covariance."
@@ -2771,7 +3143,7 @@ longitudinal_publication_notes <- function(result) {
 
 longitudinal_reporting_checklist <- function(result) {
   assumption_count <- if (is.data.frame(result$assumption_checks)) nrow(result$assumption_checks) else 0L
-  data.frame(
+  output <- data.frame(
     Item = c(
       "Model rationale",
       "Data structure summarized",
@@ -2820,6 +3192,15 @@ longitudinal_reporting_checklist <- function(result) {
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+  if (is.data.frame(result$weight_summary) && nrow(result$weight_summary) > 0) {
+    attr(output, "longitudinal_weight_details") <- list(
+      source = output$Details[output$Item == "Analysis weights described"],
+      table = result$weight_summary)
+  }
+  attr(output, "longitudinal_checklist_messages") <- list(
+    recommendations = list(item = "Recommended alternatives provided", messages = result$recommendations %||% character(0)),
+    sensitivity = list(item = "Sensitivity analysis suggested", messages = result$sensitivity_recommendations %||% character(0)))
+  output
 }
 
 prepare_longitudinal_analysis_result <- function(
@@ -2851,6 +3232,7 @@ prepare_longitudinal_analysis_result <- function(
   variable_info = NULL,
   reference_values = character(0)
 ) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("outcome", "id", "time", "exposure", "cluster", "predictors", "covariates", "weight", "ipw_auxiliary"))
   data_names <- names(data)
   outcome <- intersect(as.character(outcome %||% character(0)), data_names)
   id <- intersect(as.character(id %||% character(0)), data_names)
@@ -2956,16 +3338,46 @@ prepare_longitudinal_analysis_result <- function(
     )
     model_family <- count_selection$family
   }
+  fit_warnings <- character(0)
+  fit_quiet <- TRUE
+  fit_rng_state <- function() {
+    if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) get(".Random.seed", envir = .GlobalEnv) else NULL
+  }
+  fit_rng_before <- fit_rng_state()
   fit <- tryCatch(
-    longitudinal_fit_model(prepared$data, outcome, id, time, terms, model_type, model_family, corstr, random_slope, exponentiate && model_family %in% longitudinal_log_ratio_families(), weights = analysis_weights$weights, cluster = effective_cluster, offset = offset_variable),
+    withCallingHandlers(
+      longitudinal_fit_model(prepared$data, outcome, id, time, terms, model_type, model_family, corstr, random_slope, exponentiate && model_family %in% longitudinal_log_ratio_families(), weights = analysis_weights$weights, cluster = effective_cluster, offset = offset_variable),
+      warning = function(w) {
+        fit_quiet <<- FALSE
+        fit_warnings <<- unique(c(fit_warnings, conditionMessage(w)))
+      },
+      message = function(m) fit_quiet <<- FALSE
+    ),
     error = function(e) e
   )
   if (inherits(fit, "error")) {
     results <- list()
-    attr(results, "warnings") <- preflight$warnings
+    attr(results, "warnings") <- if (length(fit_warnings)) rbind(preflight$warnings,
+      longitudinal_guard_row(outcome, id, time, terms, paste(fit_warnings, collapse = "\n"), prepared$n, variable_info, type = "Warning")) else preflight$warnings
     attr(results, "skipped") <- longitudinal_guard_row(outcome, id, time, terms, conditionMessage(fit), prepared$n, variable_info)
     return(results)
   }
+  # Reuse only the same quiet, deterministic fit within this analysis.
+  sensitivity_fit <- if (((model_type %in% c("panel_fe", "panel_re") &&
+    identical(model_family, "gaussian") && identical(random_slope, FALSE) &&
+    is.null(analysis_weights$weights)) || (identical(model_type, "lmm") &&
+    identical(model_family, "gaussian") && inherits(fit$model, "lmerMod")) ||
+    (identical(model_type, "gee") &&
+    model_family %in% c("gaussian", "binomial", "poisson", "gamma") &&
+    corstr %in% c("independence", "exchangeable", "ar1") &&
+    identical(random_slope, FALSE)) ||
+    (identical(model_type, "glmm") && model_family %in% c("binomial", "poisson", "gamma") &&
+      (!identical(model_family, "gamma") || identical(random_slope, FALSE)) &&
+      (identical(random_slope, FALSE) || identical(random_slope, TRUE)))) && fit_quiet &&
+    identical(fit_rng_before, fit_rng_state())) fit else NULL
+  hausman_provider <- if (model_type %in% c("panel_fe", "panel_re")) {
+    longitudinal_hausman_provider(prepared$data, formula, id, time)
+  } else NULL
   result <- list(
     model = fit$model,
     model_type = model_type,
@@ -3063,7 +3475,9 @@ prepare_longitudinal_analysis_result <- function(
       exponentiate && model_family %in% longitudinal_log_ratio_families(),
       weights = analysis_weights$weights,
       cluster = effective_cluster,
-      offset = offset_variable
+      offset = offset_variable,
+      selected_fit = sensitivity_fit,
+      hausman_provider = hausman_provider
     ),
     software_versions = longitudinal_software_versions(model_type),
     coef_table = fit$coef_table,
@@ -3071,13 +3485,22 @@ prepare_longitudinal_analysis_result <- function(
     exponentiate = exponentiate && model_family %in% longitudinal_log_ratio_families(),
     notes = c(
       fit$fit_note %||% character(0),
+      if (length(fit_warnings)) paste0("R package warning: ", fit_warnings),
       if (length(offset_variable) == 1) sprintf("Exposure offset applied as log(%s) for the fitted count/rate model.", display_variable_name_static(offset_variable, variable_info, character(0), label_only = TRUE)) else character(0),
       if (length(ignored_cluster) == 1) sprintf("Cluster ID %s was selected but is not used by the selected GEE/panel primary fit.", display_variable_name_static(ignored_cluster, variable_info, character(0), label_only = TRUE)) else character(0),
       longitudinal_model_notes(model_type, model_family, corstr, random_slope, exponentiate, id, time, effective_cluster, variable_info)
     )
   )
+  result$package_warnings <- if (length(fit_warnings))
+    data.frame(Message = fit_warnings, stringsAsFactors = FALSE) else data.frame()
+  if (inherits(fit$model, "statedu_repeated_lmm")) {
+    result$model_rationale <- sprintf("Repeated-measures marginal linear model with %s residual covariance, REML estimation and Satterthwaite coefficient inference.", fit$model$repeated_covariance)
+    result$notes <- fit$fit_note
+    result$sensitivity_recommendations <- "When scientifically justified, compare UN and AR(1) residual covariance by fitting each selected structure. Automatic sensitivity fits were not run."
+    result$software_versions <- data.frame(Software = c("R", "mmrm"), Version = c(paste(R.version$major, R.version$minor, sep = "."), as.character(utils::packageVersion("mmrm"))))
+  }
   if (isTRUE(assumption_checks)) {
-    review <- longitudinal_assumption_checks(prepared$data, fit$model, model_type, model_family, formula, id, time, corstr, effective_cluster, random_slope, variable_info, check_options)
+    review <- longitudinal_assumption_checks(prepared$data, fit$model, model_type, model_family, formula, id, time, corstr, effective_cluster, random_slope, variable_info, check_options, hausman_provider)
     result$assumption_checks <- review$checks
     result$recommendations <- review$recommendations
   } else {

@@ -1,5 +1,14 @@
 # Wide-to-long reshape command for the Data Editor menu.
 
+wide_long_error_text <- function(error, language) {
+  message <- conditionMessage(error)
+  keys <- c("no_rows", "repeated", "source", "dimensions", "save_dialog", "groups", "missing_source", "indicator")
+  english <- vapply(keys, function(key) statedu_t(paste0("wide_long.error.", key), "en"), character(1))
+  index <- match(message, english)
+  if (is.na(index)) return(message)
+  statedu_t(paste0("wide_long.error.", keys[[index]]), language)
+}
+
 wide_long_empty_groups <- function() {
   data.frame(
     variable = character(0),
@@ -79,7 +88,7 @@ wide_long_time_order <- function(values) {
 
 wide_long_manual_time_values <- function(text, variables) {
   variables <- as.character(variables %||% character(0))
-  lines <- trimws(unlist(strsplit(as.character(text %||% ""), "\\r?\\n")))
+  lines <- trimws(unlist(strsplit(as.character(text %||% ""), "\r?\n")))
   lines <- lines[nzchar(lines)]
   if (length(lines) == 0) {
     return(character(0))
@@ -332,7 +341,7 @@ wide_long_parse_indicator_values <- function(text, count) {
   if (count == 0L) {
     return(character(0))
   }
-  values <- trimws(unlist(strsplit(as.character(text %||% ""), "[,\\r\\n]+")))
+  values <- trimws(unlist(strsplit(as.character(text %||% ""), "[,\r\n]+")))
   values <- values[nzchar(values)]
   if (length(values) < count) {
     values <- c(values, as.character(seq.int(length(values) + 1L, count)))
@@ -541,11 +550,11 @@ wide_long_preview_display <- function(
   result[, columns, drop = FALSE]
 }
 
-save_wide_long_result_file <- function(data) {
+save_wide_long_result_file <- function(data, language = getOption("statedu.app_language", statedu_initial_language())) {
   if (!exists("choose_data_csv_save_path", mode = "function")) {
     stop("Data save dialog is not available.", call. = FALSE)
   }
-  path <- choose_data_csv_save_path()
+  path <- choose_data_csv_save_path(language = language)
   if (length(path) == 0 || !nzchar(path[[1]])) {
     return(list(saved = FALSE, path = ""))
   }
@@ -709,7 +718,7 @@ wide_long_setup_panel <- function(
   selected_configured <- selected_order_items(wide_long_input_value(input, "wide_long_configured", character(0)), vapply(configured_specs %||% list(), `[[`, character(1), "id"))
   id_choices <- setdiff(variable_names, unique(c(selected_variables, configured_sources)))
   current_ids <- intersect(as.character(wide_long_input_value(input, "wide_long_id_variables", character(0))), id_choices)
-  if (length(current_ids) == 0) {
+  if (is.null(wide_long_input_value(input, "wide_long_id_variables", NULL))) {
     likely_id <- id_choices[grepl("(^|[_ .-])(id|pid|person|subject|cluster)([_ .-]|$)", tolower(id_choices))]
     current_ids <- utils::head(likely_id, 1)
   }
@@ -732,6 +741,7 @@ wide_long_setup_panel <- function(
     group_count <- selected_count
   }
   time_count <- if (selected_count > 0 && selected_count %% group_count == 0) selected_count / group_count else max(1L, selected_count)
+  time_count <- wide_long_input_value(input, "wide_long_time_count", time_count)
   default_values <- if (selected_count > 0) paste(seq_len(selected_count), collapse = ", ") else ""
   default_value_name <- wide_long_default_value_name(selected_variables)
 
@@ -794,6 +804,7 @@ wide_long_setup_panel <- function(
       tabsetPanel(
         id = "wide_long_options_tab",
         type = "tabs",
+        selected = wide_long_input_value(input, "wide_long_options_tab", "Reshape"),
         tabPanel(
           statedu_t("data_editor.wide_long_reshape", language),
           value = "Reshape",
@@ -894,6 +905,36 @@ register_wide_long_handlers <- function(
   active_list <- reactiveVal("wide_long_available")
   last_message <- reactiveVal(NULL)
   preview_data <- reactiveVal(NULL)
+  source_snapshot <- reactive(list(
+    data = tryCatch(dataset_fn(), error = function(e) NULL),
+    file = tryCatch(current_data_file_fn(), error = function(e) NULL)
+  ))
+  source_state <- new.env(parent = emptyenv())
+  source_state$value <- isolate(source_snapshot())
+  observeEvent(source_snapshot(), {
+    current <- source_snapshot()
+    if (identical(current, source_state$value)) return()
+    source_state$value <- current
+    selected_variables(character(0))
+    configured_specs(list())
+    active_list("wide_long_available")
+    preview_data(NULL)
+    last_message(NULL)
+  }, priority = 200)
+  ui_values <- reactiveValues()
+  list_selection <- reactiveValues()
+  for (field in c("wide_long_selected", "wide_long_configured")) local({
+    field_name <- field
+    observeEvent(input[[field_name]], {
+      list_selection[[field_name]] <- input[[field_name]]
+    }, ignoreNULL = FALSE, priority = 100)
+  })
+  for (field in c("wide_long_value_name", "wide_long_unit_type", "wide_long_index_name", "wide_long_index_values", "wide_long_group_count", "wide_long_time_count", "wide_long_group_name", "wide_long_time_name", "wide_long_id_variables", "wide_long_fixed_mode", "wide_long_fixed_variables", "wide_long_generated_id", "wide_long_options_tab")) local({
+    field_name <- field
+    observeEvent(input[[field_name]], {
+      ui_values[[field_name]] <- input[[field_name]]
+    }, ignoreNULL = TRUE, priority = 100)
+  })
 
   current_variable_names <- function() {
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
@@ -929,9 +970,14 @@ register_wide_long_handlers <- function(
   )
 
   output$wide_long_setup <- renderUI({
+    session$clientData$output_wide_long_setup_hidden
     language <- statedu_current_language(language_fn)
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     variable_info <- tryCatch(variable_info_fn(), error = function(e) NULL)
+    values <- isolate(reactiveValuesToList(ui_values))
+    for (field in c("wide_long_available", "wide_long_selected", "wide_long_configured")) {
+      values[[field]] <- if (identical(field, "wide_long_available")) isolate(input[[field]]) else isolate(list_selection[[field]])
+    }
     wide_long_setup_panel(
       file = current_data_file_fn(),
       data = data,
@@ -939,10 +985,11 @@ register_wide_long_handlers <- function(
       labels = labels_fn(),
       selected_variables = selected_variables(),
       configured_specs = configured_specs(),
-      input = input,
+      input = values,
       language = language
     )
   })
+  outputOptions(output, "wide_long_setup", suspendWhenHidden = FALSE)
 
   observeEvent(input$wide_long_available_active, active_list("wide_long_available"), ignoreInit = TRUE)
   observeEvent(input$wide_long_selected_active, active_list("wide_long_selected"), ignoreInit = TRUE)
@@ -1003,6 +1050,14 @@ register_wide_long_handlers <- function(
     move_selected(input$wide_long_selected_doubleclick$value)
   }, ignoreInit = TRUE)
 
+  register_analysis_reorder(input, session, "wide_long_selected", function(payload) {
+    updated <- analysis_reorder_items(selected_variables(), payload)
+    if (isTRUE(updated$changed)) {
+      list_selection$wide_long_selected <- updated$selected
+      selected_variables(updated$order)
+    }
+  })
+
   observeEvent(input$wide_long_up, {
     updated <- move_order_item(selected_variables(), input$wide_long_selected, "up")
     if (isTRUE(updated$changed)) {
@@ -1016,6 +1071,22 @@ register_wide_long_handlers <- function(
       selected_variables(updated$order)
     }
   }, ignoreInit = TRUE)
+
+  register_analysis_reorder(input, session, "wide_long_configured", function(payload) {
+    specs <- configured_specs()
+    if (length(specs) == 0) {
+      return()
+    }
+    ids <- vapply(specs, `[[`, character(1), "id")
+    updated <- analysis_reorder_items(ids, payload)
+    if (!isTRUE(updated$changed)) {
+      return()
+    }
+    list_selection$wide_long_configured <- updated$selected
+    configured_specs(specs[match(updated$order, ids)])
+    preview_data(NULL)
+    mark_settings_dirty()
+  })
 
   move_configured_specs <- function(direction) {
     specs <- configured_specs()
@@ -1086,7 +1157,7 @@ register_wide_long_handlers <- function(
         time_count = input$wide_long_time_count
       ),
       error = function(e) {
-        showNotification(conditionMessage(e), type = "warning", duration = 7)
+        showNotification(wide_long_error_text(e, language), type = "warning", duration = 7)
         NULL
       }
     )
@@ -1098,10 +1169,10 @@ register_wide_long_handlers <- function(
     if (length(existing_index) > 0) {
       spec$id <- specs[[existing_index[[1]]]]$id
       specs[[existing_index[[1]]]] <- spec
-      status <- sprintf(statedu_t("data_editor.wide_long_updated_group", language), wide_long_spec_label(spec))
+      status <- list(key = "data_editor.wide_long_updated_group", values = list(wide_long_spec_label(spec)))
     } else {
       specs <- c(specs, list(spec))
-      status <- sprintf(statedu_t("data_editor.wide_long_set_group", language), wide_long_spec_label(spec))
+      status <- list(key = "data_editor.wide_long_set_group", values = list(wide_long_spec_label(spec)))
     }
     configured_specs(specs)
     selected_variables(character(0))
@@ -1121,7 +1192,7 @@ register_wide_long_handlers <- function(
     specs <- specs[!vapply(specs, function(spec) spec$id %in% selected, logical(1))]
     configured_specs(specs)
     preview_data(NULL)
-    last_message(statedu_t("data_editor.wide_long_removed_group", language))
+    last_message(list(key = "data_editor.wide_long_removed_group", values = list()))
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
@@ -1142,13 +1213,14 @@ register_wide_long_handlers <- function(
         specs = configured_specs()
       ),
       error = function(e) {
-        if (isTRUE(show_errors)) showNotification(conditionMessage(e), type = "warning", duration = 7)
+        if (isTRUE(show_errors)) showNotification(wide_long_error_text(e, language), type = "warning", duration = 7)
         NULL
       }
     )
   }
 
   output$wide_long_preview <- DT::renderDT({
+    language <- statedu_current_language(language_fn)
     preview <- preview_data()
     if (is.null(preview)) {
       return(NULL)
@@ -1163,16 +1235,16 @@ register_wide_long_handlers <- function(
     )
     limit <- wide_long_preview_limit(configured_specs(), sets = 2L)
     preview <- utils::head(preview, limit)
-    DT::datatable(preview, rownames = FALSE, options = list(pageLength = limit, lengthChange = FALSE, paging = FALSE, scrollX = TRUE))
+    DT::datatable(preview, rownames = FALSE, options = with_datatable_language(list(pageLength = limit, lengthChange = FALSE, paging = FALSE, scrollX = TRUE), language))
   })
 
   output$wide_long_message <- renderUI({
-    statedu_current_language(language_fn)
+    language <- statedu_current_language(language_fn)
     message <- last_message()
     if (is.null(message)) {
       return(NULL)
     }
-    div(class = "recode-same-status", message)
+    div(class = "recode-same-status", do.call(sprintf, c(list(statedu_t(message$key, language)), message$values)))
   })
 
   observeEvent(input$preview_wide_long, {
@@ -1190,7 +1262,7 @@ register_wide_long_handlers <- function(
       fixed_mode = input$wide_long_fixed_mode,
       generated_id_name = input$wide_long_generated_id
     )
-    last_message(sprintf(statedu_t("data_editor.wide_long_previewed", language), nrow(result), ncol(display), length(configured_specs())))
+    last_message(list(key = "data_editor.wide_long_previewed", values = list(nrow(result), ncol(display), length(configured_specs()))))
   }, ignoreInit = TRUE)
 
   observeEvent(input$run_wide_long, {
@@ -1204,9 +1276,9 @@ register_wide_long_handlers <- function(
       return()
     }
     save_result <- tryCatch(
-      save_wide_long_result_file(result),
+      save_wide_long_result_file(result, language = language),
       error = function(e) {
-        showNotification(paste(statedu_t("data_editor.wide_long_save_failed", language), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("data_editor.wide_long_save_failed", language), wide_long_error_text(e, language)), type = "error", duration = 8)
         list(saved = FALSE, path = "")
       }
     )
@@ -1214,12 +1286,14 @@ register_wide_long_handlers <- function(
     target_path <- if (isTRUE(save_result$saved)) save_result$path else NULL
     ok <- replace_dataset_fn(result, name = target_name, path = target_path, csv_header = TRUE)
     if (isTRUE(ok)) {
+      # This command's own replacement keeps its just-created result visible.
+      source_state$value <- isolate(source_snapshot())
       preview_data(result)
       if (isTRUE(save_result$saved)) {
-        last_message(sprintf(statedu_t("data_editor.wide_long_saved_connected", language), nrow(result), ncol(result), save_result$path))
+        last_message(list(key = "data_editor.wide_long_saved_connected", values = list(nrow(result), ncol(result), save_result$path)))
         showNotification(sprintf(statedu_t("data_editor.wide_long_notify_saved", language), save_result$path), type = "message", duration = 6)
       } else {
-        last_message(sprintf(statedu_t("data_editor.wide_long_temp_connected", language), nrow(result), ncol(result)))
+        last_message(list(key = "data_editor.wide_long_temp_connected", values = list(nrow(result), ncol(result))))
       }
       if (is.function(mark_settings_dirty)) {
         mark_settings_dirty()

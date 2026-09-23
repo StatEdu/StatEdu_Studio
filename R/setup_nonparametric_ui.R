@@ -11,9 +11,10 @@ nonparametric_setup_state <- function(
   selected_factor = NULL,
   trend_analysis = FALSE,
   nonparametric_post_hoc_method = NULL,
-  ordered_significance = FALSE,
+  ordered_significance = TRUE,
   effect_size = TRUE,
-  median_iqr = FALSE,
+  median_iqr = TRUE,
+  add_mean_sd = FALSE,
   language = statedu_initial_language()
 ) {
   language <- normalize_app_language(language)
@@ -51,6 +52,7 @@ nonparametric_setup_state <- function(
     ordered_significance = isTRUE(ordered_significance),
     effect_size = isTRUE(effect_size),
     median_iqr = isTRUE(median_iqr),
+    add_mean_sd = isTRUE(add_mean_sd),
     language = language,
     move_disabled = length(selected) == 0
   )
@@ -130,7 +132,8 @@ nonparametric_setup_panel <- function(state) {
           list(
             list(id = "nonparametric_trend_analysis", label = "Trend analysis", value = state$trend_analysis),
             list(id = "nonparametric_effect_size", label = "Effect size", value = state$effect_size),
-            list(id = "nonparametric_median_iqr", label = "Median(Q1~Q3)", value = state$median_iqr)
+            list(id = "nonparametric_median_iqr", label = "Median(Q1~Q3)", value = state$median_iqr),
+            list(id = "nonparametric_add_mean_sd", label = "M ± SD", value = state$add_mean_sd)
           ),
           language = language
         )

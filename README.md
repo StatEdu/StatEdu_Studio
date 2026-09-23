@@ -6,15 +6,16 @@ The app runs on the user's own Windows PC and opens in a local browser session. 
 
 All statistical analyses use CRAN packages only.
 
+Version 1.3.0 adds CFA, SEM and PLS-SEM/PLSc to the public analysis scope and provides RMST and competing-risk workflows in survival analysis. These accompany the mediation/moderation canvas, general analyses, longitudinal/panel models, complex samples and planning tools. Version History distinguishes newly public analyses from improvements to existing features.
+
 ## Current Version
 
-Current public version: `1.2.0`
+Current public version: `1.3.0`
 
-Current release candidate version: `1.2.0`
 
-Version 1.2.0 is the public release line for local data import, data editing, assumption-guided statistical analyses, reliability and inter-rater agreement workflows, sample-size/effect-size calculators, latent-analysis workflows, mixed repeated-measures ANOVA, Mediation / Moderation Custom Model, and publication-ready HTML/PDF result output. It promotes the stabilized post-1.1.3 work, adding inter-rater agreement analysis, pre-post and multi-time repeated-measures group comparisons, the public Mediation / Moderation Custom Model canvas, custom-model table cleanup, and expanded statistical validation coverage. Detailed release history is available in **About > Version History**.
+Version 1.3.0 adds public PDF, Word and Excel result saving and incorporates result-table, model-canvas and validation-page improvements. Meta-analysis and within-subject treatment repeated-measures ANOVA are excluded from this installer.
 
-Public 1.2.0 includes the Mediation / Moderation Custom Model canvas in the Regression / Model workflow group. In the public build, direct analysis save controls remain visible but only HTML save is enabled by default; t-test / ANOVA is the exception and keeps HTML, figure, PDF, Excel, and Add result enabled. t-test / ANOVA results added to the Result collection can be exported from Result as Excel or Word.
+The public Free edition supports HTML, PDF, Word and Excel results, 300 dpi transparent figure exports and the Result collection. Pro is planned for a later release; development and Pro figure resolution is 600 dpi.
 
 ## Current Scope
 
@@ -40,12 +41,13 @@ Public 1.2.0 includes the Mediation / Moderation Custom Model canvas in the Regr
 - Mediation / Moderation Custom Model canvas for drawing supported mediation/moderation structures and sending them to the analysis engine
 - Logistic regression for binary, ordered, and categorical dependent variables
 - Generalized linear models for independent-observation Gaussian, binary logistic, Gamma, and count outcomes, including Poisson versus negative-binomial screening, robust standard-error options, missing-data sensitivity engines, offset/exposure handling, SCI-style diagnostics, publication notes, reporting checklists, and suggested manuscript text
+- Survival analysis with Kaplan-Meier, life-table, log-rank/Breslow/Tarone-Ware group comparison, publication-ready ggplot2 figures, and Cox regression with proportional-hazards checks
 - Penalized regression helpers for severe multicollinearity cases
 - Standalone sample size, power, and effect size calculators with method notes and references
-- Result saving to HTML, PDF, figures, and accumulated Result collections
-- Result collection export to HTML and PDF
+- Result saving to HTML, figures, and accumulated Result collections
+- Figure saving at 300 dpi by default, with a separate 600 dpi option in Pro
 
-For the full current method inventory, see [docs/ANALYSIS_METHODS_EN.md](docs/ANALYSIS_METHODS_EN.md).
+For the full current method inventory, see [docs/ANALYSIS_METHODS_EN.md](docs/ANALYSIS_METHODS_EN.md). For method selection, assumptions, interpretation, and the 1.3.0 CFA/CB-SEM/latent-moderation/PLS/PLSc methodology, see [docs/METHOD_NOTES_EN.md](docs/METHOD_NOTES_EN.md).
 
 ## Runtime Environment
 
@@ -81,6 +83,8 @@ The app will open at `127.0.0.1` in the default browser. The launcher searches f
 
 ## Validation
 
+The [cumulative validation record](docs/ANALYSIS_REFERENCE_COMPARISON_PUBLIC.md), also available under **About → Validation**, summarizes case counts, comparison results and the final assessment. Numerical comparisons and export checks are reported separately, with remaining differences retained.
+
 Version 1.2.0 carries forward the stabilization validation suite and adds focused checks for mixed repeated-measures ANOVA, inter-rater agreement output, custom-model table de-duplication, and shared layout contracts. Public validation coverage includes calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, reliability and inter-rater agreement workflows, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, GLM output, complex-sample workflows, longitudinal / panel workflows, mixed repeated-measures workflows, latent-analysis workflow checks, and t-test / ANOVA guard handling. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
 
 Run the stabilization validation suite from the repository root before merging
@@ -94,15 +98,15 @@ powershell -ExecutionPolicy Bypass -File scripts\validate_stabilization.ps1 -Ful
 Run the Shiny and Electron smoke checks before preparing a release candidate:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\release_preflight.ps1
-powershell -ExecutionPolicy Bypass -File scripts\smoke_shiny_app.ps1
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\release_preflight.ps1
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\smoke_shiny_app.ps1
 powershell -ExecutionPolicy Bypass -File scripts\smoke_electron_release.ps1 -SkipUnpackedChecks
 ```
 
 After Electron packaging is complete, run the full packaged-output preflight:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\release_preflight.ps1 -FullElectronSmoke
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\release_preflight.ps1 -FullElectronSmoke
 ```
 
 After automated checks pass, complete
@@ -116,7 +120,7 @@ module before running the stabilization suite.
 
 If you use **StatEdu Studio** in your research, please cite:
 
-LEE, I. H. (2026). **StatEdu Studio** (Version 1.2.0) [Computer software].
+LEE, I. H. (2026). **StatEdu Studio** (Version 1.3.0) [Computer software].
 https://doi.org/10.22934/statedu.studio
 
 Product site: https://studio.statedu.com/

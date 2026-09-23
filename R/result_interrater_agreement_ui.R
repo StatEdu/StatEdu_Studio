@@ -4,6 +4,61 @@ interrater_agreement_note <- function(result) {
   result$method_note %||% ""
 }
 
+interrater_agreement_appendix_note_text <- function(text, language = NULL) {
+  language <- result_appendix_table_language(language)
+  text <- as.character(text %||% "")
+  if (!identical(language, "ko") || !nzchar(text)) return(text)
+  exact <- c(
+    "Pairwise agreement." = "평가자 쌍 간 일치도.",
+    "Pairwise agreement across available rater pairs." = "관측 가능한 평가자 쌍을 이용한 쌍별 일치도.",
+    "Ordinal alpha." = "순서형 알파.",
+    "Ordinal alpha using squared rank distance." = "순위 거리의 제곱을 사용한 순서형 알파.",
+    "Complete paired ratings." = "완전한 쌍별 평정.",
+    "Nominal agreement coefficient." = "명목형 일치도 계수.",
+    "Nominal alpha; missing ratings are allowed." = "명목형 알파; 결측 평정을 허용함.",
+    "Requires the same number of ratings per subject." = "대상자별 평정 수가 같아야 함.",
+    "Mean pairwise Cohen's kappa." = "평가자 쌍별 Cohen 카파의 평균.",
+    "Bootstrap percentile 95% CI is reported." = "부트스트랩 백분위수 95% 신뢰구간을 보고함.",
+    "ICC was estimated from complete cases." = "완전 사례로 ICC를 추정함."
+  )
+  if (text %in% names(exact)) return(unname(exact[[text]]))
+  weight_match <- regexec("^Weight:\\s*(linear|quadratic)$", text, ignore.case = TRUE)
+  weight_parts <- regmatches(text, weight_match)[[1L]]
+  if (length(weight_parts) == 2L) {
+    weight_label <- if (identical(tolower(weight_parts[[2L]]), "linear")) "선형" else "이차"
+    return(paste0("가중치: ", weight_label))
+  }
+  text
+}
+
+interrater_agreement_appendix_table <- function(table, language = NULL) {
+  if (!is.data.frame(table)) return(table)
+  language <- result_appendix_table_language(language)
+  localized <- result_appendix_localize_table(table, language)
+  if (identical(language, "ko")) {
+    header_map <- c(
+      "Method" = "방법", "Estimate" = "추정치", "95% CI" = "95% 신뢰구간",
+      "N" = "N", "Raters" = "평가자 수", "Reason" = "사유", "Note" = "주석",
+      "Rater" = "평가자", "Skewness" = "왜도", "Kurtosis" = "첨도",
+      "Normality" = "정규성"
+    )
+    names(localized) <- vapply(names(table), function(column) {
+      if (column %in% names(header_map)) unname(header_map[[column]]) else result_appendix_ui_text(column, language)
+    }, character(1))
+    if ("Note" %in% names(table)) {
+      localized[[match("Note", names(table))]] <- vapply(
+        as.character(table$Note),
+        interrater_agreement_appendix_note_text,
+        character(1),
+        language = language
+      )
+    }
+  }
+  attr(localized, "result_table_role") <- "appendix"
+  attr(localized, "result_table_language") <- language
+  result_appendix_preserve_data(localized, table)
+}
+
 interrater_agreement_table <- function(result) {
   table <- result$overview
   if (!is.data.frame(table) || nrow(table) == 0) {
@@ -49,12 +104,18 @@ interrater_agreement_column_widths <- function(columns) {
     switch(
       column,
       Method = 22,
+      `방법` = 22,
       Estimate = 10,
+      `추정치` = 10,
       `95% CI` = 16,
+      `95% 신뢰구간` = 16,
       N = 8,
       Raters = 8,
+      `평가자 수` = 8,
       Reason = 38,
+      `사유` = 38,
       Note = 28,
+      `주석` = 28,
       10
     )
   }, numeric(1))
@@ -62,9 +123,10 @@ interrater_agreement_column_widths <- function(columns) {
 }
 
 interrater_agreement_cell_style <- function(column, header = FALSE, last = FALSE, width = NULL) {
-  center_columns <- c("Estimate", "95% CI", "N", "Raters")
-  left_aligned <- !isTRUE(header) && column %in% c("Method", "Reason", "Note")
-  normal_space <- column %in% c("Method", "Reason", "Note") || isTRUE(header)
+  center_columns <- c("Estimate", "추정치", "95% CI", "95% 신뢰구간", "N", "Raters", "평가자 수")
+  narrative_columns <- c("Method", "방법", "Reason", "사유", "Note", "주석")
+  left_aligned <- !isTRUE(header) && column %in% narrative_columns
+  normal_space <- column %in% narrative_columns || isTRUE(header)
   paste0(
     "padding:", if (isTRUE(header)) "4px 5px" else "5px 5px", ";",
     "line-height:", if (isTRUE(header)) "1.12" else "1.25", ";",
@@ -74,7 +136,7 @@ interrater_agreement_cell_style <- function(column, header = FALSE, last = FALSE
     "font-weight:", if (isTRUE(header)) "700" else "400", ";",
     "font-size:", if (isTRUE(header)) "11px" else "12px", ";",
     "white-space:", if (isTRUE(normal_space)) "normal" else "nowrap", ";",
-    "overflow-wrap:", if (column %in% c("Reason", "Note")) "anywhere" else if (isTRUE(normal_space)) "break-word" else "normal", ";",
+    "overflow-wrap:", if (column %in% c("Reason", "사유", "Note", "주석")) "anywhere" else if (isTRUE(normal_space)) "break-word" else "normal", ";",
     "word-break:normal;",
     "width:", if (!is.null(width)) sprintf("%.4f%%", width) else "auto", ";",
     "min-width:0;max-width:none;",
@@ -82,13 +144,15 @@ interrater_agreement_cell_style <- function(column, header = FALSE, last = FALSE
   )
 }
 
-interrater_agreement_html_table <- function(table) {
+interrater_agreement_html_table <- function(table, table_role = NULL, table_language = NULL) {
+  table <- result_ci_expand_columns(table, force = is.data.frame(table) &&
+    any(grepl("bootstrap|부트스트랩", unlist(table), ignore.case=TRUE)))
   if (!is.data.frame(table) || nrow(table) == 0) {
     return(NULL)
   }
   columns <- names(table)
   widths <- interrater_agreement_column_widths(columns)
-  tags$table(
+  table_tag <- tags$table(
     class = "coefficient-table reliability-table interrater-agreement-table",
     style = paste0(
       result_table_style(font_size = 12, min_width = 0),
@@ -118,6 +182,13 @@ interrater_agreement_html_table <- function(table) {
       })
     )
   )
+  contract <- result_table_contract(
+    table,
+    role = table_role,
+    language = table_language,
+    intrinsic_width = result_table_intrinsic_width(table, first_width = 150, default_width = 86, min_width = 480)
+  )
+  result_table_apply_contract(table_tag, contract)
 }
 
 interrater_agreement_results_ui <- function(result) {
@@ -127,6 +198,8 @@ interrater_agreement_results_ui <- function(result) {
   primary <- interrater_primary_agreement_table(result)
   auxiliary <- interrater_auxiliary_agreement_table(result)
   normality <- result$normality_table
+  appendix_language <- result_appendix_table_language()
+  appendix_text <- function(en, ko) statedu_localized_text(appendix_language, en, ko)
   tagList(
     div(
       class = "reliability-results regression-results interrater-agreement-results",
@@ -135,26 +208,36 @@ interrater_agreement_results_ui <- function(result) {
         style = "width:min(100%,920px);max-width:920px;overflow-x:visible;box-sizing:border-box;",
         h3("Recommended analysis"),
         result_table_with_notes(
-          interrater_agreement_html_table(primary),
-          reliability_note_tag(interrater_agreement_note(result), width = 920)
+          interrater_agreement_html_table(primary, table_role = "main", table_language = "en"),
+          reliability_note_tag(result_sci_note_text(estimation = interrater_agreement_note(result)), width = 920)
         )
       ),
       if (is.data.frame(auxiliary) && nrow(auxiliary) > 0) {
+        auxiliary <- interrater_agreement_appendix_table(auxiliary, appendix_language)
         div(
           class = "result-section reliability-result-section regression-result-panel",
           style = "width:min(100%,920px);max-width:920px;overflow-x:visible;box-sizing:border-box;",
-          h3("Auxiliary agreement indices"),
-          interrater_agreement_html_table(auxiliary)
+          h3(appendix_text("Auxiliary agreement indices", "보조 일치도 지수")),
+          result_table_with_notes(
+            interrater_agreement_html_table(auxiliary, table_role = "appendix", table_language = appendix_language)
+          )
         )
       },
       if (is.data.frame(normality) && nrow(normality) > 0) {
+        normality <- interrater_agreement_appendix_table(normality, appendix_language)
         div(
           class = "result-section reliability-result-section regression-result-panel",
           style = "width:min(100%,920px);max-width:920px;overflow-x:visible;box-sizing:border-box;",
-          h3("Normality diagnostics"),
+          h3(appendix_text("Normality diagnostics", "정규성 진단")),
           result_table_with_notes(
-            reliability_html_table(normality),
-            reliability_note_tag("Normality is flagged as satisfied when absolute skewness is less than 2 and absolute kurtosis is less than 7 for every rater variable.", width = 920)
+            reliability_html_table(normality, table_role = "appendix", table_language = appendix_language),
+            reliability_note_tag(
+              appendix_text(
+                "Normality is flagged as satisfied when absolute skewness is less than 2 and absolute kurtosis is less than 7 for every rater variable.",
+                "모든 평가자 변수에서 왜도의 절댓값이 2 미만이고 첨도의 절댓값이 7 미만이면 정규성 충족으로 표시합니다."
+              ),
+              width = 920
+            )
           )
         )
       },
@@ -174,25 +257,14 @@ saved_interrater_agreement_results_html <- function(result, css_path = file.path
 }
 
 write_interrater_agreement_results_html <- function(result, file) {
-  writeLines(saved_interrater_agreement_results_html(result), file, useBytes = TRUE)
+  write_result_html_document(saved_interrater_agreement_results_html(result), file, useBytes = TRUE)
 }
 
 write_interrater_agreement_results_pdf <- function(result, file) {
   write_pdf_from_html(saved_interrater_agreement_results_html(result, report_mode = TRUE), file)
 }
 
-save_interrater_agreement_excel_file <- function(result, file) {
-  workbook <- openxlsx::createWorkbook()
-  used_sheets <- character(0)
-  used_sheets <- add_excel_table_sheet(workbook, "Recommended", interrater_primary_agreement_table(result), used_sheets, title = "Recommended analysis")
-  auxiliary <- interrater_auxiliary_agreement_table(result)
-  if (is.data.frame(auxiliary) && nrow(auxiliary) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Auxiliary", auxiliary, used_sheets, title = "Auxiliary agreement indices")
-  }
-  used_sheets <- add_excel_table_sheet(workbook, "Agreement", interrater_agreement_table(result), used_sheets, title = "All agreement indices")
-  if (is.data.frame(result$normality_table) && nrow(result$normality_table) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Normality", result$normality_table, used_sheets, title = "Normality diagnostics")
-  }
-  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-  invisible(file)
+save_interrater_agreement_excel_file <- function (result, file)
+{
+    save_screen_excel_file(saved_interrater_agreement_results_html(result = result), file)
 }

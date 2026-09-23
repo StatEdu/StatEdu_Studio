@@ -63,4 +63,63 @@ for (removed in c("Method is selected by dependent variable type.", "Complete ca
   }
 }
 
+probe_result <- list(
+  dependent = "satisfaction",
+  predictors = "age",
+  method = "Ordinal logistic regression",
+  n = 100L,
+  coef_table = data.frame(OR = 1.2, LLCI = 0.9, ULCI = 1.7, SE = 0.2),
+  notes = c(
+    "Zero cell found for satisfaction by age; separation is possible.",
+    "Reference for sex was not set; minimum value 1 was used.",
+    "Performance statistics are apparent (in-sample) diagnostics and do not establish external predictive validity."
+  ),
+  parallel = list(chisq = 2.4, p = .21, basis = "Final hierarchical model"),
+  convergence = list(ok = TRUE, message = "Converged"),
+  max_vif = 6.4,
+  performance = c(`AUC (apparent)` = .72)
+)
+options(statedu.app_language = "ko")
+ko_assumption_html <- as.character(htmltools::renderTags(logistic_assumption_review_block(list(probe_result), variable_info))$html)
+ko_performance_html <- as.character(htmltools::renderTags(logistic_performance_block(list(probe_result), variable_info))$html)
+ko_diagnostics_html <- as.character(htmltools::renderTags(logistic_model_notes_block(list(probe_result), variable_info))$html)
+ko_assumption_table <- logistic_appendix_table(logistic_assumption_review_data_frame(list(probe_result), variable_info), "ko")
+stopifnot(
+  identical(
+    unname(ko_assumption_table[["항목"]]),
+    c("수렴", "비례오즈", "EPV / 희소 셀", "분리", "VIF", "함수 형태", "다항 로짓 IIA", "패키지")
+  ),
+  grepl("수렴함", ko_assumption_html, fixed = TRUE),
+  grepl("비례오즈 가정 충족", ko_assumption_html, fixed = TRUE),
+  grepl("최종 위계적 모형", ko_assumption_html, fixed = TRUE),
+  grepl("다중공선성 주의", ko_assumption_html, fixed = TRUE),
+  grepl("교차표에서 빈 셀", ko_assumption_html, fixed = TRUE),
+  grepl("satisfaction", ko_assumption_html, fixed = TRUE),
+  grepl("age", ko_assumption_html, fixed = TRUE),
+  grepl("표본 내 모형 성능", ko_performance_html, fixed = TRUE),
+  grepl("AUC (표본 내)", ko_performance_html, fixed = TRUE),
+  grepl(".72", ko_performance_html, fixed = TRUE),
+  grepl("표본 내 성능(기술통계 용도)", ko_performance_html, fixed = TRUE),
+  grepl("모형 진단", ko_diagnostics_html, fixed = TRUE),
+  grepl("sex의 기준 범주가 지정되지 않아 최솟값 1을(를) 사용했습니다.", ko_diagnostics_html, fixed = TRUE),
+  !grepl("Converged", ko_assumption_html, fixed = TRUE),
+  !grepl("Final hierarchical model", ko_assumption_html, fixed = TRUE),
+  !grepl("Apparent model performance", ko_performance_html, fixed = TRUE),
+  !grepl("Model diagnostics", ko_diagnostics_html, fixed = TRUE),
+  !grepl("Reference for sex was not set", ko_diagnostics_html, fixed = TRUE)
+)
+options(statedu.app_language = "en")
+en_assumption_html <- as.character(htmltools::renderTags(logistic_assumption_review_block(list(probe_result), variable_info))$html)
+en_performance_html <- as.character(htmltools::renderTags(logistic_performance_block(list(probe_result), variable_info))$html)
+en_diagnostics_html <- as.character(htmltools::renderTags(logistic_model_notes_block(list(probe_result), variable_info))$html)
+stopifnot(
+  grepl("Converged", en_assumption_html, fixed = TRUE),
+  grepl("Proportional odds assumption met", en_assumption_html, fixed = TRUE),
+  grepl("Apparent model performance", en_performance_html, fixed = TRUE),
+  grepl("Model diagnostics", en_diagnostics_html, fixed = TRUE),
+  grepl("Reference for sex was not set; minimum value 1 was used.", en_diagnostics_html, fixed = TRUE),
+  grepl("AUC (apparent)", en_performance_html, fixed = TRUE),
+  grepl("OR = odds ratio", logistic_main_note("Ordinal logistic regression"), fixed = TRUE)
+)
+
 cat("Logistic UI validation passed.\n")

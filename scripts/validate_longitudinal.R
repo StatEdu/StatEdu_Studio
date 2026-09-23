@@ -169,33 +169,40 @@ if (abs(mi_pool_result$p[[1]] - mi_expected_p) > 1e-12 ||
 
 validate_model("gee")
 
-ohio_binary_path <- file.path("sample", "longitudinal_examples", "longitudinal_gee_ohio_binary.csv")
-if (file.exists(ohio_binary_path)) {
-  ohio_binary <- utils::read.csv(ohio_binary_path, stringsAsFactors = FALSE)
-  ohio_variable_info <- data.frame(
-    name = names(ohio_binary),
-    var_label = names(ohio_binary),
-    role = "",
-    measurement = c("binary", "category", "ordered", "binary"),
-    stringsAsFactors = FALSE
-  )
-  ohio_results <- prepare_longitudinal_analysis_result(
-    data = ohio_binary,
-    outcome = "resp",
-    id = "id",
-    time = "age",
-    predictors = "smoke",
-    model_type = "gee",
-    family = "auto",
-    variable_info = ohio_variable_info
-  )
-  if (!is.list(ohio_results) || length(ohio_results) != 1) {
-    print(attr(ohio_results, "skipped"))
-    stop("Expected the Ohio binary GEE example to fit one model.")
-  }
-  if (!identical(ohio_results[[1]]$family, "binomial")) {
-    stop("Expected the Ohio binary GEE example to resolve to a binomial family.")
-  }
+message("Checking the geepack::ohio binary GEE reference dataset...")
+# Keep the reference data independent of optional data files in bundled packages.
+# Provenance and reproduction instructions are in scripts/fixtures/README.md.
+ohio_fixture <- file.path("scripts", "fixtures", "longitudinal_ohio.rds")
+if (!file.exists(ohio_fixture)) stop("Required Ohio validation fixture is missing: ", ohio_fixture)
+stopifnot(identical(digest::digest(file = ohio_fixture, algo = "sha256"),
+                    "3da7f5bea90f54e48ab35a30b71f1decfd0ded73a3d4e38776dec4119270e30f"))
+ohio_binary <- readRDS(ohio_fixture)
+stopifnot(identical(dim(ohio_binary), c(2148L, 4L)),
+          identical(names(ohio_binary), c("resp", "id", "age", "smoke")),
+          all(vapply(ohio_binary, is.integer, logical(1))))
+ohio_variable_info <- data.frame(
+  name = names(ohio_binary),
+  var_label = names(ohio_binary),
+  role = "",
+  measurement = c("binary", "category", "ordered", "binary"),
+  stringsAsFactors = FALSE
+)
+ohio_results <- prepare_longitudinal_analysis_result(
+  data = ohio_binary,
+  outcome = "resp",
+  id = "id",
+  time = "age",
+  predictors = "smoke",
+  model_type = "gee",
+  family = "auto",
+  variable_info = ohio_variable_info
+)
+if (!is.list(ohio_results) || length(ohio_results) != 1) {
+  print(attr(ohio_results, "skipped"))
+  stop("Expected the Ohio binary GEE example to fit one model.")
+}
+if (!identical(ohio_results[[1]]$family, "binomial")) {
+  stop("Expected the Ohio binary GEE example to resolve to a binomial family.")
 }
 
 validate_model("lmm")
@@ -721,13 +728,24 @@ if (model_overview_position < 0 || coefficients_position < 0 || coefficients_pos
 excel_file <- tempfile(fileext = ".xlsx")
 save_longitudinal_excel_file(publication_results, excel_file, variable_info)
 sheet_names <- openxlsx::getSheetNames(excel_file)
-required_sheets <- c("Model overview", "Coefficients 1", "Weights 1", "Missing pattern 1", "Missing by time 1", "Publication table 1", "Table notes 1", "Manuscript text 1", "SCI checklist 1", "Software 1", "Model guide")
-missing_sheets <- setdiff(required_sheets, sheet_names)
-if (length(missing_sheets) > 0) {
-  stop("Longitudinal Excel export is missing expected sheet(s): ", paste(missing_sheets, collapse = ", "))
-}
-if (!identical(sheet_names[seq_len(2)], c("Model overview", "Coefficients 1"))) {
-  stop("Longitudinal Excel export should start with Model overview followed by Coefficients.")
+screen_tables <- result_entry_tables(list(html = saved_longitudinal_results_html(publication_results, variable_info)))
+stopifnot(length(sheet_names) == length(screen_tables) + 1L)
+cover <- openxlsx::read.xlsx(excel_file, sheet = 1L, colNames = FALSE)
+stopifnot(any(grepl('StatEdu Studio', unlist(cover), fixed = TRUE)))
+for (i in seq_along(screen_tables)) {
+  table <- screen_tables[[i]]
+  exported <- openxlsx::read.xlsx(excel_file, sheet = i + 1L, colNames = FALSE, skipEmptyRows = FALSE, skipEmptyCols = FALSE, na.strings = NULL)
+  leading <- table$before_text
+  if (!length(leading)) leading <- table$title
+  stopifnot(identical(as.character(exported[seq_along(leading), 1L]), as.character(leading)))
+  # Captured headings and introductory text precede the blank separator row.
+  offset <- length(leading) + 1L
+  stopifnot(nrow(exported) >= nrow(table$screen$values) + offset,
+            ncol(exported) >= ncol(table$screen$values))
+  for (cell in table$screen$cells) {
+    expected <- table$screen$values[cell$row, cell$col]
+    if (nzchar(expected)) stopifnot(identical(as.character(exported[cell$row + offset, cell$col]), expected))
+  }
 }
 
 selective_results <- prepare_longitudinal_analysis_result(

@@ -10,6 +10,7 @@ setwd(repo_root)
 source("R/app_bootstrap.R")
 load_app_packages()
 source_app_modules(dir = file.path(repo_root, "R"))
+options(statedu.app_language = "en")
 
 set.seed(1001)
 

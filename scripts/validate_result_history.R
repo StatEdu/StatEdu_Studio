@@ -27,7 +27,7 @@ stopifnot(length(read_result_snapshot_store(store_file)) == 1L)
 session <- new.env(parent = emptyenv())
 session$userData <- new.env(parent = emptyenv())
 store <- result_accumulator_store(session)
-stopifnot(length(shiny::isolate(store())) == 0L)
+stopifnot(identical(shiny::isolate(store()), read_result_snapshot_store(store_file)))
 
 store(list(entry))
 stopifnot(length(shiny::isolate(store())) == 1L)

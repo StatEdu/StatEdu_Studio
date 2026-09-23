@@ -1,0 +1,220 @@
+# PLS/PLSc 외부 적합도 수치 비교 절차
+
+## 목적
+
+StatEdu Studio와 SmartPLS 또는 ADANCO의 SRMR, d_G, d_ULS를 비교할 때 자료·모형·추정 설정 차이를 수치 오류로 오인하지 않도록 동일 조건의 결과를 기계적으로 대조한다. 이 비교는 특정 소프트웨어를 절대적 정답으로 간주하지 않으며 구현 동등성과 차이 원인을 추적하기 위한 검증이다. SmartPLS 공식 문서도 saturated/estimated 구분과 PLS 적합도 사용에 관한 연구가 아직 충분하지 않다고 명시하므로, 서로 다른 적합대상을 임의로 같은 값으로 취급하지 않는다.
+
+## 비교 조건
+
+- 동일 원자료, 행 순서, 결측 처리와 표준화 방식
+- 동일한 반영형/형성형 및 공통요인/composite 명세
+- 동일한 구조경로와 측정 블록
+- PLS와 PLSc를 구분하고, 혼합모형이면 PLSc가 보정한 블록 범위를 함께 기록
+- saturated/estimated model 중 어느 값을 비교했는지 기록. 현재 StatEdu 진단은 모든 구성개념 상관을 자유롭게 둔 **saturated 측정모형 근사값만** 제공하며, 구조경로 제약을 반영한 SmartPLS `estimated model` 값과 비교하지 않는다.
+- 프로그램명·버전, 알고리즘 설정과 실행일을 별도 분석기록에 보존
+
+## 운영 기본 benchmark 묶음 생성
+
+운영 기본 프로필은 SmartPLS 외부 실행 증거가 완결된
+`holzinger-swineford-first100-smartpls-student`이다. 다음 명령은 301명
+Holzinger-Swineford 원자료의 첫 100행과 x1-x9, 세 개의 반영형 공통요인
+(visual, textual, speed), `visual -> textual`, `visual -> speed`,
+`textual -> speed` 경로를 사용하는 결정적 benchmark를 생성한다.
+
+```powershell
+& "C:\Program Files\R\R-4.5.3\bin\Rscript.exe" scripts/generate_pls_external_benchmark.R `
+  --output-dir=outputs/pls_external_benchmark
+```
+
+`--profile`을 생략하거나 빈 값으로 지정하면 위 first-100 프로필을 사용한다. 과거
+301행 프로필은 `--profile=holzinger-swineford-301`로만 명시적으로 요청한다. 이 legacy
+프로필은 현재 strict PLSc에서 보정 outer loading이 허용 범위 `[-1, 1]`을 벗어나므로
+fail-closed되며, 유효한 기준값·manifest 또는 외부 동등성 주장을 생성하지 않는다. 이
+검증을 통과시키기 위해 loading을 자르거나 PLSc 허용성 기준을 완화하지 않는다.
+
+생성 파일은 다음과 같다.
+
+- `statedu_fit.csv`: 반올림 전 StatEdu PLS/PLSc saturated 기준값
+- `external_fit_template.csv`: SmartPLS/ADANCO 원값 입력용 템플릿
+- `benchmark_manifest.json`: 자료·모형 SHA-256, 구성개념/경로, StatEdu·R·seminr 버전과 알고리즘 설정
+
+원자료 `sample/HolzingerSwineford1939.csv`는 `lavaan::HolzingerSwineford1939`를
+`utils::write.csv(lavaan::HolzingerSwineford1939, row.names = FALSE)`로 내보낸 뒤
+저장소 표준인 UTF-8/LF로 정규화한 파일이다. `.gitattributes`에서 LF 체크아웃을 강제하며,
+기준 SHA-256은 `140519C3E46920B38191D4CD9415FA33DDC40633294E6D3E30AF82242F7B6204`이다.
+benchmark manifest에는 사용한 `lavaan` 버전, 자료 출처, 생성 명령과 실제 파일 해시를 함께 기록한다.
+출력 폴더에 다른 프로필의 자료 또는 manifest/run record가 있으면 생성기는 혼재를
+막기 위해 중단한다. 재실행에는 비어 있거나 같은 프로필 전용 폴더를 사용한다.
+
+외부 실행자에게 전달할 완전한 핸드오프 묶음은 다음 명령으로 생성한다.
+
+```powershell
+& "C:\Program Files\R\R-4.5.3\bin\Rscript.exe" scripts/prepare_pls_external_handoff.R `
+  --output-dir=outputs/pls_external_handoff
+```
+
+기본 묶음에는 first-100 세미콜론 자료와 StatEdu 모형 스냅샷의 사본,
+`measurement_model.csv`, `structural_paths.csv`, `statedu_fit.csv`, 값 입력용
+`external_fit.csv`, 사전 해시가 기록된 `external_run.json`, 실행 안내문이 포함된다.
+
+전달용 ZIP과 파일별/ZIP SHA-256은 다음 명령으로 새 임시 staging에서 생성한다. 기존 작업 폴더의 오래된 파일은 ZIP에 섞이지 않는다.
+
+```powershell
+& scripts/package_pls_external_handoff.ps1
+```
+
+기본 산출물은 `outputs/StatEdu_1.2.4_PLS_external_handoff.zip`과 동일 이름의
+`.sha256` 파일이다. ZIP 내부 `HANDOFF_SHA256.csv`로 개별 입력 파일의 크기와 해시를
+확인한다. 패키징 스크립트도 기본 first-100 프로필을 명시적으로 전달하고,
+`external_run.json`의 안전한 자료 basename·프로필 일치와 다른 프로필 자료의 부재를
+확인한 뒤 압축한다.
+
+외부 프로그램에는 묶음의 `HolzingerSwineford1939_first100_x1_x9.txt`와
+`pls_external_benchmark.stmodel`에 기록된 동일 모형을 사용한다. SmartPLS 4에서는
+standardized results, path weighting, 초기 외부가중치 +1, 고정 stop criterion 10^-7을
+사용하고 saturated model 결과를 기록한다. SmartPLS 4의 최대 반복은 3,000회로 고정되어
+있지만 StatEdu/seminr는 300회이므로, 양쪽 모두 300회 이전에 수렴했는지 확인한다.
+benchmark 자료에는 결측값이 없다. PLS와 consistent PLS(PLSc)를 각각 실행하고 외부
+프로그램 버전·실행일을 manifest 사본에 기록한다.
+
+## CSV 형식
+
+StatEdu와 외부 프로그램 결과를 각각 다음 열의 CSV로 준비한다.
+
+```text
+Model,Fit,srmr,d_G,d_ULS
+pls,saturated,0.0920854483723537,0.156085176800799,0.381587841087184
+plsc,saturated,0.0789513151368562,0.119832386033816,0.280498957282763
+```
+
+표시용 반올림 값이 아니라 가능한 최대 정밀도의 원값을 사용한다. `Model` 값은 대소문자를 구분하지 않는다. `Fit`은 `saturated` 또는 `estimated`여야 하며, `Model`과 `Fit`의 조합은 중복될 수 없다. 현재 고정 benchmark는 양쪽 CSV에 PLS/PLSc `saturated` 행만 둔다. StatEdu가 제공하지 않는 `estimated` 행을 외부 CSV에만 추가하면 비교기는 의미가 다른 행의 혼합을 막기 위해 중단한다.
+
+## 자동 비교
+
+```powershell
+& "C:\Program Files\R\R-4.5.3\bin\Rscript.exe" scripts/compare_pls_fit_external.R `
+  --statedu=statedu_fit.csv `
+  --external=smartpls_fit.csv `
+  --absolute-tolerance=1e-6 `
+  --relative-tolerance=1e-4 `
+  --report=fit_comparison.csv
+```
+
+각 지표는 절대오차 또는 상대오차 중 하나가 허용범위 안이면 통과한다. 초과 행이 있으면 스크립트는 실패 종료코드를 반환한다. 차이가 발견되면 먼저 지표 정의, 상관행렬 구성 범위, PLSc 보정 범위, 반올림 전 원값과 saturated/estimated model 설정을 확인한다.
+
+## 운영 기본 SmartPLS Student first-100 실제 실행
+
+SmartPLS Student license(무료 제한형, Professional 아님)에서 실제 실행한
+`holzinger-swineford-first100-smartpls-student` 프로필을 만들었다. 이 프로필은
+원본 CSV의 헤더 다음 자료행을 1부터 세어 **정확히 1:100행**, x1:x9만 원래 순서로
+선택한다. 선택·순서·출력 형식은 생성기가 고정하며, 세미콜론 구분 입력 파일의
+줄바꿈 정규화 SHA-256은 `F95E19EC5474CDA087F42D348FCEE447FF3AA271009E021E43F9ED0C6CC52C32`이다.
+측정 블록과 구조경로는 301행 고정 benchmark와 같다.
+
+```powershell
+& "C:\Program Files\R\R-4.5.3\bin\Rscript.exe" scripts/prepare_pls_external_handoff.R `
+  --output-dir=docs/evidence/release_1_2_4/pls/smartpls_4_1_1_8_hs_first100 `
+  --profile=holzinger-swineford-first100-smartpls-student
+```
+
+2026-08-23에 SmartPLS 4.1.1.8 Student license에서 standardized results, path weighting,
+초기 외부가중치 +1, stop criterion 10^-7, saturated model 조건으로 PLS와 PLSc를
+각각 실행했다. 두 실행 모두 초기 PLS 단계가 26회에 수렴했고 실행 로그에
+`All calculations done.`이 표시되었다.
+
+| 추정량 | 프로그램 | SRMR | d_G | d_ULS |
+|:--|:--|--:|--:|--:|
+| PLS | StatEdu, 반올림 전 | 0.112153043659770 | 0.175648969255271 | 0.566023734096761 |
+| PLS | SmartPLS 화면 | .112 | .176 | .566 |
+| PLSc | StatEdu, 반올림 전 | 0.122668303364477 | 0.281768771471191 | 0.677138069264375 |
+| PLSc | SmartPLS 화면 | .123 | .282 | .677 |
+
+화면에 표시된 세 자리의 반 단위 허용오차로 여섯 비교가 모두 통과했다. SmartPLS
+Student license에서는 Excel·HTML·표 복사 내보내기가 잠겨 있었으므로 이 기록은 내부 원값의
+완전 동일성이 아니라 **표시 정밀도 내 일치**만 주장한다. 내보내기 잠금 화면도 함께
+보존했다. SmartPLS UI·프로젝트·설정 원본 16개는 공개 저장소 밖
+`STATEDU_SMARTPLS_EVIDENCE_ROOT` 아래에 보존하며, 공개 매니페스트에는 basename,
+byte 길이, SHA-256만 기록한다. 공개 입력·StatEdu 결과·외부 전사값·비교표의 SHA-256은
+`docs/evidence/release_1_2_4/pls/smartpls_4_1_1_8_hs_first100/external_run.json`에
+봉인되어 있다. release/installer gate는 비공개 원본 16개의 byte 길이와 해시를
+fail-closed로 검사하고, finalizer는 실제 설정 JSON과 입력 자료도 파싱한다. 화면 수치와
+수렴 횟수는 화면 해시에 연결된 수동 전사이며 화면을 기계 판독했다는 주장은 하지 않는다.
+SmartPLS UI 캡처와 vendor 원본을 공개 저장소 밖에 두는 근거는
+[SmartPLS Terms §3.4](https://www.smartpls.com/terms/?locale=en-US)이다.
+
+first-100은 현재 생성·전달·패키징의 운영 기본값이며 이 프로필에 한해 외부 증거가
+완결되어 있다. 이것이 legacy 301행 프로필의 결과를 대체하거나 완결한다는 뜻은 아니다.
+301행 프로필은 현재 strict PLSc 허용성 검사에서 fail-closed되고 완료된 외부 실행 증거도
+없으므로 별도의 legacy 상태로 유지한다. 두 프로필의 주장을 합치지 않는다.
+
+## SmartPLS TAM 교차검증
+
+2026-08-21에 SmartPLS 4.1.1.8의 내장 Technology Acceptance Model(TAM) 예제 중
+첫 100개 사례를 사용하여 StatEdu의 일반 PLS와 PLSc를 별도로 교차검증했다. SmartPLS의
+동일한 5개 구성개념, 22개 지표, 7개 구조경로와 saturated model 기준을 사용했다.
+
+| Estimator | SRMR | d_G | d_ULS |
+|:--|--:|--:|--:|
+| PLS | .077 | .882 | 1.514 |
+| PLSc | .080 | N/A | 1.601 |
+
+StatEdu의 반올림 전 결과는 PLS가 SRMR `0.077364679218131074`, d_G
+`0.88158264086612093`, d_ULS `1.5142792784026535`였고, PLSc가 SRMR
+`0.079540183709681148`, d_G `N/A`, d_ULS `1.6006401286161662`였다. SmartPLS가
+화면에 표시한 세 자리 결과와 모두 일치했다. 일곱 구조경로 역시 PLS
+`.361, .264, .332, .227, .339, .203, .193`, PLSc
+`.388, .306, .352, .229, .380, .200, .253`으로 각각 일치했다.
+
+이 TAM 기록은 화면값의 수동 전사이며 SmartPLS 원자료·모형·설정·경로 화면 증거를
+보존하지 않은 선택적 보조검사다. 따라서 first-100 고정 benchmark의 외부 증거를
+대체하거나 TAM 원본 실행의 독립 재현성을 주장하지 않는다.
+
+이 검증은 일반 PLS의 Mode A 점수모형과 PLSc의 일관성 보정을 분리하는 회귀검사다.
+`seminr::reflective()`가 `estimate_pls()` 내부에서 PLSc를 자동 호출하므로, StatEdu는
+일반 PLS를 명시적 Mode A composite로 추정하고 PLSc를 선택한 경우에만 선언된
+공통요인에 선택적 보정을 한 번 적용한다. SmartPLS에서 PLSc d_G가 산출되지 않은
+경우 StatEdu도 임의의 수치를 만들지 않고 `N/A`로 보고한다.
+
+SmartPLS 내장 예제 원자료는 저장소에 포함하지 않는다. 로컬 자료가 있으면 다음
+명령으로 동일한 검증을 실행할 수 있으며, 자료가 없으면 공개 CI에서는 명시적인
+skip 메시지를 남긴다.
+
+```powershell
+& "C:\Program Files\R\R-4.5.3\bin\Rscript.exe" scripts/validate_pls_smartpls_tam.R `
+  --data="C:\StatEdu\SmartPLS_Workspace\Example - TAM 100\Data.txt"
+```
+
+외부 값을 `external_fit.csv`에 입력한 후에는 다음 명령으로 비교표와 증거 해시를 확정한다.
+`--converged-before-300=true`는 실제 반복기록을 확인한 경우에만 지정한다. 운영 기본
+first-100 프로필은 공개 묶음 밖에 보존한 vendor 원본도 필수이므로 실제 경로를
+`--private-evidence-dir`에 지정한다.
+
+```powershell
+& "C:\Program Files\R\R-4.5.3\bin\Rscript.exe" scripts/finalize_pls_external_evidence.R `
+  --evidence-dir=outputs/pls_external_handoff `
+  --software=SmartPLS `
+  --software-version=4.x.x `
+  --run-date=2026-08-19 `
+  --converged-before-300=true `
+  --reported-decimal-places=3 `
+  --private-evidence-dir="C:\StatEdu\PrivateEvidence\smartpls_hs_first100"
+```
+
+`--reported-decimal-places`에는 실제 비교에 사용한 내보내기 또는 화면 표시값의 소수
+자릿수를 기록한다. `output_provenance`에는 `exported` 또는 `displayed`를 구분해
+기록하며, 화면값만 있는 경우 원시 내부값의 완전 동일성을 주장하지 않는다. 확정
+스크립트는 기본 수치 허용오차와 마지막 보고 자릿수의 반 단위 중 큰 값을 절대
+허용오차로 사용한다. 따라서 결과는 ‘외부 출력 정밀도 내 일치’로 해석한다. 스크립트는
+여섯 행이 이 기준을 모두 통과한 경우에만 `comparison.csv`를 보존하고
+`external_run.json`의 외부 결과·비교표 SHA-256을 갱신한다. 프로그램명, 버전,
+실행일, 보고 자릿수 또는 300회 이전 수렴 확인이 빠지면 실패한다. Student first-100
+프로필은 여기에 더해 실행 자료·모형·설정과 각 화면 증거의 해시가 하나라도 없거나
+달라지면 실패한다.
+
+SmartPLS Terms §8.1의 소프트웨어 인용 예시를 그대로 적용한다:
+Ringle, C. M., Wende, S., and Becker, J.-M. (2024). SmartPLS 4. Bönningstedt: SmartPLS GmbH. https://www.smartpls.com .
+
+추가 공식 참고:
+[Model Fit](https://www.smartpls.com/documentation/algorithms-and-techniques/model-fit/),
+[Consistent PLS-SEM](https://www.smartpls.com/documentation/algorithms-and-techniques/consistent-pls/),
+[PLS-SEM Algorithm](https://smartpls.com/documentation/algorithms-and-techniques/core-algorithm/pls/).

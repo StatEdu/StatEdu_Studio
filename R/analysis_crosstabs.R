@@ -96,6 +96,15 @@ crosstab_display_table <- function(tab, row_var, col_var, variable_info = NULL, 
   col_percent <- crosstab_percent_matrix(tab, "column")
   total_percent <- crosstab_percent_matrix(tab, "total")
   show_total_n <- !identical(options$total_n, FALSE)
+  format_percent <- function(values) {
+    out <- rep("", length(values))
+    present <- !is.na(values)
+    out[present] <- formatC(as.numeric(values[present]), format = "f", digits = 1)
+    matrix(out, nrow(values), ncol(values))
+  }
+  if (isTRUE(options$row_percent)) row_percent <- format_percent(row_percent)
+  if (isTRUE(options$column_percent)) col_percent <- format_percent(col_percent)
+  if (isTRUE(options$total_percent)) total_percent <- format_percent(total_percent)
 
   rows <- list()
   for (row_index in seq_len(nrow(tab))) {
@@ -103,13 +112,13 @@ crosstab_display_table <- function(tab, row_var, col_var, variable_info = NULL, 
     for (col_index in seq_len(ncol(tab))) {
       pieces <- as.character(tab[row_index, col_index])
       if (isTRUE(options$row_percent)) {
-        pieces <- c(pieces, paste0("row ", crosstab_format_number(row_percent[row_index, col_index], 1), "%"))
+        pieces <- c(pieces, paste0("row ", row_percent[row_index, col_index], "%"))
       }
       if (isTRUE(options$column_percent)) {
-        pieces <- c(pieces, paste0("col ", crosstab_format_number(col_percent[row_index, col_index], 1), "%"))
+        pieces <- c(pieces, paste0("col ", col_percent[row_index, col_index], "%"))
       }
       if (isTRUE(options$total_percent)) {
-        pieces <- c(pieces, paste0("total ", crosstab_format_number(total_percent[row_index, col_index], 1), "%"))
+        pieces <- c(pieces, paste0("total ", total_percent[row_index, col_index], "%"))
       }
       out[[col_labels[[col_index]]]] <- paste(pieces, collapse = "\n")
     }
@@ -123,7 +132,15 @@ crosstab_display_table <- function(tab, row_var, col_var, variable_info = NULL, 
     total_row <- c(total_row, list(Total = as.character(sum(tab))))
   }
   rows[[length(rows) + 1]] <- total_row
-  do.call(rbind, lapply(rows, as.data.frame, stringsAsFactors = FALSE, check.names = FALSE))
+  row_frame <- function(row) {
+    # Values are already scalar strings. Preserve the general converter's
+    # name handling for unusual labels instead of repairing them differently.
+    if (anyNA(names(row)) || any(!nzchar(names(row))) || anyDuplicated(names(row))) {
+      return(as.data.frame(row, stringsAsFactors = FALSE, check.names = FALSE))
+    }
+    list2DF(row)
+  }
+  do.call(rbind, lapply(rows, row_frame))
 }
 
 crosstab_chisq_result <- function(tab) {
@@ -186,6 +203,23 @@ crosstab_cramers_v <- function(tab) {
 }
 
 crosstab_gamma <- function(tab) {
+  lower_sums <- NULL
+  # Integer counts make these cumulative sums exact. Preserve the original
+  # arithmetic for custom/fractional inputs and possible integer overflow.
+  if (is.matrix(tab) && is.numeric(tab) &&
+      (identical(class(tab), "table") || identical(class(tab), c("matrix", "array"))) &&
+      length(tab) >= 64L && length(tab) <= 1000000L &&
+      all(is.finite(tab)) && all(tab >= 0) && all(tab == floor(tab))) {
+    total <- sum(tab)
+    if (total <= 94906265 && (!is.integer(tab) || max(tab) * as.double(total) <= .Machine$integer.max)) {
+      lower_sums <- matrix(0, nrow(tab), ncol(tab))
+      below <- numeric(ncol(tab))
+      for (row in rev(seq_len(nrow(tab)))) {
+        lower_sums[row, ] <- cumsum(below)
+        below <- below + tab[row, ]
+      }
+    }
+  }
   concordant <- 0
   discordant <- 0
   for (i in seq_len(nrow(tab))) {
@@ -196,10 +230,14 @@ crosstab_gamma <- function(tab) {
       higher_cols <- if (j < ncol(tab)) seq.int(j + 1, ncol(tab)) else integer(0)
       lower_cols <- if (j > 1) seq_len(j - 1) else integer(0)
       if (length(lower_rows) > 0 && length(higher_cols) > 0) {
-        concordant <- concordant + n_ij * sum(tab[lower_rows, higher_cols, drop = FALSE])
+        concordant <- concordant + n_ij * if (is.null(lower_sums)) {
+          sum(tab[lower_rows, higher_cols, drop = FALSE])
+        } else lower_sums[i, ncol(tab)] - lower_sums[i, j]
       }
       if (length(lower_rows) > 0 && length(lower_cols) > 0) {
-        discordant <- discordant + n_ij * sum(tab[lower_rows, lower_cols, drop = FALSE])
+        discordant <- discordant + n_ij * if (is.null(lower_sums)) {
+          sum(tab[lower_rows, lower_cols, drop = FALSE])
+        } else lower_sums[i, j - 1L]
       }
     }
   }
@@ -257,12 +295,17 @@ crosstab_trend_analysis <- function(tab, row_measure = "", col_measure = "") {
     expanded <- as.data.frame(as.table(tab), stringsAsFactors = FALSE)
     expanded$row_score <- row_scores[match(expanded$Var1, rownames(tab))]
     expanded$col_score <- col_scores[match(expanded$Var2, colnames(tab))]
-    values <- expanded[rep(seq_len(nrow(expanded)), expanded$Freq), c("row_score", "col_score"), drop = FALSE]
-    if (nrow(values) < 3) {
+    # Keep cor() inputs in the original observation order without constructing
+    # a repeated data frame and its unused unique row names.
+    observation_index <- rep(seq_len(nrow(expanded)), expanded$Freq)
+    row_values <- expanded$row_score[observation_index]
+    col_values <- expanded$col_score[observation_index]
+    observation_count <- length(observation_index)
+    if (observation_count < 3) {
       return(list(method = "Score-based ordered-by-ordered trend association", detail = "ordered_score", statistic = NA_real_, df = 1, p = NA_real_, odds_ratio = NA_real_, gamma = crosstab_gamma(tab)))
     }
-    r <- suppressWarnings(stats::cor(values$row_score, values$col_score))
-    statistic <- (nrow(values) - 1) * r^2
+    r <- suppressWarnings(stats::cor(row_values, col_values))
+    statistic <- (observation_count - 1) * r^2
     p <- stats::pchisq(statistic, df = 1, lower.tail = FALSE)
     return(list(method = "Score-based ordered-by-ordered trend association", detail = "ordered_score", statistic = statistic, df = 1, p = p, odds_ratio = NA_real_, gamma = crosstab_gamma(tab)))
   }
@@ -287,6 +330,7 @@ crosstab_effect_size_table <- function(tab, trend = NULL) {
 }
 
 prepare_crosstab_results <- function(data, row_var, col_var, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("row_var", "col_var"))
   row_var <- as.character(row_var %||% "")
   col_var <- as.character(col_var %||% "")
   shiny::validate(shiny::need(nzchar(row_var), "Select a row variable."))

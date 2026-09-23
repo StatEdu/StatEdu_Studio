@@ -142,6 +142,15 @@ register_correlation_handlers <- function(
     mark_settings_dirty = mark_settings_dirty
   )
 
+  register_analysis_reorder(input, session, "correlation_selected", function(payload) {
+    updated <- analysis_reorder_items(correlation_variables(), payload)
+    if (isTRUE(updated$changed)) {
+      correlation_variables(updated$order)
+      active_correlation_list("correlation_selected")
+      mark_settings_dirty()
+    }
+  })
+
   observeEvent(input$correlation_move_up, {
     updated <- move_order_item(correlation_variables(), input$correlation_selected, "up")
     if (isTRUE(updated$changed)) {
@@ -160,9 +169,15 @@ register_correlation_handlers <- function(
     }
   })
 
-  correlation_result <- reactiveVal(NULL)
+  correlation_result <- analysis_scope_result_val(NULL)
+  correlation_export_images <- correlation_export_image_cache()
+  session$onSessionEnded(correlation_export_images$clear)
 
-  observeEvent(input$run_correlation, {
+  register_analysis_command_handler(
+    "run_correlation", input, output, session,
+    states = list(correlation_variables = correlation_variables),
+    dataset_fn = dataset_fn, context_fn = function() list(selected = selected_names_fn(), variables = variable_table_fn(), labels = labels_fn(), categories = category_table_fn()),
+    run_fn = function() {
     selected_variables <- as.character(correlation_variables() %||% character(0))
     if (length(selected_variables) < 2) {
       showNotification(statedu_t("analysis.validation.correlation_min_two", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
@@ -238,6 +253,7 @@ register_correlation_handlers <- function(
     if (is.null(result)) {
       return()
     }
+    correlation_export_images$clear()
     correlation_result(result)
   })
 
@@ -259,6 +275,7 @@ register_correlation_handlers <- function(
   observeEvent(input$reset_correlation_selection, {
     if (length(as.character(correlation_variables() %||% character(0))) == 0) return()
     correlation_variables(character(0))
+    correlation_export_images$clear()
     correlation_result(NULL)
     active_correlation_list("correlation_available")
     session$sendCustomMessage(
@@ -314,11 +331,11 @@ register_correlation_handlers <- function(
     }
     tryCatch(
       {
-        write_correlation_results_html(result, path)
+        write_correlation_results_html(result, path, plot_renderer = correlation_export_images$render)
         showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -336,11 +353,11 @@ register_correlation_handlers <- function(
     }
     tryCatch(
       {
-        write_correlation_results_pdf(result, path)
+        write_correlation_results_pdf(result, path, plot_renderer = correlation_export_images$render)
         showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -358,11 +375,11 @@ register_correlation_handlers <- function(
     }
     tryCatch(
       {
-        save_correlation_excel_file(result, path)
+        save_correlation_excel_file(result, path, plot_renderer = correlation_export_images$render)
         showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -380,12 +397,12 @@ register_correlation_handlers <- function(
         saved <- character(0)
         if (isTRUE(result$options$scatter_plot)) {
           file <- file.path(directory, "scatter_plot_correlation.png")
-          save_plot_png_file(draw_correlation_scatter_plot, result, file, dpi = 600, width = 8.5, height = 8.5)
+          save_plot_png_file(draw_correlation_scatter_plot, result, file, dpi = analysis_figure_dpi(), width = 8.5, height = 8.5)
           saved <- c(saved, file)
         }
         if (isTRUE(result$options$matrix_plot)) {
           file <- file.path(directory, "correlation_matrix_heatmap.png")
-          save_plot_png_file(draw_correlation_heatmap, result, file, dpi = 600, width = 8, height = 8)
+          save_plot_png_file(draw_correlation_heatmap, result, file, dpi = analysis_figure_dpi(), width = 8, height = 8)
           saved <- c(saved, file)
         }
         if (length(saved) == 0) {
@@ -395,7 +412,7 @@ register_correlation_handlers <- function(
         showNotification(sprintf(statedu_t("result.figures_saved", statedu_current_language(app_language_fn)), length(saved), directory), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })

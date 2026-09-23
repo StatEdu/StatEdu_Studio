@@ -1,0 +1,25 @@
+Sys.setlocale('LC_ALL','Korean_Korea.utf8')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules();options(statedu.app_language='ko')
+out<-'outputs/spss_phase33_20260906';dir.create(out,showWarnings=FALSE)
+set.seed(20260918);n<-360
+d<-as.data.frame(matrix(rnorm(n*16),ncol=16));names(d)<-paste0('x',1:16)
+d$group<-factor(rep(c('대조','처치1','처치2'),120));d$y<-factor(rbinom(n,1,plogis(.8*d$x1-.5*d$x2)),levels=0:1)
+d$nom<-factor(sample(c('A','B','C'),n,TRUE));d$ord<-ordered(cut(.7*d$x1+rlogis(n),c(-Inf,-.6,.6,Inf),labels=c('낮음','중간','높음')))
+info<-data.frame(name=names(d),measurement=c(rep('continuous',16),'category','binary','category','ordered'))
+make<-function(data=d,dep='y',b1=c('x1','x2'),b2=character(0),b3=character(0))prepare_logistic_analysis_results(data,dep,b1,b2,b3,variable_info=info)
+m<-d;m$y[1:7]<-NA;m$x1[8:11]<-NA
+cases<-list(binary=make(),categorical=make(b1=c('x1','group')),nominal=make(dep='nom'),ordinal=make(dep='ord'),hierarchical=make(b1='x1',b2='x2',b3='x3'),wide=make(b1='x1',b2='x2',b3='x3'),missing=make(m),long_coefficients=make(b1=paste0('x',1:16)))
+for(name in names(cases)) {
+ r<-cases[[name]];folder<-file.path(out,name);dir.create(folder,showWarnings=FALSE)
+ args<-list(results=r,variable_table=info,show_b=TRUE,show_se=TRUE,show_mcfadden=TRUE,show_cox_snell=TRUE,split_ci=name!='ordinal',output_table_style=if(name=='wide')'wide' else 'standard')
+ do.call(write_logistic_results_html,c(args,list(file=file.path(folder,'result.html'))))
+ html<-paste(readLines(file.path(folder,'result.html'),encoding='UTF-8'),collapse='\n');b<-xml2::read_html(html)
+ a<-xml2::read_html(as.character(htmltools::renderTags(do.call(logistic_results_panel,args))$html))
+ cells<-function(doc)vapply(xml2::xml_find_all(doc,'.//table//th|.//table//td'),result_html_text,character(1));stopifnot(identical(cells(a),cells(b)))
+ e<-list(title='Logistic',html=html,saved_at='2026-09-06')
+ do.call(write_logistic_results_pdf,c(args,list(file=file.path(folder,'result.pdf'))));do.call(save_logistic_excel_file,c(args,list(file=file.path(folder,'result.xlsx'))));write_result_collection_docx(list(e),file.path(folder,'result.docx'))
+ tables<-result_entry_tables(e)
+ expected<-list(tables=lapply(tables,function(t)list(title=t$title,orientation=t$orientation,notes=t$notes,cells=lapply(t$screen$cells,function(c)c(c,list(value=t$screen$values[c$row,c$col]))))),images=as.list(xml2::xml_attr(xml2::xml_find_all(b,'.//img'),'alt')))
+ jsonlite::write_json(expected,file.path(folder,'expected.json'),auto_unbox=TRUE);saveRDS(r,file.path(folder,'analysis.rds'))
+ cat(name,length(tables),'tables',length(expected$images),'images\n')
+}

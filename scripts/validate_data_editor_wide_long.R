@@ -176,7 +176,7 @@ original_choose_data_csv_save_path <- if (exists("choose_data_csv_save_path", mo
 } else {
   NULL
 }
-assign("choose_data_csv_save_path", function() saved_csv_base, envir = .GlobalEnv)
+assign("choose_data_csv_save_path", function(language) saved_csv_base, envir = .GlobalEnv)
 save_result <- save_wide_long_result_file(configured_fixed_preview)
 stopifnot(isTRUE(save_result$saved))
 stopifnot(grepl("\\.csv$", save_result$path, ignore.case = TRUE))
@@ -185,7 +185,7 @@ reloaded <- read_input_data(save_result$path, basename(save_result$path), csv_he
 stopifnot(identical(names(reloaded), names(configured_fixed_preview)))
 stopifnot(nrow(reloaded) == nrow(configured_fixed_preview))
 
-assign("choose_data_csv_save_path", function() character(0), envir = .GlobalEnv)
+assign("choose_data_csv_save_path", function(language) character(0), envir = .GlobalEnv)
 cancel_result <- save_wide_long_result_file(configured_fixed_preview)
 stopifnot(!isTRUE(cancel_result$saved))
 stopifnot(identical(cancel_result$path, ""))
@@ -198,11 +198,11 @@ if (is.function(original_choose_data_csv_save_path)) {
 unlink(save_result$path)
 
 wide_long_source <- read_project_file(file.path("R", "data_editor_wide_long.R"))
-assert_contains(wide_long_source, "save_wide_long_result_file(result)", "wide-to-long run save handoff")
+assert_contains(wide_long_source, "save_wide_long_result_file(result, language = language)", "wide-to-long run save handoff")
 assert_contains(wide_long_source, 'target_name <- if (isTRUE(save_result$saved)) basename(save_result$path) else "wide_to_long.csv"', "wide-to-long fallback dataset name")
 assert_contains(wide_long_source, "target_path <- if (isTRUE(save_result$saved)) save_result$path else NULL", "wide-to-long saved path handoff")
 assert_contains(wide_long_source, "replace_dataset_fn(result, name = target_name, path = target_path, csv_header = TRUE)", "wide-to-long dataset replacement")
 assert_contains(wide_long_source, 'statedu_t("data_editor.wide_long_notify_saved", language)', "wide-to-long saved notification")
-assert_contains(wide_long_source, 'statedu_t("data_editor.wide_long_temp_connected", language)', "wide-to-long canceled save message")
+# Current-language canceled-save status is exercised by validate_wide_long_status_i18n.R.
 
 cat("Data Editor wide-to-long validation passed.\n")

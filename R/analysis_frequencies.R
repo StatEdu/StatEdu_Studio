@@ -41,7 +41,7 @@ frequency_category_value_order <- function(name, category_table = NULL) {
   if (is.na(row_index)) {
     return(character(0))
   }
-  value_columns <- paste0("value_", seq_len(6))
+  value_columns <- paste0("value_", seq_len(statedu_category_label_max_pairs()))
   value_columns <- intersect(value_columns, names(category_table))
   if (length(value_columns) == 0) {
     return(character(0))
@@ -165,9 +165,10 @@ descriptive_table_for_variable <- function(data, name, variable_info = NULL, lab
   }
   mean_value <- mean(values)
   sd_value <- stats::sd(values)
-  q1_value <- stats::quantile(values, 0.25, names = FALSE, type = 7)
-  q3_value <- stats::quantile(values, 0.75, names = FALSE, type = 7)
-  iqr_value <- stats::IQR(values)
+  quartiles <- stats::quantile(values, c(0.25, 0.75), names = FALSE, type = 7)
+  q1_value <- quartiles[[1L]]
+  q3_value <- quartiles[[2L]]
+  iqr_value <- diff(quartiles)
   result <- data.frame(
     Name = name,
     Variable = frequency_variable_display_name(name, variable_info, labels, category_table),
@@ -198,6 +199,7 @@ descriptive_table_for_variable <- function(data, name, variable_info = NULL, lab
 }
 
 prepare_frequencies_results <- function(data, variables, variable_info = NULL, labels = character(0), category_table = NULL) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("variables"))
   variables <- intersect(as.character(variables %||% character(0)), names(data))
   shiny::validate(shiny::need(length(variables) > 0, "Move at least one variable into Variables."))
 

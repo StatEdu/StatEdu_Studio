@@ -307,6 +307,7 @@
       changed = alignRoleStack(nodes, role) || changed;
     });
     changed = alignSingleIndependentMediator(nodes) || changed;
+    changed = alignModerators(nodes, style) || changed;
     return changed;
   }
 

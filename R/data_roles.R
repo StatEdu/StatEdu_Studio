@@ -76,6 +76,20 @@ role_for_variable <- function(name, dependent = character(0), independent = char
   "exclude"
 }
 
+roles_for_variables <- function(variables, dependent = character(0), independent = character(0), controls = character(0)) {
+  plain_character <- function(x) is.character(x) && !is.object(x) && is.null(dim(x))
+  if (!all(vapply(list(variables, dependent, independent, controls), plain_character, logical(1)))) {
+    return(vapply(variables, role_for_variable, character(1),
+      dependent = dependent, independent = independent, controls = controls))
+  }
+  roles <- rep("exclude", length(variables))
+  roles[variables %in% controls] <- "covariate"
+  roles[variables %in% independent] <- "independent"
+  roles[variables %in% dependent] <- "dependent"
+  names(roles) <- names(variables) %||% variables
+  roles
+}
+
 valid_variable_role <- function(role) {
   as.character(role %||% "") %in% c("dependent", "independent", "control")
 }

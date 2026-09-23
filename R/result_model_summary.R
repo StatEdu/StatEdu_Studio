@@ -98,10 +98,9 @@ model_overview_data_frame <- function(results, variable_table = NULL, labels = c
       rows
     )
   })
-  table <- data.frame(Item = rows, stringsAsFactors = FALSE, check.names = FALSE)
-  for (index in seq_along(values)) {
-    table[[dependent_labels[[index]]]] <- unname(values[[index]][rows])
-  }
+  table <- data.frame(Model = dependent_labels, stringsAsFactors = FALSE, check.names = FALSE)
+  for (field in rows) table[[field]] <- vapply(values, function(value) unname(value[[field]]), character(1))
+  attr(table, "regression_overview_rows") <- TRUE
   table
 }
 

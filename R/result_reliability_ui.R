@@ -124,29 +124,50 @@ reliability_factor_overview_table <- function(result) {
 
 reliability_method_note <- function(result) {
   method <- result$method %||% ""
-  recommended <- result$recommended %||% switch(method, pearson = "Pearson Omega", ordinal = "Ordinal Omega", kr20 = "KR-20", "")
   reason <- switch(
     method,
     pearson = if (isTRUE(result$options$ordinal)) {
-      "Items were treated as approximately continuous because the response scale had six or more categories and distributional assumptions were acceptable."
+      "Pearson correlations were used because items had at least six response categories and met the distributional criteria."
     } else {
-      "Pearson reliability coefficients were estimated because items were treated as continuous."
+      "Pearson correlations were used for continuous items."
     },
-    ordinal = "Ordinal reliability coefficients based on polychoric correlations were estimated due to the ordinal response format and/or non-normal item distributions.",
+    ordinal = "Polychoric correlations were used for ordinal items.",
     kr20 = "KR-20 was used for binary items.",
     ""
   )
   normality_note <- if (is.data.frame(result$normality_table) && nrow(result$normality_table) > 0) {
-    "Normality was considered satisfied when the absolute skewness was less than 2 and the absolute kurtosis was less than 7 for every item."
+    "Item normality was defined as |skewness| < 2 and |kurtosis| < 7."
   } else {
     ""
   }
-  abbreviation_note <- "Table abbreviations: alpha = Cronbach's alpha or ordinal alpha; omega = Pearson omega or ordinal omega; r = correlation."
-  paste(c(sprintf("Recommended reliability method: %s.", recommended), reason, normality_note, abbreviation_note), collapse = " ")
+  displayed <- names(reliability_overview_table(result))
+  abbreviation_note <- paste(c(
+    if (any(grepl("alpha", displayed, ignore.case = TRUE))) "alpha = Cronbach's or ordinal alpha",
+    if (any(grepl("omega", displayed, ignore.case = TRUE))) "omega = Pearson or ordinal omega"
+  ), collapse = "; ")
+  # Journal notes use a stable order: abbreviations first, followed by the
+  # estimation rule and its diagnostic threshold.
+  result_sci_note_text(abbreviations = abbreviation_note, estimation = c(reason, normality_note))
 }
 
-reliability_item_analysis_note <- function(result) {
+reliability_item_analysis_note <- function(result, language = "en") {
   options <- result$options %||% list()
+  if (identical(language, "ko")) {
+    notes <- character(0)
+    if (isTRUE(options$normality)) {
+      notes <- c(notes, "정규성 진단을 위해 왜도와 첨도를 제시했습니다.")
+    }
+    if (isTRUE(options$reliability_if_deleted)) {
+      notes <- c(notes, "문항 제거 시 신뢰도는 각 문항을 제외한 뒤 다시 산출했습니다.")
+    }
+    if (isTRUE(options$item_total_correlation)) {
+      notes <- c(notes, "수정 문항-총점 상관은 해당 문항을 제외한 총점을 사용합니다.")
+    }
+    if (isTRUE(options$reliability_if_deleted)) {
+      notes <- c(notes, "대시(-)는 추정할 수 없음을 뜻합니다.")
+    }
+    return(paste(notes, collapse = " "))
+  }
   notes <- character(0)
   if (isTRUE(options$normality)) {
     notes <- c(notes, "Skewness and kurtosis are reported for the normality option.")
@@ -172,22 +193,46 @@ reliability_item_analysis_note <- function(result) {
   if (isTRUE(options$reliability_if_deleted)) {
     notes <- c(notes, "A dash (-) indicates that the coefficient could not be estimated for that item-deleted model.")
   }
-  notes <- c(notes, "Table abbreviations: alpha = Cronbach's alpha or ordinal alpha; omega = Pearson omega or ordinal omega; r = correlation.")
-  paste(notes, collapse = " ")
+  displayed <- names(reliability_item_analysis_table(result))
+  definitions <- c(
+    if (any(grepl("alpha", displayed, ignore.case = TRUE))) "alpha = Cronbach's alpha or ordinal alpha",
+    if (any(grepl("omega", displayed, ignore.case = TRUE))) "omega = Pearson omega or ordinal omega",
+    if (any(grepl("correlation", displayed, ignore.case = TRUE))) "r = correlation"
+  )
+  if (!identical(language, "en")) {
+    definitions <- vapply(definitions, result_appendix_ui_text, character(1), language = language)
+    notes <- vapply(notes, result_appendix_ui_text, character(1), language = language)
+  }
+  result_publication_note(c(paste(definitions, collapse = "; "), notes))
 }
 
 reliability_note_tag <- function(text, width = 688) {
   if (length(text) == 0 || !nzchar(text[[1]])) {
     return(NULL)
   }
-  div(
+  result_note_div(
     class = "coefficient-note reliability-note",
     style = sprintf("width:min(100%%,%dpx);max-width:%dpx;overflow-wrap:break-word;word-break:normal;", as.integer(width), as.integer(width)),
     text
   )
 }
 
-reliability_header_label <- function(column) {
+reliability_header_label <- function(column, language = "en") {
+  if (!language %in% c("en", "ko")) return(result_appendix_ui_text(column, language))
+  if (identical(language, "ko")) {
+    return(switch(
+      column,
+      `Total items if item deleted` = htmltools::HTML("전체 문항<br>제거 시"),
+      `Reliability if item deleted` = htmltools::HTML("신뢰도<br>문항 제거 시"),
+      `Corrected item-total correlation` = htmltools::HTML("수정 문항-총점<br>상관"),
+      `Item-total correlation` = htmltools::HTML("문항-총점<br>상관"),
+      `Cronbach's alpha if item deleted` = htmltools::HTML("alpha<br>문항 제거 시"),
+      `Pearson omega if item deleted` = htmltools::HTML("omega<br>문항 제거 시"),
+      `Ordinal alpha if item deleted` = htmltools::HTML("alpha<br>문항 제거 시"),
+      `Ordinal omega if item deleted` = htmltools::HTML("omega<br>문항 제거 시"),
+      htmltools::HTML(result_appendix_ui_text(column, language))
+    ))
+  }
   if (identical(column, "Total items if item deleted")) {
     return(htmltools::HTML("Total<br>if deleted"))
   }
@@ -296,14 +341,14 @@ reliability_cell_style <- function(column, first = FALSE, header = FALSE, last =
   )
 }
 
-reliability_html_table <- function(table, min_width = 360) {
+reliability_html_table <- function(table, min_width = 360, table_role = NULL, table_language = NULL) {
   if (!is.data.frame(table) || nrow(table) == 0) {
     return(NULL)
   }
   table <- reliability_display_table(table)
   columns <- names(table)
   widths <- reliability_column_widths(columns)
-  tags$table(
+  table_tag <- tags$table(
     class = "coefficient-table reliability-table",
     style = paste0(
       result_table_style(font_size = 12, min_width = 0),
@@ -317,7 +362,7 @@ reliability_html_table <- function(table, min_width = 360) {
         column <- columns[[index]]
         tags$th(
           style = reliability_cell_style(column, first = index == 1, header = TRUE, width = widths[[index]]),
-          reliability_header_label(column)
+          reliability_header_label(column, table_language %||% "en")
         )
       }))
     ),
@@ -342,6 +387,19 @@ reliability_html_table <- function(table, min_width = 360) {
       })
     )
   )
+  intrinsic_width <- result_table_intrinsic_width(
+    table,
+    first_width = 120,
+    default_width = 70,
+    min_width = min(590, as.numeric(min_width %||% 360))
+  )
+  contract <- result_table_contract(
+    table,
+    role = table_role,
+    language = table_language,
+    intrinsic_width = intrinsic_width
+  )
+  result_table_apply_contract(table_tag, contract)
 }
 
 reliability_results_ui <- function(result) {
@@ -349,15 +407,20 @@ reliability_results_ui <- function(result) {
     return(NULL)
   }
   if (identical(result$type %||% "", "reliability_factors")) {
+    appendix_language <- result_appendix_table_language()
     overview <- reliability_factor_overview_table(result)
     overview_width <- reliability_table_width(overview, min_width = 688)
     item_analysis <- reliability_factor_item_analysis_table(result)
     item_analysis_width <- reliability_table_width(item_analysis, min_width = 688)
-    item_note <- reliability_item_analysis_note((result$factors %||% list(result$total))[[1]])
+    item_note <- reliability_item_analysis_note((result$factors %||% list(result$total))[[1]], appendix_language)
     if (is.data.frame(item_analysis) && nrow(item_analysis) > 0 && "Total items if item deleted" %in% names(item_analysis)) {
       item_note <- paste(
         item_note,
-        "Total items if item deleted is calculated from all items across subfactors after removing each item."
+        if (identical(appendix_language, "ko")) {
+          "전체 문항 제거 시 신뢰도는 모든 하위요인의 문항에서 해당 문항을 제외한 뒤 산출했습니다."
+        } else {
+          result_appendix_ui_text("Total items if item deleted is calculated from all items across subfactors after removing each item.", appendix_language)
+        }
       )
     }
     return(tagList(
@@ -367,15 +430,17 @@ reliability_results_ui <- function(result) {
           class = "result-section reliability-result-section regression-result-panel",
           style = "width:min(100%,688px);max-width:688px;overflow-x:hidden;box-sizing:border-box;",
           h3("Reliability by subfactor"),
-          reliability_html_table(overview, min_width = overview_width)
+          result_table_with_notes(
+            reliability_html_table(overview, min_width = overview_width, table_role = "main", table_language = "en")
+          )
         ),
         if (is.data.frame(item_analysis) && nrow(item_analysis) > 0) {
           div(
             class = "result-section reliability-result-section regression-result-panel",
             style = "width:min(100%,688px);max-width:688px;overflow-x:hidden;box-sizing:border-box;",
-            h3("Item analysis"),
+            h3(result_appendix_ui_text("Item analysis", appendix_language)),
             result_table_with_notes(
-              reliability_html_table(item_analysis, min_width = item_analysis_width),
+              reliability_html_table(item_analysis, min_width = item_analysis_width, table_role = "appendix", table_language = appendix_language),
               reliability_note_tag(item_note, width = item_analysis_width)
             )
           )
@@ -385,6 +450,7 @@ reliability_results_ui <- function(result) {
   }
   item_analysis <- reliability_item_analysis_table(result)
   overview <- reliability_overview_table(result)
+  appendix_language <- result_appendix_table_language()
   overview_width <- reliability_table_width(overview, min_width = 688)
   item_analysis_width <- reliability_table_width(item_analysis, min_width = 688)
   tagList(
@@ -395,18 +461,18 @@ reliability_results_ui <- function(result) {
         style = "width:min(100%,688px);max-width:688px;overflow-x:hidden;box-sizing:border-box;",
         h3("Reliability"),
         result_table_with_notes(
-          reliability_html_table(overview, min_width = overview_width),
-          reliability_note_tag(reliability_method_note(result), width = overview_width)
+          reliability_html_table(overview, min_width = overview_width, table_role = "main", table_language = "en"),
+          reliability_note_tag(result_sci_note_text(estimation = reliability_method_note(result)), width = overview_width)
         )
       ),
       if (is.data.frame(item_analysis) && nrow(item_analysis) > 0) {
         div(
           class = "result-section reliability-result-section regression-result-panel",
           style = "width:min(100%,688px);max-width:688px;overflow-x:hidden;box-sizing:border-box;",
-          h3("Item analysis"),
+          h3(result_appendix_ui_text("Item analysis", appendix_language)),
           result_table_with_notes(
-            reliability_html_table(item_analysis, min_width = item_analysis_width),
-            reliability_note_tag(reliability_item_analysis_note(result), width = item_analysis_width)
+            reliability_html_table(item_analysis, min_width = item_analysis_width, table_role = "appendix", table_language = appendix_language),
+            reliability_note_tag(reliability_item_analysis_note(result, appendix_language), width = item_analysis_width)
           )
         )
       },

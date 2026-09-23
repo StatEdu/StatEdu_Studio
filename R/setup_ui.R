@@ -250,6 +250,38 @@ mixed_rm_anova_tab_panel <- function(title = "Repeated-measures ANOVA", language
   )
 }
 
+one_group_rm_anova_tab_panel <- function(title = "Within-subject treatment repeated-measures ANOVA", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  tabPanel(
+    title,
+    value = "one_group_rm_anova",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1(one_group_rm_ui_text("title", language)),
+        div(one_group_rm_ui_text("subtitle", language), class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel ttest-anova-workspace-panel ancova-workspace-panel analysis-three-block-workspace",
+        style = "min-width:980px;overflow-x:auto;",
+        analysis_workspace_heading(one_group_rm_ui_text("title", language), "one_group_rm_anova", language),
+        analysis_workspace_body(
+          "one_group_rm_anova",
+          uiOutput("one_group_rm_anova_setup"),
+          analysis_three_block_action_row(
+            class = "ttest-anova-action-row ancova-action-row",
+            run_button = actionButton("run_one_group_rm_anova", statedu_ui_label("run_analysis", language), class = "btn btn-primary"),
+            reset_control = uiOutput("one_group_rm_anova_reset_control"),
+            save_control = uiOutput("one_group_rm_anova_save_control")
+          ),
+          uiOutput("one_group_rm_anova_results")
+        )
+      )
+    )
+  )
+}
+
 nonparametric_tab_panel <- function(title = "Nonparametric Tests", language = statedu_initial_language()) {
   language <- normalize_app_language(language)
   tabPanel(
@@ -566,6 +598,18 @@ reset_setup_inputs <- function(session) {
 }
 
 restore_setup_inputs <- function(session, settings) {
+  data_file_options <- settings$data_file_options
+  if (is.list(data_file_options)) {
+    if (!is.null(data_file_options$csv_header)) {
+      updateCheckboxInput(session, "header", value = isTRUE(data_file_options$csv_header))
+    }
+    if (!is.null(data_file_options$dat_delimiter)) {
+      updateSelectInput(session, "dat_delimiter", selected = as.character(data_file_options$dat_delimiter))
+    }
+    if (!is.null(data_file_options$dat_has_names)) {
+      updateCheckboxInput(session, "dat_has_names", value = isTRUE(data_file_options$dat_has_names))
+    }
+  }
   if (!is.null(settings$bootstrap_resamples)) {
     updateSelectInput(session, "boot_r", selected = as.character(settings$bootstrap_resamples))
   }

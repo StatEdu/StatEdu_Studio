@@ -292,6 +292,7 @@ regression_setup_panel <- function(
         actionButton("run", analysis_ui_text("Run regression", language), class = "btn-primary")
       },
       reset_control = uiOutput("regression_reset_control"),
+      command_control = actionButton("open_regression_syntax", if (language == "ko") "분석 명령어" else "Analysis Commands", class = "btn-default"),
       extra_controls = uiOutput("penalized_regression_control"),
       save_control = uiOutput("regression_save_control")
     )

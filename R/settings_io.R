@@ -136,13 +136,40 @@ settings_embedded_data_file <- function(settings) {
   }
   restored_path <- tempfile("statedu_data_", fileext = if (nzchar(extension)) paste0(".", extension) else "")
   writeBin(jsonlite::base64_dec(settings_scalar(embedded)), restored_path)
-  file <- list(path = restored_path, name = file_name, restored = TRUE)
-  if (excel_data_file_extension(file_name) && is.list(settings$data_file_options)) {
-    file$excel_sheet <- settings_scalar(settings$data_file_options$excel_sheet %||% "")
-    file$excel_start_cell <- settings_scalar(settings$data_file_options$excel_start_cell %||% "A1")
-    file$excel_col_names <- isTRUE(settings$data_file_options$excel_col_names %||% TRUE)
+  settings_apply_data_file_options(
+    list(path = restored_path, name = file_name, restored = TRUE),
+    settings
+  )
+}
+
+settings_apply_data_file_options <- function(file, settings) {
+  if (is.null(file)) {
+    return(NULL)
+  }
+  options <- settings$data_file_options
+  if (!is.list(options)) {
+    options <- list()
+  }
+  extension <- tolower(tools::file_ext(as.character(file$name %||% file$path %||% "")))
+  if (identical(extension, "csv")) {
+    # Older settings files did not persist this option. Their UI default was
+    # always TRUE, so pin it on the restored file before the first reactive
+    # data read instead of initially parsing the header as a data row.
+    file$csv_header <- isTRUE(options$csv_header %||% TRUE)
+  } else if (identical(extension, "dat")) {
+    file$dat_delimiter <- settings_scalar(options$dat_delimiter %||% "whitespace")
+    file$dat_has_names <- isTRUE(options$dat_has_names %||% FALSE)
+  } else if (extension %in% c("xlsx", "xls")) {
+    file$excel_sheet <- settings_scalar(options$excel_sheet %||% "")
+    file$excel_start_cell <- settings_scalar(options$excel_start_cell %||% "A1")
+    file$excel_col_names <- isTRUE(options$excel_col_names %||% TRUE)
   }
   file
+}
+
+settings_data_file_name <- function(settings, path) {
+  name <- settings_scalar(settings$data_file %||% settings$embedded_data_file$name)
+  if (nzchar(name) && supported_data_file_extension(name)) basename(name) else basename(path)
 }
 
 settings_external_data_file <- function(settings, settings_path = NULL) {
@@ -150,13 +177,11 @@ settings_external_data_file <- function(settings, settings_path = NULL) {
   if (!nzchar(path)) {
     return(NULL)
   }
-  file <- list(path = path, name = basename(path), restored = TRUE)
-  if (excel_data_file_extension(file$name) && is.list(settings$data_file_options)) {
-    file$excel_sheet <- settings_scalar(settings$data_file_options$excel_sheet %||% "")
-    file$excel_start_cell <- settings_scalar(settings$data_file_options$excel_start_cell %||% "A1")
-    file$excel_col_names <- isTRUE(settings$data_file_options$excel_col_names %||% TRUE)
-  }
-  file
+  settings_apply_data_file_options(
+    list(path = path, name = settings_data_file_name(settings, path), restored = TRUE,
+         source_directory = if (!is.null(settings_path) && nzchar(settings_path)) dirname(normalizePath(settings_path, winslash = "/", mustWork = FALSE)) else ""),
+    settings
+  )
 }
 
 settings_external_data_switch <- function(settings, settings_path = NULL, current_data_file = NULL) {
@@ -173,13 +198,11 @@ settings_external_data_switch <- function(settings, settings_path = NULL, curren
     return(NULL)
   }
 
-  file <- list(path = settings_data_path, name = basename(settings_data_path), restored = TRUE)
-  if (excel_data_file_extension(file$name) && is.list(settings$data_file_options)) {
-    file$excel_sheet <- settings_scalar(settings$data_file_options$excel_sheet %||% "")
-    file$excel_start_cell <- settings_scalar(settings$data_file_options$excel_start_cell %||% "A1")
-    file$excel_col_names <- isTRUE(settings$data_file_options$excel_col_names %||% TRUE)
-  }
-  file
+  settings_apply_data_file_options(
+    list(path = settings_data_path, name = settings_data_file_name(settings, settings_data_path), restored = TRUE,
+         source_directory = if (!is.null(settings_path) && nzchar(settings_path)) dirname(normalizePath(settings_path, winslash = "/", mustWork = FALSE)) else ""),
+    settings
+  )
 }
 
 settings_restored_data_file <- function(settings, settings_path = NULL) {
@@ -187,7 +210,11 @@ settings_restored_data_file <- function(settings, settings_path = NULL) {
   if (!is.null(external)) {
     return(external)
   }
-  settings_embedded_data_file(settings)
+  embedded <- settings_embedded_data_file(settings)
+  if (!is.null(embedded) && !is.null(settings_path) && nzchar(settings_path)) {
+    embedded$source_directory <- dirname(normalizePath(settings_path, winslash = "/", mustWork = FALSE))
+  }
+  embedded
 }
 
 settings_variable_info <- function(settings) {
@@ -597,6 +624,74 @@ current_settings_variable_info <- function(
   variable_info
 }
 
+longitudinal_settings_defaults <- function() {
+  list(model_type = "gee", family = "auto", corstr = "exchangeable",
+       include_time = TRUE, random_slope = FALSE, exponentiate = TRUE,
+       assumption_checks = TRUE, missing_strategy = longitudinal_default_missing_strategy("gee"),
+       missing_imputations = 5L, missing_iterations = 5L, mi_outcome = "observed",
+       ipw_auxiliary = character(0), weight_type = "none", weight_trim = "none", options_tab = "Model")
+}
+
+normalize_longitudinal_settings <- function(value = NULL) {
+  if (!is.list(value)) value <- list()
+  if (!is.list(value$variables)) value$variables <- list()
+  defaults <- longitudinal_settings_defaults()
+  supplied <- value$options
+  if (!is.list(supplied)) supplied <- list()
+  for (key in intersect(names(defaults), names(supplied))) {
+    x <- unlist(supplied[[key]], use.names = FALSE)
+    if (identical(key, "ipw_auxiliary")) defaults[[key]] <- as.character(x)
+    else if (length(x) == 1L && !is.na(x)) {
+      if (is.logical(defaults[[key]]) && is.logical(x)) defaults[[key]] <- x
+      else if (is.numeric(defaults[[key]]) && is.numeric(x) && is.finite(x) && x >= 2 && x <= 50) defaults[[key]] <- as.integer(x)
+      else if (is.character(defaults[[key]]) && is.character(x)) defaults[[key]] <- x
+    }
+  }
+  if (!defaults$model_type %in% unname(longitudinal_model_choices())) defaults$model_type <- "gee"
+  if (!"missing_strategy" %in% names(supplied)) defaults$missing_strategy <- longitudinal_default_missing_strategy(defaults$model_type)
+  targets <- lapply(c("outcome", "id", "cluster", "time", "exposure", "predictors", "weight"), function(key) {
+    x <- unique(settings_vector(value$variables[[key]]))
+    x <- x[!is.na(x) & nzchar(x)]
+    if (key == "predictors") x else head(x, 1L)
+  })
+  names(targets) <- c("outcome", "id", "cluster", "time", "exposure", "predictors", "weight")
+  checks <- value$checks
+  if (!is.list(checks)) checks <- list()
+  checks <- checks[intersect(names(checks), longitudinal_all_check_input_ids())]
+  checks <- lapply(checks, isTRUE)
+  list(version = 1L, variables = targets, options = defaults, checks = checks)
+}
+
+survival_settings_defaults <- function() {
+  list(version = 1L,
+    design = list(survival_design_objective="group_comparison", survival_design_shape="single_record", survival_design_events="single", survival_design_estimand="", survival_design_time_dependent=FALSE,
+      survival_contract_origin="", survival_contract_unit="", survival_contract_custom_unit="", survival_contract_time="", survival_contract_entry="", survival_contract_start="", survival_contract_stop="", survival_contract_subject_id="", survival_contract_event="", survival_contract_group="", survival_contract_covariates=character(0),
+      map_values=character(0), map_roles=character(0), map_labels=character(0), map_confirmed=FALSE, dataset_hash=""),
+    km = list(time=character(0), entry="", event=character(0), group=character(0), event_value="1", rate_times="", rmst_tau="", data_shape="single_record", analysis_method="km", test_method="logrank", output_tables=c("survival_table","survival_time"), plot_types=c("survival","event","cumhaz","log_survival"), plot_versions="color", show_ci=TRUE, show_censor=TRUE, option_tabs="analysis"),
+    cox = list(time=character(0), entry="", start="", stop="", subject_id="", strata="", cluster="", spline_covariate="", spline_df=4L, time_varying_covariate="", time_varying_times="", ties_method="efron", event=character(0), covariates=character(0), event_value="1", adjusted_group="", adjusted_bootstrap_reps=2000L, adjusted_times="", data_shape="single_record"),
+    competing = list(time="", event="", group="", censored_value="0", interest_value="1", event_values="2", rate_times="", regression="none", covariates=character(0), censoring_group=""))
+}
+
+normalize_survival_settings <- function(value = NULL) {
+  defaults <- survival_settings_defaults()
+  if (!is.list(value)) return(defaults)
+  vectors <- list(design=c("survival_contract_covariates","map_values","map_roles","map_labels"), km=c("time","event","group","output_tables","plot_types","plot_versions"), cox=c("time","event","covariates"), competing="covariates")
+  for (panel in names(vectors)) for (field in names(defaults[[panel]])) {
+    if (!is.list(value[[panel]])) next
+    raw <- value[[panel]][[field]]
+    if (is.null(raw)) next
+    raw <- unlist(raw, use.names=FALSE)
+    original <- defaults[[panel]][[field]]
+    if (field %in% vectors[[panel]]) defaults[[panel]][[field]] <- as.character(raw)
+    else if (length(raw)==1L && !is.na(raw)) {
+      if (is.logical(original)) { if(is.logical(raw)) defaults[[panel]][[field]] <- raw }
+      else if (is.numeric(original)) { n <- suppressWarnings(as.integer(raw)); if(!is.na(n)) defaults[[panel]][[field]] <- n }
+      else defaults[[panel]][[field]] <- as.character(raw)
+    }
+  }
+  defaults
+}
+
 create_current_settings_fn <- function(
   app_version,
   app_language_fn = NULL,
@@ -627,15 +722,26 @@ create_current_settings_fn <- function(
   filter_names_fn,
   sync_dependent_order_fn,
   sync_predictor_order_fn,
-  selected_names_fn
+  selected_names_fn,
+  longitudinal_settings_fn = NULL,
+  hierarchical_settings_fn = NULL,
+  survival_settings_fn = NULL
 ) {
   function() {
     file <- current_data_file_fn()
-    data_file_options <- if (!is.null(file) && excel_data_file_extension(file$name %||% file$path)) {
+    file_extension <- if (is.null(file)) "" else tolower(tools::file_ext(as.character(file$name %||% file$path %||% "")))
+    data_file_options <- if (file_extension %in% c("xlsx", "xls")) {
       list(
         excel_sheet = file$excel_sheet %||% "",
         excel_start_cell = file$excel_start_cell %||% "A1",
         excel_col_names = isTRUE(file$excel_col_names %||% TRUE)
+      )
+    } else if (identical(file_extension, "csv")) {
+      list(csv_header = if (!is.null(file$csv_header)) isTRUE(file$csv_header) else isTRUE(input$header %||% TRUE))
+    } else if (identical(file_extension, "dat")) {
+      list(
+        dat_delimiter = file$dat_delimiter %||% input$dat_delimiter %||% "whitespace",
+        dat_has_names = if (!is.null(file$dat_has_names)) isTRUE(file$dat_has_names) else isTRUE(input$dat_has_names)
       )
     } else {
       NULL
@@ -685,6 +791,11 @@ create_current_settings_fn <- function(
     )
     measurement_overrides(prepared$payload$measurement_overrides)
     var_label_overrides(prepared$payload$var_label_overrides)
+    if (is.function(longitudinal_settings_fn)) {
+      prepared$settings$longitudinal <- normalize_longitudinal_settings(longitudinal_settings_fn())
+    }
+    if (is.function(hierarchical_settings_fn)) prepared$settings$hierarchical <- hierarchical_settings_fn()
+    if (is.function(survival_settings_fn)) prepared$settings$survival <- normalize_survival_settings(survival_settings_fn())
     prepared$settings
   }
 }
@@ -702,6 +813,15 @@ write_settings_json_file <- function(settings, path) {
     stop(sprintf("Settings folder does not exist or cannot be created: %s", directory), call. = FALSE)
   }
   settings$type <- "easyflow_settings"
+  # Browser uploads and embedded restores live in session-temporary files.
+  # Persist the original bytes so reopening settings does not depend on them.
+  source_path <- settings_scalar(settings$data_file_path %||% "")
+  if (valid_data_file_path(source_path) && supported_data_file_extension(settings_scalar(settings$data_file))) {
+    size <- file.info(source_path)$size
+    bytes <- readBin(source_path, what = "raw", n = size)
+    if (length(bytes) != size) stop("The data file could not be fully read while saving settings.", call. = FALSE)
+    settings$data_file_content_base64 <- jsonlite::base64_enc(bytes)
+  }
   writeLines(
     as.character(jsonlite::toJSON(settings, pretty = TRUE, auto_unbox = TRUE)),
     con = path,

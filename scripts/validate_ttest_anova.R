@@ -225,21 +225,44 @@ expect_true(grepl("print-mixed-landscape", overview_5_saved, fixed = TRUE), "Exp
 
 expect_true(is.data.frame(table_markers), "Expected numbered note metadata")
 expect_true(any(table_markers$row == 1L & table_markers$column == "Effect size"), "Expected first effect-size value to include a numbered marker")
-expect_true(!any(table_markers$row == 3L & table_markers$column == "p"), "Expected single Welch ANOVA method note to omit a p-value marker")
+expect_true(any(table_markers$row == 3L & table_markers$column == "p" & table_markers$marker == "1"), "Expected Welch ANOVA to identify its p-value even as the only special method")
+expect_true(!any(table_markers$row == 1L & table_markers$column == "p"), "Expected equal-variance t-test to have no homogeneity marker")
 expect_true(any(table_markers$row == 3L & table_markers$column == "Effect size"), "Expected second effect-size value to include a numbered marker")
-expect_true(grepl("1\\. ES = effect size \\(Hedges' g\\)\\.", note), "Expected numbered Hedges' g note")
-expect_true(grepl("Welch test was used because homogeneity of variance was not satisfied\\.", note), "Expected unnumbered Welch note")
-expect_true(grepl("2\\. ES = effect size \\(omega squared\\)\\.", note), "Expected numbered omega squared note")
+expect_true(grepl("2\\. ES = effect size \\(Hedges' g\\)\\.", note), "Expected numbered Hedges' g note")
+expect_true(grepl("1\\. Welch test was used because homogeneity of variance was not satisfied\\.", note), "Expected numbered Welch note")
+expect_true(grepl("3\\. ES = effect size \\(omega squared\\)\\.", note), "Expected numbered omega squared note")
+expect_true(regexpr("Welch test", note, fixed = TRUE) < regexpr("ES =", note, fixed = TRUE), "Expected assumption/method notes before effect-size notes")
+mean_sd_note <- mean_sd_df_result$results[[1]]$note
+expect_true(startsWith(mean_sd_note, "M \u00B1 SD ="), "Expected displayed descriptive definitions before method notes")
 posthoc_note_position <- regexpr("Post-hoc:", note, fixed = TRUE)
 if (posthoc_note_position > 0) {
-  expect_true(regexpr("1. ES = effect size", note, fixed = TRUE) < posthoc_note_position, "Expected numbered note markers before post-hoc notes")
-  expect_true(regexpr("2. ES = effect size", note, fixed = TRUE) < posthoc_note_position, "Expected all numbered note markers before post-hoc notes")
+  expect_true(regexpr("2. ES = effect size", note, fixed = TRUE) < posthoc_note_position, "Expected numbered note markers before post-hoc notes")
+  expect_true(regexpr("3. ES = effect size", note, fixed = TRUE) < posthoc_note_position, "Expected all numbered note markers before post-hoc notes")
 }
 
 html <- as.character(tags_to_html(ttest_anova_results_ui(result)))
 expect_true(!grepl('class="coefficient-col-note-marker"', html, fixed = TRUE), "Expected footnote markers to render inline without a narrow marker column")
-expect_true(grepl('class="coefficient-footnote-marker">1</sup>', html, fixed = TRUE), "Expected Hedges' g marker to render as inline superscript")
-expect_true(grepl('class="coefficient-footnote-marker">2</sup>', html, fixed = TRUE), "Expected omega squared marker to render as inline superscript")
+expect_true(grepl('class="coefficient-footnote-marker">1</sup>', html, fixed = TRUE), "Expected Welch marker to render as inline superscript")
+expect_true(grepl('class="coefficient-footnote-marker">3</sup>', html, fixed = TRUE), "Expected omega squared marker to render as inline superscript")
+expect_true(!grepl("Note. 1. Welch", html, fixed = TRUE), "Expected main notes to omit the Note prefix")
+homogeneous <- prepare_ttest_anova_results(data, "y", "g2", variable_info = variable_info,
+  options = list(normality_enabled = FALSE, effect_size = FALSE))
+expect_true(!grepl("Welch|ES =", homogeneous$results[[1]]$note), "Expected no absent Welch or effect-size notes")
+welch_only <- prepare_ttest_anova_results(data, "y", "g3", variable_info = variable_info,
+  options = list(normality_enabled = FALSE, effect_size = FALSE))
+welch_markers <- attr(welch_only$results[[1]]$table, "note_markers")
+expect_true(any(welch_markers$row == 1L & welch_markers$column == "p" & welch_markers$marker == "1"), "Expected a standalone Welch result to retain its marker without ES")
+expect_true(!grepl("ES =", welch_only$results[[1]]$note), "Expected unchecked ES to stay absent from Welch notes")
+saved_welch <- as.character(saved_ttest_anova_results_html(welch_only, report_mode = TRUE))
+expect_true(grepl('class="coefficient-footnote-marker">1</sup>', saved_welch, fixed = TRUE), "Expected saved report to retain Welch superscript")
+expect_true(grepl("1. Welch test", saved_welch, fixed = TRUE), "Expected saved report to retain the matching Welch explanation")
+welch_t_data <- data
+welch_t_data$y[welch_t_data$g2 == "B"] <- welch_t_data$y[welch_t_data$g2 == "B"] * 10
+welch_t <- prepare_ttest_anova_results(welch_t_data, "y", "g2", variable_info = variable_info,
+  options = list(normality_enabled = FALSE, effect_size = TRUE))
+welch_t_markers <- attr(welch_t$results[[1]]$table, "note_markers")
+expect_true(any(welch_t_markers$row == 1L & welch_t_markers$column == "p" & welch_t_markers$marker == "1"), "Expected unequal-variance two-group t-test to receive a Welch p marker")
+expect_true(grepl("1. Welch test", welch_t$results[[1]]$note, fixed = TRUE), "Expected Welch t explanation to match its marker")
 
 labeled_info <- data.frame(
   name = c("y", "g2"),
@@ -252,10 +275,31 @@ labeled_result <- prepare_ttest_anova_results(
   dependents = "y",
   factors = "g2",
   variable_info = labeled_info,
-  options = list(effect_size = TRUE, normality_enabled = FALSE)
+  options = list(
+    effect_size = TRUE,
+    normality_enabled = TRUE,
+    normality_method = "skew_kurtosis"
+  )
 )
+old_app_language <- getOption("statedu.app_language", NULL)
+options(statedu.app_language = "ko")
 labeled_html <- as.character(tags_to_html(ttest_anova_results_ui(labeled_result)))
-expect_true(grepl("<h3>Model overview</h3>", labeled_html, fixed = TRUE), "Expected labeled t-test HTML to include the Model overview section")
+if (is.null(old_app_language)) {
+  options(statedu.app_language = NULL)
+} else {
+  options(statedu.app_language = old_app_language)
+}
+expect_true(grepl("<h3>모형 선택 개요</h3>", labeled_html, fixed = TRUE), "Expected labeled t-test appendix to follow the Korean UI language")
+expect_true(
+  grepl("왜도=", labeled_html, fixed = TRUE) &&
+    grepl("첨도=", labeled_html, fixed = TRUE) &&
+    grepl("기준=", labeled_html, fixed = TRUE) &&
+    !grepl("skew=", labeled_html, fixed = TRUE),
+  "Expected Korean t-test assumption details to use UI-language labels"
+)
+expect_true(grepl('data-result-table-role="appendix"', labeled_html, fixed = TRUE), "Expected model overview and assumption review to be appendix tables")
+expect_true(grepl('data-result-table-role="main"', labeled_html, fixed = TRUE), "Expected inferential results to remain main tables")
+expect_true(grepl('data-result-table-language="en"', labeled_html, fixed = TRUE), "Expected the main t-test table language to stay English")
 expect_true(grepl("Outcome label", labeled_html, fixed = TRUE), "Expected labeled t-test Model overview to preserve dependent-variable labels")
 expect_true(grepl("Group label", labeled_html, fixed = TRUE), "Expected labeled t-test Model overview to preserve grouping-variable labels")
 expect_true(grepl("t-test", labeled_html, fixed = TRUE), "Expected labeled t-test Model overview to show the selected analysis")
@@ -267,6 +311,11 @@ expect_true(
     grepl("width: 0;", style_text, fixed = TRUE) &&
     grepl("vertical-align: super;", style_text, fixed = TRUE),
   "Expected inline footnote markers to use zero-width superscript styling so numeric values remain aligned"
+)
+expect_true(
+  grepl(".ttest-anova-result-panel .result-table-sheet > table.result-table-contract-table", style_text, fixed = TRUE) &&
+    grepl("table-layout: fixed !important;", style_text, fixed = TRUE),
+  "Expected t-test and ANOVA tables to remain inside their B5 sheet"
 )
 manual_marker_table <- data.frame(
   Variable = "x",
@@ -333,7 +382,9 @@ expect_true(is.data.frame(posthoc_table) && nrow(posthoc_table) == 3, "Expected 
 expect_true(all(c("Variable", "Method", "Comparison", "p") %in% names(posthoc_table)), "Expected post-hoc table columns")
 expect_true(all(posthoc_table$Method == "Tukey HSD"), "Expected Tukey HSD method in post-hoc table")
 posthoc_html <- as.character(tags_to_html(ttest_anova_results_ui(posthoc_result)))
-expect_true(grepl("<h4>Post-hoc</h4>", posthoc_html, fixed = TRUE), "Expected post-hoc section in ANOVA HTML")
+expect_true(grepl("Post hoc comparisons</h3>", posthoc_html, fixed = TRUE), "Expected a separately titled post-hoc table in ANOVA HTML")
+expect_true(grepl("ttest-anova-posthoc-panel", posthoc_html, fixed = TRUE), "Expected post-hoc output in its own result panel")
+expect_true(length(gregexpr('data-result-table-sheet="true"', posthoc_html, fixed = TRUE)[[1]]) >= 4L, "Expected overview, inferential, post-hoc, and assumption tables to use separate sheets")
 
 message("Checking ordered post-hoc notation grouping...")
 ordered_values <- c(rep(1, 3), rep(3, 3), rep(4, 3))
@@ -412,6 +463,20 @@ expect_true(
     "a,b,c>e"
   ),
   "Expected ordered post-hoc notation to combine multiple higher markers that share one lower marker"
+)
+expect_true(
+  identical(
+    ttest_ordered_marker_statements(
+      c("a", "b", "c", "d", "e"),
+      data.frame(
+        higher = c("a", "a", "b", "a", "a", "b", "b"),
+        lower = c("b", "c", "c", "d", "e", "d", "e"),
+        stringsAsFactors = FALSE
+      )
+    ),
+    c("a>b>c", "a>b>d,e")
+  ),
+  "Expected shared lower markers to use a chained higher marker summary when the higher markers differ"
 )
 label_order_rows <- data.frame(
   Value = c("1", "2", "3"),
@@ -539,7 +604,7 @@ expect_true(
 )
 expect_true(
   all(names(nonparametric_result$results[[1]]$table) == c(
-    "Variable", "Value", "M", "SD", paste0("z/x", "\u00B2"), "p", "Effect size", "post-hoc"
+    "Variable", "Value", "Median(Q1~Q3)", paste0("z/x", "\u00B2"), "p", "Effect size", "post-hoc"
   )),
   "Expected standalone nonparametric results to use the t-test / ANOVA table shape, with only the statistic label adapted"
 )
@@ -569,7 +634,7 @@ nonparametric_median <- prepare_ttest_anova_results(
   )
 )
 expect_true(
-  all(c("Median", "Q1~Q3") %in% names(nonparametric_median$results[[1]]$table)),
+  "Median(Q1~Q3)" %in% names(nonparametric_median$results[[1]]$table),
   "Expected nonparametric Median(Q1~Q3) option to replace M and SD headers"
 )
 expect_true(
@@ -621,15 +686,49 @@ expect_true(
 )
 guard_html <- as.character(tags_to_html(ttest_anova_results_ui(guard_result)))
 expect_true(
-  grepl("<h3>Warnings / skipped analyses</h3>", guard_html, fixed = TRUE),
-  "Expected combined warnings / skipped analyses section in t-test / ANOVA HTML"
+  grepl("<h3>경고 / 제외된 분석</h3>", guard_html, fixed = TRUE) &&
+    grepl('data-result-table-role="appendix"', guard_html, fixed = TRUE),
+  "Expected the combined warnings / skipped analyses appendix in the UI language"
+)
+previous_ui_language <- getOption("statedu.app_language", NULL)
+options(statedu.app_language = "ko")
+guard_html_ko <- as.character(tags_to_html(ttest_anova_results_ui(guard_result)))
+options(statedu.app_language = "en")
+guard_html_en <- as.character(tags_to_html(ttest_anova_results_ui(guard_result)))
+options(statedu.app_language = previous_ui_language)
+expect_true(
+  grepl("각 집단에 유효 관측값이 최소 2개 필요합니다.", guard_html_ko, fixed = TRUE) &&
+    grepl("표준편차가 0입니다", guard_html_ko, fixed = TRUE) &&
+    grepl("종속변수의 분산이 없습니다", guard_html_ko, fixed = TRUE) &&
+    !grepl("Each group must have at least 2 valid observations", guard_html_ko, fixed = TRUE) &&
+    !grepl("Zero standard deviation in group", guard_html_ko, fixed = TRUE),
+  "Expected Korean t-test / ANOVA appendix body to localize dynamic group-size, zero-SD, and variance messages"
+)
+expect_true(
+  grepl("Each group must have at least 2 valid observations", guard_html_en, fixed = TRUE) &&
+    grepl("Zero standard deviation in group", guard_html_en, fixed = TRUE) &&
+    grepl("dependent variable has no variance", guard_html_en, fixed = TRUE) &&
+    !grepl("각 집단에 유효 관측값이 최소 2개 필요합니다.", guard_html_en, fixed = TRUE),
+  "Expected English t-test / ANOVA appendix body to remain English"
 )
 
 guard_xlsx <- tempfile(fileext = ".xlsx")
 save_ttest_anova_excel_file(guard_result, guard_xlsx)
 guard_sheets <- openxlsx::getSheetNames(guard_xlsx)
-expect_true("Warnings" %in% guard_sheets, "Expected t-test / ANOVA warnings Excel sheet")
-expect_true("Skipped analyses" %in% guard_sheets, "Expected t-test / ANOVA skipped Excel sheet")
+guard_screen_tables <- result_entry_tables(list(html = saved_ttest_anova_results_html(guard_result)))
+expect_true(length(guard_sheets) == length(guard_screen_tables), "Expected one Excel sheet per displayed table")
+for (table_index in seq_along(guard_screen_tables)) {
+  screen <- guard_screen_tables[[table_index]]$screen
+  exported <- openxlsx::read.xlsx(guard_xlsx, sheet = table_index, colNames = FALSE,
+    skipEmptyRows = FALSE, skipEmptyCols = FALSE)
+  for (cell in screen$cells) {
+    expected <- screen$values[cell$row, cell$col]
+    if (!is.na(expected) && nzchar(expected)) {
+      actual <- as.character(exported[cell$row + 2L, cell$col])
+      expect_true(identical(actual, expected), "Expected displayed Excel cells, including combined warnings and skipped analyses, to retain their content and order")
+    }
+  }
+}
 
 message("Checking Kruskal-Wallis epsilon squared and Lilliefors K-S normality...")
 kw_values <- c(1, 2, 3, 4, 10, 11, 12, 13, 20, 21, 22, 23)

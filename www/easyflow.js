@@ -1,5 +1,78 @@
 ﻿      window.easyflowSettingsDirty = false;
       window.easyflowVarLabels = window.easyflowVarLabels || {};
+      // Resolve documentation links inside their own document: analysis inputs
+      // and other mounted documents can have the same ID (for example "ipa").
+      document.addEventListener('click', function(event) {
+        var link = event.target.closest && event.target.closest('.about-markdown-document a[href^="#"]');
+        if (!link || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        var id;
+        try { id = decodeURIComponent(link.getAttribute('href').slice(1)); } catch (_) { return; }
+        if (!id) return;
+        var doc = link.closest('.about-markdown-document');
+        var target = Array.from(doc.querySelectorAll('[id], a[name]')).find(function(node) {
+          return node.id === id || node.getAttribute('name') === id;
+        });
+        if (!target) return;
+        event.preventDefault();
+        // Markdown's explicit anchors are empty elements before the heading.
+        if (target.matches('a') && !target.textContent.trim()) {
+          var next = target.nextElementSibling || (target.parentElement.matches('p') && target.parentElement.nextElementSibling);
+          if (next && next.matches('h1,h2,h3,h4,h5,h6')) target = next;
+        }
+        var navbar = document.querySelector('.navbar');
+        var offset = navbar ? Math.max(0, navbar.getBoundingClientRect().bottom) : 0;
+        var top = window.scrollY + target.getBoundingClientRect().top - offset - 12;
+        window.scrollTo({top: Math.max(0, top), behavior: 'instant'});
+      });
+      // Four export choices stay in one row when they fit, otherwise 2 by 2.
+      (function() {
+        var group = null;
+        var resizeObserver = null;
+        var lastWidth = -1;
+        function layout() {
+          if (!group || !group.isConnected || !group.clientWidth) return;
+          group.style.gridTemplateColumns = 'repeat(4, max-content)';
+          var fits = group.scrollWidth <= group.clientWidth + 1;
+          group.classList.toggle('is-single-row', fits);
+          group.style.removeProperty('grid-template-columns');
+        }
+        function bind() {
+          var next = document.querySelector('#result_document_contents .shiny-options-group');
+          if (next === group) return;
+          if (resizeObserver) resizeObserver.disconnect();
+          group = next;
+          lastWidth = -1;
+          if (!group) return;
+          layout();
+          if (window.ResizeObserver) {
+            resizeObserver = new ResizeObserver(function() {
+              if (group && group.clientWidth !== lastWidth) {
+                lastWidth = group.clientWidth;
+                layout();
+              }
+            });
+            resizeObserver.observe(group);
+          }
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+        else bind();
+        window.addEventListener('resize', layout);
+        if (document.fonts) document.fonts.ready.then(layout);
+        if (window.MutationObserver && document.documentElement) {
+          new MutationObserver(bind).observe(document.documentElement, {childList:true, subtree:true});
+        }
+      })();
+      // Shiny uploads retain a temporary copy. Keep the selected desktop source
+      // path separately for native picture and report save dialogs.
+      document.addEventListener('change', function(event) {
+        var input = event.target;
+        var desktop = window.stateduDesktopFiles;
+        if (!input || input.id !== 'file' || !input.files || !input.files.length ||
+            !desktop || typeof desktop.dataFilePath !== 'function' || !window.Shiny) return;
+        var file = input.files[0];
+        var path = desktop.dataFilePath();
+        window.Shiny.setInputValue('desktop_data_source', {name: file.name, path: path}, {priority: 'event'});
+      });
       window.easyflowMeasurements = window.easyflowMeasurements || {};
       window.easyflowCodingErrorFixValues = window.easyflowCodingErrorFixValues || {};
       window.easyflowTransferSelectionOrderByInput = window.easyflowTransferSelectionOrderByInput || {};
@@ -110,73 +183,6 @@
         return language ? easyflowNormalizeLanguage(language) : '';
       }
 
-      function easyflowMarkPreferencesSaveStarted() {
-        window.easyflowPreferencesSaveStartedAt = Date.now();
-        try {
-          window.sessionStorage.setItem('statedu_preferences_save_started_at', String(window.easyflowPreferencesSaveStartedAt));
-        } catch (error) {}
-      }
-
-      function easyflowRecentPreferencesSave() {
-        var startedAt = Number(window.easyflowPreferencesSaveStartedAt || 0);
-        if (!startedAt) {
-          try {
-            startedAt = Number(window.sessionStorage.getItem('statedu_preferences_save_started_at') || 0);
-          } catch (error) {
-            startedAt = 0;
-          }
-        }
-        return isFinite(startedAt) && startedAt > 0 && Date.now() - startedAt < 15000;
-      }
-
-      function easyflowRecoverPreferencesDisconnect() {
-        var overlay = document.getElementById('shiny-disconnected-overlay');
-        if (!overlay || !easyflowRecentPreferencesSave()) return false;
-        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-        var now = Date.now();
-        var lastReload = 0;
-        try {
-          lastReload = Number(window.sessionStorage.getItem('statedu_preferences_disconnect_reload_at') || 0);
-        } catch (error) {
-          lastReload = 0;
-        }
-        if (isFinite(lastReload) && now - lastReload < 8000) return true;
-        try {
-          window.sessionStorage.setItem('statedu_preferences_disconnect_reload_at', String(now));
-        } catch (error) {}
-        window.setTimeout(function() {
-          var connected = !!(window.Shiny && Shiny.shinyapp && typeof Shiny.shinyapp.isConnected === 'function' && Shiny.shinyapp.isConnected());
-          if (document.getElementById('shiny-disconnected-overlay') || !connected) {
-            window.location.reload();
-          }
-        }, 150);
-        return true;
-      }
-
-      function easyflowBindPreferencesSaveRecovery() {
-        if (window.easyflowPreferencesSaveRecoveryBound) return;
-        window.easyflowPreferencesSaveRecoveryBound = true;
-        document.addEventListener('click', function(event) {
-          var target = event.target;
-          if (target && target.closest && target.closest('#apply_general_preferences')) {
-            easyflowMarkPreferencesSaveStarted();
-            easyflowSchedulePreferencesDisconnectRecovery();
-          }
-        }, true);
-        if (window.MutationObserver) {
-          var observer = new MutationObserver(function() {
-            easyflowRecoverPreferencesDisconnect();
-          });
-          observer.observe(document.documentElement || document.body, { childList: true, subtree: true });
-        }
-      }
-
-      function easyflowSchedulePreferencesDisconnectRecovery() {
-        [0, 100, 300, 750, 1500, 3000, 6000, 10000].forEach(function(delay) {
-          window.setTimeout(easyflowRecoverPreferencesDisconnect, delay);
-        });
-      }
-
       function easyflowSetCurrentLanguage(language) {
         language = easyflowNormalizeLanguage(language);
         window.easyflowAppLanguage = language;
@@ -211,7 +217,6 @@
           document.body.style.removeProperty('padding-right');
           document.body.style.removeProperty('overflow');
         }
-        easyflowRecoverPreferencesDisconnect();
       }
 
       function easyflowExcelImportReviewVisible() {
@@ -243,8 +248,17 @@
       }
 
       function easyflowScheduleClearExcelImportBusyState() {
-        [0, 50, 150, 350, 750, 1500, 3000].forEach(function(delay) {
-          window.setTimeout(easyflowClearExcelImportBusyState, delay);
+        if (!document.querySelector('.excel-import-main-panel')) {
+          if (document.body && document.body.classList) {
+            document.body.classList.remove('statedu-excel-import-review-visible');
+          }
+          return;
+        }
+        (window.easyflowExcelBusyTimers || []).forEach(function(timer) {
+          window.clearTimeout(timer);
+        });
+        window.easyflowExcelBusyTimers = [0, 50, 150, 350, 750, 1500, 3000].map(function(delay) {
+          return window.setTimeout(easyflowClearExcelImportBusyState, delay);
         });
       }
 
@@ -280,15 +294,15 @@
       function easyflowCustomModelCanvasMenuLabel(language) {
         language = easyflowNormalizeLanguage(language);
         var labels = {
-          ko: '\uB9E4\uAC1C\u00B7\uC870\uC808 \uC0AC\uC6A9\uC790 \uC815\uC758 \uBAA8\uB378',
-          en: 'Mediation / Moderation Custom Model',
-          ja: '\u5A92\u4ECB\u30FB\u8ABF\u6574\u30AB\u30B9\u30BF\u30E0\u30E2\u30C7\u30EB',
-          zh: '\u4E2D\u4ECB / \u8C03\u8282\u81EA\u5B9A\u4E49\u6A21\u578B',
-          es: 'Modelo personalizado de mediacion / moderacion',
-          fr: 'Modele personnalise de mediation / moderation',
-          de: 'Benutzerdefiniertes Mediations-/Moderationsmodell',
-          vi: 'Mo hinh tuy chinh trung gian / dieu tiet'
-        };
+          "ko": "\ub9e4\uac1c\u00b7\uc870\uc808\ud6a8\uacfc",
+          "en": "Mediation / Moderation Effects",
+          "ja": "\u5a92\u4ecb\u30fb\u8abf\u6574\u52b9\u679c",
+          "zh": "\u4e2d\u4ecb / \u8c03\u8282\u6548\u5e94",
+          "es": "Efectos de mediaci\u00f3n / moderaci\u00f3n",
+          "fr": "Effets de m\u00e9diation / mod\u00e9ration",
+          "de": "Mediations- / Moderationseffekte",
+          "vi": "Hi\u1ec7u \u1ee9ng trung gian / \u0111i\u1ec1u ti\u1ebft"
+};
         var lookup = easyflowStaticLanguageLookup(language);
         if (lookup[labels.en]) return lookup[labels.en];
         if (lookup[labels.ko]) return lookup[labels.ko];
@@ -298,6 +312,12 @@
       function easyflowApplyStaticLanguageLabels(language) {
         language = easyflowNormalizeLanguage(language);
         var lookup = easyflowStaticLanguageLookup(language);
+        var keyedLabels = window.easyflowKeyedLanguageLabels || {};
+        document.querySelectorAll('[data-statedu-i18n-key]').forEach(function(node) {
+          var row = keyedLabels[node.getAttribute('data-statedu-i18n-key')];
+          var label = row && (row[language] || row.en);
+          if (label && node.textContent !== label) node.textContent = label;
+        });
         if (document.querySelectorAll) {
           Array.prototype.forEach.call(document.querySelectorAll('a[data-value="analysis_custom_model_canvas"]'), function(link) {
             var label = easyflowCustomModelCanvasMenuLabel(language);
@@ -368,9 +388,11 @@
       }
 
       function easyflowCurrentLanguage() {
-        var selectedLanguage = easyflowSelectedLanguageInput();
-        if (selectedLanguage) {
-          return easyflowSetCurrentLanguage(selectedLanguage);
+        // A lazily restored preferences control may contain the previous language.
+        // Explicit changes go through easyflowApplyAppLanguage; passive menu refreshes
+        // must use the active page language rather than changing it from that control.
+        if (window.easyflowAppLanguage) {
+          return easyflowNormalizeLanguage(window.easyflowAppLanguage);
         }
         var urlLanguage = '';
         try {
@@ -449,7 +471,7 @@
           Shiny.setInputValue('app_language', language, {priority: 'event'});
           Shiny.setInputValue('statedu_url_language', language, {priority: 'event'});
         }
-        return easyflowNavigateToLanguage(language);
+        return easyflowNavigateToLanguage(language, false);
       }
 
       function easyflowApplyLanguageInPlace(language) {
@@ -467,11 +489,11 @@
         try {
           window.localStorage.setItem('statedu_app_language', language);
         } catch (error) {}
-        easyflowNavigateToLanguage(language);
+        easyflowNavigateToLanguage(language, false);
         return language;
       }
 
-      function easyflowNavigateToLanguage(language) {
+      function easyflowNavigateToLanguage(language, reloadPage) {
         language = easyflowNormalizeLanguage(language);
         var href = window.location && window.location.href ? window.location.href : '';
         var url;
@@ -482,6 +504,14 @@
         }
         url.searchParams.set('lang', language);
         var nextHref = url.toString();
+        if (reloadPage) {
+          if (nextHref === window.location.href) {
+            window.location.reload();
+          } else {
+            window.location.replace(nextHref);
+          }
+          return false;
+        }
         if (nextHref !== window.location.href) {
           if (window.history && typeof window.history.replaceState === 'function') {
             window.history.replaceState(window.history.state, document.title, nextHref);
@@ -517,45 +547,48 @@
         return easyflowApplyLanguageValue(language);
       };
 
+      if (!window.easyflowAppLanguageChangeBound) {
+        window.easyflowAppLanguageChangeBound = true;
+        document.addEventListener('change', function(event) {
+          var target = event.target;
+          if (target && target.id === 'app_language') {
+            window.easyflowApplyAppLanguage();
+          }
+        });
+      }
+
       easyflowSetCurrentLanguage(easyflowUrlLanguage());
       easyflowApplyResultZoomValue(easyflowInitialResultZoom());
       easyflowScheduleStaticLanguageLabels();
 
-      if (window.Shiny && typeof Shiny.addCustomMessageHandler === 'function') {
+      // Shiny emits jQuery lifecycle events. A native document listener does
+      // not receive them when this script loads before Shiny is initialized.
+      function easyflowBindLanguageHandlers() {
+        if (!window.Shiny || typeof Shiny.addCustomMessageHandler !== 'function' || window.easyflowLanguageHandlerBound) return;
         window.easyflowLanguageHandlerBound = true;
+        Shiny.addCustomMessageHandler('statedu-data-directory', function(directory) {
+          var desktop = window.stateduDesktopFiles;
+          if (desktop && typeof desktop.setDataDirectory === 'function') desktop.setDataDirectory(directory);
+        });
         Shiny.addCustomMessageHandler('statedu-apply-language', function(language) {
           window.easyflowLanguageApplyPending = '';
           return easyflowApplyLanguageValue(language);
         });
         Shiny.addCustomMessageHandler('statedu-apply-result-zoom', easyflowApplyResultZoomValue);
+        Shiny.addCustomMessageHandler('easyflow-enable-reorder', function(message) {
+          window.easyflowReorderLists = window.easyflowReorderLists || new Set();
+          window.easyflowReorderLists.add(message.id);
+        });
         Shiny.addCustomMessageHandler('statedu-preferences-saved', function(payload) {
           payload = payload || {};
           if (payload.language) easyflowApplyLanguageInPlace(payload.language);
           if (payload.result_zoom_percent) easyflowApplyResultZoomValue(payload.result_zoom_percent);
-          easyflowMarkPreferencesSaveStarted();
-          easyflowSchedulePreferencesDisconnectRecovery();
           easyflowScheduleClearTransientOverlays();
         });
-      } else {
-        document.addEventListener('shiny:connected', function() {
-          if (window.Shiny && typeof Shiny.addCustomMessageHandler === 'function' && !window.easyflowLanguageHandlerBound) {
-            window.easyflowLanguageHandlerBound = true;
-            Shiny.addCustomMessageHandler('statedu-apply-language', function(language) {
-              window.easyflowLanguageApplyPending = '';
-              return easyflowApplyLanguageValue(language);
-            });
-            Shiny.addCustomMessageHandler('statedu-apply-result-zoom', easyflowApplyResultZoomValue);
-            Shiny.addCustomMessageHandler('statedu-preferences-saved', function(payload) {
-              payload = payload || {};
-              if (payload.language) easyflowApplyLanguageInPlace(payload.language);
-              if (payload.result_zoom_percent) easyflowApplyResultZoomValue(payload.result_zoom_percent);
-              easyflowMarkPreferencesSaveStarted();
-              easyflowSchedulePreferencesDisconnectRecovery();
-              easyflowScheduleClearTransientOverlays();
-            });
-          }
-        });
       }
+      easyflowBindLanguageHandlers();
+      document.addEventListener('DOMContentLoaded', easyflowBindLanguageHandlers);
+      if (window.jQuery) window.jQuery(document).on('shiny:connected', easyflowBindLanguageHandlers);
 
       function easyflowCanSetInputValue() {
         return !!(window.Shiny && typeof Shiny.setInputValue === 'function');
@@ -564,7 +597,6 @@
       document.addEventListener('shiny:connected', function() {
         easyflowScheduleAppLanguageSend();
         easyflowScheduleStaticLanguageLabels();
-        easyflowBindPreferencesSaveRecovery();
         easyflowScheduleClearExcelImportBusyState();
       });
       document.addEventListener('shiny:bound', easyflowScheduleClearExcelImportBusyState);
@@ -575,7 +607,6 @@
         easyflowScheduleAppLanguageSend();
         easyflowScheduleStaticLanguageLabels();
         easyflowObserveStaticLanguageLabels();
-        easyflowBindPreferencesSaveRecovery();
         easyflowScheduleClearExcelImportBusyState();
       });
       if (document.readyState !== 'loading') {
@@ -583,7 +614,6 @@
         easyflowScheduleAppLanguageSend();
         easyflowScheduleStaticLanguageLabels();
         easyflowObserveStaticLanguageLabels();
-        easyflowBindPreferencesSaveRecovery();
         easyflowScheduleClearExcelImportBusyState();
       }
 
@@ -837,9 +867,44 @@
         });
       };
 
+      function easyflowHasMathDocument(root) {
+        root = root || document;
+        return !!(
+          (root.matches && root.matches('.about-markdown-document')) ||
+          (root.querySelector && root.querySelector('.about-markdown-document'))
+        );
+      }
+
+      window.easyflowEnsureMathJax = function(root) {
+        root = root || document;
+        if (!easyflowHasMathDocument(root)) return false;
+        if (window.MathJax && (window.MathJax.tex2svgPromise || window.MathJax.tex2chtmlPromise || window.MathJax.typesetPromise)) {
+          return true;
+        }
+        if (!document.getElementById('MathJax-script')) {
+          var script = document.createElement('script');
+          script.id = 'MathJax-script';
+          script.async = true;
+          script.src = window.easyflowMathJaxSrc || 'mathjax/tex-svg.js';
+          script.onload = function() {
+            if (window.easyflowMathJaxReady) window.easyflowMathJaxReady();
+          };
+          document.head.appendChild(script);
+        }
+        window.easyflowStartMathJaxPolling();
+        return false;
+      };
+
       function scheduleEasyflowTypesetMath(root) {
-        window.setTimeout(function() {
-          window.easyflowTypesetMath(root || document);
+        root = root || document;
+        if (!easyflowHasMathDocument(root)) return;
+        window.easyflowEnsureMathJax(root);
+        if (window.easyflowTypesetMathTimer) {
+          window.clearTimeout(window.easyflowTypesetMathTimer);
+        }
+        window.easyflowTypesetMathTimer = window.setTimeout(function() {
+          window.easyflowTypesetMathTimer = null;
+          window.easyflowTypesetMath(root);
         }, 0);
       }
 
@@ -1065,12 +1130,13 @@
       }
 
       function easyflowRestoreRememberedTransferScrollsSoon() {
-        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 0);
-        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 50);
-        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 150);
-        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 300);
-        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 600);
-        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 1000);
+        if (Date.now() > (window.easyflowTransferScrollRestoreUntil || 0)) return;
+        (window.easyflowTransferScrollRestoreTimers || []).forEach(function(timer) {
+          window.clearTimeout(timer);
+        });
+        window.easyflowTransferScrollRestoreTimers = [0, 50, 150, 300, 600, 1000].map(function(delay) {
+          return window.setTimeout(easyflowRestoreRememberedTransferScrolls, delay);
+        });
       }
 
       document.addEventListener('mousedown', function(event) {
@@ -1079,7 +1145,7 @@
           : null;
         if (button) {
           document.querySelectorAll('.analysis-transfer-listbox[data-input-id]').forEach(function(listbox) {
-            if (window.easyflowTransferFallbackSync) window.easyflowTransferFallbackSync(listbox);
+            if (window.easyflowTransferFallbackSync) window.easyflowTransferFallbackSync(listbox, false);
           });
           easyflowRememberAllTransferScrolls();
         }
@@ -1190,7 +1256,7 @@
       document.addEventListener('shiny:connected', easyflowRegisterTransferScrollRestoreObserver);
       window.setTimeout(easyflowRegisterTransferScrollRestoreObserver, 0);
 
-      window.easyflowTransferFallbackSync = function(listbox) {
+      window.easyflowTransferFallbackSync = function(listbox, activate) {
         if (!listbox || !listbox.getAttribute) return;
         var inputId = listbox.getAttribute('data-input-id') || '';
         var selectedOptions = Array.prototype.slice.call(listbox.querySelectorAll('.analysis-transfer-option.is-selected'));
@@ -1237,7 +1303,7 @@
         if (window.Shiny && inputId) {
           Shiny.setInputValue(inputId, values, {priority: 'event'});
           Shiny.setInputValue(inputId + '_selection_order', values, {priority: 'event'});
-          Shiny.setInputValue(inputId + '_active', Date.now() + Math.random(), {priority: 'event'});
+          if (activate !== false) Shiny.setInputValue(inputId + '_active', Date.now() + Math.random(), {priority: 'event'});
         }
       };
 
@@ -1355,6 +1421,8 @@
 
         function easyflowSetNavbarText(anchor, label) {
           if (!anchor.length || !label) return;
+          var translated = easyflowStaticLanguageLookup(easyflowCurrentLanguage());
+          label = translated[label] || label;
           var children = anchor.children().detach();
           anchor.empty().text(label);
           if (children.length) anchor.append(' ').append(children);
@@ -1547,30 +1615,55 @@
           easyflowOpenHelpRequestLink(event, navLink);
         }, true);
 
+        document.addEventListener('click', function(event) {
+          var navLink = event.target && event.target.closest ? event.target.closest('.navbar-nav a[data-value]') : null;
+          if (!navLink || navLink.classList.contains('dropdown-toggle')) return;
+          var value = navLink.getAttribute('data-value') || '';
+          if (!value || !window.Shiny || typeof Shiny.setInputValue !== 'function') return;
+          Shiny.setInputValue('easyflow_menu_visit', {
+            value: value,
+            nonce: Date.now() + Math.random()
+          }, {priority: 'event'});
+        }, true);
+
         function easyflowGroupedMenuConfigs() {
           return [
             {
               menu: 'Analysis',
               menuLabels: ['Analysis', '\uBD84\uC11D'],
               marker: 'analysis',
+              valueAliases: {
+                'Survival Analysis Guide': 'analysis_survival_setup',
+                '\uBD84\uC11D \uC120\uD0DD \uB3C4\uC6B0\uBBF8': 'analysis_survival_setup',
+                'Competing-Event Analysis': 'analysis_survival_competing',
+                '\uACBD\uC7C1\uC0AC\uAC74 \uBD84\uC11D': 'analysis_survival_competing'
+              },
               itemLabelsEn: {
                 'Frequencies / Descriptives': 'Frequencies / Descriptives',
                 analysis_crosstabs: 'Cross-tabulation Analysis',
                 't-test / ANOVA': 't-test / ANOVA',
                 'Paired test': 'Paired test',
                 ANCOVA: 'ANCOVA',
-                'Repeated-measures ANOVA': 'Repeated-measures ANOVA',
+                'One-group repeated-measures ANOVA': 'Within-subject treatment repeated-measures ANOVA',
+                'Repeated-measures ANOVA': 'Mixed-design repeated-measures ANOVA',
                 'Nonparametric Tests': 'Nonparametric Tests',
                 'Nonparametric Paired': 'Nonparametric Paired',
                 Correlation: 'Correlation',
+                analysis_meta: 'Meta-analysis',
                 Reliability: 'Reliability',
                 'Inter-rater Agreement': 'Inter-rater Agreement',
+                'IPA': 'Importance–Performance Analysis (IPA)',
                 'Factor Analysis': 'Factor Analysis',
                 'Principal Components': 'Principal Components',
                 Regression: 'Regression',
+                analysis_penalized: 'Ridge / LASSO / Elastic Net',
                 analysis_mediation_moderation: 'Mediation / Moderation',
                 'Generalized Linear Model (GLM)': 'Generalized Linear Model (GLM)',
                 analysis_logistic_regression: 'Logistic Regression',
+                analysis_survival_setup: 'Analysis Guide',
+                analysis_survival_km: 'Kaplan-Meier',
+                analysis_survival_cox: 'Cox Regression',
+                analysis_survival_competing: 'Competing-Event Analysis',
                 analysis_complex_design: 'Complex Samples Design Variables',
                 analysis_complex_frequencies: 'Complex Samples Frequencies / Descriptives',
                 analysis_complex_crosstabs: 'Complex Samples Cross-tabulation',
@@ -1578,7 +1671,12 @@
                 analysis_complex_correlation: 'Complex Samples Correlation',
                 analysis_complex_regression: 'Complex Samples Regression',
                 analysis_complex_logistic: 'Complex Samples Logistic Regression',
-                analysis_custom_model_canvas: 'Mediation / Moderation Custom Model',
+                analysis_complex_custom_model: 'Complex Samples Mediation / Moderation',
+                analysis_structural_cfa: 'Confirmatory Factor Analysis',
+                analysis_structural_cbsem: 'Structural Equation Modeling',
+                analysis_structural_plssem: 'PLS Structural Equation Modeling',
+                analysis_structural_automation: 'SEM Workflow Recommendation',
+                analysis_custom_model_canvas: 'Mediation / Moderation Effects',
                 'Longitudinal / Panel Models': 'Longitudinal / Panel Models'
               },
               itemLabelsKo: {
@@ -1587,18 +1685,26 @@
                 't-test / ANOVA': 't-test / ANOVA',
                 'Paired test': '\uB300\uC751\uD45C\uBCF8 \uAC80\uC815',
                 ANCOVA: 'ANCOVA',
-                'Repeated-measures ANOVA': '\uBC18\uBCF5\uCE21\uC815 \uBD84\uC0B0\uBD84\uC11D',
+                'One-group repeated-measures ANOVA': '\uB3D9\uC77C \uB300\uC0C1 \uB0B4 \uCC98\uCE58 \uBC18\uBCF5\uCE21\uC815 \uBD84\uC0B0\uBD84\uC11D',
+                'Repeated-measures ANOVA': '\uD63C\uD569\uC124\uACC4 \uBC18\uBCF5\uCE21\uC815 \uBD84\uC0B0\uBD84\uC11D',
                 'Nonparametric Tests': '\uBE44\uBAA8\uC218 \uAC80\uC815',
                 'Nonparametric Paired': '\uB300\uC751 \uBE44\uBAA8\uC218 \uAC80\uC815',
                 Correlation: '\uC0C1\uAD00\uBD84\uC11D',
+                analysis_meta: '\uBA54\uD0C0\uBD84\uC11D',
                 Reliability: '\uC2E0\uB8B0\uB3C4',
                 'Inter-rater Agreement': '\uD3C9\uAC00\uC790\uAC04 \uC77C\uCE58\uB3C4',
+                'IPA': '중요도–수행도 분석(IPA)',
                 'Factor Analysis': '\uC694\uC778\uBD84\uC11D',
                 'Principal Components': '\uC8FC\uC131\uBD84\uBD84\uC11D',
                 Regression: '\uD68C\uADC0\uBD84\uC11D',
+                analysis_penalized: '릿지·라소·엘라스틱넷',
                 analysis_mediation_moderation: '\uB9E4\uAC1C\u00B7\uC870\uC808',
                 'Generalized Linear Model (GLM)': '\uC77C\uBC18\uD654 \uC120\uD615\uBAA8\uD615(GLM)',
                 analysis_logistic_regression: '\uB85C\uC9C0\uC2A4\uD2F1 \uD68C\uADC0',
+                analysis_survival_setup: '\uBD84\uC11D \uC120\uD0DD \uB3C4\uC6B0\uBBF8',
+                analysis_survival_km: 'Kaplan-Meier',
+                analysis_survival_cox: 'Cox \uD68C\uADC0\uBD84\uC11D',
+                analysis_survival_competing: '\uACBD\uC7C1\uC0AC\uAC74 \uBD84\uC11D',
                 analysis_complex_design: '\uBCF5\uD569\uD45C\uBCF8 \uC124\uACC4\uBCC0\uC218',
                 analysis_complex_frequencies: '\uBCF5\uD569\uD45C\uBCF8 \uBE48\uB3C4\uBD84\uC11D / \uAE30\uC220\uD1B5\uACC4\uBD84\uC11D',
                 analysis_complex_crosstabs: '\uBCF5\uD569\uD45C\uBCF8 \uAD50\uCC28\uBD84\uC11D',
@@ -1606,7 +1712,12 @@
                 analysis_complex_correlation: '\uBCF5\uD569\uD45C\uBCF8 \uC0C1\uAD00\uBD84\uC11D',
                 analysis_complex_regression: '\uBCF5\uD569\uD45C\uBCF8 \uD68C\uADC0\uBD84\uC11D',
                 analysis_complex_logistic: '\uBCF5\uD569\uD45C\uBCF8 \uB85C\uC9C0\uC2A4\uD2F1 \uD68C\uADC0\uBD84\uC11D',
-                analysis_custom_model_canvas: '\uB9E4\uAC1C\u00B7\uC870\uC808 \uC0AC\uC6A9\uC790 \uC815\uC758 \uBAA8\uB378',
+                analysis_complex_custom_model: '\uBCF5\uD569\uD45C\uBCF8 \uB9E4\uAC1C\u00B7\uC870\uC808\uD6A8\uACFC',
+                analysis_structural_cfa: '\uD655\uC778\uC801 \uC694\uC778\uBD84\uC11D',
+                analysis_structural_cbsem: '\uAD6C\uC870\uBC29\uC815\uC2DD',
+                analysis_structural_plssem: 'PLS \uAD6C\uC870\uBC29\uC815\uC2DD',
+                analysis_structural_automation: '\uAD6C\uC870\uBC29\uC815\uC2DD \uBD84\uC11D \uCD94\uCC9C',
+                analysis_custom_model_canvas: '매개·조절효과',
                 'Longitudinal / Panel Models': '\uC885\uB2E8 / \uD328\uB110 \uBAA8\uD615'
               },
               groups: [
@@ -1618,7 +1729,7 @@
                 {
                   title: 'Group Comparisons',
                   titleKo: '\uC9D1\uB2E8 \uBE44\uAD50',
-                  values: ['t-test / ANOVA', 'Paired test', 'ANCOVA', 'Repeated-measures ANOVA']
+                  values: ['t-test / ANOVA', 'Paired test', 'ANCOVA', 'One-group repeated-measures ANOVA', 'Repeated-measures ANOVA']
                 },
                 {
                   title: 'Nonparametric Tests',
@@ -1628,12 +1739,17 @@
                 {
                   title: 'Association & Measurement',
                   titleKo: '\uC5F0\uAD00 / \uCE21\uC815',
-                  values: ['Correlation', 'Reliability', 'Inter-rater Agreement', 'Factor Analysis', 'Principal Components']
+                  values: ['Correlation', 'Reliability', 'Inter-rater Agreement', 'Factor Analysis', 'Principal Components', 'IPA']
                 },
                 {
                   title: 'Regression & Models',
                   titleKo: '\uD68C\uADC0 / \uBAA8\uD615',
-                  values: ['Regression', 'analysis_mediation_moderation', 'analysis_custom_model_canvas', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']
+                  values: ['Regression', 'analysis_custom_model_canvas', 'Generalized Linear Model (GLM)', 'analysis_penalized', 'analysis_logistic_regression']
+                },
+                {
+                  title: 'Survival Analysis',
+                  titleKo: '\uC0DD\uC874\uBD84\uC11D',
+                  values: ['analysis_survival_setup', 'analysis_survival_km', 'analysis_survival_cox', 'analysis_survival_competing']
                 },
                 {
                   title: 'Longitudinal / Panel',
@@ -1643,7 +1759,17 @@
                 {
                   title: 'Complex Samples',
                   titleKo: '\uBCF5\uD569\uD45C\uBCF8\uBD84\uC11D',
-                  values: ['analysis_complex_design', 'analysis_complex_frequencies', 'analysis_complex_crosstabs', 'analysis_complex_ttest_anova', 'analysis_complex_correlation', 'analysis_complex_regression', 'analysis_complex_logistic']
+                  values: ['analysis_complex_design', 'analysis_complex_frequencies', 'analysis_complex_crosstabs', 'analysis_complex_ttest_anova', 'analysis_complex_correlation', 'analysis_complex_regression', 'analysis_complex_logistic', 'analysis_complex_custom_model']
+                },
+                {
+                  title: 'Structural Equation Modeling',
+                  titleKo: '\uAD6C\uC870\uBC29\uC815\uC2DD',
+                  values: ['analysis_structural_cfa', 'analysis_structural_cbsem', 'analysis_structural_plssem', 'analysis_structural_automation']
+                },
+                {
+                  title: 'Meta-analysis',
+                  titleKo: '\uBA54\uD0C0\uBD84\uC11D',
+                  values: ['analysis_meta']
                 }
               ],
               aliasItems: []
@@ -1881,6 +2007,26 @@
           return lookup[group.title] || lookup[group.titleKo] || group.title || group.titleKo || '';
         }
 
+        function easyflowCanonicalGroupedValue(config, rawValue) {
+          var value = String(rawValue || '');
+          var itemLabelsEn = config.itemLabelsEn || {};
+          var itemLabelsKo = config.itemLabelsKo || {};
+          var explicitAliases = config.valueAliases || {};
+          if (explicitAliases[value]) return explicitAliases[value];
+          var keys = Object.keys(itemLabelsEn).concat(Object.keys(itemLabelsKo));
+          for (var index = 0; index < keys.length; index += 1) {
+            var key = keys[index];
+            if (itemLabelsEn[key] === value || itemLabelsKo[key] === value) return key;
+          }
+          return value;
+        }
+
+        function easyflowFindGroupedMenuLink(menu, config, value) {
+          return menu.find('a[data-value]').filter(function() {
+            return easyflowCanonicalGroupedValue(config, window.jQuery(this).attr('data-value')) === value;
+          }).first();
+        }
+
         function groupNavbarDropdownItems(config) {
           var menuLanguage = easyflowCurrentLanguage();
           var menuLabels = easyflowMenuLabelCandidates(config, menuLanguage);
@@ -1898,16 +2044,31 @@
           if (menu.attr('data-easyflow-menu-grouped') === config.marker) {
             config.groups.forEach(function(group) {
               var firstValue = group.values[0];
-              var groupLink = menu.find('a[data-value="' + firstValue + '"]').first();
+              var groupLink = easyflowFindGroupedMenuLink(menu, config, firstValue);
               var groupNode = groupLink.closest('.analysis-menu-section');
               var groupTitleText = easyflowGroupedTitleText(group, menuLanguage);
               if (!groupNode.length) return;
               groupNode.children('.analysis-menu-section-title').first().text(groupTitleText);
               group.values.forEach(function(value) {
-                var link = menu.find('a[data-value="' + value + '"]').first();
+                var link = easyflowFindGroupedMenuLink(menu, config, value);
                 if (!link.length) return;
                 var itemLabel = easyflowGroupedMenuText(config, value, menuLanguage);
                 if (itemLabel) link.text(itemLabel);
+              });
+              (group.subgroups || []).forEach(function(subgroup) {
+                var subgroupTitleText = easyflowGroupedTitleText(subgroup, menuLanguage);
+                subgroup.values.forEach(function(value, index) {
+                  var link = easyflowFindGroupedMenuLink(menu, config, value);
+                  if (!link.length) return;
+                  var itemLabel = easyflowGroupedMenuText(config, value, menuLanguage);
+                  if (itemLabel) link.text(itemLabel);
+                  if (index === 0) {
+                    link.closest('.analysis-menu-nested-section')
+                      .children('.analysis-menu-nested-title')
+                      .first()
+                      .text(subgroupTitleText);
+                  }
+                });
               });
             });
             easyflowApplyMenuAliasItems(menu, config, useKorean);
@@ -1920,7 +2081,7 @@
             var item = window.jQuery(this);
             var link = item.children('a[data-value]').first();
             if (!link.length) return;
-            existingItems[String(link.attr('data-value'))] = item.detach();
+            existingItems[easyflowCanonicalGroupedValue(config, link.attr('data-value'))] = item.detach();
           });
 
           config.groups.forEach(function(group) {
@@ -1934,6 +2095,33 @@
                 groupItems.push(existingItems[value]);
                 delete existingItems[value];
               }
+            });
+            (group.subgroups || []).forEach(function(subgroup) {
+              var subgroupItems = [];
+              (subgroup.values || []).forEach(function(value) {
+                if (existingItems[value]) {
+                  var itemLabel = easyflowGroupedMenuText(config, value, menuLanguage);
+                  if (itemLabel) {
+                    existingItems[value].children('a[data-value]').first().text(itemLabel);
+                  }
+                  subgroupItems.push(existingItems[value]);
+                  delete existingItems[value];
+                }
+              });
+              if (subgroupItems.length === 0) return;
+              var subgroupNode = window.jQuery('<li class="analysis-menu-nested-section" role="presentation"></li>');
+              var subgroupTitleText = easyflowGroupedTitleText(subgroup, menuLanguage);
+              var subgroupTitle = window.jQuery('<button type="button" class="analysis-menu-nested-title" aria-expanded="false"></button>').text(subgroupTitleText);
+              var subgroupList = window.jQuery('<ul class="analysis-menu-nested-items" role="menu"></ul>');
+              subgroupItems.forEach(function(item) {
+                subgroupList.append(item);
+              });
+              subgroupNode.append(subgroupTitle, subgroupList);
+              if (subgroupList.children('li.active').length) {
+                subgroupNode.addClass('active open');
+                subgroupTitle.attr('aria-expanded', 'true');
+              }
+              groupItems.push(subgroupNode);
             });
             if (groupItems.length === 0) return;
             var groupNode = window.jQuery('<li class="analysis-menu-section" role="presentation"></li>');
@@ -1989,6 +2177,26 @@
         document.addEventListener('shiny:connected', configureNestedDropdownToggles);
         window.setTimeout(configureNestedDropdownToggles, 0);
 
+        var dropdownPlugin = window.jQuery.fn.dropdown;
+        if (dropdownPlugin && !dropdownPlugin.easyflowHideCompatibility) {
+          var compatibleDropdown = function(option) {
+            if (option === 'hide') {
+              return this.each(function() {
+                var toggle = window.jQuery(this);
+                var item = toggle.parent('.dropdown');
+                item.removeClass('open');
+                toggle.attr('aria-expanded', 'false');
+                item.find('.dropdown.open').removeClass('open')
+                  .children('a.dropdown-toggle').attr('aria-expanded', 'false');
+              });
+            }
+            return dropdownPlugin.apply(this, arguments);
+          };
+          window.jQuery.extend(compatibleDropdown, dropdownPlugin);
+          compatibleDropdown.easyflowHideCompatibility = true;
+          window.jQuery.fn.dropdown = compatibleDropdown;
+        }
+
         if (window.easyflowNestedDropdownRegistered) return;
         window.easyflowNestedDropdownRegistered = true;
 
@@ -2022,6 +2230,15 @@
             menu.children('.analysis-menu-section').removeClass('open')
               .children('.analysis-menu-section-title').attr('aria-expanded', 'false');
           })
+          .on('mouseenter.easyflowAnalysisNestedSubmenu focusin.easyflowAnalysisNestedSubmenu click.easyflowAnalysisNestedSubmenu', '.analysis-menu-nested-title', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            var nested = window.jQuery(this).closest('.analysis-menu-nested-section');
+            nested.siblings('.analysis-menu-nested-section').removeClass('open')
+              .children('.analysis-menu-nested-title').attr('aria-expanded', 'false');
+            nested.addClass('open');
+            window.jQuery(this).attr('aria-expanded', 'true');
+          })
           .on('click.easyflowAnalysisSubmenu', '.analysis-submenu .analysis-menu-section-items a[data-value]', function() {
             var link = window.jQuery(this);
             var menu = link.closest('.analysis-submenu');
@@ -2030,8 +2247,11 @@
               menu.children('.analysis-menu-section').removeClass('open');
               link.parent('li').addClass('active');
               link.closest('.analysis-menu-section').addClass('active open');
+              link.closest('.analysis-menu-nested-section').addClass('active open');
               menu.find('.analysis-menu-section-title').attr('aria-expanded', 'false');
               link.closest('.analysis-menu-section').children('.analysis-menu-section-title').attr('aria-expanded', 'true');
+              menu.find('.analysis-menu-nested-title').attr('aria-expanded', 'false');
+              link.closest('.analysis-menu-nested-section').children('.analysis-menu-nested-title').attr('aria-expanded', 'true');
               markNavbarDropdownActive(link);
             };
             markActive();
@@ -2678,11 +2898,18 @@
         for (var i = 0; i < sourceImages.length && i < cloneImages.length; i += 1) {
           var sourceImage = sourceImages[i];
           var cloneImage = cloneImages[i];
+          var imageStyle = window.getComputedStyle(sourceImage);
+          var displayWidth = parseFloat(imageStyle.width) || sourceImage.width;
+          var displayHeight = parseFloat(imageStyle.height) || sourceImage.height;
+          if (displayWidth > 0 && displayHeight > 0) {
+            cloneImage.setAttribute('width', displayWidth);
+            cloneImage.setAttribute('height', displayHeight);
+          }
           var src = sourceImage.currentSrc || sourceImage.src || cloneImage.getAttribute('src') || '';
           if (!src || src.indexOf('data:') === 0) continue;
           try {
             var response = await fetch(src, { credentials: 'same-origin' });
-            if (!response.ok) continue;
+            if (!response.ok) throw new Error('Unable to capture result image (' + response.status + ').');
             var dataUrl = await easyflowBlobToDataUrl(await response.blob());
             cloneImage.setAttribute('src', dataUrl);
             cloneImage.removeAttribute('srcset');
@@ -2690,6 +2917,7 @@
             if (window.console && window.console.warn) {
               window.console.warn('StatEdu Studio result image snapshot failed', error);
             }
+            throw error;
           }
         }
       }
@@ -2714,9 +2942,55 @@
       }
 
       async function easyflowSnapshotHtml(element) {
+        if (window.stateduSplitSnapshots && window.stateduSplitSnapshots[element.id]) return window.stateduSplitSnapshots[element.id];
+        // Newly inserted renderUI plots bind and render in a later Shiny round trip.
+        // Never freeze an empty plot container while advancing a split batch.
+        var deadline = Date.now() + 30000;
+        var readyPasses = 0;
+        while (readyPasses < 2) {
+          await new Promise(function(resolve) { window.setTimeout(resolve, 100); });
+          var visible = function(node) { return node.getClientRects().length > 0; };
+          var plots = Array.from(element.querySelectorAll('.shiny-plot-output, .shiny-image-output')).filter(visible);
+          var ready = !element.classList.contains('recalculating') &&
+            !Array.from(element.querySelectorAll('.recalculating')).some(visible) && plots.every(function(plot) {
+              var img = plot.querySelector('img');
+              return img && img.complete && img.naturalWidth > 0;
+            });
+          readyPasses = ready ? readyPasses + 1 : 0;
+          if (Date.now() >= deadline) throw new Error('Result figures did not finish rendering. Please run the analysis again.');
+        }
         var clone = element.cloneNode(true);
-        easyflowInlineSnapshotCanvases(element, clone);
+        // Preserve the styles actually displayed, including Bootstrap/theme rules
+        // that are not part of the standalone report stylesheet.
+        var selector = 'table, thead, tbody, tr, th, td, caption, h3, h4, h5, h6, p, li';
+        var sourceNodes = element.querySelectorAll(selector);
+        var clonedNodes = clone.querySelectorAll(selector);
+        var properties = ['font-family', 'font-size', 'font-weight', 'font-style',
+          'line-height', 'color', 'background-color', 'text-align', 'vertical-align',
+          'white-space', 'overflow-wrap', 'word-break', 'border-collapse', 'border-spacing',
+          'border-top', 'border-right', 'border-bottom', 'border-left',
+          'padding-top', 'padding-right', 'padding-bottom', 'padding-left'];
+        for (var i = 0; i < sourceNodes.length; i += 1) {
+          var computed = window.getComputedStyle(sourceNodes[i]);
+          properties.forEach(function(property) {
+            clonedNodes[i].style.setProperty(property, computed.getPropertyValue(property));
+          });
+          if (sourceNodes[i].tagName === 'TABLE') {
+            var firstRow = sourceNodes[i].rows[0];
+            var widths = [];
+            if (firstRow) Array.from(firstRow.cells).forEach(function(cell) {
+              var span = Math.max(1, cell.colSpan || 1);
+              for (var column = 0; column < span; column++) widths.push(cell.getBoundingClientRect().width / span);
+            });
+            var totalWidth = widths.reduce(function(sum, value) { return sum + value; }, 0);
+            if (totalWidth > 0) clonedNodes[i].setAttribute('data-result-column-widths', JSON.stringify(widths.map(function(value) { return value / totalWidth; })));
+            clonedNodes[i].setAttribute('data-result-row-heights', JSON.stringify(Array.from(sourceNodes[i].rows).map(function(row) {
+              return parseFloat(window.getComputedStyle(row).height) || 0;
+            })));
+          }
+        }
         await easyflowInlineSnapshotImages(element, clone);
+        easyflowInlineSnapshotCanvases(element, clone);
         return clone.innerHTML || '';
       }
 
@@ -2735,12 +3009,32 @@
               error: '',
               nonce: Date.now() + Math.random()
             };
+            payload.token = message.token;
+            payload.groupIndex = message.groupIndex;
             if (!inputId) return;
             if (!element) {
               payload.error = 'Result output was not found.';
             } else {
               payload.text = (element.textContent || '').replace(/\s+/g, ' ').trim();
-              payload.html = await easyflowSnapshotHtml(element);
+              try {
+                payload.html = await easyflowSnapshotHtml(element);
+                if (message.groupIndex) {
+                  var staticGroup = document.createElement('div');
+                  staticGroup.innerHTML = payload.html;
+                  staticGroup.querySelectorAll('button,input,select,textarea,.action-button').forEach(function(control) { control.remove(); });
+                  staticGroup.querySelectorAll('[id]').forEach(function(node) { if (!node.closest('svg')) node.removeAttribute('id'); });
+                  staticGroup.querySelectorAll('.shiny-bound-output').forEach(function(node) { node.classList.remove('shiny-bound-output'); });
+                  payload.html = staticGroup.innerHTML;
+                }
+                if (message.canvasRootId && !(window.stateduSplitSnapshots && window.stateduSplitSnapshots[outputId])) {
+                  var canvasRoot = document.getElementById(message.canvasRootId);
+                  var instance = canvasRoot && canvasRoot.__stateduModelCanvas;
+                  if (!instance) throw new Error('Model canvas is unavailable.');
+                  payload.html += await window.StatEduModelCanvas.dialogs.exportReportFigure(instance);
+                }
+              } catch (error) {
+                payload.error = error.message || String(error);
+              }
               if (!payload.html || !payload.text) {
                 payload.error = 'No analysis result is available to add.';
               }
@@ -2809,6 +3103,10 @@
         if (!item.length) return;
         window.jQuery('.navbar-nav > li.active').not(item).removeClass('active');
         item.addClass('active');
+        // Bootstrap clears direct siblings, but grouped menus nest tab links
+        // several levels deep. Shiny requires exactly one active leaf link.
+        window.jQuery('.navbar-nav li.active > a[data-toggle="tab"]')
+          .not(link).parent('li').removeClass('active');
       }
 
       document.addEventListener('click', function(event) {
@@ -2817,8 +3115,11 @@
         var navValue = navLink.getAttribute('data-value') || '';
         if (!navValue || !window.jQuery) return;
         window.setTimeout(function() {
+          if (!navLink.isConnected) return;
           var link = window.jQuery(navLink);
           if (!link.length) return;
+          window.jQuery('.navbar-nav li.active > a[data-toggle="tab"]')
+            .not(navLink).parent('li').removeClass('active');
           var item = link.parent('li');
           var wasActive = item.hasClass('active');
           if (wasActive) {
@@ -2832,6 +3133,7 @@
             }
           }
           syncEasyflowTopNavbarActive(navLink);
+          link.closest('.shiny-tab-input').trigger('change');
           link.closest('.navbar-nav > li.dropdown').removeClass('open');
         }, 0);
       }, true);
@@ -3210,6 +3512,10 @@
       }
 
       function easyflowTransferCleanupPointerDrag() {
+        document.querySelectorAll('.transfer-insert-before, .transfer-insert-after').forEach(function(option) {
+          option.classList.remove('transfer-insert-before', 'transfer-insert-after');
+        });
+        if (easyflowPointerTransfer) clearInterval(easyflowPointerTransfer.scrollTimer);
         document.querySelectorAll('.analysis-transfer-option.is-dragging').forEach(function(option) {
           option.classList.remove('is-dragging');
         });
@@ -3225,6 +3531,20 @@
         window.easyflowTransferDragState = null;
         window.easyflowTransferDropTarget = null;
         window.easyflowTransferDropSent = false;
+      }
+
+      function easyflowTransferReorderPosition(state) {
+        document.querySelectorAll('.transfer-insert-before, .transfer-insert-after').forEach(function(o) {
+          o.classList.remove('transfer-insert-before', 'transfer-insert-after');
+        });
+        if (window.easyflowTransferDropTarget !== state.listbox) return;
+        var options = easyflowTransferOptions(state.listbox).filter(function(o) {
+          return state.values.indexOf(o.getAttribute('data-value')) < 0;
+        });
+        var before = options.find(function(o) { var r = o.getBoundingClientRect(); return state.clientY < r.top + r.height / 2; });
+        state.before = before ? before.getAttribute('data-value') : null;
+        if (before) before.classList.add('transfer-insert-before');
+        else if (options.length) options[options.length - 1].classList.add('transfer-insert-after');
       }
 
       document.addEventListener('pointerdown', function(event) {
@@ -3259,6 +3579,17 @@
         event.stopPropagation();
         easyflowTransferMoveGhost(state.ghost, event.clientX, event.clientY);
         easyflowTransferSetPointerTarget(easyflowTransferListboxFromEvent(event) || easyflowTransferCalculatorSelectFromEvent(event));
+        if ((window.easyflowReorderLists && window.easyflowReorderLists.has(state.listbox.getAttribute('data-input-id')))) {
+          state.clientY = event.clientY;
+          if (!state.scrollTimer) state.scrollTimer = setInterval(function() {
+            if (window.easyflowTransferDropTarget !== state.listbox) return;
+            var rect = state.listbox.getBoundingClientRect();
+            if (state.clientY < rect.top + 28) state.listbox.scrollTop -= 12;
+            if (state.clientY > rect.bottom - 28) state.listbox.scrollTop += 12;
+            easyflowTransferReorderPosition(state);
+          }, 40);
+          easyflowTransferReorderPosition(state);
+        }
       }, true);
 
       document.addEventListener('pointerup', function(event) {
@@ -3271,7 +3602,14 @@
           if (target && target.tagName && target.tagName.toLowerCase() === 'select') {
             easyflowTransferCommitCalculatorSelect(target);
           } else {
-            easyflowTransferCommitDrop(target);
+            if (target === state.listbox && (window.easyflowReorderLists && window.easyflowReorderLists.has(state.listbox.getAttribute('data-input-id')))) {
+              state.clientY = event.clientY;
+              easyflowTransferReorderPosition(state);
+              var remaining = easyflowTransferOptions(state.listbox).map(function(o) { return o.getAttribute('data-value'); }).filter(function(v) { return state.values.indexOf(v) < 0; });
+              var index = state.before ? remaining.indexOf(state.before) : remaining.length;
+              remaining.splice.apply(remaining, [index, 0].concat(state.values));
+              Shiny.setInputValue(state.listbox.getAttribute('data-input-id') + '_reorder', {order: remaining, selected: state.values, nonce: Date.now()}, {priority: 'event'});
+            } else easyflowTransferCommitDrop(target);
           }
           window.easyflowTransferSuppressClickUntil = Date.now() + 500;
         }
@@ -3607,7 +3945,12 @@
         }
 
         function scheduleTtestNormalityTreeUpdate() {
-          window.setTimeout(updateTtestNormalityTree, 0);
+          if (!document.getElementById('ttest_anova_normality_enabled')) return;
+          if (window.easyflowTtestNormalityTimer) window.clearTimeout(window.easyflowTtestNormalityTimer);
+          window.easyflowTtestNormalityTimer = window.setTimeout(function() {
+            window.easyflowTtestNormalityTimer = null;
+            updateTtestNormalityTree();
+          }, 0);
         }
 
         function updateFactorNormalityOptions() {
@@ -3624,11 +3967,21 @@
         }
 
         function scheduleFactorNormalityOptionsUpdate() {
-          window.setTimeout(updateFactorNormalityOptions, 0);
+          if (!document.getElementById('factor_assumption')) return;
+          if (window.easyflowFactorNormalityTimer) window.clearTimeout(window.easyflowFactorNormalityTimer);
+          window.easyflowFactorNormalityTimer = window.setTimeout(function() {
+            window.easyflowFactorNormalityTimer = null;
+            updateFactorNormalityOptions();
+          }, 0);
         }
 
         function scheduleAncovaNormalityOptionsUpdate() {
-          window.setTimeout(updateAncovaNormalityOptions, 0);
+          if (!document.getElementById('ancova_normality_enabled')) return;
+          if (window.easyflowAncovaNormalityTimer) window.clearTimeout(window.easyflowAncovaNormalityTimer);
+          window.easyflowAncovaNormalityTimer = window.setTimeout(function() {
+            window.easyflowAncovaNormalityTimer = null;
+            updateAncovaNormalityOptions();
+          }, 0);
         }
 
         document.addEventListener('change', function(event) {
@@ -3696,7 +4049,6 @@
           scheduleAncovaNormalityOptionsUpdate();
         }
         scheduleEasyflowTypesetMath(document);
-        window.easyflowStartMathJaxPolling();
         window.easyflowUpdateTtestNormalityTree = updateTtestNormalityTree;
         window.easyflowUpdateFactorNormalityOptions = updateFactorNormalityOptions;
         window.easyflowUpdateAncovaNormalityOptions = updateAncovaNormalityOptions;
@@ -3829,3 +4181,46 @@
         }
         setTimeout(syncResidualMethodOptions, 0);
       })();
+
+// IPA marker options require an assigned group variable.
+(function () {
+  function syncIpaMarkerTab() {
+    var link = document.querySelector('#ipa_options_tab a[data-value="markers"]');
+    if (!link) return;
+    var design = document.getElementById('ipa_design');
+    var paired = design && design.value === 'paired';
+    var enabled = paired || !!document.querySelector('.ipa-setup-grid [data-input-id="ipa_group"] .analysis-transfer-option');
+    var title = link.querySelector('[data-ipa-group-title]');
+    if (title) {
+      var label = title.getAttribute(paired ? 'data-ipa-time-title' : 'data-ipa-group-title');
+      if (title.textContent !== label) title.textContent = label;
+    }
+    link.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+    link.setAttribute('tabindex', enabled ? '0' : '-1');
+    var design = document.getElementById('ipa_design');
+    var comparisonEnabled = enabled || (design && design.value === 'paired');
+    ['ipa_group_plot', 'ipa_separate_mean'].forEach(function (id) {
+      var select = document.getElementById(id);
+      if (!select) return;
+      if (select.selectize) {
+        if (comparisonEnabled && select.selectize.isDisabled) select.selectize.enable();
+        if (!comparisonEnabled && !select.selectize.isDisabled) select.selectize.disable();
+      } else select.disabled = !comparisonEnabled;
+      select.setAttribute('aria-disabled', comparisonEnabled ? 'false' : 'true');
+    });
+  }
+  document.addEventListener('click', function (event) {
+    var link = event.target.closest('#ipa_options_tab a[data-value="markers"]');
+    if (link && link.getAttribute('aria-disabled') === 'true') {
+      event.preventDefault(); event.stopImmediatePropagation();
+    }
+  }, true);
+  ['shiny:bound', 'shiny:value', 'shiny:connected', 'DOMContentLoaded'].forEach(function (name) {
+    document.addEventListener(name, function () { setTimeout(syncIpaMarkerTab, 0); });
+  });
+  syncIpaMarkerTab();
+  document.addEventListener('change', function (event) {
+    if (event.target.id === 'ipa_design') syncIpaMarkerTab();
+  });
+  new MutationObserver(syncIpaMarkerTab).observe(document.documentElement, {childList:true, subtree:true});
+})();

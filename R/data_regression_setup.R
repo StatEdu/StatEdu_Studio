@@ -31,14 +31,7 @@ regression_variable_table_data <- function(
   output <- data.frame(
     name = selected,
     var_label = unname(labels[selected]),
-    role = vapply(
-      selected,
-      role_for_variable,
-      character(1),
-      dependent = dependent,
-      independent = independent,
-      controls = controls
-    ),
+    role = roles_for_variables(selected, dependent, independent, controls),
     measurement = unname(measurements[selected]),
     source_order = seq_along(selected),
     stringsAsFactors = FALSE,

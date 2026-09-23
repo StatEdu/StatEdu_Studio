@@ -6,7 +6,7 @@ data_tab_panel <- function(language = statedu_initial_language()) {
       div(
         class = "app-heading",
         h1("StatEdu Studio"),
-        div(statedu_t("data.subtitle", language), class = "app-subtitle")
+        div(statedu_t("data.subtitle", language), class = "app-subtitle", `data-statedu-i18n-key` = "data.subtitle")
       ),
       div(
         class = "data-layout",
@@ -23,7 +23,7 @@ data_tab_panel <- function(language = statedu_initial_language()) {
               class = "excel-import-main-panel",
               div(
                 class = "workspace-header",
-                h3(statedu_t("data.excel_import_review", language))
+                h3(statedu_t("data.excel_import_review", language), `data-statedu-i18n-key` = "data.excel_import_review")
               ),
               div(class = "excel-import-note", uiOutput("excel_import_note", inline = TRUE)),
               div(class = "excel-import-preview-wrap excel-import-preview-main", DTOutput("excel_import_preview"))
@@ -50,13 +50,13 @@ data_tab_panel <- function(language = statedu_initial_language()) {
                 tagList(
                   div(
                     class = "data-table-section step3-labels-section",
-                    h4(statedu_t("data.categorical_value_labels", language)),
+                    h4(statedu_t("data.categorical_value_labels", language), `data-statedu-i18n-key` = "data.categorical_value_labels"),
                     DTOutput("category_label_table")
                   ),
                   div(
                     class = "data-table-section step3-variables-section",
                     style = "display: none;",
-                    h4(statedu_t("data.selected_variables", language)),
+                    h4(statedu_t("data.selected_variables", language), `data-statedu-i18n-key` = "data.selected_variables"),
                     DTOutput("selected_variable_edit_table")
                   )
                 )

@@ -187,7 +187,10 @@
     "07_mplus.R",
     "08_table.R",
     "09_figure.R",
-    "10_bch_core.R"
+    "10_bch_core.R",
+    "13_r3step_core.R",
+    "14_profile_core.R",
+    "15_mixture_selection_core.R"
   )
 
   for (f in common_files) {

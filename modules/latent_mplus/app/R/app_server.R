@@ -1072,13 +1072,56 @@ create_app_server <- function(app_version) {
               dataset_id = dataset_id,
               analysis_id = selected_spec$engine
             )
+            column_count <- latent_result_table_column_count_for_path(
+              tables$file[[i]],
+              project_root = project_root,
+              app_root = getwd(),
+              output_root = output_root,
+              dataset_id = dataset_id,
+              analysis_id = selected_spec$engine
+            )
+            intrinsic_width <- latent_result_table_intrinsic_width_for_path(
+              tables$file[[i]],
+              project_root = project_root,
+              app_root = getwd(),
+              output_root = output_root,
+              dataset_id = dataset_id,
+              analysis_id = selected_spec$engine
+            )
+            orientation <- latent_result_table_orientation(
+              tables$table[[i]],
+              profile_count = profile_count,
+              column_count = column_count,
+              intrinsic_width = intrinsic_width
+            )
+            table_language <- latent_result_ui_language()
             div(
               class = paste(
                 "result-section regression-result-panel latent-result-table-section",
-                latent_result_table_section_class(tables$table[[i]], profile_count = profile_count)
+                latent_result_table_section_class(
+                  tables$table[[i]],
+                  profile_count = profile_count,
+                  column_count = column_count,
+                  intrinsic_width = intrinsic_width
+                )
               ),
-              style = latent_result_table_section_style(tables$table[[i]], profile_count = profile_count),
-              h4(tables$label[[i]]),
+              style = latent_result_table_section_style(
+                tables$table[[i]],
+                profile_count = profile_count,
+                column_count = column_count,
+                intrinsic_width = intrinsic_width
+              ),
+              div(
+                class = "latent-result-table-meta",
+                span(
+                  class = "latent-result-table-role-label",
+                  latent_result_role_label(tables$table[[i]], language = table_language)
+                ),
+                span(
+                  class = "latent-result-table-page-label",
+                  latent_result_orientation_label(orientation, language = table_language)
+                )
+              ),
               latent_excel_like_table_ui(
                 tables$file[[i]],
                 project_root = project_root,
@@ -1381,7 +1424,7 @@ create_app_server <- function(app_version) {
         observeEvent(input[[paste0(id, "_open_excel")]], {
           if (exists("analysis_save_feature_enabled", mode = "function", inherits = TRUE) &&
               !isTRUE(analysis_save_feature_enabled("excel"))) {
-            showNotification("Excel export is available in StatEdu Studio Pro.", type = "warning", duration = 5)
+            showNotification("Excel result export is planned for StatEdu Studio v1.3.0 or later.", type = "warning", duration = 5)
             return()
           }
           selected_analysis <- input[[paste0(id, "_analysis_id")]] %||% latent_modules[[id]]$analysis_key
@@ -1420,7 +1463,7 @@ create_app_server <- function(app_version) {
         observeEvent(input[[paste0(id, "_save_table_excel")]], {
           if (exists("analysis_save_feature_enabled", mode = "function", inherits = TRUE) &&
               !isTRUE(analysis_save_feature_enabled("excel"))) {
-            showNotification("Excel export is available in StatEdu Studio Pro.", type = "warning", duration = 5)
+            showNotification("Excel result export is planned for StatEdu Studio v1.3.0 or later.", type = "warning", duration = 5)
             return()
           }
           selected_analysis <- input[[paste0(id, "_analysis_id")]] %||% latent_modules[[id]]$analysis_key
@@ -1473,7 +1516,7 @@ create_app_server <- function(app_version) {
         observeEvent(input[[paste0(id, "_save_table_pdf")]], {
           if (exists("analysis_save_feature_enabled", mode = "function", inherits = TRUE) &&
               !isTRUE(analysis_save_feature_enabled("pdf"))) {
-            showNotification("PDF export is available in StatEdu Studio Pro.", type = "warning", duration = 5)
+            showNotification("PDF result export is planned for StatEdu Studio v1.3.0 or later.", type = "warning", duration = 5)
             return()
           }
           selected_analysis <- input[[paste0(id, "_analysis_id")]] %||% latent_modules[[id]]$analysis_key
@@ -1632,13 +1675,25 @@ latent_result_or_example_path <- function(path) {
   grepl("/(Mplus_output|mplus_tmp|output|outputs|Mplus_examples)/", normalized, ignore.case = TRUE)
 }
 
+latent_original_data_path_cache <- new.env(parent = emptyenv())
+
 latent_original_data_path_from_name <- function(name, app_root = getwd()) {
   name <- basename(trimws(as.character(name %||% "")))
   if (!nzchar(name) || !supported_data_file_extension(name)) {
     return("")
   }
+  normalized_root <- normalizePath(app_root, winslash = "/", mustWork = FALSE)
+  cache_key <- paste(tolower(normalized_root), tolower(name), sep = "|")
+  if (exists(cache_key, envir = latent_original_data_path_cache, inherits = FALSE)) {
+    cached <- get(cache_key, envir = latent_original_data_path_cache, inherits = FALSE)
+    if (!nzchar(cached) || file.exists(cached)) {
+      return(cached)
+    }
+    rm(list = cache_key, envir = latent_original_data_path_cache)
+  }
   roots <- latent_data_search_roots(app_root)
   if (length(roots) == 0) {
+    assign(cache_key, "", envir = latent_original_data_path_cache)
     return("")
   }
   pattern <- gsub(".", "\\.", name, fixed = TRUE)
@@ -1651,10 +1706,13 @@ latent_original_data_path_from_name <- function(name, app_root = getwd()) {
   primary <- files[!vapply(files, latent_result_or_example_path, logical(1))]
   files <- if (length(primary) > 0) primary else files
   if (length(files) == 0) {
+    assign(cache_key, "", envir = latent_original_data_path_cache)
     return("")
   }
   normalized <- normalizePath(files, winslash = "/", mustWork = FALSE)
-  normalized[order(nchar(normalized), normalized)][[1]]
+  result <- normalized[order(nchar(normalized), normalized)][[1]]
+  assign(cache_key, result, envir = latent_original_data_path_cache)
+  result
 }
 
 latent_resolved_data_file_path <- function(file, app_root = getwd()) {
@@ -1666,8 +1724,14 @@ latent_resolved_data_file_path <- function(file, app_root = getwd()) {
     return(normalizePath(original_path, winslash = "/", mustWork = TRUE))
   }
   path <- as.character(file$path %||% file$datapath %||% "")
-  if (nzchar(path) && file.exists(path) && !latent_temporary_data_path(path)) {
+  # A Shiny fileInput is intentionally stored below tempdir(). It is already
+  # the authoritative readable copy for this session, so resolving it by the
+  # browser-visible name would recursively scan every configured data root.
+  if (nzchar(path) && file.exists(path)) {
     return(normalizePath(path, winslash = "/", mustWork = TRUE))
+  }
+  if (nzchar(path) && latent_temporary_data_path(path)) {
+    return(normalizePath(path, winslash = "/", mustWork = FALSE))
   }
   candidate <- latent_original_data_path_from_name(latent_data_file_name(file), app_root = app_root)
   if (nzchar(candidate) && file.exists(candidate)) {
@@ -1702,7 +1766,8 @@ dataset_id_from_data_file <- function(file) {
     return("")
   }
   path <- latent_resolved_data_file_path(file)
-  name <- basename(as.character(path %||% latent_data_file_name(file)))
+  uploaded_name <- latent_data_file_name(file)
+  name <- basename(as.character(if (nzchar(uploaded_name)) uploaded_name else path))
   dataset_id <- if (nzchar(name)) tools::file_path_sans_ext(name) else ""
   if ((!nzchar(dataset_id) || grepl("^[0-9]+$", dataset_id)) && latent_temporary_data_path(path)) {
     fallback <- latent_default_dataset_id_from_sample()
@@ -2024,7 +2089,7 @@ write_latent_dataset_files <- function(project_root, dataset_id, setup, current_
       k_min = as.integer(analysis$k_min %||% 2),
       k_max = as.integer(analysis$k_max %||% 6),
       k_values = analysis$k_values %||% NULL,
-      best_k = analysis$best_k %||% NULL,
+      best_k = analysis[["best_k"]] %||% NULL,
       best_k_rule = analysis$best_k_rule %||% "hybrid",
       starts = analysis$starts %||% "500 100",
       stiterations = as.integer(analysis$stiterations %||% 20),
@@ -2434,11 +2499,13 @@ latent_result_table_index <- function(project_root, dataset_id, analysis_id, app
     ))
   }
   manifest <- read_table_manifest(table_dir)
+  ui_language <- latent_result_ui_language()
   rows <- lapply(files, function(path) {
     name <- tools::file_path_sans_ext(basename(path))
     header <- tryCatch(readr::read_csv(path, n_max = 0, show_col_types = FALSE, progress = FALSE), error = function(e) NULL)
     row_count <- tryCatch(max(length(readLines(path, warn = FALSE, encoding = "UTF-8")) - 1L, 0L), error = function(e) NA_integer_)
-    desc <- table_description(name, manifest)
+    desc <- table_description(name, manifest, language = ui_language)
+    caption <- latent_result_table_caption(name, manifest = manifest, language = ui_language)
     info <- file.info(path)
     data.frame(
       table = name,
@@ -2447,7 +2514,7 @@ latent_result_table_index <- function(project_root, dataset_id, analysis_id, app
       columns = if (is.data.frame(header)) ncol(header) else NA_integer_,
       modified = format(info$mtime, "%Y-%m-%d %H:%M"),
       file = normalizePath(path, winslash = "/", mustWork = FALSE),
-      label = sprintf("%s - %s", name, desc),
+      label = caption,
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -2868,28 +2935,176 @@ latent_result_table_profile_count_for_path <- function(path, project_root, app_r
   }, error = function(e) NA_integer_)
 }
 
-latent_result_table_orientation <- function(name, profile_count = NA_integer_) {
+latent_result_table_column_count_for_path <- function(path, project_root, app_root, dataset_id, analysis_id, output_root = NULL) {
+  tryCatch({
+    data <- read_latent_excel_sheet_display(
+      path,
+      project_root = project_root,
+      app_root = app_root,
+      dataset_id = dataset_id,
+      analysis_id = analysis_id,
+      output_root = output_root
+    )
+    if (is.data.frame(data)) ncol(data) else NA_integer_
+  }, error = function(e) NA_integer_)
+}
+
+latent_result_table_intrinsic_width <- function(data = NULL, column_count = NA_integer_) {
+  column_count <- suppressWarnings(as.integer(column_count %||% NA_integer_))
+  if (!is.data.frame(data) || ncol(data) == 0L) {
+    if (length(column_count) == 0L || is.na(column_count) || column_count < 1L) return(NA_real_)
+    return(as.numeric(118L + max(0L, column_count - 1L) * 62L))
+  }
+
+  values <- as.data.frame(lapply(data, as.character), stringsAsFactors = FALSE, check.names = FALSE)
+  values[is.na(values)] <- ""
+  keep_rows <- rep(TRUE, nrow(values))
+  if (nrow(values) > 0L) {
+    row_nonempty <- vapply(seq_len(nrow(values)), function(row_index) {
+      row <- trimws(as.character(unlist(values[row_index, , drop = TRUE], use.names = FALSE)))
+      sum(nzchar(row))
+    }, integer(1))
+    keep_rows[row_nonempty == 0L] <- FALSE
+
+    # Title and note rows span every table column in the screen renderer. Their
+    # text therefore must not be charged to the first column's intrinsic width.
+    if (row_nonempty[[1L]] <= 1L) keep_rows[[1L]] <- FALSE
+    note_rows <- vapply(seq_len(nrow(values)), function(row_index) {
+      row <- trimws(as.character(unlist(values[row_index, , drop = TRUE], use.names = FALSE)))
+      first <- row[nzchar(row)]
+      length(first) > 0L && grepl("^(Note|\uC8FC)\\.", first[[1L]], ignore.case = TRUE)
+    }, logical(1))
+    keep_rows[note_rows] <- FALSE
+  }
+  content <- values[keep_rows, , drop = FALSE]
+
+  numeric_like <- function(column) {
+    column <- trimws(as.character(column))
+    column <- column[nzchar(column)]
+    if (length(column) == 0L) return(TRUE)
+    mean(grepl(
+      "^(?:[-+]?\\d*(?:\\.\\d+)?|<\\.?\\d+|NA|Inf|-Inf)(?:\\s*\\([^)]*\\))?$",
+      column,
+      perl = TRUE
+    )) >= 0.8
+  }
+  generic_name <- function(value) {
+    grepl("^(?:V|X)\\d+$|^\\.\\.\\.\\d+$|^SPACER_\\d+$", as.character(value %||% ""), ignore.case = TRUE)
+  }
+  widths <- vapply(seq_len(ncol(values)), function(column_index) {
+    column_name <- names(values)[[column_index]] %||% ""
+    column_values <- as.character(content[[column_index]] %||% character(0))
+    if (all(!nzchar(trimws(column_values))) && grepl("^SPACER_", column_name, ignore.case = TRUE)) {
+      return(8)
+    }
+    measured_values <- column_values
+    if (nzchar(column_name) && !generic_name(column_name)) {
+      measured_values <- c(column_name, measured_values)
+    }
+    lines <- unlist(strsplit(measured_values, "\n", fixed = TRUE), use.names = FALSE)
+    longest_line <- if (length(lines) > 0L) {
+      max(nchar(lines, type = "width"), na.rm = TRUE)
+    } else {
+      0L
+    }
+    base_width <- if (column_index == 1L) 118 else 62
+    if (column_index == 1L || !numeric_like(column_values)) {
+      max(base_width, min(220, 18 + longest_line * 6.2))
+    } else {
+      max(base_width, min(92, 18 + longest_line * 6.2))
+    }
+  }, numeric(1))
+  as.numeric(ceiling(sum(widths)))
+}
+
+latent_result_table_intrinsic_width_for_path <- function(path, project_root, app_root, dataset_id, analysis_id, output_root = NULL) {
+  tryCatch({
+    data <- read_latent_excel_sheet_display(
+      path,
+      project_root = project_root,
+      app_root = app_root,
+      dataset_id = dataset_id,
+      analysis_id = analysis_id,
+      output_root = output_root
+    )
+    latent_result_table_intrinsic_width(data)
+  }, error = function(e) NA_real_)
+}
+
+latent_result_table_role <- function(name) {
   key <- toupper(tools::file_path_sans_ext(basename(as.character(name %||% ""))))
-  if (key %in% c("T3", "T4", "T6D", "T6E", "A3", "A4", "A5", "A6", "A7", "A8")) {
-    return("portrait")
+  if (grepl("^T[0-9]+[A-Z]*$", key)) "main" else "appendix"
+}
+
+latent_result_ui_language <- function() {
+  language <- as.character(getOption("statedu.app_language", "") %||% "")
+  if (!nzchar(language) && exists("latent_current_language", mode = "function", inherits = TRUE)) {
+    language <- tryCatch(latent_current_language(), error = function(e) "")
   }
-  profile_count <- suppressWarnings(as.integer(profile_count %||% NA_integer_))
-  if (!is.na(profile_count)) {
-    return(if (profile_count >= 5L) "landscape" else "portrait")
+  if (exists("normalize_app_language", mode = "function", inherits = TRUE)) {
+    return(tryCatch(normalize_app_language(language), error = function(e) "en"))
   }
-  if (grepl("^ESTIMATION", key)) {
+  if (tolower(language) %in% c("ko", "kr", "korean")) "ko" else "en"
+}
+
+latent_result_table_language <- function(name, language = latent_result_ui_language()) {
+  if (identical(latent_result_table_role(name), "main")) "en" else language
+}
+
+latent_result_role_label <- function(name, language = latent_result_ui_language()) {
+  if (identical(latent_result_table_role(name), "main")) {
+    return("Main table")
+  }
+  if (identical(language, "ko")) "\uBD80\uB85D\u00B7\uC9C4\uB2E8\uD45C" else "Appendix/diagnostic table"
+}
+
+latent_result_orientation_label <- function(orientation, language = latent_result_ui_language()) {
+  orientation <- if (identical(orientation, "landscape")) "landscape" else "portrait"
+  if (identical(language, "ko")) {
+    return(if (identical(orientation, "landscape")) "B5 \uAC00\uB85C" else "B5 \uC138\uB85C")
+  }
+  paste("B5", orientation)
+}
+
+latent_result_table_orientation <- function(
+  name,
+  profile_count = NA_integer_,
+  column_count = NA_integer_,
+  intrinsic_width = NA_real_,
+  table_data = NULL
+) {
+  intrinsic_width <- suppressWarnings(as.numeric(intrinsic_width %||% NA_real_))
+  if (length(intrinsic_width) == 0L || !is.finite(intrinsic_width[[1L]])) {
+    intrinsic_width <- latent_result_table_intrinsic_width(table_data, column_count = column_count)
+  }
+  if (length(intrinsic_width) > 0L && is.finite(intrinsic_width[[1L]]) && intrinsic_width[[1L]] > 590) {
     return("landscape")
   }
   "portrait"
 }
 
-latent_result_table_section_class <- function(name, profile_count = NA_integer_) {
+latent_result_table_section_class <- function(
+  name,
+  profile_count = NA_integer_,
+  column_count = NA_integer_,
+  intrinsic_width = NA_real_,
+  table_data = NULL
+) {
   key <- toupper(tools::file_path_sans_ext(basename(as.character(name %||% ""))))
+  role <- latent_result_table_role(key)
   classes <- c(
     "latent-result-table-b5-page",
+    paste0("latent-result-table-", role),
+    if (identical(role, "main")) "latent-result-table-language-en" else "latent-result-table-language-ui",
     paste0("latent-result-table-", tolower(gsub("[^A-Z0-9]+", "-", key)))
   )
-  orientation <- latent_result_table_orientation(key, profile_count = profile_count)
+  orientation <- latent_result_table_orientation(
+    key,
+    profile_count = profile_count,
+    column_count = column_count,
+    intrinsic_width = intrinsic_width,
+    table_data = table_data
+  )
   if (identical(orientation, "landscape")) {
     classes <- c(classes, "latent-result-table-landscape", "latent-result-table-b5-landscape")
   } else {
@@ -2910,33 +3125,78 @@ latent_result_table_section_class <- function(name, profile_count = NA_integer_)
   paste(classes, collapse = " ")
 }
 
-latent_result_table_section_style <- function(name, profile_count = NA_integer_) {
-  orientation <- latent_result_table_orientation(name, profile_count = profile_count)
+latent_result_table_section_style <- function(
+  name,
+  profile_count = NA_integer_,
+  column_count = NA_integer_,
+  intrinsic_width = NA_real_,
+  table_data = NULL
+) {
+  orientation <- latent_result_table_orientation(
+    name,
+    profile_count = profile_count,
+    column_count = column_count,
+    intrinsic_width = intrinsic_width,
+    table_data = table_data
+  )
   if (identical(orientation, "landscape")) {
     return(paste(
       "max-width: var(--latent-b5-landscape-width) !important;",
       "width: min(100%, var(--latent-b5-landscape-width)) !important;",
-      "margin-left: 0 !important;",
+      "margin-left: auto !important;",
       "margin-right: auto !important;"
     ))
   }
   paste(
     "max-width: var(--latent-b5-portrait-width) !important;",
     "width: min(100%, var(--latent-b5-portrait-width)) !important;",
-    "margin-left: 0 !important;",
+    "margin-left: auto !important;",
     "margin-right: auto !important;"
   )
 }
 
-latent_result_table_wrap_style <- function(name, profile_count = NA_integer_) {
+latent_result_table_wrap_style <- function(
+  name,
+  profile_count = NA_integer_,
+  column_count = NA_integer_,
+  intrinsic_width = NA_real_,
+  table_data = NULL
+) {
+  orientation <- latent_result_table_orientation(
+    name,
+    profile_count = profile_count,
+    column_count = column_count,
+    intrinsic_width = intrinsic_width,
+    table_data = table_data
+  )
+  page_width <- if (identical(orientation, "landscape")) {
+    "var(--latent-b5-landscape-width)"
+  } else {
+    "var(--latent-b5-portrait-width)"
+  }
   paste(
-    "max-width: 100% !important;",
+    sprintf("max-width: %s !important;", page_width),
+    sprintf("width: min(100%%, %s) !important;", page_width),
+    "margin-left: auto !important;",
+    "margin-right: auto !important;",
     "overflow-x: auto !important;"
   )
 }
 
-latent_result_table_element_style <- function(name, profile_count = NA_integer_) {
-  orientation <- latent_result_table_orientation(name, profile_count = profile_count)
+latent_result_table_element_style <- function(
+  name,
+  profile_count = NA_integer_,
+  column_count = NA_integer_,
+  intrinsic_width = NA_real_,
+  table_data = NULL
+) {
+  orientation <- latent_result_table_orientation(
+    name,
+    profile_count = profile_count,
+    column_count = column_count,
+    intrinsic_width = intrinsic_width,
+    table_data = table_data
+  )
   if (identical(orientation, "landscape")) {
     return(paste(
       "table-layout: auto !important;",
@@ -2950,38 +3210,262 @@ latent_result_table_element_style <- function(name, profile_count = NA_integer_)
   )
 }
 
-table_description <- function(name, manifest = NULL) {
+latent_result_description_map <- function(language = "en") {
+  en <- c(
+    T0 = "Analysis overview",
+    T1 = "Model selection summary",
+    T2 = "Candidate model fit and eligibility diagnostics",
+    T3 = "Class/profile sizes",
+    T4 = "Retained-model continuous-indicator means",
+    T5 = "Covariate associations",
+    T5B = "Primary covariate associations",
+    T5C = "Sensitivity covariate associations",
+    T5D = "Naive and primary covariate comparison",
+    T6 = "Distal outcomes",
+    T6B = "Categorical distal outcomes",
+    T6C = "Moderation coefficients",
+    T6D = "Stratified distal-outcome means",
+    T6E = "Distal outcomes within moderator levels",
+    T7 = "Final retained solution",
+    A3 = "Modal-assignment indicator descriptives (raw scale)",
+    A4 = "Standardized descriptives by modal profile assignment",
+    A5 = "Classification summary",
+    A6 = "Classification quality by class/profile",
+    A8 = "Misclassification matrix",
+    S1 = "Overview of auxiliary analyses",
+    S2 = "BCH pairwise Wald tests",
+    S3 = "Covariate cell frequencies by modal class/profile (sparse-cell diagnostics)",
+    S4 = "Auxiliary-variable summary across classes/profiles",
+    S5 = "Primary multinomial results",
+    S6 = "Multinomial model details",
+    ESTIMATION_FIT_SUMMARY = "Candidate-model fit summary",
+    ESTIMATION_REGISTRY = "Estimation registry",
+    ESTIMATION_RUN_RESULTS = "Estimation run diagnostics",
+    BCH_RESULTS = "BCH results",
+    BCH_RESULTS_FULL = "BCH detailed results",
+    BCH_OMNIBUS_BASIC = "BCH omnibus tests",
+    BCH_POSTHOC = "BCH post-hoc comparisons",
+    BCH_STRATIFIED_RESULTS = "BCH stratified results",
+    BCH_STRATIFIED_RESULTS_FULL = "BCH stratified detailed results",
+    BCH_STRATIFIED_OMNIBUS = "BCH stratified omnibus tests",
+    BCH_STRATIFIED_POSTHOC = "BCH stratified post-hoc comparisons",
+    BCH_MOD_RESULTS_FULL = "BCH moderation detailed results",
+    BCH_MOD_OMNIBUS = "BCH moderation omnibus tests",
+    BCH_MOD_POSTHOC = "BCH moderation post-hoc comparisons",
+    BCH_INTERACTION = "BCH interaction diagnostics",
+    BCH_METADATA = "BCH analysis metadata",
+    BCH_MODERATION_METADATA = "BCH moderation metadata"
+  )
+  if (!identical(language, "ko")) return(en)
+  ko <- en
+  ko[c(
+    "A3", "A4", "A5", "A6", "A8", "S1", "S2", "S3", "S4", "S5", "S6",
+    "ESTIMATION_FIT_SUMMARY", "ESTIMATION_REGISTRY", "ESTIMATION_RUN_RESULTS",
+    "BCH_RESULTS", "BCH_RESULTS_FULL", "BCH_OMNIBUS_BASIC", "BCH_POSTHOC",
+    "BCH_STRATIFIED_RESULTS", "BCH_STRATIFIED_RESULTS_FULL", "BCH_STRATIFIED_OMNIBUS",
+    "BCH_STRATIFIED_POSTHOC", "BCH_MOD_RESULTS_FULL", "BCH_MOD_OMNIBUS",
+    "BCH_MOD_POSTHOC", "BCH_INTERACTION", "BCH_METADATA", "BCH_MODERATION_METADATA"
+  )] <- c(
+    "\uCD5C\uBE48 \uBD84\uB958 \uAE30\uBC18 \uC9C0\uD45C \uAE30\uC220\uD1B5\uACC4(\uC6D0\uCC99\uB3C4)",
+    "\uCD5C\uBE48 \uD504\uB85C\uD30C\uC77C \uBC30\uC815\uBCC4 \uD45C\uC900\uD654 \uAE30\uC220\uD1B5\uACC4",
+    "\uBD84\uB958 \uC694\uC57D",
+    "\uC7A0\uC7AC\uC9D1\uB2E8\u00B7\uD504\uB85C\uD30C\uC77C\uBCC4 \uBD84\uB958 \uD488\uC9C8",
+    "\uC624\uBD84\uB958 \uD589\uB82C",
+    "\uBCF4\uC870\uBD84\uC11D \uAC1C\uC694",
+    "\uC7A0\uC7AC\uC9D1\uB2E8\u00B7\uD504\uB85C\uD30C\uC77C\uBCC4 \uC5F0\uC18D\uD615 \uBCF4\uC870\uBCC0\uC218",
+    "\uC7A0\uC7AC\uC9D1\uB2E8\u00B7\uD504\uB85C\uD30C\uC77C\uBCC4 \uBC94\uC8FC\uD615 \uBCF4\uC870\uBCC0\uC218",
+    "\uC7A0\uC7AC\uC9D1\uB2E8\u00B7\uD504\uB85C\uD30C\uC77C \uAC04 \uBCF4\uC870\uBCC0\uC218 \uC694\uC57D",
+    "\uC77C\uCC28 \uB2E4\uD56D \uB85C\uC9C0\uC2A4\uD2F1 \uD68C\uADC0 \uACB0\uACFC",
+    "\uB2E4\uD56D \uB85C\uC9C0\uC2A4\uD2F1 \uD68C\uADC0 \uC0C1\uC138 \uACB0\uACFC",
+    "\uD6C4\uBCF4\uBAA8\uD615 \uC801\uD569\uB3C4 \uC694\uC57D",
+    "\uCD94\uC815 \uC2E4\uD589 \uB4F1\uB85D\uBD80",
+    "\uCD94\uC815 \uC2E4\uD589 \uC9C4\uB2E8",
+    "BCH \uACB0\uACFC",
+    "BCH \uC0C1\uC138 \uACB0\uACFC",
+    "BCH \uCD1D\uAD04\uAC80\uC815",
+    "BCH \uC0AC\uD6C4\uBE44\uAD50",
+    "BCH \uCE35\uD654 \uACB0\uACFC",
+    "BCH \uCE35\uD654 \uC0C1\uC138 \uACB0\uACFC",
+    "BCH \uCE35\uD654 \uCD1D\uAD04\uAC80\uC815",
+    "BCH \uCE35\uD654 \uC0AC\uD6C4\uBE44\uAD50",
+    "BCH \uC870\uC808\uD6A8\uACFC \uC0C1\uC138 \uACB0\uACFC",
+    "BCH \uC870\uC808\uD6A8\uACFC \uCD1D\uAD04\uAC80\uC815",
+    "BCH \uC870\uC808\uD6A8\uACFC \uC0AC\uD6C4\uBE44\uAD50",
+    "BCH \uC0C1\uD638\uC791\uC6A9 \uC9C4\uB2E8",
+    "BCH \uBD84\uC11D \uBA54\uD0C0\uB370\uC774\uD130",
+    "BCH \uC870\uC808\uD6A8\uACFC \uBA54\uD0C0\uB370\uC774\uD130"
+  )
+  ko["S2"] <- "BCH 쌍별 Wald 검정"
+  ko["S3"] <- "최빈 분류 기준 공변량 셀 빈도(희소 셀 진단)"
+  ko
+}
+
+table_description <- function(name, manifest = NULL, language = "en") {
+  key_name <- toupper(tools::file_path_sans_ext(basename(as.character(name %||% ""))))
+  role <- latent_result_table_role(key_name)
+  manifest_value <- ""
   if (is.data.frame(manifest) && nrow(manifest) > 0) {
     name_cols <- intersect(c("table", "table_id", "name", "file", "table_name"), names(manifest))
     desc_cols <- intersect(c("description", "title", "label", "caption"), names(manifest))
     if (length(name_cols) > 0 && length(desc_cols) > 0) {
       key <- as.character(manifest[[name_cols[[1]]]])
       key <- tools::file_path_sans_ext(basename(key))
-      idx <- match(name, key)
+      idx <- match(key_name, toupper(key))
       if (!is.na(idx)) {
-        val <- as.character(manifest[[desc_cols[[1]]]][idx] %||% "")
-        if (nzchar(val)) return(val)
+        manifest_value <- as.character(manifest[[desc_cols[[1]]]][idx] %||% "")
+        if (nzchar(manifest_value) && (identical(role, "main") || !identical(language, "ko"))) return(manifest_value)
       }
     }
   }
-  known <- c(
-    T0 = "Analysis overview",
-    T1 = "Model selection summary",
-    T2 = "Candidate model fit",
-    T3 = "Class/profile size",
-    T4 = "Indicator profile",
-    T5 = "Covariate associations",
-    T5b = "Covariate associations",
-    T5c = "R3STEP summary",
-    T5d = "R3STEP detailed results",
-    T6 = "BCH outcome table",
-    T6b = "BCH omnibus",
-    T6C = "BCH posthoc",
-    T6D = "BCH stratified",
-    T6E = "BCH moderation",
-    T7 = "Final retained solution"
+  known <- latent_result_description_map(if (identical(role, "main")) "en" else language)
+  if (key_name %in% names(known)) return(known[[key_name]])
+  if (nzchar(manifest_value)) return(manifest_value)
+  "Result table"
+}
+
+latent_result_table_caption <- function(name, existing = "", manifest = NULL, language = "en") {
+  key <- toupper(tools::file_path_sans_ext(basename(as.character(name %||% ""))))
+  role <- latent_result_table_role(key)
+  existing <- trimws(as.character(existing %||% ""))
+  if (identical(role, "main")) {
+    if (grepl("^Table\\s+[0-9]+[A-Za-z]*\\.", existing, ignore.case = TRUE) && !grepl("[^\\x01-\\x7F]", existing)) {
+      return(existing)
+    }
+    number <- sub("^T", "", key)
+    return(sprintf("Table %s. %s", number, table_description(key, manifest, language = "en")))
+  }
+  description <- table_description(key, manifest, language = language)
+  if (grepl("^A[0-9]+$", key)) {
+    return(if (identical(language, "ko")) sprintf("\uBD80\uB85D\uD45C %s. %s", key, description) else sprintf("Appendix Table %s. %s", key, description))
+  }
+  if (grepl("^S[0-9]+$", key)) {
+    return(if (identical(language, "ko")) sprintf("\uBCF4\uC870\uD45C %s. %s", key, description) else sprintf("Supplement Table %s. %s", key, description))
+  }
+  if (identical(language, "ko")) sprintf("\uC9C4\uB2E8\uD45C. %s", description) else sprintf("Diagnostic table. %s", description)
+}
+
+latent_result_localize_value <- function(value, language = latent_result_ui_language()) {
+  value <- as.character(value %||% "")
+  if (!identical(language, "ko") || !nzchar(trimws(value))) return(value)
+  exact <- c(
+    "Variable" = "\uBCC0\uC218", "Category" = "\uBC94\uC8FC", "Profile" = "\uD504\uB85C\uD30C\uC77C", "Class" = "\uC7A0\uC7AC\uC9D1\uB2E8",
+    "Assigned profile" = "\uBC30\uC815 \uD504\uB85C\uD30C\uC77C", "Assigned class" = "\uBC30\uC815 \uC7A0\uC7AC\uC9D1\uB2E8",
+    "Model" = "\uBAA8\uD615", "Profiles" = "\uD504\uB85C\uD30C\uC77C \uC218", "Classes" = "\uC7A0\uC7AC\uC9D1\uB2E8 \uC218",
+    "Selected" = "\uC120\uD0DD", "Eligible" = "\uC120\uD0DD \uAC00\uB2A5", "Exclusion reason" = "\uC81C\uC678 \uC0AC\uC720",
+    "Normal termination" = "\uC815\uC0C1 \uC885\uB8CC", "Best LL replicated" = "\uCD5C\uC801 \uB85C\uADF8\uC6B0\uB3C4 \uC7AC\uD604",
+    "Characteristic" = "\uD56D\uBAA9", "Value" = "\uAC12", "Metric" = "\uC9C0\uD45C", "Item" = "\uD56D\uBAA9",
+    "Statistic" = "\uD1B5\uACC4\uB7C9", "Post-hoc" = "\uC0AC\uD6C4\uBE44\uAD50", "Reference" = "\uAE30\uC900",
+    "Excellent" = "\uC6B0\uC218", "Good" = "\uC591\uD638", "Adequate" = "\uC801\uC815", "Poor" = "\uB0AE\uC74C",
+    "Yes" = "\uC608", "No" = "\uC544\uB2C8\uC694", "TRUE" = "\uC608", "FALSE" = "\uC544\uB2C8\uC694",
+    "Note" = "\uC8FC"
   )
-  if (name %in% names(known)) known[[name]] else "Result table"
+  hit <- match(trimws(value), names(exact))
+  if (!is.na(hit)) return(unname(exact[[hit]]))
+  value <- sub("^Profile\\s+([0-9]+)$", "\uD504\uB85C\uD30C\uC77C \\1", value, ignore.case = TRUE)
+  value <- sub("^Class\\s+([0-9]+)$", "\uC7A0\uC7AC\uC9D1\uB2E8 \\1", value, ignore.case = TRUE)
+  value <- gsub("Profile\\s+([0-9]+)\\s+vs\\s+Profile\\s+([0-9]+)", "\uD504\uB85C\uD30C\uC77C \\1 \uB300 \uD504\uB85C\uD30C\uC77C \\2", value, ignore.case = TRUE)
+  value <- gsub("Class\\s+([0-9]+)\\s+vs\\s+Class\\s+([0-9]+)", "\uC7A0\uC7AC\uC9D1\uB2E8 \\1 \uB300 \uC7A0\uC7AC\uC9D1\uB2E8 \\2", value, ignore.case = TRUE)
+  value <- sub("^Note\\.\\s*", "\uC8FC. ", value, ignore.case = TRUE)
+  value
+}
+
+latent_result_main_note <- function(name, data, existing_notes = character(0)) {
+  key <- toupper(tools::file_path_sans_ext(basename(as.character(name %||% ""))))
+  if (!identical(latent_result_table_role(key), "main")) return("")
+  text <- paste(trimws(as.character(unlist(data, use.names = FALSE))), collapse = " ")
+  notes <- paste(trimws(as.character(existing_notes)), collapse = " ")
+  has <- function(pattern) grepl(pattern, text, ignore.case = TRUE, perl = TRUE)
+  parts <- character(0)
+
+  if (identical(key, "T2")) {
+    parts <- c(parts,
+      "AIC = Akaike information criterion; BIC = Bayesian information criterion; SABIC = sample-size-adjusted BIC.",
+      "LMR = Lo-Mendell-Rubin test; BLRT = bootstrap likelihood ratio test."
+    )
+  } else {
+    definitions <- character(0)
+    if (has("(^|[^A-Za-z])RRR([^A-Za-z]|$)")) definitions <- c(definitions, "RRR = relative risk ratio")
+    if (has("(^|[^A-Za-z])OR([^A-Za-z]|$)")) definitions <- c(definitions, "OR = odds ratio")
+    if (has("(^|[^A-Za-z])B([^A-Za-z]|$)")) definitions <- c(definitions, "B = unstandardized coefficient")
+    if (has("(^|[^A-Za-z])M([^A-Za-z]|$)")) definitions <- c(definitions, "M = mean")
+    if (has("(^|[^A-Za-z])SD([^A-Za-z]|$)")) definitions <- c(definitions, "SD = standard deviation")
+    if (has("(^|[^A-Za-z])SE([^A-Za-z]|$)")) definitions <- c(definitions, "SE = standard error")
+    if (has("LLCI|ULCI")) definitions <- c(definitions, "LLCI/ULCI = lower/upper 95% confidence limits")
+    if (identical(key, "T3") || has("(^|[^A-Za-z])n([^A-Za-z]|$)")) {
+      if (identical(key, "T3")) definitions <- c(definitions, "n = class/profile size")
+    }
+    if (identical(key, "T3") && has("%")) {
+      definitions <- c(definitions, if (grepl("weighted", notes, ignore.case = TRUE)) "% = weighted percentage" else "% = percentage")
+    }
+    if (length(definitions) > 0L) parts <- c(parts, paste0(paste(unique(definitions), collapse = "; "), "."))
+  }
+
+  reference <- regmatches(
+    notes,
+    regexec("Reference\\s+(?:class|profile)\\s*(?:=|:)\\s*([^.;]+)", notes, ignore.case = TRUE, perl = TRUE)
+  )[[1]]
+  if (length(reference) >= 2L && nzchar(trimws(reference[[2L]]))) {
+    parts <- c(parts, sprintf("Reference class/profile: %s.", trimws(reference[[2L]])))
+  }
+  if (has("Post-hoc") && key %in% c("T6", "T6D", "T6E")) {
+    parts <- c(parts, "Post-hoc entries report significant ordered contrasts.")
+  }
+  if (has("(^|[^*])\\*{1,3}([^*]|$)") || has("(^|[^A-Za-z])sig([^A-Za-z]|$)")) {
+    parts <- c(parts, "*p < .05; **p < .01; ***p < .001.")
+  }
+  if (length(parts) == 0L) return("")
+  paste("Note.", paste(parts, collapse = " "))
+}
+
+latent_prepare_result_table_for_screen <- function(data, name, manifest = NULL, language = latent_result_ui_language()) {
+  if (!is.data.frame(data) || nrow(data) == 0L || ncol(data) == 0L) return(data)
+  key <- toupper(tools::file_path_sans_ext(basename(as.character(name %||% ""))))
+  role <- latent_result_table_role(key)
+  values <- as.data.frame(lapply(data, as.character), stringsAsFactors = FALSE, check.names = FALSE)
+  values[is.na(values)] <- ""
+  existing_title <- trimws(as.character(values[[1L]][[1L]] %||% ""))
+  values[1L, ] <- ""
+  values[[1L]][[1L]] <- latent_result_table_caption(
+    key,
+    existing = existing_title,
+    manifest = manifest,
+    language = if (identical(role, "main")) "en" else language
+  )
+
+  note_rows <- vapply(seq_len(nrow(values)), function(row_index) {
+    row <- trimws(as.character(unlist(values[row_index, , drop = TRUE], use.names = FALSE)))
+    first <- row[nzchar(row)]
+    length(first) > 0L && grepl("^(Note|\uC8FC)\\.", first[[1L]], ignore.case = TRUE)
+  }, logical(1))
+  existing_notes <- if (any(note_rows)) {
+    vapply(which(note_rows), function(row_index) {
+      row <- trimws(as.character(unlist(values[row_index, , drop = TRUE], use.names = FALSE)))
+      paste(row[nzchar(row)], collapse = " ")
+    }, character(1))
+  } else {
+    character(0)
+  }
+
+  if (identical(role, "main")) {
+    if (any(note_rows)) values <- values[!note_rows, , drop = FALSE]
+    while (nrow(values) > 1L && all(!nzchar(trimws(as.character(unlist(values[nrow(values), , drop = TRUE], use.names = FALSE)))))) {
+      values <- values[-nrow(values), , drop = FALSE]
+    }
+    note <- latent_result_main_note(key, values, existing_notes = existing_notes)
+    if (nzchar(note)) {
+      note_row <- stats::setNames(
+        as.data.frame(as.list(c(note, rep("", ncol(values) - 1L))), stringsAsFactors = FALSE),
+        names(values)
+      )
+      values <- rbind(values, note_row)
+    }
+  } else {
+    values[] <- lapply(values, function(column) {
+      vapply(column, latent_result_localize_value, character(1), language = language)
+    })
+  }
+  rownames(values) <- NULL
+  values
 }
 
 result_table_sort_key <- function(names) {
@@ -3146,12 +3630,20 @@ patch_t2_lrt_from_fit_summary <- function(data, path, app_root, dataset_id, anal
     return(data)
   }
   profile_col <- match(TRUE, header_names %in% c("Profiles", "Classes"))
+  model_col <- match(TRUE, header_names %in% c("Model", "Covariance model"))
+  candidate_col <- match(TRUE, header_names %in% c("Candidate", "Candidate tag", "Model tag"))
   target_cols <- stats::setNames(match(names(lrt_cols), header_names), names(lrt_cols))
   target_cols <- target_cols[!is.na(target_cols)]
   if (is.na(profile_col) || length(target_cols) == 0) {
     return(data)
   }
   fit_k <- suppressWarnings(as.integer(fit$k))
+  fit_model <- if ("model_structure" %in% names(fit)) {
+    tolower(trimws(as.character(fit$model_structure)))
+  } else {
+    rep(NA_character_, nrow(fit))
+  }
+  fit_tag <- if ("model_tag" %in% names(fit)) as.character(fit$model_tag) else rep(NA_character_, nrow(fit))
   fmt_lrt <- function(x) {
     x <- suppressWarnings(as.numeric(x))
     ifelse(is.na(x), "", formatC(x, format = "f", digits = 3))
@@ -3161,15 +3653,27 @@ patch_t2_lrt_from_fit_summary <- function(data, path, app_root, dataset_id, anal
     if (is.na(row_k)) {
       next
     }
-    fit_hit <- which(fit_k == row_k)[1]
-    if (is.na(fit_hit)) {
+    fit_hits <- which(!is.na(fit_k) & fit_k == row_k)
+    if (!is.na(candidate_col) && length(fit_hits) > 0L) {
+      row_tag <- trimws(as.character(values[[candidate_col]][[row_index]]))
+      if (nzchar(row_tag)) fit_hits <- fit_hits[!is.na(fit_tag[fit_hits]) & fit_tag[fit_hits] == row_tag]
+    } else if (!is.na(model_col) && length(fit_hits) > 0L) {
+      row_model <- tolower(trimws(as.character(values[[model_col]][[row_index]])))
+      if (nzchar(row_model)) {
+        fit_hits <- fit_hits[!is.na(fit_model[fit_hits]) & fit_model[fit_hits] == row_model]
+      }
+    }
+    if (length(fit_hits) != 1L) {
       next
     }
+    fit_hit <- fit_hits[[1L]]
     for (display_col in names(target_cols)) {
       source_col <- lrt_cols[[display_col]]
       if (!source_col %in% names(fit)) {
         next
       }
+      current_value <- trimws(as.character(values[[target_cols[[display_col]]]][[row_index]]))
+      if (nzchar(current_value)) next
       value <- fmt_lrt(fit[[source_col]][[fit_hit]])
       if (nzchar(value)) {
         values[[target_cols[[display_col]]]][[row_index]] <- value
@@ -3222,6 +3726,9 @@ read_latent_excel_sheet_display <- function(path, project_root, app_root, datase
 
 latent_excel_like_table_ui <- function(path, project_root, app_root, dataset_id, analysis_id, output_root = NULL) {
   sheet_key <- toupper(tools::file_path_sans_ext(basename(path)))
+  table_role <- latent_result_table_role(sheet_key)
+  ui_language <- latent_result_ui_language()
+  manifest <- read_table_manifest(dirname(path))
   data <- read_latent_excel_sheet_display(path, project_root, app_root, dataset_id, analysis_id, output_root = output_root)
   if (!is.data.frame(data) || nrow(data) == 0 || ncol(data) == 0) {
     return(div(class = "latent-empty-result", "No table data."))
@@ -3720,7 +4227,7 @@ latent_excel_like_table_ui <- function(path, project_root, app_root, dataset_id,
     numeric_prop <- mean(!is.na(numeric_values))
     known_header_values <- c(
       "m", "sd", "n", "%", "rrr", "llci", "ulci", "p", "sig",
-      "or", "ci", "se", "est", "estimate", "prob", "mean"
+      "or", "ci", "se", "est", "estimate", "prob", "mean", "m/n", "sd/%"
     )
     known_label_prop <- mean(tolower(values) %in% known_header_values)
     known_label_count <- sum(tolower(values) %in% known_header_values)
@@ -3764,6 +4271,14 @@ latent_excel_like_table_ui <- function(path, project_root, app_root, dataset_id,
       data <- rbind(data[seq_len(3L), , drop = FALSE], bottom, data[-seq_len(3L), , drop = FALSE])
       header_rows <- c(3L, 4L)
     }
+  }
+  if (identical(table_role, "main")) {
+    data <- latent_prepare_result_table_for_screen(
+      data,
+      sheet_key,
+      manifest = manifest,
+      language = "en"
+    )
   }
   header_group_starts <- function(data, header_rows) {
     if (length(header_rows) < 2L) {
@@ -3838,6 +4353,8 @@ latent_excel_like_table_ui <- function(path, project_root, app_root, dataset_id,
         "LogLik" = "LL",
         "Parameters" = "Par",
         "Entropy" = "Ent",
+        "Normal termination" = "Normal term.",
+        "Best LL replicated" = "Best LL repl.",
         "Smallest profile" = "Smallest",
         "Profile 1" = "P1",
         "Profile 2" = "P2",
@@ -3917,7 +4434,8 @@ latent_excel_like_table_ui <- function(path, project_root, app_root, dataset_id,
   profile_mean_table <- length(header_rows) == 2L &&
     ncol(data) >= 3L &&
     tolower(trimws(as.character(data[[1]][[header_rows[[1]]]] %||% ""))) %in% c("variable", "profile") &&
-    all(grepl("^(m|sd)$", tolower(trimws(as.character(unlist(data[header_rows[[2]], profile_mean_cols, drop = TRUE], use.names = FALSE))))))
+    all(tolower(trimws(as.character(unlist(data[header_rows[[2]], profile_mean_cols, drop = TRUE], use.names = FALSE)))) %in%
+          c("m", "sd", "se", "llci", "ulci", "m/n", "sd/%"))
   profile_distribution_cols <- setdiff(seq_len(ncol(data)), c(1L, 2L, spacer_cols))
   profile_distribution_table <- length(header_rows) == 2L &&
     ncol(data) >= 4L &&
@@ -3927,7 +4445,24 @@ latent_excel_like_table_ui <- function(path, project_root, app_root, dataset_id,
     ) &&
     all(grepl("^(n|%)$", tolower(trimws(as.character(unlist(data[header_rows[[2]], profile_distribution_cols, drop = TRUE], use.names = FALSE))))))
   header_labels <- tolower(trimws(as.character(unlist(data[header_rows[[length(header_rows)]], , drop = TRUE], use.names = FALSE))))
-  center_cols <- which(header_labels %in% c("m", "sd", "%", "statistic", "p", "sig"))
+  center_cols <- which(header_labels %in% c("m", "sd", "se", "llci", "ulci", "m/n", "sd/%", "%", "statistic", "p", "sig"))
+  header_text <- vapply(seq_len(ncol(data)), function(col_index) {
+    values <- trimws(as.character(unlist(data[header_rows, col_index, drop = TRUE], use.names = FALSE)))
+    paste(values[nzchar(values)], collapse = " ")
+  }, character(1))
+  if (identical(sheet_key, "T2")) {
+    center_cols <- union(
+      center_cols,
+      which(tolower(header_text) %in% c(
+        "selected", "normal termination", "best ll replicated", "eligible"
+      ))
+    )
+  }
+  wrap_cols <- if (identical(sheet_key, "T2")) {
+    which(grepl("exclusion\\s+reason", header_text, ignore.case = TRUE, perl = TRUE))
+  } else {
+    integer(0)
+  }
   profile_detail_table <- length(header_rows) == 2L &&
     ncol(data) >= 7L &&
     identical(tolower(trimws(as.character(data[[1]][[header_rows[[1]]]] %||% ""))), "profile") &&
@@ -3942,6 +4477,14 @@ latent_excel_like_table_ui <- function(path, project_root, app_root, dataset_id,
   appendix_center_table <- length(header_rows) == 1L &&
     ncol(data) >= 3L &&
     grepl("^A([3-6]|8)$", tools::file_path_sans_ext(basename(path)), ignore.case = TRUE)
+  if (!identical(table_role, "main")) {
+    data <- latent_prepare_result_table_for_screen(
+      data,
+      sheet_key,
+      manifest = manifest,
+      language = ui_language
+    )
+  }
   cells <- lapply(seq_len(nrow(data)), function(i) {
     row_values <- as.character(unlist(data[i, , drop = TRUE], use.names = FALSE))
     is_title <- i == 1L
@@ -3949,7 +4492,7 @@ latent_excel_like_table_ui <- function(path, project_root, app_root, dataset_id,
     tag_name <- if (is_header) tags$th else tags$td
     first_nonempty <- row_values[nzchar(trimws(row_values))]
     is_note <- !is_header && !is_title && length(first_nonempty) > 0 &&
-      grepl("^Note\\.", trimws(first_nonempty[[1]]), ignore.case = TRUE)
+      grepl("^(Note|\uC8FC)\\.", trimws(first_nonempty[[1]]), ignore.case = TRUE)
     if (is_title) {
       tags$tr(
         class = "latent-excel-title-row",
@@ -4001,6 +4544,10 @@ latent_excel_like_table_ui <- function(path, project_root, app_root, dataset_id,
         }
         header_cells <- c(header_cells, list(tags$th(
           class = paste(if (col_index %in% group_starts) "latent-excel-group-start" else ""),
+          style = paste(
+            if (identical(sheet_key, "T2")) "white-space: normal !important;" else "",
+            if (col_index %in% wrap_cols) "min-width: 180px; max-width: 280px;" else ""
+          ),
           colspan = span,
           value
         )))
@@ -4032,6 +4579,10 @@ latent_excel_like_table_ui <- function(path, project_root, app_root, dataset_id,
               if (!is_header && numeric_cell(value)) "latent-excel-numeric" else "",
               if (is_posthoc_cell) "latent-excel-posthoc-cell" else ""
             ),
+            style = paste(
+              if (is_header && identical(sheet_key, "T2")) "white-space: normal !important;" else "",
+              if (col_index %in% wrap_cols) "white-space: pre-line !important; min-width: 180px; max-width: 280px;" else ""
+            ),
             value
           )
         })
@@ -4047,8 +4598,9 @@ latent_excel_like_table_ui <- function(path, project_root, app_root, dataset_id,
     col_widths <- rep(value_width, ncol(data))
     col_widths[[1]] <- variable_width
     col_widths[spacer_cols] <- spacer_width
-    table_colgroup <- tags$colgroup(lapply(col_widths, function(width) {
-      tags$col(style = sprintf("width: %.4f%%;", width))
+    table_colgroup <- tags$colgroup(lapply(seq_along(col_widths), function(index) {
+      min_width <- if (index == 1L) "min-width: 180px;" else if (index %in% spacer_cols) "" else "min-width: 68px;"
+      tags$col(style = sprintf("width: %.4f%%; %s", col_widths[[index]], min_width))
     }))
   } else if (sheet_key %in% c("T1", "T7", "S1") && ncol(data) == 2L) {
     table_colgroup <- tags$colgroup(
@@ -4090,10 +4642,23 @@ latent_excel_like_table_ui <- function(path, project_root, app_root, dataset_id,
       tags$col(style = sprintf("width: %.4f%%;", width))
     }))
   }
+  table_language <- latent_result_table_language(sheet_key, language = ui_language)
+  intrinsic_width <- latent_result_table_intrinsic_width(data)
+  table_orientation <- latent_result_table_orientation(
+    sheet_key,
+    profile_count = profile_count,
+    column_count = ncol(data),
+    intrinsic_width = intrinsic_width
+  )
   div(
     class = paste(
       "latent-excel-table-wrap",
-      latent_result_table_section_class(tools::file_path_sans_ext(basename(path)), profile_count = profile_count),
+      latent_result_table_section_class(
+        tools::file_path_sans_ext(basename(path)),
+        profile_count = profile_count,
+        column_count = ncol(data),
+        intrinsic_width = intrinsic_width
+      ),
       if (isTRUE(single_header_no_note)) "latent-excel-single-header-no-note" else "",
       if (isTRUE(profile_size_table)) "latent-excel-profile-size" else "",
       if (isTRUE(profile_mean_table)) "latent-excel-profile-mean" else "",
@@ -4102,10 +4667,25 @@ latent_excel_like_table_ui <- function(path, project_root, app_root, dataset_id,
       if (isTRUE(t6_lca_percent_table)) "latent-excel-t6-lca-percent" else "",
       if (isTRUE(appendix_center_table)) "latent-excel-appendix-center" else ""
     ),
-    style = latent_result_table_wrap_style(sheet_key, profile_count = profile_count),
+    lang = table_language,
+    `data-result-table-sheet` = "true",
+    `data-result-table-role` = table_role,
+    `data-result-table-language` = table_language,
+    `data-result-table-orientation` = table_orientation,
+    style = latent_result_table_wrap_style(
+      sheet_key,
+      profile_count = profile_count,
+      column_count = ncol(data),
+      intrinsic_width = intrinsic_width
+    ),
     tags$table(
       class = "latent-excel-table",
-      style = latent_result_table_element_style(sheet_key, profile_count = profile_count),
+      style = latent_result_table_element_style(
+        sheet_key,
+        profile_count = profile_count,
+        column_count = ncol(data),
+        intrinsic_width = intrinsic_width
+      ),
       table_colgroup,
       tags$tbody(cells)
     )

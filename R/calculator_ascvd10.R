@@ -149,34 +149,34 @@ ascvd10_calculator_tab_panel <- function(language = statedu_initial_language()) 
   )
 }
 
-ascvd10_reference_table <- function() {
+ascvd10_reference_table <- function(language = statedu_initial_language()) {
   rows <- data.frame(
-    Reference = c("Race", "Sex"),
-    Coding = c("White=1; African-American=2; Other=3", "Male=1; Female=2"),
+    Reference = c(calculator_field_label("Race", language), calculator_field_label("Sex", language)),
+    Coding = c(statedu_t("calculator.detail.race_codes", language), calculator_field_label("Male = 1, Female = 2", language)),
     stringsAsFactors = FALSE
   )
   tags$table(
     class = "hint8-initial-table ascvd10-reference-table",
-    tags$thead(tags$tr(tags$th("Reference"), tags$th("Coding"))),
+    tags$thead(tags$tr(tags$th(statedu_ui_label("reference", language)), tags$th(statedu_ui_label("coding", language)))),
     tags$tbody(lapply(seq_len(nrow(rows)), function(index) {
       tags$tr(tags$td(rows$Reference[[index]]), tags$td(rows$Coding[[index]]))
     }))
   )
 }
 
-ascvd10_exclusion_table <- function(output_name = "ascvd10_score") {
+ascvd10_exclusion_table <- function(output_name = "ascvd10_score", language = statedu_initial_language()) {
   output_name <- trimws(as.character(output_name %||% "ascvd10_score"))
   if (!length(output_name) || is.na(output_name[[1]]) || !nzchar(output_name[[1]])) output_name <- "ascvd10_score"
   output_name <- output_name[[1]]
   rows <- data.frame(
-    Variable = c("ASCVD history", "LDL-C"),
+    Variable = c(calculator_field_label("ASCVD history", language), "LDL-C"),
     Rule = c("1", ">= 190"),
-    Result = c(paste(output_name, "missing"), paste(output_name, "missing")),
+    Result = rep(sprintf(statedu_t("calculator.detail.missing_output", language), output_name), 2L),
     stringsAsFactors = FALSE
   )
   tags$table(
     class = "hint8-initial-table ascvd10-reference-table ascvd10-exclusion-table",
-    tags$thead(tags$tr(tags$th("Variable"), tags$th("Rule"), tags$th("Result"))),
+    tags$thead(tags$tr(tags$th(statedu_t("ui.variable_name", language)), tags$th(statedu_t("calculator.detail.rule", language)), tags$th(statedu_t("calculator.detail.result", language)))),
     tags$tbody(lapply(seq_len(nrow(rows)), function(index) {
       tags$tr(tags$td(rows$Variable[[index]]), tags$td(rows$Rule[[index]]), tags$td(rows$Result[[index]]))
     }))
@@ -212,8 +212,8 @@ ascvd10_setup_ui <- function(file, data, variable_info, input, selected_names = 
   output_name <- ascvd10_output_variable_name(input)
   variable_inputs <- lapply(seq_len(nrow(specs)), function(index) {
     id <- specs$id[[index]]
-    label <- specs$label[[index]]
-    if (!isTRUE(specs$required[[index]])) label <- paste0(label, " (optional)")
+    label <- calculator_field_label(specs$label[[index]], language)
+    if (!isTRUE(specs$required[[index]])) label <- paste0(label, " (", calculator_field_label("optional", language), ")")
     selectInput(paste0("ascvd10_", id), label, choices = c(stats::setNames("", statedu_ui_label("select_variable", language)), choices), selected = isolate(input[[paste0("ascvd10_", id)]]) %||% "", width = "100%")
   })
   div(
@@ -252,12 +252,12 @@ ascvd10_setup_ui <- function(file, data, variable_info, input, selected_names = 
         tabPanel(
           statedu_ui_label("reference", language),
           value = "ascvd10_reference_tab",
-          div(class = "calculator-reference-tab", ascvd10_reference_table())
+          div(class = "calculator-reference-tab", ascvd10_reference_table(language))
         ),
         tabPanel(
           statedu_ui_label("exclusion_rules", language),
           value = "ascvd10_exclusion_tab",
-          div(class = "calculator-reference-tab", ascvd10_exclusion_table(output_name))
+          div(class = "calculator-reference-tab", ascvd10_exclusion_table(output_name, language))
         ),
         tabPanel(
           statedu_ui_label("output", language),
@@ -273,7 +273,7 @@ register_ascvd10_calculator_handlers <- function(input, output, session, dataset
   output$ascvd10_loaded_message <- renderText({
     statedu_current_language(language_fn)
     file <- current_data_file_fn()
-    metabolic_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn())
+    metabolic_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn(), language = statedu_current_language(language_fn))
   })
   output$ascvd10_calculator_setup <- renderUI({
     language <- statedu_current_language(language_fn)
@@ -304,23 +304,24 @@ register_ascvd10_calculator_handlers <- function(input, output, session, dataset
       showNotification(sprintf(statedu_t("calculator.variable_added", language), output_name), type = "message", duration = 5)
       result_data
     }, error = function(error) {
-      showNotification(conditionMessage(error), type = "warning", duration = 6)
+      showNotification(calculator_error_text(error, language), type = "warning", duration = 6)
       NULL
     })
   }, ignoreInit = TRUE)
   output$ascvd10_calculator_summary <- renderUI({
-    statedu_current_language(language_fn)
+    language <- statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) return(NULL)
     output_name <- ascvd10_output_variable_name(input)
-    div(class = "empty-message", div(sprintf("Calculated %s for %s rows. The variable is available in analysis menus.", output_name, nrow(data))))
+    div(class = "empty-message", div(sprintf(statedu_t("calculator.status.variable", language), output_name, nrow(data))))
   })
   output$ascvd10_calculator_preview <- DT::renderDT({
+    language <- statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) return(NULL)
     selected <- ascvd10_selected_variables(input)
     preview_names <- intersect(c(unname(selected[nzchar(selected)]), ascvd10_output_variable_name(input)), names(data))
-    DT::datatable(utils::head(data[, preview_names, drop = FALSE], 50), rownames = FALSE, filter = "top", options = list(pageLength = 10, scrollX = TRUE))
+    DT::datatable(utils::head(data[, preview_names, drop = FALSE], 50), rownames = FALSE, filter = "top", options = with_datatable_language(list(pageLength = 10, scrollX = TRUE), language))
   })
   output$download_ascvd10_calculator <- downloadHandler(
     filename = function() paste0("StatEdu_Studio_ascvd10_", format(Sys.Date(), "%Y%m%d"), ".csv"),

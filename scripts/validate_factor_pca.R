@@ -123,6 +123,59 @@ expect_true(
   identical(tail(as.character(factor_result$loadings_table$Variable), 4), c("Eigenvalue", "Variance %", "Cumulative variance %", "")),
   "Expected factor loading table to end with eigenvalue, variance, and suitability summary rows"
 )
+reordered_accounted <- rbind(
+  `SS loadings` = c(PA1 = 2.16, PA3 = 1.35, PA2 = 1.35),
+  `Proportion Var` = c(PA1 = .24, PA3 = .15, PA2 = .15),
+  `Cumulative Var` = c(PA1 = .24, PA3 = .39, PA2 = .54),
+  `Proportion Explained` = c(PA1 = .45, PA3 = .28, PA2 = .27),
+  `Cumulative Proportion` = c(PA1 = .45, PA3 = .73, PA2 = 1)
+)
+reordered_accounted <- factor_analysis_reorder_variance_accounted(reordered_accounted)
+expect_true(
+  identical(names(reordered_accounted), c("PA1", "PA2", "PA3")) &&
+    isTRUE(all.equal(as.numeric(reordered_accounted["Cumulative Var", ]), c(.24, .39, .54))) &&
+    isTRUE(all.equal(as.numeric(reordered_accounted["Cumulative Proportion", ]), c(.45, .72, 1))),
+  "Expected cumulative factor variance to be recomputed in displayed factor-column order"
+)
+holzinger_data <- utils::read.csv(file.path(repo_root, "sample", "HolzingerSwineford1939.csv"), check.names = FALSE)
+holzinger_variables <- paste0("x", seq_len(9))
+holzinger_factor <- prepare_factor_analysis_results(
+  holzinger_data,
+  variables = holzinger_variables,
+  variable_info = data.frame(name = holzinger_variables, measurement = "continuous", stringsAsFactors = FALSE),
+  options = list(
+    normality = FALSE,
+    method = "pa",
+    rotation = "varimax",
+    criterion = "eigen",
+    sort_loadings = TRUE,
+    hide_small_loadings = TRUE,
+    highlight_problem_values = TRUE
+  )
+)
+holzinger_factors <- factor_analysis_order_factor_names(colnames(holzinger_factor$loadings))
+holzinger_loading_cumulative <- suppressWarnings(as.numeric(
+  holzinger_factor$loadings_table[
+    holzinger_factor$loadings_table$Variable == "Cumulative variance %",
+    holzinger_factors,
+    drop = TRUE
+  ]
+))
+holzinger_variance_cumulative <- suppressWarnings(as.numeric(
+  holzinger_factor$variance_table[
+    holzinger_factor$variance_table$Index == "Cumulative Var",
+    holzinger_factors,
+    drop = TRUE
+  ]
+))
+expect_true(
+  identical(holzinger_factors, c("PA1", "PA2", "PA3")) &&
+    all(diff(holzinger_loading_cumulative) >= 0) &&
+    all(diff(holzinger_variance_cumulative) >= 0) &&
+    isTRUE(all.equal(round(holzinger_loading_cumulative), c(24, 39, 54))) &&
+    isTRUE(all.equal(round(holzinger_variance_cumulative, 2), c(.24, .39, .54))),
+  "Expected x1-x9 PAF/Varimax screen tables to report cumulative variance as 24, 39, and 54"
+)
 factor_result_html <- as.character(htmltools::renderTags(factor_analysis_results_ui(factor_result))$html)
 expect_true(
   identical(html_h3_titles(factor_result_html)[1:2], c("Factor analysis", "Pattern / loading matrix")),
@@ -368,10 +421,21 @@ factor_reliability_html <- as.character(htmltools::renderTags(factor_analysis_re
 expect_true(
   grepl("Rel. if deleted", factor_reliability_html, fixed = TRUE) &&
     grepl("Item-total r", factor_reliability_html, fixed = TRUE) &&
-    grepl("complete cases within each item set", factor_reliability_html, fixed = TRUE) &&
-    grepl("parallel analysis", factor_reliability_html, fixed = TRUE) &&
+    grepl("평행분석", factor_reliability_html, fixed = TRUE) &&
     !grepl("Reliability by subfactor", factor_reliability_html, fixed = TRUE),
   "Expected factor analysis UI to include subfactor reliability and interpretation notes in the loading table only"
+)
+expect_true(
+  grepl("absolute primary loadings >= .30 and complete cases", factor_analysis_reliability_note(factor_with_reliability), fixed = TRUE),
+  "Expected a concise subfactor-reliability note with the loading and complete-case rules"
+)
+expect_true(
+  grepl("<h3>적합성</h3>", factor_reliability_html, fixed = TRUE) &&
+    grepl("<h3>고유값</h3>", factor_reliability_html, fixed = TRUE) &&
+    grepl("KMO가 .60 이상", factor_reliability_html, fixed = TRUE) &&
+    grepl("Bartlett 구형성 검정", factor_reliability_html, fixed = TRUE) &&
+    !grepl("KMO values of .60 or higher", factor_reliability_html, fixed = TRUE),
+  "Expected factor-analysis appendix titles and notes to follow the Korean UI language"
 )
 factor_negative_note_result <- factor_with_reliability
 negative_primary <- max.col(abs(factor_negative_note_result$loadings), ties.method = "first")[[1]]
@@ -528,6 +592,15 @@ expect_true(
   identical(html_h3_titles(pca_result_html)[1:2], c("Principal component analysis", "Component loadings")),
   "Expected PCA UI to show the overview table first and component loadings second"
 )
+expect_true(
+  grepl("<h3>적합성</h3>", pca_result_html, fixed = TRUE) &&
+    grepl("<h3>고유값</h3>", pca_result_html, fixed = TRUE) &&
+    grepl("차원 축소", pca_result_html, fixed = TRUE) &&
+    grepl("누적 %", pca_result_html, fixed = TRUE) &&
+    grepl("Bartlett 구형성 검정", pca_result_html, fixed = TRUE) &&
+    !grepl("Cumulative %", pca_result_html, fixed = TRUE),
+  "Expected PCA appendix titles and notes to follow the Korean UI language"
+)
 pca_table_html <- as.character(htmltools::renderTags(coefficient_html_table(pca_result$loadings_table))$html)
 expect_true(grepl("KMO=", pca_table_html, fixed = TRUE), "Expected PCA loading table to include KMO diagnostics")
 expect_true(grepl("colspan=", pca_table_html, fixed = TRUE), "Expected PCA diagnostics row to merge loading columns")
@@ -551,7 +624,8 @@ expect_true(identical(pca_poly$matrix_type, "polychoric"), "Expected PCA to use 
 expect_true(identical(pca_poly$overview$Matrix[[1]], "Polychoric correlation"), "Expected PCA overview to show polychoric matrix")
 expect_true(is.data.frame(pca_poly$warnings) && any(grepl("Component scores are not available", pca_poly$warnings$Warning, fixed = TRUE)), "Expected PCA polychoric score warning")
 pca_poly_html <- as.character(htmltools::renderTags(pca_results_ui(pca_poly))$html)
-expect_true(grepl("<h3>Warnings</h3>", pca_poly_html, fixed = TRUE), "Expected PCA warnings section for polychoric score warning")
+expected_warning_heading <- paste0("<h3>", result_appendix_ui_text("Warnings"), "</h3>")
+expect_true(grepl(expected_warning_heading, pca_poly_html, fixed = TRUE), "Expected UI-language PCA warnings section for polychoric score warning")
 
 mixed_pca_info <- ordinal_info
 mixed_pca_info$measurement[[1]] <- "continuous"
@@ -608,18 +682,25 @@ write_pca_results_html(pca_result, pca_html)
 save_pca_excel_file(pca_result, pca_xlsx)
 expect_true(file.exists(factor_html) && file.info(factor_html)$size > 0, "Expected factor analysis HTML export")
 expect_true(file.exists(factor_xlsx) && file.info(factor_xlsx)$size > 0, "Expected factor analysis Excel export")
+screen_excel_titles_match <- function(file, html, count) {
+  tables <- result_entry_tables(list(html = html))
+  all(vapply(seq_len(count), function(i) {
+    title <- openxlsx::read.xlsx(file, sheet = i, rows = 1, cols = 1, colNames = FALSE)[[1]][[1]]
+    identical(as.character(title), tables[[i]]$title)
+  }, logical(1)))
+}
 expect_true(
-  identical(openxlsx::getSheetNames(factor_xlsx)[1:2], c("Overview", "Loadings")),
+  screen_excel_titles_match(factor_xlsx, saved_factor_analysis_results_html(factor_result), 2),
   "Expected factor analysis Excel export to put loadings directly after overview"
 )
 expect_true(
-  identical(openxlsx::getSheetNames(factor_oblimin_xlsx)[1:3], c("Overview", "Loadings", "Structure")),
+  screen_excel_titles_match(factor_oblimin_xlsx, saved_factor_analysis_results_html(factor_oblimin), 3),
   "Expected oblique factor analysis Excel export to put structure matrix third"
 )
 expect_true(file.exists(pca_html) && file.info(pca_html)$size > 0, "Expected PCA HTML export")
 expect_true(file.exists(pca_xlsx) && file.info(pca_xlsx)$size > 0, "Expected PCA Excel export")
 expect_true(
-  identical(openxlsx::getSheetNames(pca_xlsx)[1:2], c("Overview", "Loadings")),
+  screen_excel_titles_match(pca_xlsx, saved_pca_results_html(pca_result), 2),
   "Expected PCA Excel export to put component loadings directly after overview"
 )
 

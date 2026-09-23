@@ -46,8 +46,8 @@ latent_mplus_head_tags <- function(version) {
         border: 1px solid #d9e2ec !important;
         border-radius: 8px !important;
         padding: 12px !important;
-        --latent-b5-portrait-width: 688px !important;
-        --latent-b5-landscape-width: 972px !important;
+        --latent-b5-portrait-width: 590px !important;
+        --latent-b5-landscape-width: 890px !important;
       }
       .latent-step-tabs {
         display: grid !important;
@@ -678,6 +678,150 @@ latent_mplus_head_tags <- function(version) {
       .latent-control-panel .latent-run-action-row .btn {
         width: 100% !important;
       }
+      /* Final screen contract for latent LCA/LPA/mixture tables. */
+      .latent-result-table-section.latent-result-table-b5-page {
+        break-after: page !important;
+        break-inside: avoid !important;
+        display: block !important;
+        font-family: Arial, 'Noto Sans KR', 'Malgun Gothic', sans-serif !important;
+        margin: 18px 0 28px !important;
+        overflow: hidden !important;
+        padding: 18px 22px 22px !important;
+      }
+      .latent-result-table-section.latent-result-table-b5-portrait {
+        max-width: var(--latent-b5-portrait-width) !important;
+        width: min(100%, var(--latent-b5-portrait-width)) !important;
+      }
+      .latent-result-table-section.latent-result-table-b5-landscape {
+        max-width: var(--latent-b5-landscape-width) !important;
+        width: min(100%, var(--latent-b5-landscape-width)) !important;
+      }
+      .latent-result-table-meta {
+        align-items: center !important;
+        color: #52606d !important;
+        display: flex !important;
+        font-family: Arial, 'Noto Sans KR', 'Malgun Gothic', sans-serif !important;
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        justify-content: space-between !important;
+        line-height: 1.3 !important;
+        margin: 0 0 7px !important;
+      }
+      .latent-result-table-role-label {
+        color: #334e68 !important;
+      }
+      .latent-result-table-section.latent-result-table-main,
+      .latent-result-table-section.latent-result-table-appendix {
+        font-family: Arial, 'Noto Sans KR', 'Malgun Gothic', sans-serif !important;
+      }
+      .latent-result-table-page-label {
+        color: #62748a !important;
+        white-space: nowrap !important;
+      }
+      .latent-result-table-section.latent-result-table-b5-page .latent-excel-table-wrap,
+      .latent-excel-table-wrap.latent-result-table-b5-page {
+        border: 0 !important;
+        border-radius: 0 !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        overflow-y: visible !important;
+        width: 100% !important;
+      }
+      .latent-excel-table-wrap.latent-result-table-b5-portrait {
+        margin-left: auto !important;
+        margin-right: auto !important;
+        max-width: var(--latent-b5-portrait-width) !important;
+        width: min(100%, var(--latent-b5-portrait-width)) !important;
+      }
+      .latent-excel-table-wrap.latent-result-table-b5-landscape {
+        margin-left: auto !important;
+        margin-right: auto !important;
+        max-width: var(--latent-b5-landscape-width) !important;
+        width: min(100%, var(--latent-b5-landscape-width)) !important;
+      }
+      .latent-result-table-section.latent-result-table-b5-page .latent-excel-table,
+      .latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-table {
+        border-collapse: collapse !important;
+        border-top: 2px solid #1f2937 !important;
+        border-bottom: 2px solid #1f2937 !important;
+        color: #172b3a !important;
+        font-family: Arial, 'Noto Sans KR', 'Malgun Gothic', sans-serif !important;
+        font-size: 12px !important;
+        line-height: 1.32 !important;
+        margin: 0 !important;
+      }
+      .latent-result-table-section.latent-result-table-b5-portrait .latent-excel-table,
+      .latent-excel-table-wrap.latent-result-table-b5-portrait .latent-excel-table {
+        table-layout: fixed !important;
+        width: 100% !important;
+      }
+      .latent-result-table-section.latent-result-table-b5-landscape .latent-excel-table,
+      .latent-excel-table-wrap.latent-result-table-b5-landscape .latent-excel-table {
+        min-width: 100% !important;
+        table-layout: auto !important;
+        width: max-content !important;
+      }
+      .latent-result-table-section.latent-result-table-b5-page .latent-excel-table th,
+      .latent-result-table-section.latent-result-table-b5-page .latent-excel-table td,
+      .latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-table th,
+      .latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-table td {
+        font-size: 12px !important;
+        line-height: 1.32 !important;
+        max-width: none !important;
+        padding: 6px 7px !important;
+        vertical-align: middle !important;
+      }
+      .latent-result-table-section.latent-result-table-b5-page .latent-excel-table th,
+      .latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-table th {
+        background: #f4f7fa !important;
+        font-size: 11px !important;
+        overflow-wrap: break-word !important;
+        white-space: normal !important;
+        word-break: normal !important;
+      }
+      .latent-result-table-section.latent-result-table-b5-page .latent-excel-table td,
+      .latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-table td {
+        overflow-wrap: normal !important;
+        white-space: nowrap !important;
+        word-break: normal !important;
+      }
+      .latent-result-table-section.latent-result-table-b5-page .latent-excel-table td:first-child,
+      .latent-result-table-section.latent-result-table-b5-page .latent-excel-table td:nth-child(2),
+      .latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-table td:first-child,
+      .latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-table td:nth-child(2),
+      .latent-result-table-section.latent-result-table-appendix .latent-excel-table td:not(.latent-excel-numeric) {
+        overflow-wrap: break-word !important;
+        white-space: normal !important;
+      }
+      .latent-result-table-section.latent-result-table-b5-page .latent-excel-title-row td,
+      .latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-title-row td {
+        background: #ffffff !important;
+        border-bottom: 2px solid #1f2937 !important;
+        color: #102a43 !important;
+        font-size: 15px !important;
+        font-weight: 700 !important;
+        line-height: 1.3 !important;
+        padding: 7px 0 9px !important;
+        text-align: left !important;
+        white-space: normal !important;
+      }
+      .latent-result-table-section.latent-result-table-b5-page .latent-excel-note-row td,
+      .latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-note-row td {
+        background: #ffffff !important;
+        border-bottom: 0 !important;
+        border-top: 1px solid #1f2937 !important;
+        font-size: 11px !important;
+        line-height: 1.4 !important;
+        padding: 8px 0 2px !important;
+        text-align: left !important;
+        white-space: normal !important;
+      }
+      .latent-result-table-section.latent-result-table-b5-page .latent-excel-numeric,
+      .latent-excel-table-wrap.latent-result-table-b5-page .latent-excel-numeric {
+        font-variant-numeric: tabular-nums !important;
+        text-align: right !important;
+        white-space: nowrap !important;
+      }
       @media (max-width: 1100px) {
         .latent-block-grid,
         .latent-setup-workspace,
@@ -688,7 +832,8 @@ latent_mplus_head_tags <- function(version) {
       }
     ")),
     tags$script(HTML("
-      $(document).on('click', '.latent-step-tab', function() {
+      $(document).off('.stateduLatentMplus');
+      $(document).on('click.stateduLatentMplus', '.latent-step-tab', function() {
         var target = $(this).data('target');
         var scope = $(this).closest('.latent-workflow');
         scope.find('.latent-step-tab').removeClass('active');
@@ -696,7 +841,7 @@ latent_mplus_head_tags <- function(version) {
         scope.find('.latent-step-panel').removeClass('active');
         scope.find('#' + target).addClass('active');
       });
-      $(document).on('click', '.latent-setup-topic', function() {
+      $(document).on('click.stateduLatentMplus', '.latent-setup-topic', function() {
         var target = $(this).data('target');
         var scope = $(this).closest('.latent-setup-workspace');
         scope.find('.latent-setup-topic').removeClass('active');
@@ -725,7 +870,7 @@ latent_mplus_head_tags <- function(version) {
         if (input[0].selectize) return input[0].selectize.getValue() || '';
         return input.val() || '';
       }
-      $(document).on('change', '.latent-role-select', function() {
+      $(document).on('change.stateduLatentMplus', '.latent-role-select', function() {
         if (!window.Shiny) return;
         var el = $(this);
         var moduleId = el.data('module');
@@ -737,7 +882,7 @@ latent_mplus_head_tags <- function(version) {
           nonce: Date.now() + Math.random()
         }, {priority: 'event'});
       });
-      $(document).on('change', '.latent-role-checkbox', function() {
+      $(document).on('change.stateduLatentMplus', '.latent-role-checkbox', function() {
         if (!window.Shiny) return;
         var el = $(this);
         var moduleId = el.data('module');
@@ -764,7 +909,7 @@ latent_mplus_head_tags <- function(version) {
         });
         table.find('.latent-role-checkbox').prop('checked', false);
       });
-      $(document).on('click', '.latent-select-current-page', function() {
+      $(document).on('click.stateduLatentMplus', '.latent-select-current-page', function() {
         if (!window.Shiny) return;
         var moduleId = $(this).data('module');
         var role = $('#' + moduleId + '_active_role').val() || '';
@@ -790,10 +935,21 @@ latent_menu_tab <- function(language = statedu_initial_language()) {
   if (!latent_mplus_enabled()) {
     return(NULL)
   }
-  env <- latent_mplus_env()
   navbarMenu(
     statedu_t("ui.latent", language, "Latent"),
-    env$latent_analysis_tab("mixture", language)
+    tabPanel(
+      statedu_t("latent.mixture_model", language, "Mixture Model"),
+      value = "latent_mixture",
+      uiOutput("lazy_latent_mixture")
+    )
+  )
+}
+
+latent_mplus_panel_content <- function(version, language = statedu_initial_language()) {
+  env <- latent_mplus_env()
+  tagList(
+    latent_mplus_head_tags(version),
+    tab_panel_content(env$latent_analysis_tab("mixture", language))
   )
 }
 

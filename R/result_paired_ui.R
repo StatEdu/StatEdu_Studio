@@ -1,5 +1,242 @@
 # Paired test result UI.
 
+paired_main_table <- function(table) {
+  if (is.data.frame(table)) {
+    attr(table, "result_table_role") <- "main"
+    attr(table, "result_table_language") <- result_main_table_language()
+  }
+  table
+}
+
+paired_appendix_text <- function(text, language = NULL) {
+  language <- result_appendix_table_language(language)
+  text <- as.character(text %||% "")
+  if (!nzchar(text)) return(text)
+  if (!language %in% c("en", "ko")) {
+    normality_parts <- regmatches(text, regexec("^skew=(.*), kurtosis=(.*)$", text))[[1]]
+    if (length(normality_parts) == 3L) return(sprintf(statedu_localized_text(language, "skew=%s, kurtosis=%s"), normality_parts[2], normality_parts[3]))
+    outlier_parts <- regmatches(text, regexec("^([0-9]+) detected \\(IDs: (.*)\\)$", text, perl = TRUE))[[1]]
+    if (length(outlier_parts) == 3L) return(sprintf(statedu_localized_text(language, "%s detected (IDs: %s)"), outlier_parts[2], outlier_parts[3]))
+    if (grepl("^[0-9]+ detected$", text)) return(sprintf(statedu_localized_text(language, "%s detected"), sub(" detected$", "", text)))
+    templates <- c(
+      "Skipped because variable(s) were not found in the active data: " = "Skipped because variable(s) were not found in the active data: %s.",
+      "Skipped because paired variables have different measurement levels (" = "Skipped because paired variables have different measurement levels (%s).",
+      "Variable(s) were not found in the active data: " = "Variable(s) were not found in the active data: %s.",
+      "Repeated-measures variables have different measurement levels: " = "Repeated-measures variables have different measurement levels: %s."
+    )
+    for (prefix in names(templates)) {
+      ending <- if (endsWith(prefix, "(")) ")." else "."
+      if (startsWith(text, prefix) && endsWith(text, ending)) {
+        detail <- substr(text, nchar(prefix) + 1L, nchar(text) - nchar(ending))
+        return(sprintf(statedu_localized_text(language, templates[[prefix]]), detail))
+      }
+    }
+    parts <- regmatches(text, regexec("^([0-9]+) zero difference(?:\\(s\\)|s)? (?:was|were) omitted from the Wilcoxon signed-rank calculation\\.(.*)$", text, perl = TRUE))[[1]]
+    if (length(parts) == 3L) {
+      suffix <- trimws(parts[3])
+      tied <- "Tied absolute differences were present; the large-sample Wilcoxon approximation was used."
+      if (!suffix %in% c("", tied)) return(text)
+      sentence <- sprintf(statedu_localized_text(language, "%s zero differences were omitted from the Wilcoxon signed-rank calculation."), parts[2])
+      return(paste(c(sentence, if (nzchar(suffix)) result_appendix_ui_text(tied, language)), collapse = " "))
+    }
+  }
+  if (!identical(language, "ko")) return(result_appendix_ui_text(text, language))
+
+  exact <- c(
+    "Pair" = "쌍",
+    "Repeated variables" = "반복측정 변수",
+    "Analysis method" = "분석 방법",
+    "Normality method" = "정규성 검토 방법",
+    "Sphericity" = "구형성",
+    "Sphericity p" = "구형성 p",
+    "Outliers" = "이상치",
+    "Package" = "패키지",
+    "Warnings / skipped pairs" = "경고 / 제외된 쌍",
+    "Warnings / skipped repeated-measures rows" = "경고 / 제외된 반복측정 행",
+    "Skipped pairs" = "제외된 쌍",
+    "Skipped repeated-measures rows" = "제외된 반복측정 행",
+    "paired t" = "대응표본 t 검정",
+    "Paired t-test" = "대응표본 t 검정",
+    "Paired test" = "대응표본 검정",
+    "Paired categorical test" = "대응 범주형 검정",
+    "Nonparametric paired test" = "비모수 대응표본 검정",
+    "Wilcoxon" = "Wilcoxon 부호순위 검정",
+    "Wilcoxon signed-rank test" = "Wilcoxon 부호순위 검정",
+    "McNemar" = "McNemar 검정",
+    "McNemar test" = "McNemar 검정",
+    "Exact McNemar" = "정확 McNemar 검정",
+    "Exact McNemar test" = "정확 McNemar 검정",
+    "Stuart-Maxwell" = "Stuart-Maxwell 검정",
+    "Stuart-Maxwell test" = "Stuart-Maxwell 검정",
+    "Bowker" = "Bowker 대칭성 검정",
+    "Bowker symmetry test" = "Bowker 대칭성 검정",
+    "RM ANOVA" = "반복측정 분산분석",
+    "Standard RM ANOVA" = "반복측정 분산분석",
+    "RM ANOVA + GG" = "반복측정 분산분석 + Greenhouse-Geisser 보정",
+    "RM ANOVA + Greenhouse-Geisser correction" = "반복측정 분산분석 + Greenhouse-Geisser 보정",
+    "RM ANOVA + Wilks" = "반복측정 분산분석 + Wilks' lambda",
+    "RM ANOVA + Wilks' lambda" = "반복측정 분산분석 + Wilks' lambda",
+    "Friedman" = "Friedman 검정",
+    "Friedman test" = "Friedman 검정",
+    "Cochran Q" = "Cochran Q 검정",
+    "Cochran's Q test" = "Cochran Q 검정",
+    "Continuous" = "연속형",
+    "Ordinal" = "순서형",
+    "Binary" = "이분형",
+    "Categorical" = "범주형",
+    "Unknown" = "알 수 없음",
+    "Normality met" = "정규성 충족",
+    "Normality not met" = "정규성 미충족",
+    "Sphericity met" = "구형성 충족",
+    "Sphericity not met" = "구형성 미충족",
+    "Post-hoc included" = "사후분석 포함",
+    "None detected" = "발견되지 않음",
+    "not checked" = "검토하지 않음",
+    "Skewness/Kurtosis" = "왜도/첨도",
+    "Skewness and kurtosis" = "왜도와 첨도",
+    "Nonparametric method" = "비모수 방법",
+    "Continuous nonparametric repeated-measures test" = "연속형 비모수 반복측정 검정",
+    "Ordinal nonparametric repeated-measures test" = "순서형 비모수 반복측정 검정",
+    "Binary nonparametric repeated-measures test" = "이분형 비모수 반복측정 검정",
+    "Nonparametric repeated-measures test" = "비모수 반복측정 검정",
+    "At least two complete paired cases are required." = "완전한 대응 사례가 최소 2개 필요합니다.",
+    "The paired differences are all zero; no paired test was performed." = "모든 대응 차이가 0이므로 대응표본 검정을 실행하지 않았습니다.",
+    "The paired differences have zero variance; paired t-test was not performed." = "대응 차이의 분산이 0이므로 대응표본 t 검정을 실행하지 않았습니다.",
+    "At least two complete paired cases with at least two observed categories are required." = "관측 범주가 2개 이상인 완전한 대응 사례가 최소 2개 필요합니다.",
+    "Tied absolute differences were present; the large-sample Wilcoxon approximation was used." = "절대 차이의 동률이 있어 큰 표본 Wilcoxon 근사를 사용했습니다.",
+    "At least two complete repeated-measures cases are required." = "완전한 반복측정 사례가 최소 2개 필요합니다.",
+    "All repeated measurements are identical within subjects; no repeated-measures test was performed." = "각 대상자 내 반복측정값이 모두 같아 반복측정 검정을 실행하지 않았습니다."
+  )
+  if (text %in% names(exact)) return(unname(exact[[text]]))
+
+  # `paired_wilcoxon_note()` can combine the zero-difference count and the
+  # tied-rank warning in one cell.  Translate the parameterized first sentence
+  # before translating the optional second sentence so that the observed count
+  # is preserved.  Accept the legacy "difference(s)" form as well as ordinary
+  # singular/plural English emitted by saved or imported results.
+  zero_difference_pattern <- paste0(
+    "^([0-9]+) zero difference(?:\\(s\\)|s)? (?:was|were) omitted from ",
+    "the Wilcoxon signed-rank calculation\\."
+  )
+  if (grepl(zero_difference_pattern, text, perl = TRUE)) {
+    text <- sub(
+      zero_difference_pattern,
+      "차이가 0인 사례 \\1개를 Wilcoxon 부호순위 계산에서 제외했습니다.",
+      text,
+      perl = TRUE
+    )
+    text <- gsub(
+      "Tied absolute differences were present; the large-sample Wilcoxon approximation was used.",
+      exact[["Tied absolute differences were present; the large-sample Wilcoxon approximation was used."]],
+      text,
+      fixed = TRUE
+    )
+    return(trimws(text))
+  }
+
+  if (grepl("^Skipped because variable\\(s\\) were not found in the active data: ", text)) {
+    return(sub(
+      "^Skipped because variable\\(s\\) were not found in the active data: (.*)\\.$",
+      "활성 자료에서 다음 변수를 찾을 수 없어 제외했습니다: \\1.",
+      text
+    ))
+  }
+  if (grepl("^Skipped because paired variables have different measurement levels ", text)) {
+    return(sub(
+      "^Skipped because paired variables have different measurement levels \\((.*)\\)\\.$",
+      "대응 변수의 측정수준이 서로 달라 제외했습니다 (\\1).",
+      text
+    ))
+  }
+  if (grepl("^Variable\\(s\\) were not found in the active data: ", text)) {
+    return(sub(
+      "^Variable\\(s\\) were not found in the active data: (.*)\\.$",
+      "활성 자료에서 다음 변수를 찾을 수 없습니다: \\1.",
+      text
+    ))
+  }
+  if (grepl("^Repeated-measures variables have different measurement levels: ", text)) {
+    return(sub(
+      "^Repeated-measures variables have different measurement levels: (.*)\\.$",
+      "반복측정 변수의 측정수준이 서로 다릅니다: \\1.",
+      text
+    ))
+  }
+  if (grepl("^([0-9]+) detected \\(IDs: ", text)) {
+    return(sub("^([0-9]+) detected \\(IDs: (.*)\\)$", "\\1개 발견 (ID: \\2)", text))
+  }
+  if (grepl("^[0-9]+ detected$", text)) {
+    return(sub("^([0-9]+) detected$", "\\1개 발견", text))
+  }
+  if (grepl("^skew=", text)) {
+    text <- sub("^skew=", "왜도=", text)
+    return(gsub("kurtosis=", "첨도=", text, fixed = TRUE))
+  }
+  text
+}
+
+paired_appendix_localize_values <- function(table, language = NULL) {
+  source_table <- table
+  if (!is.data.frame(table)) return(table)
+  language <- result_appendix_table_language(language)
+  if (!identical(language, "ko")) {
+    localized <- result_appendix_localize_table(table, language)
+    # Keep source field names for diagnostic normalization; translate headers at rendering.
+    names(localized) <- names(table)
+    if ("Outliers" %in% names(table)) localized$Outliers <- vapply(as.character(table$Outliers), paired_appendix_text, character(1), language = language)
+    if (all(c("Item", "Result") %in% names(table))) {
+      outlier_rows <- which(table$Item == "Outliers")
+      localized$Result[outlier_rows] <- vapply(as.character(table$Result[outlier_rows]), paired_appendix_text, character(1), language = language)
+      normality_rows <- which(table$Item == "Normality" & !is.na(table$Result) & startsWith(as.character(table$Result), "skew="))
+      localized$Result[normality_rows] <- vapply(as.character(table$Result[normality_rows]), paired_appendix_text, character(1), language = language)
+    }
+    for (column in intersect(c("Warning", "Reason", "Message"), names(table))) {
+      values <- as.character(table[[column]])
+      matched <- which(!is.na(values) & grepl("(^|\n)([0-9]+ zero difference|Skipped because variable\\(s\\) were not found|Skipped because paired variables have different measurement levels|Variable\\(s\\) were not found|Repeated-measures variables have different measurement levels)", values, perl = TRUE))
+      if (!length(matched)) next
+      localized[[column]][matched] <- vapply(values[matched], function(value) {
+        paste(vapply(strsplit(value, "\n", fixed = TRUE)[[1]], paired_appendix_text, character(1), language = language), collapse = "\n")
+      }, character(1))
+    }
+    return(localized)
+  }
+  fallback <- result_appendix_localize_table(source_table, language)
+  names(fallback) <- names(source_table)
+  for (column in names(table)) {
+    if (!is.character(table[[column]]) && !is.factor(table[[column]])) next
+    values <- as.character(table[[column]])
+    table[[column]] <- vapply(seq_along(values), function(index) {
+      value <- values[index]
+      if (is.na(value)) return(NA_character_)
+      lines <- strsplit(value, "\n", fixed = TRUE)[[1]]
+      translated <- paste(vapply(lines, paired_appendix_text, character(1), language = language), collapse = "\n")
+      if (identical(translated, value)) as.character(fallback[[column]][index]) else translated
+    }, character(1))
+  }
+  result_appendix_preserve_data(table, source_table)
+}
+
+paired_appendix_table <- function(table) {
+  source_table <- table
+  language <- result_appendix_table_language()
+  table <- paired_appendix_localize_values(table, language)
+  if (is.data.frame(table)) {
+    # Values have already been localized. A second pass can reinterpret a
+    # translated warning containing a method name as just that method label.
+    names(table) <- names(result_appendix_localize_table(source_table, language))
+    if (identical(language, "ko")) names(table) <- vapply(names(table), paired_appendix_text, character(1), language = language)
+    attr(table, "result_table_role") <- "appendix"
+    attr(table, "result_table_language") <- language
+  }
+  result_appendix_preserve_data(table, source_table)
+}
+
+paired_main_note <- function(text, category = "estimation") {
+  values <- list()
+  values[[category]] <- text
+  do.call(result_sci_note_text, values)
+}
+
 paired_scale_statistic_label <- function(table) {
   labels <- unique(as.character(table$StatisticLabel %||% ""))
   labels <- labels[nzchar(labels)]
@@ -164,14 +401,14 @@ paired_check_satisfied_label <- function(check_row) {
     skewness <- suppressWarnings(as.numeric(check_row$Skewness[[1]]))
     kurtosis <- suppressWarnings(as.numeric(check_row$Kurtosis[[1]]))
     if (is.na(skewness) || is.na(kurtosis)) return("")
-    return(if (abs(skewness) <= 2 && abs(kurtosis) <= 7) "\uc815\uaddc\uc131 \ub9cc\uc871" else "\uc815\uaddc\uc131 \ubd88\ub9cc\uc871")
+    return(if (abs(skewness) <= 2 && abs(kurtosis) <= 7) "Normality met" else "Normality not met")
   }
   if (identical(method, "Shapiro-Wilk")) {
     p_text <- as.character(check_row$`Shapiro-Wilk p`[[1]] %||% "")
     if (!nzchar(p_text)) return("")
     p_value <- suppressWarnings(as.numeric(sub("^<", "", p_text)))
     if (is.na(p_value)) return("")
-    return(if (p_value >= .05) "\uc815\uaddc\uc131 \ub9cc\uc871" else "\uc815\uaddc\uc131 \ubd88\ub9cc\uc871")
+    return(if (p_value >= .05) "Normality met" else "Normality not met")
   }
   ""
 }
@@ -353,11 +590,12 @@ paired_scale_display_table <- function(result) {
   table
 }
 
-paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_size = FALSE) {
+paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_size = FALSE, table_role = "main") {
   type <- match.arg(type)
   if (!is.data.frame(table) || nrow(table) == 0) return(NULL)
   show_effect_size <- isTRUE(show_effect_size) && paired_has_effect(table)
   effect_labels <- if (show_effect_size) paired_effect_labels(table) else character(0)
+  effect_columns <- if (length(effect_labels)) paste0("Effect:", effect_labels) else character(0)
   summary_labels <- paired_summary_header_labels(table)
   mean_sd <- isTRUE(attr(table, "mean_sd", exact = TRUE))
   if (identical(type, "scale")) {
@@ -375,7 +613,7 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
     } else {
       c("Variable", "Pre_M", "Pre_SD", "Post_M", "Post_SD", "Statistic", "p")
     }
-    body_columns <- c(body_columns, paste0("Effect:", effect_labels))
+    body_columns <- c(body_columns, effect_columns)
     statistic_label <- paired_scale_statistic_label(table)
     headers <- list(
       tags$tr(
@@ -413,7 +651,7 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
     post_columns <- grep("^Post_", names(table), value = TRUE)
     post_labels <- sub("^Post_", "", post_columns)
     include_statistic <- paired_has_statistic(table)
-    body_columns <- c("Variable", "Pre", post_columns, if (include_statistic) "Statistic", "p", paste0("Effect:", effect_labels))
+    body_columns <- c("Variable", "Pre", post_columns, if (include_statistic) "Statistic", "p", effect_columns)
     statistic_label <- paired_count_statistic_label(table)
     headers <- list(
       tags$tr(
@@ -446,6 +684,7 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
   } else {
     max(640L, min(900L, 150L + (length(body_columns) - 1L) * 86L))
   }
+  if (!isTRUE(median_summary) && length(body_columns) <= 9L) table_width <- 590L
   body_style <- function(first = FALSE, last = FALSE) {
     paste0(
       result_body_cell_style(first, last),
@@ -456,10 +695,10 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
       }
     )
   }
-  tags$table(
+  table_tag <- tags$table(
     class = "coefficient-table paired-grouped-table paired-two-grouped-table",
     style = paste0(
-      result_table_style(font_size = 14, min_width = 640),
+      result_table_style(font_size = 12, min_width = table_width),
       sprintf("table-layout:fixed;width:%dpx;max-width:100%%;", table_width)
     ),
     tags$colgroup(lapply(body_columns, function(column) {
@@ -484,11 +723,20 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
             } else if (startsWith(column, "Effect:")) {
               paired_effect_value_for_label(table, row_index, sub("^Effect:", "", column))
             } else {
-              table[[column]][[row_index]] %||% ""
+              result_cell_content(table[[column]][[row_index]] %||% "", column = column)
             }
           )
         }))
       })
+    )
+  )
+  result_table_apply_contract(
+    table_tag,
+    result_table_contract(
+      table,
+      role = table_role,
+      language = if (identical(result_table_role(table_role), "main")) result_main_table_language() else result_appendix_table_language(),
+      intrinsic_width = table_width
     )
   )
 }
@@ -517,8 +765,8 @@ paired_results_ui <- function(result) {
       if (is.data.frame(overview_table) && nrow(overview_table) > 0) {
         tags$div(
           class = "result-section paired-result-section regression-result-panel",
-          tags$h3("Model overview"),
-          model_overview_html_table(overview_table)
+          tags$h3(result_appendix_ui_text("Model overview")),
+          model_overview_html_table(paired_appendix_table(overview_table))
         )
       },
       if (is.data.frame(result$paired$scale_table) && nrow(result$paired$scale_table) > 0) {
@@ -526,8 +774,8 @@ paired_results_ui <- function(result) {
           class = "result-section paired-result-section regression-result-panel",
           tags$h3("Paired test: continuous / ordinal"),
           result_table_with_notes(
-            paired_grouped_table(paired_scale_display_table(result$paired), "scale", show_effect_size = isTRUE(result$paired$options$effect_size)),
-            result_note_tag(paired_method_note(paired_scale_display_table(result$paired), show_effect_size = isTRUE(result$paired$options$effect_size))),
+            paired_grouped_table(paired_main_table(paired_scale_display_table(result$paired)), "scale", show_effect_size = isTRUE(result$paired$options$effect_size)),
+            result_note_tag(paired_main_note(paired_method_note(paired_scale_display_table(result$paired), show_effect_size = isTRUE(result$paired$options$effect_size)))),
             class = "result-table-with-note paired-fit-table-wrap"
           )
         )
@@ -537,8 +785,8 @@ paired_results_ui <- function(result) {
           class = "result-section paired-result-section regression-result-panel",
           tags$h3("Paired test: binary / categorical"),
           result_table_with_notes(
-            paired_grouped_table(result$paired$count_table, "count", show_effect_size = isTRUE(result$paired$options$effect_size)),
-            result_note_tag(paired_count_method_note(result$paired, show_effect_size = isTRUE(result$paired$options$effect_size))),
+            paired_grouped_table(paired_main_table(result$paired$count_table), "count", show_effect_size = isTRUE(result$paired$options$effect_size)),
+            result_note_tag(paired_main_note(paired_count_method_note(result$paired, show_effect_size = isTRUE(result$paired$options$effect_size)))),
             class = "result-table-with-note paired-fit-table-wrap"
           )
         )
@@ -548,8 +796,8 @@ paired_results_ui <- function(result) {
           class = "result-section paired-result-section regression-result-panel landscape-table-panel",
           tags$h3("Repeated-measures test: continuous / ordinal"),
           result_table_with_notes(
-            paired_rm_grouped_table(paired_rm_table_with_options(result$paired_rm$display_table, result$paired_rm$options), "scale"),
-            result_note_tag(paired_rm_table_method_note(result$paired_rm$display_table)),
+            paired_rm_grouped_table(paired_main_table(paired_rm_table_with_options(result$paired_rm$display_table, result$paired_rm$options)), "scale", table_role = "main"),
+            result_note_tag(paired_main_note(paired_rm_table_method_note(result$paired_rm$display_table))),
             class = "result-table-with-note paired-fit-table-wrap"
           )
         )
@@ -559,8 +807,8 @@ paired_results_ui <- function(result) {
           class = "result-section paired-result-section regression-result-panel landscape-table-panel",
           tags$h3("Repeated-measures test: binary"),
           result_table_with_notes(
-            paired_rm_grouped_table(result$paired_rm$count_table, "count"),
-            result_note_tag(paired_rm_table_method_note(result$paired_rm$count_table)),
+            paired_rm_grouped_table(paired_main_table(result$paired_rm$count_table), "count", table_role = "main"),
+            result_note_tag(paired_main_note(paired_rm_table_method_note(result$paired_rm$count_table))),
             class = "result-table-with-note paired-fit-table-wrap"
           )
         )
@@ -572,29 +820,37 @@ paired_results_ui <- function(result) {
           nrow(result$paired_rm$table) > 0
       ) {
         tags$div(
-          class = "result-section paired-result-section regression-result-panel landscape-table-panel",
+          class = "result-section paired-result-section regression-result-panel",
           tags$h3("Repeated-measures test"),
-          coefficient_html_table(result$paired_rm$table, note_line = paired_rm_method_note(result$paired_rm))
+          coefficient_html_table(
+            paired_main_table(result$paired_rm$table),
+            note_line = paired_main_note(paired_rm_method_note(result$paired_rm)),
+            table_role = "main"
+          )
         )
       },
       if (is.data.frame(result$paired_rm$posthoc) && nrow(result$paired_rm$posthoc) > 0) {
         tags$div(
-          class = "result-section paired-result-section regression-result-panel landscape-table-panel",
+          class = "result-section paired-result-section regression-result-panel",
           tags$h3("Post-hoc pairwise comparisons"),
-          coefficient_html_table(result$paired_rm$posthoc, note_line = paired_rm_posthoc_note(result$paired_rm))
+          coefficient_html_table(
+            paired_main_table(result$paired_rm$posthoc),
+            note_line = paired_main_note(paired_rm_posthoc_note(result$paired_rm), "multiplicity"),
+            table_role = "main"
+          )
         )
       },
       if (is.data.frame(assumption_table) && nrow(assumption_table) > 0) {
         tags$div(
           class = "result-section paired-result-section regression-result-panel",
-          tags$h3("\uac00\uc815 \uac80\ud1a0"),
-          model_overview_html_table(assumption_table)
+          tags$h3(result_appendix_ui_text("Assumption review")),
+          model_overview_html_table(paired_appendix_table(assumption_table))
         )
       },
       analysis_diagnostics_section(
-        paired_combined_diagnostics_table(result, "warnings"),
-        paired_combined_diagnostics_table(result, "skipped"),
-        title = "Warnings / skipped repeated-measures rows",
+        paired_appendix_localize_values(paired_combined_diagnostics_table(result, "warnings")),
+        paired_appendix_localize_values(paired_combined_diagnostics_table(result, "skipped")),
+        title = paired_appendix_text("Warnings / skipped repeated-measures rows"),
         class = "result-section paired-result-section regression-result-panel paired-diagnostics-panel"
       )
     ))
@@ -604,8 +860,8 @@ paired_results_ui <- function(result) {
     if (is.data.frame(paired_model_overview_table(result)) && nrow(paired_model_overview_table(result)) > 0) {
       tags$div(
         class = "result-section paired-result-section regression-result-panel",
-        tags$h3("Model overview"),
-        model_overview_html_table(paired_model_overview_table(result))
+        tags$h3(result_appendix_ui_text("Model overview")),
+        model_overview_html_table(paired_appendix_table(paired_model_overview_table(result)))
       )
     },
     if (is.data.frame(result$scale_table) && nrow(result$scale_table) > 0) {
@@ -613,8 +869,8 @@ paired_results_ui <- function(result) {
         class = "result-section paired-result-section regression-result-panel",
         tags$h3("Paired test: continuous / ordinal"),
         result_table_with_notes(
-          paired_grouped_table(paired_scale_display_table(result), "scale", show_effect_size = isTRUE(result$options$effect_size)),
-          result_note_tag(paired_method_note(paired_scale_display_table(result), show_effect_size = isTRUE(result$options$effect_size))),
+          paired_grouped_table(paired_main_table(paired_scale_display_table(result)), "scale", show_effect_size = isTRUE(result$options$effect_size)),
+          result_note_tag(paired_main_note(paired_method_note(paired_scale_display_table(result), show_effect_size = isTRUE(result$options$effect_size)))),
           class = "result-table-with-note paired-fit-table-wrap"
         )
       )
@@ -624,8 +880,8 @@ paired_results_ui <- function(result) {
         class = "result-section paired-result-section regression-result-panel",
         tags$h3("Paired test: binary / categorical"),
         result_table_with_notes(
-          paired_grouped_table(result$count_table, "count", show_effect_size = isTRUE(result$options$effect_size)),
-          result_note_tag(paired_count_method_note(result, show_effect_size = isTRUE(result$options$effect_size))),
+          paired_grouped_table(paired_main_table(result$count_table), "count", show_effect_size = isTRUE(result$options$effect_size)),
+          result_note_tag(paired_main_note(paired_count_method_note(result, show_effect_size = isTRUE(result$options$effect_size)))),
           class = "result-table-with-note paired-fit-table-wrap"
         )
       )
@@ -633,14 +889,14 @@ paired_results_ui <- function(result) {
     if (is.data.frame(paired_assumption_review_table(result)) && nrow(paired_assumption_review_table(result)) > 0) {
       tags$div(
         class = "result-section paired-result-section regression-result-panel",
-        tags$h3("\uac00\uc815 \uac80\ud1a0"),
-        model_overview_html_table(paired_assumption_review_table(result))
+        tags$h3(result_appendix_ui_text("Assumption review")),
+        model_overview_html_table(paired_appendix_table(paired_assumption_review_table(result)))
       )
     },
     analysis_diagnostics_section(
-      result$warnings,
-      result$skipped,
-      title = "Warnings / skipped pairs",
+      paired_appendix_localize_values(result$warnings),
+      paired_appendix_localize_values(result$skipped),
+      title = paired_appendix_text("Warnings / skipped pairs"),
       class = "result-section paired-result-section regression-result-panel paired-diagnostics-panel"
     )
   )

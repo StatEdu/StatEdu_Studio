@@ -28,7 +28,17 @@ statedu_public_release <- function() {
   statedu_truthy(Sys.getenv("STATEDU_PUBLIC_RELEASE", ""))
 }
 
+analysis_document_export_available <- function(edition = analysis_save_edition()) {
+  version <- tryCatch(read_app_config()$version, error = function(e) "0.0.0")
+  public_documents <- statedu_public_release() &&
+    utils::compareVersion(sub("-.*$", "", version), "1.3.0") >= 0L
+  public_documents || (!statedu_public_release() && identical(edition, "development"))
+}
+
 statedu_feature_enabled <- function(feature, default = TRUE) {
+  if (feature %in% c("pdf_export", "excel_export", "word_export")) {
+    return(analysis_document_export_available())
+  }
   env_name <- statedu_feature_env_name("STATEDU", feature)
   value <- Sys.getenv(env_name, "")
   if (statedu_truthy(value)) {
@@ -38,9 +48,6 @@ statedu_feature_enabled <- function(feature, default = TRUE) {
     return(FALSE)
   }
 
-  if (statedu_public_release() && feature %in% c("excel_export", "word_export")) {
-    return(FALSE)
-  }
   isTRUE(default)
 }
 
@@ -60,32 +67,26 @@ analysis_save_edition <- function() {
 }
 
 analysis_save_feature_visible <- function(feature, included_features = character(0)) {
+  if (feature %in% c("pdf", "excel", "word")) {
+    return(analysis_document_export_available())
+  }
   if (feature %in% included_features) {
     return(TRUE)
-  }
-  if (statedu_public_release() && feature %in% c("excel", "word")) {
-    return(TRUE)
-  }
-  if (feature %in% c("excel", "word") && analysis_save_edition() %in% c("pro", "personal", "institution")) {
-    return(TRUE)
-  }
-  if (identical(feature, "excel")) {
-    return(statedu_feature_enabled("excel_export", TRUE))
-  }
-  if (identical(feature, "word")) {
-    return(statedu_feature_enabled("word_export", TRUE))
   }
   TRUE
 }
 
 analysis_save_feature_enabled <- function(feature, edition = analysis_save_edition(), included_features = character(0)) {
+  if (feature %in% c("pdf", "excel", "word")) {
+    return(analysis_document_export_available(edition))
+  }
   free_all <- "__free_all__" %in% included_features
   public_exception <- "__public_exception__" %in% included_features
   included_features <- setdiff(included_features, "__free_all__")
   included_features <- setdiff(included_features, "__public_exception__")
   if (identical(edition, "free")) {
     return(
-      identical(feature, "html") ||
+      feature %in% c("html", "figure", "add_result", "result_history") ||
         isTRUE(free_all) ||
         (statedu_public_release() && isTRUE(public_exception) && feature %in% included_features)
     )
@@ -100,12 +101,12 @@ analysis_save_feature_enabled <- function(feature, edition = analysis_save_editi
     return(TRUE)
   }
   if (identical(edition, "personal") || identical(edition, "institution")) {
-    return(feature %in% c("html", "pdf", "figure", "excel", "word", "add_result", "result_history"))
+    return(feature %in% c("html", "figure", "add_result", "result_history"))
   }
   if (identical(edition, "pro")) {
-    return(feature %in% c("html", "pdf", "figure", "excel", "word", "add_result"))
+    return(feature %in% c("html", "figure", "add_result", "result_history"))
   }
-  feature %in% c("html", "figure")
+  feature %in% c("html", "figure", "add_result", "result_history")
 }
 
 analysis_save_button <- function(id, label, feature, class = "btn-default", included_features = character(0)) {
@@ -141,7 +142,8 @@ analysis_save_buttons <- function(
   add_result_button_id = NULL,
   has_figures = TRUE,
   language = statedu_initial_language(),
-  included_features = character(0)
+  included_features = character(0),
+  hwpx_button_id = NULL
 ) {
   div(
     class = "analysis-save-action",
@@ -162,11 +164,22 @@ analysis_three_block_action_row <- function(
   run_button,
   reset_control = NULL,
   save_control = NULL,
-  extra_controls = NULL
+  extra_controls = NULL,
+  command_control = NULL
 ) {
+  run_id <- run_button$attribs$id %||% ""
+  command_button <- command_control
+  if (run_id %in% analysis_command_run_ids()) {
+    command_button <- tags$button(
+      type = "button", class = "btn btn-default",
+      onclick = sprintf("window.stateduOpenCommand('%s', this)", run_id),
+      statedu_localized_text(statedu_initial_language(), "Analysis Commands", "분석 명령어")
+    )
+  }
   div(
     class = paste("analysis-action-row analysis-three-block-action-row", class),
-    div(class = "analysis-action-cell analysis-run-cell", run_button),
+    div(class = "analysis-action-cell analysis-run-cell",
+      div(class = "analysis-primary-actions", command_button, run_button)),
     div(class = "analysis-action-cell analysis-reset-cell", reset_control),
     if (!is.null(extra_controls)) div(class = "analysis-action-cell analysis-extra-cell", extra_controls),
     div(class = "analysis-action-cell analysis-save-cell", save_control)
@@ -181,29 +194,31 @@ set_data_step_view <- function(active_step_setter, data_view_setter, step, view 
 app_brand_title <- function(version) {
   div(
     class = "brand-title",
-    tags$img(src = paste0("logo-horizontal.png?v=", version, "-statedu-studio-final-logo-20260722"), class = "brand-logo-horizontal", alt = "StatEdu Studio logo"),
+    tags$img(src = paste0("logo-final.png?v=", version, "-statedu-studio-final-logo-ui-20260822"), class = "brand-logo-horizontal", alt = "StatEdu Studio logo"),
     span(class = "version", paste0("v", version))
   )
 }
 
 app_stylesheet_link <- function(version) {
   tagList(
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-custom-model-compact-multiline-20260730")),
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-analysis-modal-compact-20260712b"))
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-structural-header-wrap-20260911g")),
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-alignment-reference-icon-20260912b"))
   )
 }
 
 app_script_link <- function(version) {
   tagList(
-    tags$script(src = paste0("easyflow.js?v=", version, "-excel-import-busy-fix-20260712a")),
-    tags$script(src = paste0("model-canvas/state.js?v=", version, "-custom-model-canvas-multi-y-20260729a")),
+    tags$script(src = paste0("analysis-commands.js?v=", version)),
+    tags$script(src = paste0("analysis-scope.js?v=", version, "-canvas-groups-20260916")),
+    tags$script(src = paste0("easyflow.js?v=", version, "-model-report-capture-20260911f")),
+    tags$script(src = paste0("model-canvas/state.js?v=", version, "-scope-collections-20260916")),
     tags$script(src = paste0("model-canvas/layout.js?v=", version, "-custom-model-canvas-balanced-multi-role-layout-20260729a")),
-    tags$script(src = paste0("model-canvas/shiny-bridge.js?v=", version, "-custom-model-canvas-20260705an")),
-    tags$script(src = paste0("model-canvas/edges.js?v=", version, "-label-overlap-fit-20260730")),
-    tags$script(src = paste0("model-canvas/nodes.js?v=", version, "-custom-model-canvas-preserve-moderator-layout-20260729b")),
-    tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-stmodel-extension-20260730")),
-    tags$script(src = paste0("model-canvas/toolbar.js?v=", version, "-custom-model-canvas-20260711ac")),
-    tags$script(src = paste0("model-canvas/canvas.js?v=", version, "-custom-model-canvas-preserve-moderator-layout-20260729b"))
+    tags$script(src = paste0("model-canvas/shiny-bridge.js?v=", version, "-scope-result-groups-20260916")),
+    tags$script(src = paste0("model-canvas/edges.js?v=", version, "-ellipse-boundary-anchor-20260825a")),
+    tags$script(src = paste0("model-canvas/nodes.js?v=", version, "-full-paper-movement-20260823g")),
+    tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-model-report-dpi-20260911f")),
+    tags$script(src = paste0("model-canvas/toolbar.js?v=", version, "-selection-alignment-icons-20260911d")),
+    tags$script(src = paste0("model-canvas/canvas.js?v=", version, "-center-model-on-paper-20260825a"))
   )
 }
 
@@ -247,7 +262,7 @@ app_static_language_labels_script <- local({
       "data", "data_editor", "calculator", "analysis", "sample_size", "effect_size",
       "latent", "result", "help", "about", "preferences", "bug_report", "feature_request",
       "analysis_request", "qna", "frequencies", "crosstabs", "ttest_anova",
-      "paired", "ancova", "nonparametric", "nonparametric_paired", "correlation",
+      "paired", "ancova", "one_group_rm_anova", "mixed_rm_anova", "nonparametric", "nonparametric_paired", "correlation",
       "reliability", "interrater_agreement", "factor_analysis", "pca", "regression", "glm", "logistic",
       "longitudinal", "overview", "user_guide", "analyses", "method_notes",
       "validation", "version_history", "source_license", "open_source_licenses"
@@ -257,7 +272,7 @@ app_static_language_labels_script <- local({
     })
     static_label_row <- function(en, ko = en) {
       values <- vapply(statedu_supported_languages(), function(language) {
-        if (identical(language, "ko")) ko else en
+        statedu_localized_text(language, en, ko)
       }, character(1))
       as.list(values)
     }
@@ -274,6 +289,9 @@ app_static_language_labels_script <- local({
       })
     }
     extra_labels <- list(
+      statedu_translation_row("analysis.ipa.importance_performance_analysis_ipa"),
+      statedu_translation_row("analysis.ui.select_cases"),
+      statedu_translation_row("analysis.ui.split_file"),
       statedu_translation_row("data_editor.coding_error_title"),
       statedu_translation_row("data_editor.likert_title"),
       statedu_translation_row("data_editor.missing_title"),
@@ -290,6 +308,7 @@ app_static_language_labels_script <- local({
       statedu_translation_row("calc_metabolic_syndrome"),
       statedu_translation_row("calc_framingham_risk"),
       static_label_row("ASCVD10", "ASCVD10"),
+      static_label_row("Meta-analysis", "메타분석"),
       statedu_translation_row("calc_metabolic_severity"),
       statedu_translation_row("complex_sample.menu"),
       statedu_translation_row("complex_sample.design_menu"),
@@ -303,7 +322,11 @@ app_static_language_labels_script <- local({
       statedu_translation_row("analysis.ui.inter_rater_agreement"),
       statedu_translation_row("analysis.mediation_moderation"),
       statedu_translation_row("analysis.custom_model_canvas"),
-      statedu_translation_row("custom_model_canvas.title")
+      statedu_translation_row("custom_model_canvas.title"),
+      static_label_row("Survival Analysis", "생존분석"),
+      static_label_row("Structural Equation Modeling", "구조방정식"),
+      static_label_row("Kaplan-Meier", "Kaplan-Meier"),
+      static_label_row("Cox Regression", "Cox 회귀분석")
     )
     group_labels <- list(
       statedu_translation_row("group_descriptives"),
@@ -321,9 +344,13 @@ app_static_language_labels_script <- local({
     if (exists("effect_size_method_labels", mode = "function")) {
       method_labels <- c(method_labels, method_label_rows(effect_size_method_labels))
     }
+    keyed_keys <- c("data.categorical_value_labels", "data.selected_variables", "data.subtitle", "data.excel_import_review",
+                    "ui.result", "result.subtitle", "result.open", "result.save", "result.clear")
+    keyed_labels <- stats::setNames(lapply(keyed_keys, statedu_translation_row), keyed_keys)
     result <- tags$script(HTML(sprintf(
-      "window.easyflowStaticLanguageLabels = %s;",
-      jsonlite::toJSON(c(labels, extra_labels, group_labels, method_labels), auto_unbox = TRUE)
+      "window.easyflowStaticLanguageLabels = %s; window.easyflowKeyedLanguageLabels = %s;",
+      jsonlite::toJSON(c(labels, extra_labels, group_labels, method_labels), auto_unbox = TRUE),
+      jsonlite::toJSON(keyed_labels, auto_unbox = TRUE)
     )))
     cache <<- result
     result
@@ -331,11 +358,18 @@ app_static_language_labels_script <- local({
 })
 
 app_head_tags <- function(version) {
+  build_fingerprint <- trimws(Sys.getenv("STATEDU_BUILD_FINGERPRINT", ""))
+  asset_version <- if (nzchar(build_fingerprint)) {
+    paste(version, substr(build_fingerprint, 1L, 12L), sep = "-")
+  } else {
+    version
+  }
   tags$head(
-    tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = paste0("logo-favicon-32.png?v=", version, "-statedu-studio-final-slanted-bar")),
-    tags$link(rel = "icon", type = "image/png", sizes = "64x64", href = paste0("logo-favicon-64.png?v=", version, "-statedu-studio-final-slanted-bar")),
-    app_stylesheet_link(version),
-    tags$script(HTML(
+    tags$meta(name = "statedu-build-fingerprint", content = build_fingerprint),
+    tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = paste0("logo-favicon-32.png?v=", asset_version, "-statedu-studio-final-slanted-bar")),
+    tags$link(rel = "icon", type = "image/png", sizes = "64x64", href = paste0("logo-favicon-64.png?v=", asset_version, "-statedu-studio-final-slanted-bar")),
+    app_stylesheet_link(asset_version),
+    tags$script(HTML(paste0(
       "window.MathJax = {
         tex: {
           inlineMath: [['$', '$'], ['\\\\(', '\\\\)']],
@@ -345,16 +379,13 @@ app_head_tags <- function(version) {
         options: {
           skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
         }
-      };"
-    )),
-    tags$script(
-      id = "MathJax-script",
-      defer = "defer",
-      onload = "if (window.easyflowMathJaxReady) window.easyflowMathJaxReady();",
-      src = paste0("mathjax/tex-svg.js?v=", version, "-local")
-    ),
+      };
+      window.easyflowMathJaxSrc = '",
+      paste0("mathjax/tex-svg.js?v=", version, "-local"),
+      "';"
+    ))),
     app_static_language_labels_script(),
-    app_script_link(version)
+    app_script_link(asset_version)
   )
 }
 
@@ -382,6 +413,7 @@ enabled_analysis_tabs <- function() {
     paired_rm = TRUE,
     ttest_anova = TRUE,
     ancova = TRUE,
+    one_group_rm_anova = !statedu_public_release(),
     mixed_rm_anova = TRUE,
     nonparametric = TRUE,
     nonparametric_paired = TRUE,
@@ -390,14 +422,18 @@ enabled_analysis_tabs <- function() {
     pca = TRUE,
     regression = FALSE,
     hierarchical = TRUE,
-    mediation_moderation = TRUE,
+    mediation_moderation = FALSE,
     custom_model_canvas = statedu_feature_enabled("custom_model_canvas", TRUE),
     longitudinal = statedu_feature_enabled("longitudinal", TRUE),
-    generalized = TRUE
+    generalized = TRUE,
+    meta = !statedu_public_release()
   )
 }
 
 app_ui <- function(version, request = NULL) {
+  if (!isTRUE(statedu_request_token_authorized(request))) {
+    return(statedu_token_rejection_response())
+  }
   analysis_tabs <- enabled_analysis_tabs()
   language <- statedu_initial_language(request)
 
@@ -409,8 +445,7 @@ app_ui <- function(version, request = NULL) {
       app_language_bootstrap_script(language),
       app_result_zoom_bootstrap_script(statedu_initial_result_zoom()),
       tags$input(id = "statedu_initial_language", type = "hidden", value = language),
-      tags$input(id = "statedu_initial_result_zoom", type = "hidden", value = statedu_initial_result_zoom()),
-      if (latent_mplus_enabled()) latent_mplus_head_tags(version)
+      tags$input(id = "statedu_initial_result_zoom", type = "hidden", value = statedu_initial_result_zoom())
     ),
 
     data_tab_panel(language),

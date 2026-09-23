@@ -18,10 +18,10 @@ register_paired_handlers <- function(
   bowker <- reactiveVal(TRUE)
   effect_size <- reactiveVal(TRUE)
   cohen_d <- reactiveVal(TRUE)
-  mean_sd <- reactiveVal(FALSE)
+  mean_sd <- reactiveVal(TRUE)
   median_iqr <- reactiveVal(FALSE)
   adjustment <- reactiveVal(statedu_multiple_correction_default())
-  paired_result <- reactiveVal(NULL)
+  paired_result <- analysis_scope_result_val(NULL)
 
   current_selected <- reactive(as.character(selected_names_fn() %||% character(0)))
   current_variable_table <- reactive(variable_table_fn())
@@ -233,6 +233,15 @@ register_paired_handlers <- function(
     session$sendCustomMessage("easyflow-clear-transfer-selection", list(inputIds = ids))
   }, ignoreInit = TRUE)
 
+  register_analysis_reorder(input, session, "paired_pairs", function(payload) {
+    values <- paired_group_values(repeated_groups())
+    updated <- analysis_reorder_items(values, payload)
+    if (isTRUE(updated$changed)) {
+      repeated_groups(paired_group_from_values(updated$order))
+      mark_settings_dirty()
+    }
+  })
+
   reorder_groups <- function(direction) {
     values <- paired_group_values(repeated_groups())
     updated <- move_order_item(values, input$paired_pairs, direction)
@@ -249,7 +258,11 @@ register_paired_handlers <- function(
     reorder_groups("down")
   })
 
-  observeEvent(input$run_paired, {
+  register_analysis_command_handler(
+    "run_paired", input, output, session,
+    states = list(repeated_groups = repeated_groups),
+    dataset_fn = dataset_fn, context_fn = function() list(selected = selected_names_fn(), variables = variable_table_fn(), labels = labels_fn(), categories = category_table_fn()),
+    run_fn = function() {
     result <- tryCatch(
       prepare_paired_unified_results(
         data = dataset_fn(),

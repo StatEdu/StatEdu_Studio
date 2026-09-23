@@ -144,19 +144,166 @@ frequency_combined_table <- function(result, options) {
   table[, intersect(columns, names(table)), drop = FALSE]
 }
 
+frequency_categorical_main_table <- function(result) {
+  categorical_names <- as.character(result$categorical %||% character(0))
+  categorical_tables <- result$categorical_tables %||% list()
+  if (length(categorical_names) == 0L || length(categorical_tables) == 0L) {
+    return(NULL)
+  }
+
+  tables_by_name <- stats::setNames(categorical_tables, vapply(categorical_tables, function(table) {
+    if (is.data.frame(table) && nrow(table) > 0L && "Name" %in% names(table)) {
+      as.character(table$Name[[1L]])
+    } else {
+      ""
+    }
+  }, character(1)))
+  rows <- lapply(categorical_names, function(name) {
+    table <- tables_by_name[[name]]
+    if (!is.data.frame(table) || nrow(table) == 0L) {
+      return(NULL)
+    }
+    variable <- as.character(table$Variable)
+    if (length(variable) > 1L) {
+      variable[-1L] <- ""
+    }
+    data.frame(
+      Variable = variable,
+      Value = as.character(table$Value),
+      n = as.character(table$N),
+      `%` = as.character(table$Percent),
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  })
+  rows <- Filter(Negate(is.null), rows)
+  if (length(rows) == 0L) {
+    return(NULL)
+  }
+  table <- do.call(rbind, rows)
+  rownames(table) <- NULL
+  attr(table, "result_table_role") <- "main"
+  attr(table, "result_table_language") <- "en"
+  table
+}
+
+frequency_continuous_main_table <- function(result, options) {
+  continuous_names <- as.character(result$continuous %||% character(0))
+  descriptive <- result$descriptive_table
+  if (length(continuous_names) == 0L || !is.data.frame(descriptive) || nrow(descriptive) == 0L) {
+    return(NULL)
+  }
+
+  order_index <- match(continuous_names, as.character(descriptive$Name))
+  order_index <- order_index[!is.na(order_index)]
+  if (length(order_index) == 0L) {
+    return(NULL)
+  }
+  descriptive <- descriptive[order_index, , drop = FALSE]
+  table <- data.frame(
+    Variable = as.character(descriptive$Variable),
+    n = as.character(descriptive$N),
+    M = as.character(descriptive$Mean),
+    SD = as.character(descriptive$SD),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  if (isTRUE(options$mean_sd)) {
+    table <- table[c("Variable", "n")]
+    table[["M ± SD"]] <- as.character(descriptive[["M ± SD"]])
+  }
+  if (isTRUE(options$min_max)) {
+    table$Min <- as.character(descriptive$Min)
+    table$Max <- as.character(descriptive$Max)
+  }
+  if (isTRUE(options$median_iqr)) {
+    table$Median <- as.character(descriptive$Median)
+    table[["IQR (Q1–Q3)"]] <- as.character(descriptive[["IQR(Q1~Q3)"]])
+  }
+  if (isTRUE(options$skew_kurtosis)) {
+    table$Skewness <- as.character(descriptive$Skewness)
+    table$Kurtosis <- as.character(descriptive$Kurtosis)
+  }
+  attr(table, "result_table_orientation") <- "portrait"
+  widths <- c(Variable = 16, n = 8, M = 8, SD = 8, `M ± SD` = 16, Min = 7, Max = 8,
+              Median = 11, `IQR (Q1–Q3)` = 15, Skewness = 13, Kurtosis = 12)
+  selected_widths <- unname(widths[names(table)])
+  attr(table, "compact_column_widths") <- 100 * selected_widths / sum(selected_widths)
+  attr(table, "right_align_columns") <- "n"
+  attr(table, "result_table_role") <- "main"
+  attr(table, "result_table_language") <- "en"
+  table
+}
+
+frequency_main_table_section <- function(title, table, note = "") {
+  if (!is.data.frame(table) || nrow(table) == 0L) {
+    return(NULL)
+  }
+  contract <- result_table_contract(table, role = "main", language = "en",
+                                    orientation = attr(table, "result_table_orientation", exact = TRUE) %||% "auto")
+  div(
+    class = paste(
+      "result-section frequencies-result-section regression-result-panel",
+      "result-table-sheet-section",
+      paste0("result-table-sheet-section--", contract$role),
+      paste0("result-table-sheet-section--", contract$orientation)
+    ),
+    lang = "en",
+    h3(title),
+    div(
+      class = "frequency-table-wrap",
+      coefficient_html_table(
+        table,
+        compact = TRUE,
+        compact_width = 58,
+        compact_first_width = 130,
+        compact_min_width = 480,
+        note_line = note,
+        table_role = "main",
+        table_language = "en"
+      )
+    )
+  )
+}
+
+frequency_main_table_sections <- function(result, options = NULL) {
+  if (is.null(result)) {
+    return(NULL)
+  }
+  options <- options %||% result$options %||% list(n_percent = TRUE, mean_sd = TRUE)
+  categorical_table <- frequency_categorical_main_table(result)
+  continuous_table <- frequency_continuous_main_table(result, options)
+  continuous_abbreviations <- c("M = mean", "SD = standard deviation")
+  if (isTRUE(options$median_iqr)) {
+    continuous_abbreviations <- c(continuous_abbreviations, "IQR = interquartile range")
+  }
+  tagList(
+    frequency_main_table_section(
+      "Categorical Frequencies",
+      categorical_table,
+      result_sci_note_text(format = "Values are counts and percentages")
+    ),
+    frequency_main_table_section(
+      "Continuous Descriptive Statistics",
+      continuous_table,
+      result_sci_note_text(abbreviations = paste(continuous_abbreviations, collapse = "; "))
+    )
+  )
+}
+
 frequencies_results_ui <- function(result) {
   if (is.null(result)) {
     return(NULL)
   }
   options <- result$options %||% list(n_percent = TRUE, mean_sd = TRUE)
-  table <- frequency_combined_table(result, options)
-  if (is.null(table) || nrow(table) == 0) {
+  categorical_table <- frequency_categorical_main_table(result)
+  continuous_table <- frequency_continuous_main_table(result, options)
+  if ((!is.data.frame(categorical_table) || nrow(categorical_table) == 0L) &&
+      (!is.data.frame(continuous_table) || nrow(continuous_table) == 0L)) {
     return(NULL)
   }
-  div(
-    class = "result-section frequencies-result-section regression-result-panel",
-    h3("Frequencies / Descriptives"),
-    div(class = "frequency-table-wrap", coefficient_html_table(table, compact = TRUE, compact_font_size = 13, compact_width = 58, compact_first_width = 130, compact_min_width = 480)),
+  tagList(
+    frequency_main_table_sections(result, options),
     frequency_plot_blocks(result, options)
   )
 }

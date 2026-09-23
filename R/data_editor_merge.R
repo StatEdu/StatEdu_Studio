@@ -3,7 +3,19 @@
 merge_ko <- function(hex) statedu_utf8(hex)
 
 merge_text <- function(language, en, ko = en) {
-  if (identical(normalize_app_language(language), "ko")) ko else en
+  statedu_localized_text(language, en, ko)
+}
+
+merge_abort <- function(key, ...) {
+  values <- list(...)
+  message <- do.call(sprintf, c(list(statedu_t(paste0("merge.error.", key), "en")), values))
+  stop(structure(list(message = message, call = NULL, key = key, values = values),
+                 class = c("statedu_merge_error", "error", "condition")))
+}
+
+merge_error_text <- function(error, language) {
+  if (!inherits(error, "statedu_merge_error")) return(conditionMessage(error))
+  do.call(sprintf, c(list(statedu_t(paste0("merge.error.", error$key), language)), error$values))
 }
 
 merge_clean_name <- function(value, fallback = "merged_data") {
@@ -15,7 +27,7 @@ merge_clean_name <- function(value, fallback = "merged_data") {
 merge_parse_indicator_values <- function(text, count) {
   count <- max(0L, as.integer(count %||% 0L))
   if (count == 0L) return(character(0))
-  values <- trimws(unlist(strsplit(as.character(text %||% ""), "[,\\r\\n]+")))
+  values <- trimws(unlist(strsplit(as.character(text %||% ""), "[,\r\n]+")))
   values <- values[nzchar(values)]
   if (length(values) < count) {
     values <- c(values, as.character(seq.int(length(values) + 1L, count)))
@@ -25,7 +37,7 @@ merge_parse_indicator_values <- function(text, count) {
 
 merge_uploaded_files <- function(uploaded, input, require_at_least = 1L) {
   if (is.null(uploaded) || nrow(uploaded) < require_at_least) {
-    stop(sprintf("Select at least %s file(s).", require_at_least), call. = FALSE)
+    merge_abort("files", require_at_least)
   }
   rows <- lapply(seq_len(nrow(uploaded)), function(index) {
     file <- uploaded[index, , drop = FALSE]
@@ -43,20 +55,20 @@ merge_uploaded_files <- function(uploaded, input, require_at_least = 1L) {
 }
 
 merge_add_variables <- function(files, key, join_type = "left") {
-  if (length(files) < 2L) stop("Variable merge requires at least two files.", call. = FALSE)
+  if (length(files) < 2L) merge_abort("variable_files")
   key <- trimws(as.character(key %||% ""))
-  if (!nzchar(key)) stop("Enter the ID variable used to match rows.", call. = FALSE)
+  if (!nzchar(key)) merge_abort("enter_id")
   join_type <- as.character(join_type %||% "left")[[1]]
   if (!join_type %in% c("left", "inner", "full")) join_type <- "left"
 
   for (index in seq_along(files)) {
     if (!key %in% names(files[[index]])) {
-      stop(sprintf("File %s does not contain ID variable '%s'.", index, key), call. = FALSE)
+      merge_abort("missing_id", index, key)
     }
     ids <- as.character(files[[index]][[key]])
     ids <- ids[!is.na(ids) & nzchar(ids)]
     if (any(duplicated(ids))) {
-      stop(sprintf("File %s has duplicated ID values. Variable merge expects one row per ID in each file.", index), call. = FALSE)
+      merge_abort("duplicate_id", index)
     }
   }
 
@@ -86,12 +98,12 @@ merge_common_columns <- function(files) {
 }
 
 merge_add_cases <- function(files, selected_variables, indicator_name = "time", indicator_values = "") {
-  if (length(files) < 2L) stop("Case merge requires at least two files.", call. = FALSE)
+  if (length(files) < 2L) merge_abort("case_files")
   common <- merge_common_columns(files)
   selected_variables <- intersect(as.character(selected_variables %||% character(0)), common)
   if (length(selected_variables) == 0) selected_variables <- common
   if (length(selected_variables) == 0) {
-    stop("The selected files do not share any common variable names.", call. = FALSE)
+    merge_abort("no_common")
   }
   indicator_name <- merge_clean_name(indicator_name, "time")
   if (indicator_name %in% selected_variables) {
@@ -108,29 +120,31 @@ merge_add_cases <- function(files, selected_variables, indicator_name = "time", 
   result
 }
 
-merge_summary_table <- function(files) {
-  if (length(files) == 0) return(data.frame(Message = "No files selected.", check.names = FALSE))
-  data.frame(
+merge_summary_table <- function(files, language = statedu_initial_language()) {
+  if (length(files) == 0) return(setNames(data.frame(statedu_t("merge.ui.no_files", language), check.names = FALSE), statedu_t("merge.ui.message", language)))
+  result <- data.frame(
     File = names(files),
     Rows = vapply(files, nrow, integer(1)),
     Columns = vapply(files, ncol, integer(1)),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+  names(result) <- vapply(c("file", "rows_header", "columns"), function(key) statedu_t(paste0("merge.ui.", key), language), character(1))
+  result
 }
 
-data_editor_merge_panel <- function(language = statedu_initial_language()) {
+data_editor_merge_panel <- function(language = statedu_initial_language(), values = list()) {
   language <- normalize_app_language(language)
   div(
     class = "page-shell",
     div(
       class = "app-heading",
-      h1(merge_text(language, "Merge", merge_ko("eb8db0ec9db4ed84b020ebb391ed95a9"))),
-      div(merge_text(language, "Add variables by ID or add cases from multiple files.", merge_ko("494420eab8b0eca48020ebb380ec889820ecb694eab08020eb9890eb8a9420ec97aceb9fac20ed8c8cec9dbcec9d9820ecbc80ec9db4ec8aa420ecb694eab080eba5bc20ec8898ed9689ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
+      h1(statedu_t("merge.ui.title", language)),
+      div(statedu_t("merge.ui.subtitle", language), class = "app-subtitle")
     ),
     div(
       class = "workspace-panel frequencies-workspace-panel data-editor-workspace",
-      analysis_workspace_heading(merge_text(language, "Merge data files", merge_ko("eb8db0ec9db4ed84b020ed8c8cec9dbc20ebb391ed95a9")), "merge", language = language),
+      analysis_workspace_heading(statedu_t("merge.ui.heading", language), "merge", language = language),
       analysis_workspace_body(
         "merge",
         div(
@@ -139,21 +153,23 @@ data_editor_merge_panel <- function(language = statedu_initial_language()) {
             class = "analysis-options-panel merge-file-panel",
             fileInput(
               "merge_files",
-              merge_text(language, "Files to merge", merge_ko("ebb391ed95a9ed95a020ed8c8cec9dbc")),
+              statedu_t("merge.ui.files", language),
               multiple = TRUE,
+              buttonLabel = statedu_t("merge.ui.choose", language),
+              placeholder = if (!is.null(values$merge_files)) paste(values$merge_files$name, collapse = ", ") else statedu_t("merge.ui.no_files", language),
               accept = c(".sav", ".sas7bdat", ".xpt", ".dta", ".csv", ".dat", ".xlsx", ".xls"),
               width = "100%"
             ),
             div(
               class = "merge-checkbox-stack",
-              checkboxInput("merge_csv_header", merge_text(language, "CSV first row contains variable names", merge_ko("43535620ecb2ab20ed9689ec9d8420ebb380ec8898ebaa85ec9cbceba19c20ec82acec9aa9")), value = TRUE),
-              checkboxInput("merge_dat_has_names", merge_text(language, "DAT first row contains variable names", merge_ko("44415420ecb2ab20ed9689ec9d8420ebb380ec8898ebaa85ec9cbceba19c20ec82acec9aa9")), value = FALSE)
+              checkboxInput("merge_csv_header", statedu_t("merge.ui.csv_header", language), value = values$merge_csv_header %||% TRUE),
+              checkboxInput("merge_dat_has_names", statedu_t("merge.ui.dat_header", language), value = values$merge_dat_has_names %||% FALSE)
             ),
             selectInput(
               "merge_dat_delimiter",
-              merge_text(language, "DAT delimiter", merge_ko("44415420eab5acebb684ec9e90")),
-              choices = stats::setNames(c("whitespace", "tab", "comma"), c("Whitespace", "Tab", "Comma")),
-              selected = "whitespace",
+              statedu_t("merge.ui.delimiter", language),
+              choices = stats::setNames(c("whitespace", "tab", "comma"), vapply(c("whitespace", "tab", "comma"), function(key) statedu_t(paste0("merge.ui.", key), language), character(1))),
+              selected = values$merge_dat_delimiter %||% "whitespace",
               selectize = FALSE,
               width = "100%"
             )
@@ -163,37 +179,38 @@ data_editor_merge_panel <- function(language = statedu_initial_language()) {
             tabsetPanel(
               id = "merge_mode",
               type = "tabs",
+              selected = values$merge_mode %||% "variables",
               tabPanel(
-                merge_text(language, "Add variables", merge_ko("ebb380ec889820ecb694eab080")),
+                statedu_t("merge.ui.variables", language),
                 value = "variables",
                 div(
                   class = "factor-options-tab-content merge-options-tab-content",
-                  textInput("merge_id_variable", merge_text(language, "ID variable", merge_ko("494420eab8b0eca480ebb380ec8898")), value = "id", width = "100%"),
+                  textInput("merge_id_variable", statedu_t("merge.ui.id", language), value = values$merge_id_variable %||% "id", width = "100%"),
                   radioButtons(
                     "merge_join_type",
-                    merge_text(language, "Rows to keep", merge_ko("ec9ca0eca780ed95a020ecbc80ec9db4ec8aa4")),
+                    statedu_t("merge.ui.rows", language),
                     choices = stats::setNames(
                       c("left", "inner", "full"),
                       c(
-                        merge_text(language, "First file + matched variables", merge_ko("ecb2ab20ebb288eca7b820ed8c8cec9dbc20eab8b0eca480")),
-                        merge_text(language, "Matched IDs only", merge_ko("eab3b5ed86b5204944eba78c")),
-                        merge_text(language, "All IDs", merge_ko("ebaaa8eb93a0204944"))
+                        statedu_t("merge.ui.left", language),
+                        statedu_t("merge.ui.inner", language),
+                        statedu_t("merge.ui.full", language)
                       )
                     ),
-                    selected = "left"
+                    selected = values$merge_join_type %||% "left"
                   )
                 )
               ),
               tabPanel(
-                merge_text(language, "Add cases", merge_ko("ecbc80ec9db4ec8aa420ecb694eab080")),
+                statedu_t("merge.ui.cases", language),
                 value = "cases",
                 div(
                   class = "factor-options-tab-content merge-options-tab-content",
                   uiOutput("merge_case_variables_ui"),
                   div(
                     class = "merge-two-column",
-                    textInput("merge_indicator_name", merge_text(language, "Indicator variable name", merge_ko("eca780ec8b9cebb380ec889820ec9db4eba684")), value = "time", width = "100%"),
-                    textInput("merge_indicator_values", merge_text(language, "Indicator values", merge_ko("eca780ec8b9ceab092")), value = "", width = "100%", placeholder = "1, 2, 3 or 2, 4, 6, 10")
+                    textInput("merge_indicator_name", statedu_t("merge.ui.indicator_name", language), value = values$merge_indicator_name %||% "time", width = "100%"),
+                    textInput("merge_indicator_values", statedu_t("merge.ui.indicator_values", language), value = values$merge_indicator_values %||% "", width = "100%", placeholder = "1, 2, 3 / 2, 4, 6, 10")
                   )
                 )
               )
@@ -213,24 +230,38 @@ data_editor_merge_panel <- function(language = statedu_initial_language()) {
 }
 
 register_merge_handlers <- function(input, output, session, replace_dataset_fn, mark_settings_dirty, language_fn = NULL) {
+  saved <- reactiveValues()
+  for (field in c("merge_files", "merge_csv_header", "merge_dat_has_names", "merge_dat_delimiter", "merge_mode", "merge_id_variable", "merge_join_type", "merge_indicator_name", "merge_indicator_values", "merge_case_variables")) local({
+    field_name <- field
+    observeEvent(input[[field_name]], {
+      saved[[field_name]] <- input[[field_name]]
+      session$userData$merge_ui_values <- reactiveValuesToList(saved)
+    }, ignoreNULL = TRUE, priority = 100)
+  })
   loaded_files <- reactive({
-    merge_uploaded_files(input$merge_files, input, require_at_least = 1L)
+    merge_uploaded_files(saved$merge_files, list(merge_csv_header = saved$merge_csv_header, merge_dat_has_names = saved$merge_dat_has_names, merge_dat_delimiter = saved$merge_dat_delimiter), require_at_least = 1L)
   })
   preview_data <- reactiveVal(NULL)
   last_message <- reactiveVal(NULL)
+
+  # A preview belongs to its input files and settings, not to the UI language.
+  observeEvent(reactiveValuesToList(saved), {
+    preview_data(NULL)
+    last_message(NULL)
+  }, priority = 90)
 
   output$merge_case_variables_ui <- renderUI({
     language <- statedu_current_language(language_fn)
     files <- tryCatch(loaded_files(), error = function(e) list())
     common <- if (length(files) > 0) merge_common_columns(files) else character(0)
     if (length(common) == 0) {
-      return(div(class = "empty-message", merge_text(language, "Select files with common variable names.", merge_ko("eab3b5ed86b520ebb380ec8898ebaa85ec9db420ec9e88eb8a9420ed8c8cec9dbcec9d8420ec84a0ed839ded9598ec84b8ec9a942e"))))
+      return(div(class = "empty-message", statedu_t("merge.ui.common", language)))
     }
     selectInput(
       "merge_case_variables",
-      merge_text(language, "Variables to keep", merge_ko("ec9ca0eca780ed95a020ebb380ec8898")),
+      statedu_t("merge.ui.keep", language),
       choices = stats::setNames(common, common),
-      selected = common,
+      selected = intersect(saved$merge_case_variables %||% common, common),
       multiple = TRUE,
       width = "100%"
     )
@@ -258,26 +289,22 @@ register_merge_handlers <- function(input, output, session, replace_dataset_fn, 
   observeEvent(input$preview_merge_data, {
     language <- statedu_current_language(language_fn)
     result <- tryCatch(build_merge_result(), error = function(e) {
-      showNotification(conditionMessage(e), type = "warning", duration = 7)
+      showNotification(merge_error_text(e, language), type = "warning", duration = 7)
       NULL
     })
     if (is.null(result)) return()
     preview_data(result)
-    last_message(sprintf(
-      merge_text(language, "Preview created: %s row(s), %s variable(s).", merge_ko("ebafb8eba6acebb3b4eab8b020ec839dec84b13a202573ed96892c202573eab09c20ebb380ec88982e")),
-      nrow(result),
-      ncol(result)
-    ))
+    last_message(list(key = "merge.ui.preview", rows = nrow(result), columns = ncol(result)))
   }, ignoreInit = TRUE)
 
   observeEvent(input$run_merge_data, {
     language <- statedu_current_language(language_fn)
     if (!is.function(replace_dataset_fn)) {
-      showNotification("Dataset replacement is not available.", type = "warning", duration = 5)
+      showNotification(statedu_t("merge.error.replacement", language), type = "warning", duration = 5)
       return()
     }
     result <- tryCatch(build_merge_result(), error = function(e) {
-      showNotification(conditionMessage(e), type = "warning", duration = 7)
+      showNotification(merge_error_text(e, language), type = "warning", duration = 7)
       NULL
     })
     if (is.null(result)) return()
@@ -285,11 +312,7 @@ register_merge_handlers <- function(input, output, session, replace_dataset_fn, 
     ok <- replace_dataset_fn(result, name = target_name, path = NULL, csv_header = TRUE)
     if (isTRUE(ok)) {
       preview_data(result)
-      last_message(sprintf(
-        merge_text(language, "Merged data loaded: %s row(s), %s variable(s).", merge_ko("ebb391ed95a9eb909c20eb8db0ec9db4ed84b020ebb688eb9facec98a4eab8b020ec9984eba38c3a202573ed96892c202573eab09c20ebb380ec88982e")),
-        nrow(result),
-        ncol(result)
-      ))
+      last_message(list(key = "merge.ui.loaded", rows = nrow(result), columns = ncol(result)))
       if (is.function(mark_settings_dirty)) mark_settings_dirty()
     }
   }, ignoreInit = TRUE)
@@ -297,16 +320,18 @@ register_merge_handlers <- function(input, output, session, replace_dataset_fn, 
   output$merge_data_message <- renderUI({
     message <- last_message()
     if (is.null(message)) return(NULL)
-    div(class = "recode-same-status", message)
+    div(class = "recode-same-status", sprintf(statedu_t(message$key, statedu_current_language(language_fn)), message$rows, message$columns))
   })
 
   output$merge_data_preview <- DT::renderDT({
+    language <- statedu_current_language(language_fn)
+    options <- with_datatable_language(list(pageLength = 10, lengthChange = FALSE, scrollX = TRUE), language)
     result <- preview_data()
     if (is.null(result)) {
       files <- tryCatch(loaded_files(), error = function(e) list())
-      return(DT::datatable(merge_summary_table(files), rownames = FALSE, options = list(pageLength = 10, lengthChange = FALSE, scrollX = TRUE)))
+      return(DT::datatable(merge_summary_table(files, language), rownames = FALSE, options = options))
     }
-    DT::datatable(utils::head(result, 50), rownames = FALSE, options = list(pageLength = 10, lengthChange = FALSE, scrollX = TRUE))
+    DT::datatable(utils::head(result, 50), rownames = FALSE, options = options)
   })
 
   invisible(TRUE)

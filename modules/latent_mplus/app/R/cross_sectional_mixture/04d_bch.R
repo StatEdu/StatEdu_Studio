@@ -265,8 +265,12 @@ empty_bch_long <- function() {
     var_name         = character(0),
     var_label        = character(0),
     outcome_type     = character(0),
+    result_type      = character(0),
     class            = character(0),
     class_num        = integer(0),
+    class1           = integer(0),
+    class2           = integer(0),
+    contrast         = character(0),
     estimate         = numeric(0),
     se               = numeric(0),
     stat             = numeric(0),
@@ -1341,6 +1345,13 @@ if (!HAS_OUTCOME || !is.data.frame(BCH_OUTCOME_SPEC) || nrow(BCH_OUTCOME_SPEC) =
         data_sub <- MPLUS_EXPORT_DATA[!is.na(x_mv) & x_mv == lv, , drop = FALSE]
         if (!is.data.frame(data_sub) || nrow(data_sub) < best_k * 5) next
 
+        subset_stub <- make_clean_names(paste(mv, as.character(lv), sep = "_"))
+        subset_dataset_id <- paste0(DATASET_ID, "_", subset_stub)
+        subset_data_file <- file.path(
+          DIR_MPLUS_BCH_DATA,
+          paste0(tolower(subset_dataset_id), "_bch_data.dat")
+        )
+
         sub_res <- run_bch_basic_subset(
           DATA_SUB                     = data_sub,
           DICT                         = DICT,
@@ -1349,7 +1360,7 @@ if (!HAS_OUTCOME || !is.data.frame(BCH_OUTCOME_SPEC) || nrow(BCH_OUTCOME_SPEC) =
           best_k                       = best_k,
           best_tag                     = best_tag,
           best_model_structure         = best_model_structure,
-          DATASET_ID                   = DATASET_ID,
+          DATASET_ID                   = subset_dataset_id,
           RUN_MPLUS                    = RUN_MPLUS,
           MPLUS_EXE                    = MPLUS_EXE,
           INDICATORS                   = INDICATORS,
@@ -1362,8 +1373,8 @@ if (!HAS_OUTCOME || !is.data.frame(BCH_OUTCOME_SPEC) || nrow(BCH_OUTCOME_SPEC) =
           MISSING_CODE                 = MISSING_CODE,
           MIXTURE_TYPE                 = MIXTURE_TYPE,
           DIR_MPLUS_BCH_INP            = DIR_MPLUS_BCH_INP,
-          BCH_DATA_FILE                = BCH_DATA_FILE,
-          BCH_DATA                     = BCH_DATA,
+          BCH_DATA_FILE                = subset_data_file,
+          BCH_DATA                     = data_sub,
           build_bch_input_fun          = build_bch_input,
           parse_bch_model_results_fun  = parse_bch_model_results,
           make_bch_outcome_spec_fun    = build_bch_outcome_spec,

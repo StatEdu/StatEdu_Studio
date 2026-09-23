@@ -41,6 +41,7 @@ create_server_state <- function() {
     control_names = reactiveVal(character(0)),
     predictor_order = reactiveVal(character(0)),
     hierarchical_block3_names = reactiveVal(character(0)),
+    hierarchical_block4_names = reactiveVal(character(0)),
     reliability_variables = reactiveVal(character(0)),
     frequency_variables = reactiveVal(character(0)),
     predictor_order_initialized = reactiveVal(FALSE),
@@ -63,15 +64,14 @@ create_server_state <- function() {
 
 create_analysis_state <- function(session) {
   list(
-    analysis_result = reactiveVal(NULL),
-    penalized_result = reactiveVal(NULL),
-    bootstrap_job = reactiveVal(NULL),
+    analysis_result = analysis_scope_result_val(NULL),
+    penalized_result = analysis_scope_result_val(NULL),
+    bootstrap_job = analysis_scope_result_val(NULL, job = TRUE),
     bootstrap_job_queue = reactiveVal(list()),
     bootstrap_status = reactiveVal(NULL),
     bootstrap_cancel_requested = reactiveVal(FALSE),
     bootstrap_process = reactiveVal(NULL),
-    bootstrap_stop_visible = reactiveVal(FALSE),
-    bootstrap_tick = reactiveTimer(200, session)
+    bootstrap_stop_visible = reactiveVal(FALSE)
   )
 }
 

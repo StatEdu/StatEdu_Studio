@@ -100,7 +100,6 @@ paired_rm_assumption_value <- function(table, group, statistic, column = "Result
 paired_rm_normality_summary <- function(result, group) {
   method <- paired_rm_assumption_value(result$assumption, group, "Normality method", "Value")
   normality <- paired_rm_assumption_value(result$assumption, group, "Normality", "Result")
-  normality <- switch(normality, Satisfied = "\ub9cc\uc871", `Not satisfied` = "\ubd88\ub9cc\uc871", normality)
   if (!nzchar(method) && !nzchar(normality)) return("")
   if (!nzchar(normality)) return(method)
   paste(method, normality)
@@ -323,11 +322,20 @@ paired_rm_grouped_column_widths <- function(body_columns) {
   time_columns <- body_columns[grepl("^Time[0-9]+_(M|SD|MS|Median|IQR|MedianIQR|Summary|0|1)$", body_columns)]
 
   widths[body_columns == "Repeated variables"] <- 15
-  widths[body_columns == "N"] <- 5
+  widths[body_columns == "N"] <- 7
   widths[body_columns == "Statistic"] <- 8
-  widths[body_columns == "p"] <- 5
+  widths[body_columns == "p"] <- 8
   widths[body_columns == "Post-hoc"] <- if (has_posthoc) 15 else 0
   widths[body_columns %in% es_columns] <- if (length(es_columns) > 0) 6 else 0
+  combined_time <- length(time_columns) <= 3L && length(time_columns) > 0L && all(grepl("_(MS|MedianIQR|Summary)$", time_columns))
+  if (combined_time) {
+    widths[body_columns == "Repeated variables"] <- 11
+    widths[body_columns == "N"] <- 5
+    widths[body_columns == "Statistic"] <- 7
+    widths[body_columns == "p"] <- 7
+    widths[body_columns == "Post-hoc"] <- 7
+    widths[body_columns %in% es_columns] <- 5
+  }
 
   fixed_width <- sum(widths)
   time_width <- if (length(time_columns) > 0) {
@@ -422,12 +430,16 @@ paired_rm_fill_summary_columns <- function(table, time_indices) {
   table
 }
 
-paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
+paired_rm_grouped_table <- function(table, type = c("scale", "count"), table_role = "main") {
   type <- match.arg(type)
   if (!is.data.frame(table) || nrow(table) == 0) return(NULL)
   time_label_columns <- grep("^Time[0-9]+_label$", names(table), value = TRUE)
   if (length(time_label_columns) == 0) {
-    return(coefficient_html_table(table))
+    wrapped_table <- coefficient_html_table(table, table_role = table_role)
+    if (inherits(wrapped_table, "shiny.tag") && length(wrapped_table$children) > 0L) {
+      return(wrapped_table$children[[1L]])
+    }
+    return(wrapped_table)
   }
   time_indices <- as.integer(sub("^Time([0-9]+)_label$", "\\1", time_label_columns))
   time_indices <- sort(time_indices)
@@ -477,7 +489,7 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
     marker <- if (length(markers) > 0) markers[[1]] else letters[[index]]
     tags$th(colspan = if (identical(type, "count")) 2L else length(summary_labels), style = header_style(FALSE), paired_rm_sup_header(label, marker))
   })
-  tags$table(
+  table_tag <- tags$table(
     class = "coefficient-table paired-grouped-table paired-rm-grouped-table",
     style = paste0(
       result_table_style(font_size = 12, min_width = 520),
@@ -519,11 +531,21 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
             } else if (identical(column, "ES_overall") || grepl("^ES_[0-9]+_[0-9]+$", column)) {
               paired_rm_marker_cell(table[[column]][[row_index]], paired_rm_effect_marker_for_row(table, row_index))
             } else {
-              table[[column]][[row_index]] %||% ""
+              result_cell_content(table[[column]][[row_index]] %||% "", column = column)
             }
           )
         }))
       })
+    )
+  )
+  intrinsic_width <- if (length(time_indices) <= 3L) 590L else max(520L, 148L + max(0L, length(body_columns) - 1L) * 58L)
+  result_table_apply_contract(
+    table_tag,
+    result_table_contract(
+      table,
+      role = table_role,
+      language = if (identical(result_table_role(table_role), "main")) result_main_table_language() else result_appendix_table_language(),
+      intrinsic_width = intrinsic_width
     )
   )
 }
@@ -540,8 +562,8 @@ paired_rm_results_ui <- function(result) {
     if (is.data.frame(paired_rm_model_overview_table(result)) && nrow(paired_rm_model_overview_table(result)) > 0) {
       tags$div(
         class = "result-section paired-result-section regression-result-panel",
-        tags$h3("Model overview"),
-        model_overview_html_table(paired_rm_model_overview_table(result))
+        tags$h3(result_appendix_ui_text("Model overview")),
+        model_overview_html_table(paired_appendix_table(paired_rm_model_overview_table(result)))
       )
     },
     if (is.data.frame(result$display_table) && nrow(result$display_table) > 0) {
@@ -549,8 +571,8 @@ paired_rm_results_ui <- function(result) {
         class = "result-section paired-result-section regression-result-panel landscape-table-panel",
         tags$h3("Repeated-measures test: continuous / ordinal"),
         result_table_with_notes(
-          paired_rm_grouped_table(paired_rm_table_with_options(result$display_table, result$options), "scale"),
-          result_note_tag(paired_rm_table_method_note(result$display_table)),
+          paired_rm_grouped_table(paired_main_table(paired_rm_table_with_options(result$display_table, result$options)), "scale", table_role = "main"),
+          result_note_tag(paired_main_note(paired_rm_table_method_note(result$display_table))),
           class = "result-table-with-note paired-fit-table-wrap"
         )
       )
@@ -560,8 +582,8 @@ paired_rm_results_ui <- function(result) {
         class = "result-section paired-result-section regression-result-panel landscape-table-panel",
         tags$h3("Repeated-measures test: binary"),
         result_table_with_notes(
-          paired_rm_grouped_table(result$count_table, "count"),
-          result_note_tag(paired_rm_table_method_note(result$count_table)),
+          paired_rm_grouped_table(paired_main_table(result$count_table), "count", table_role = "main"),
+          result_note_tag(paired_main_note(paired_rm_table_method_note(result$count_table))),
           class = "result-table-with-note paired-fit-table-wrap"
         )
       )
@@ -573,29 +595,37 @@ paired_rm_results_ui <- function(result) {
         nrow(result$table) > 0
     ) {
       tags$div(
-        class = "result-section paired-result-section regression-result-panel landscape-table-panel",
+        class = "result-section paired-result-section regression-result-panel",
         tags$h3("Repeated-measures test"),
-        coefficient_html_table(result$table, note_line = paired_rm_method_note(result))
+        coefficient_html_table(
+          paired_main_table(result$table),
+          note_line = paired_main_note(paired_rm_method_note(result)),
+          table_role = "main"
+        )
       )
     },
     if (is.data.frame(result$posthoc) && nrow(result$posthoc) > 0) {
       tags$div(
-        class = "result-section paired-result-section regression-result-panel landscape-table-panel",
+        class = "result-section paired-result-section regression-result-panel",
         tags$h3("Post-hoc pairwise comparisons"),
-        coefficient_html_table(result$posthoc, note_line = paired_rm_posthoc_note(result))
+        coefficient_html_table(
+          paired_main_table(result$posthoc),
+          note_line = paired_main_note(paired_rm_posthoc_note(result), "multiplicity"),
+          table_role = "main"
+        )
       )
     },
     if (is.data.frame(paired_rm_assumption_review_table(result)) && nrow(paired_rm_assumption_review_table(result)) > 0) {
       tags$div(
         class = "result-section paired-result-section regression-result-panel",
-        tags$h3("\uac00\uc815 \uac80\ud1a0"),
-        model_overview_html_table(paired_rm_assumption_review_table(result))
+        tags$h3(result_appendix_ui_text("Assumption review")),
+        model_overview_html_table(paired_appendix_table(paired_rm_assumption_review_table(result)))
       )
     },
     analysis_diagnostics_section(
       NULL,
-      result$skipped,
-      title = "Warnings / skipped repeated-measures rows",
+      paired_appendix_localize_values(result$skipped),
+      title = paired_appendix_text("Warnings / skipped repeated-measures rows"),
       class = "result-section paired-result-section regression-result-panel paired-diagnostics-panel"
     )
   )

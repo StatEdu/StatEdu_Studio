@@ -183,6 +183,7 @@ longitudinal_ui_text <- function(text, language = statedu_initial_language()) {
     "IPW observation model" = h("49505720eab480ecb0b020ebaaa8ed9895"),
     "Auxiliary variables" = h("ebb3b4eca1b020ebb380ec8898"),
     "Assumption review" = h("eab080eca09520eca090eab280"),
+    "LMM structure" = "LMM 모형 구조",
     "Run assumption checks and recommendations" = h("eab080eca09520eca090eab28020ebb08f20eab68ceab3a020ec8ba4ed9689"),
     "Checks for selected model" = h("ec84a0ed839ded959c20ebaaa8ed9895ec9d9820eca090eab28020ed95adebaaa9"),
     "Run model" = h("ebaaa8ed989520ec8ba4ed9689"),
@@ -194,10 +195,7 @@ longitudinal_ui_text <- function(text, language = statedu_initial_language()) {
 }
 
 longitudinal_independent_variables_label <- function(n, language = statedu_initial_language()) {
-  if (identical(normalize_app_language(language), "ko")) {
-    return(sprintf("%s (%s)", statedu_utf8("eb8f85eba6bdebb380ec8898"), n))
-  }
-  sprintf("Independent variables (%s)", n)
+  sprintf(statedu_t("longitudinal.ui.independent_variables_count", normalize_app_language(language)), n)
 }
 
 longitudinal_ui_choices <- function(choices, language = statedu_initial_language()) {
@@ -217,6 +215,11 @@ longitudinal_ui_choices <- function(choices, language = statedu_initial_language
     "Exchangeable" = h("eab590ed9998eab080eb8aa5"),
     "Independence" = h("eb8f85eba6bd"),
     "Unstructured" = h("ebb984eab5aceca1b0ed9994"),
+    "Experimental: SPSS compatibility (custom GEE)" = "실험적 SPSS 호환 (자체 GEE 추정)",
+    "LMM structure" = "LMM 모형 구조",
+    "Random effects (ML)" = "랜덤효과 (ML)",
+    "Repeated UN (REML)" = "반복측정 비구조적 공분산 (REML)",
+    "Repeated AR(1) (REML)" = "반복측정 AR(1) 공분산 (REML)",
     "No weights" = h("eab080eca491ecb99820ec9786ec9d8c"),
     "Sampling / baseline longitudinal weight" = h("ed919cebb3b82feab8b0eca08020eca285eb8ba820eab080eca491ecb998"),
     "Time-varying longitudinal weight" = h("ec8b9ceab084ebb380ed999420eca285eb8ba820eab080eca491ecb998"),
@@ -593,8 +596,8 @@ longitudinal_weights_tab_content <- function(state) {
       if (isTRUE(weights_disabled)) {
         div(
           class = "longitudinal-disabled-notice",
-          tags$strong(if (identical(language, "ko")) statedu_utf8("ec9dbcecb0a8204c4d4d202f20474c4d4dec9790ec849ceb8a9420eab080eca491ecb998eab08020ebb984ed999cec84b1ed9994eb90a9eb8b88eb8ba42e") else "Weights are disabled for primary LMM / GLMM."),
-          tags$p(if (identical(language, "ko")) statedu_utf8("eab080eca49120ed98bced95a9ebaaa8ed989520ec9ab0eb8f84eb8a9420ec9db420ebaaa8eb9388ec9d9820eab8b0ebb3b820ebb684ec849dec9cbceba19c20eab68cec9ea5ed9598eca78020ec958aec8ab5eb8b88eb8ba42e20ec97b0eab5aceca788ebacb8ec979020eba79eeb8a9420eab080eca49120eca3bcebb38020eca285eb8ba820ecb694eba1a0ec9790eb8a9420474545eba5bc20ec82acec9aa9ed9598ec84b8ec9a942e") else "Weighted mixed-model likelihood is not recommended as a routine default in this module. Use GEE for weighted marginal longitudinal inference when it matches the research question.")
+          tags$strong(statedu_t("longitudinal.help.disabled", language)),
+          tags$p(statedu_t("longitudinal.help.mixed", language))
         )
       },
       div(
@@ -657,15 +660,15 @@ longitudinal_weights_tab_content <- function(state) {
         div(
           class = "longitudinal-missing-detail",
           if (length(state$weight) == 0) {
-            if (identical(language, "ko")) statedu_utf8("eab080eca491ecb99820ebb380ec8898eab08020ec84a0ed839deb9098eca78020ec958aec9598ec8ab5eb8b88eb8ba42e20eab080eca491ecb99820ec9786ec9db420ebaaa8ed9895ec9d8420ec8ba4ed9689ed95a9eb8b88eb8ba42e") else "No weight variable is selected; the model will run without analysis weights."
+            statedu_t("longitudinal.help.empty", language)
           } else if (identical(state$weight_type, "none")) {
-            if (identical(language, "ko")) statedu_utf8("eab080eca491ecb99820ebb380ec8898eab08020ec84a0ed839deb9098ec9788eca780eba78c20eab080eca491ecb99820ec9ca0ed9895ec9db420ec9786ec9d8cec9cbceba19c20eb9098ec96b420ec9e88ec8ab5eb8b88eb8ba42e20ec9dbcecb0a820ebaaa8ed9895ec9d8020ebb984eab080eca491ec9cbceba19c20ec8ba4ed9689eb90a9eb8b88eb8ba42e") else "A weight variable is selected, but the selected weight type is No weights; the primary model will be unweighted."
+            statedu_t("longitudinal.help.none", language)
           } else if (identical(state$model_type, "gee")) {
-            if (identical(language, "ko")) statedu_utf8("474545eb8a9420ec84a0ed839ded959c20eab080eca491ecb998eba5bc20eca781eca09120ec82acec9aa9ed95a9eb8b88eb8ba42e20ebaaa9ed919c20ebaaa8eca791eb8ba8eab3bc20eab080eca491ecb99820eab5acec84b120ebb0a9ec8b9dec9d8420ebaa85ec8b9ceca081ec9cbceba19c20ed95b4ec849ded9598ec84b8ec9a942e") else "GEE uses the selected weight directly; interpret the target population and weight construction explicitly."
+            statedu_t("longitudinal.help.gee", language)
           } else if (state$model_type %in% c("panel_fe", "panel_re")) {
-            if (identical(language, "ko")) statedu_utf8("ed8ca8eb849020ebaaa8ed9895ec9d8020eab080eca49120ed8ca8eb849020ecb694eca095ec9d8420ec82acec9aa9ed95a9eb8b88eb8ba42e20ebaaa9ed919c20ebaaa8eca791eb8ba8eab3bc20eab080eca491ecb99820eab5acec84b120ebb0a9ec8b9dec9d8420ebaa85ec8b9ceca081ec9cbceba19c20ed95b4ec849ded9598ec84b8ec9a942e") else "Panel models use weighted panel estimation; interpret the target population and weight construction explicitly."
+            statedu_t("longitudinal.help.panel", language)
           } else {
-            if (identical(language, "ko")) statedu_utf8("ebaaa9ed919c20ebaaa8eca791eb8ba8eab3bc20eab080eca491ecb99820eab5acec84b120ebb0a9ec8b9dec9d8420ebaa85ec8b9ceca081ec9cbceba19c20ed95b4ec849ded9598ec84b8ec9a942e") else "Interpret the target population and weight construction explicitly."
+            statedu_t("longitudinal.help.target", language)
           }
         )
       }
@@ -804,6 +807,13 @@ longitudinal_setup_panel <- function(state, status_message = NULL) {
                     class = "regression-field",
                     selectInput("longitudinal_corstr", longitudinal_ui_text("GEE correlation", language), choices = longitudinal_ui_choices(longitudinal_correlation_choices(), language), selected = state$corstr, selectize = FALSE)
                   )
+                },
+                if (identical(state$model_type, "lmm")) {
+                  div(class = "regression-field",
+                    selectInput("longitudinal_corstr", longitudinal_ui_text("LMM structure", language),
+                      choices = longitudinal_ui_choices(c("Random effects (ML)" = "exchangeable",
+                        "Repeated UN (REML)" = "reml_un", "Repeated AR(1) (REML)" = "reml_ar1"), language),
+                      selected = if (state$corstr %in% c("reml_un", "reml_ar1")) state$corstr else "exchangeable", selectize = FALSE))
                 }
               ),
               analysis_option_group(
@@ -812,7 +822,7 @@ longitudinal_setup_panel <- function(state, status_message = NULL) {
                   list(id = "longitudinal_include_time", label = longitudinal_ui_text("Include time as fixed effect", language), value = isTRUE(state$include_time))
                 )
               ),
-              if (state$model_type %in% c("lmm", "glmm")) {
+              if (state$model_type %in% c("lmm", "glmm") && !state$corstr %in% c("reml_un", "reml_ar1")) {
                 analysis_option_group(
                   longitudinal_ui_text("Random effects", language),
                   list(
@@ -894,7 +904,7 @@ longitudinal_setup_panel <- function(state, status_message = NULL) {
                     ),
                     div(
                       class = "longitudinal-missing-detail",
-                      if (identical(language, "ko")) statedu_utf8("eab2b0ecb8a12fed8388eb9dbd20eab480ecb0b0ebaaa8ed9895ec9790ec849c20ec9984eca084ed9e8820eab480ecb8a1eb909c20ebb3b4eca1b020ebb380ec8898eba78c20ec82acec9aa9ed95a9eb8b88eb8ba42e20ec9db420ebb380ec8898eb93a4ec9d8020eab3a0eca095ed9aa8eab3bc20ec9888ecb8a1ebb380ec8898eba19c20eb93a4ec96b4eab080eca78020ec958aec8ab5eb8b88eb8ba42e") else "Auxiliary variables are used only in the missingness/dropout observation model when fully observed; they do not become fixed-effect predictors."
+                      statedu_t("longitudinal.help.auxiliary", language)
                     )
                   )
                 }

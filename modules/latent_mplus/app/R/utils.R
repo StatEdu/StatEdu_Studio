@@ -4,6 +4,59 @@
   if (is.null(x)) y else x
 }
 
+statedu_query_value <- function(query_string, key) {
+  if (is.null(query_string) || !nzchar(query_string)) return("")
+  query_string <- sub("^\\?", "", as.character(query_string)[[1L]])
+  query_string <- sub("#.*$", "", query_string)
+  parts <- strsplit(query_string, "&", fixed = TRUE)[[1L]]
+  for (part in parts) {
+    pair <- strsplit(part, "=", fixed = TRUE)[[1L]]
+    if (length(pair) >= 1L && identical(utils::URLdecode(pair[[1L]]), key)) {
+      return(utils::URLdecode(paste(pair[-1L], collapse = "=")))
+    }
+  }
+  ""
+}
+
+statedu_url_query <- function(value) {
+  if (is.null(value) || !length(value)) return("")
+  value <- as.character(value)[[1L]]
+  if (!nzchar(value)) return("")
+  value <- sub("#.*$", "", value)
+  if (grepl("\\?", value)) value <- sub("^[^?]*\\?", "", value)
+  sub("^\\?", "", value)
+}
+
+statedu_request_token <- function(request = NULL) {
+  if (is.null(request)) return("")
+  request_value <- function(key) request[[key]] %||% ""
+  query_candidates <- c(
+    request_value("QUERY_STRING"),
+    statedu_url_query(request_value("REQUEST_URI"))
+  )
+  for (query_string in query_candidates) {
+    token <- statedu_query_value(query_string, "token")
+    if (nzchar(token)) return(token)
+  }
+  ""
+}
+
+statedu_request_token_authorized <- function(
+  request = NULL,
+  expected_token = Sys.getenv("STATEDU_TOKEN", "")
+) {
+  expected_token <- as.character(expected_token %||% "")[[1L]]
+  !nzchar(expected_token) || identical(statedu_request_token(request), expected_token)
+}
+
+statedu_token_rejection_response <- function() {
+  shiny::httpResponse(
+    status = 403L,
+    content_type = "text/plain; charset=UTF-8",
+    content = "Forbidden"
+  )
+}
+
 named_value <- function(x, name, default = "") {
   name <- as.character(name %||% "")
   name <- if (length(name) == 0 || is.na(name[[1]])) "" else name[[1]]

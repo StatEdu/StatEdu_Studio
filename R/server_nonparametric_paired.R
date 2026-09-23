@@ -15,9 +15,10 @@ register_nonparametric_paired_handlers <- function(
   repeated_groups <- reactiveVal(list())
   active_list <- reactiveVal(NULL)
   effect_size <- reactiveVal(TRUE)
-  median_iqr <- reactiveVal(FALSE)
+  median_iqr <- reactiveVal(TRUE)
+  add_mean_sd <- reactiveVal(FALSE)
   adjustment <- reactiveVal(statedu_multiple_correction_default())
-  result_value <- reactiveVal(NULL)
+  result_value <- analysis_scope_result_val(NULL)
 
   current_selected <- reactive(as.character(selected_names_fn() %||% character(0)))
   current_variable_table <- reactive(variable_table_fn())
@@ -50,6 +51,7 @@ register_nonparametric_paired_handlers <- function(
       selected_repeated = isolate(input$nonparametric_paired_repeated),
       effect_size = isolate(effect_size()),
       median_iqr = isolate(median_iqr()),
+      add_mean_sd = isolate(add_mean_sd()),
       adjustment = isolate(adjustment()),
       time_labels = isolate(current_time_labels()),
       language = language
@@ -74,6 +76,7 @@ register_nonparametric_paired_handlers <- function(
     effect_size(isTRUE(input$nonparametric_paired_effect_size))
   }, ignoreInit = TRUE)
 
+  observeEvent(input$nonparametric_paired_add_mean_sd, { add_mean_sd(isTRUE(input$nonparametric_paired_add_mean_sd)) })
   observeEvent(input$nonparametric_paired_median_iqr, {
     median_iqr(isTRUE(input$nonparametric_paired_median_iqr))
   }, ignoreInit = TRUE)
@@ -170,6 +173,15 @@ register_nonparametric_paired_handlers <- function(
     if (add_group(values)) session$sendCustomMessage("easyflow-clear-transfer-selection", list(inputIds = ids))
   }, ignoreInit = TRUE)
 
+  register_analysis_reorder(input, session, "nonparametric_paired_repeated", function(payload) {
+    values <- paired_group_values(repeated_groups())
+    updated <- analysis_reorder_items(values, payload)
+    if (isTRUE(updated$changed)) {
+      repeated_groups(paired_group_from_values(updated$order))
+      mark_settings_dirty()
+    }
+  })
+
   reorder_groups <- function(direction) {
     values <- paired_group_values(repeated_groups())
     updated <- move_order_item(values, input$nonparametric_paired_repeated, direction)
@@ -182,7 +194,11 @@ register_nonparametric_paired_handlers <- function(
   observeEvent(input$nonparametric_paired_up, reorder_groups("up"))
   observeEvent(input$nonparametric_paired_down, reorder_groups("down"))
 
-  observeEvent(input$run_nonparametric_paired, {
+  register_analysis_command_handler(
+    "run_nonparametric_paired", input, output, session,
+    states = list(repeated_groups = repeated_groups),
+    dataset_fn = dataset_fn, context_fn = function() list(selected = selected_names_fn(), variables = variable_table_fn(), labels = labels_fn(), categories = category_table_fn()),
+    run_fn = function() {
     result <- tryCatch(
       prepare_nonparametric_paired_unified_results(
         data = dataset_fn(),
@@ -192,7 +208,8 @@ register_nonparametric_paired_handlers <- function(
         category_table = category_table_fn(),
         options = list(
           effect_size = isTRUE(effect_size()),
-          median_iqr = isTRUE(median_iqr()),
+          add_mean_sd = isTRUE(add_mean_sd()),
+      median_iqr = isTRUE(median_iqr()),
           posthoc_adjustment = adjustment(),
           time_labels = current_time_labels()
         )

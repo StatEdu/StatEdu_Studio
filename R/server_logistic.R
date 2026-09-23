@@ -21,7 +21,7 @@ register_logistic_handlers <- function(
   logistic_show_b_se <- reactiveVal(FALSE)
   logistic_show_extra_r2 <- reactiveVal(TRUE)
   logistic_split_ci <- reactiveVal(FALSE)
-  logistic_results <- reactiveVal(NULL)
+  logistic_results <- analysis_scope_result_val(NULL)
 
   logistic_output_split_ci <- function() {
     !isTRUE(logistic_split_ci())
@@ -147,6 +147,15 @@ register_logistic_handlers <- function(
 
     logistic_setup_panel(setup, NULL)
   })
+
+  session$userData$scope_localization_factories$logistic_results <- function(results) {
+    args <- list(results, variable_table = variable_table_fn(), labels = labels_fn(),
+      category_table = category_table_fn(), show_b = logistic_show_b_se(),
+      show_se = logistic_show_b_se(), show_mcfadden = logistic_show_extra_r2(),
+      show_cox_snell = logistic_show_extra_r2(), split_ci = logistic_output_split_ci(),
+      output_table_style = analysis_output_table_style(input$logistic_output_table_style))
+    function() do.call(logistic_results_panel, args)
+  }
 
   output$logistic_results <- renderUI({
     results <- logistic_results()
@@ -313,7 +322,11 @@ register_logistic_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
-  observeEvent(input$run_logistic, {
+  register_analysis_command_handler(
+    "run_logistic", input, output, session,
+    states = list(logistic_dependents = logistic_dependents, logistic_block1 = logistic_block1, logistic_block2 = logistic_block2, logistic_block3 = logistic_block3),
+    dataset_fn = dataset_fn, context_fn = function() list(selected = selected_names_fn(), variables = variable_table_fn(), labels = labels_fn(), categories = category_table_fn()),
+    run_fn = function() {
     data <- dataset_fn()
     shiny::req(is.data.frame(data))
     tryCatch(
@@ -326,14 +339,16 @@ register_logistic_handlers <- function(
           block2 = compacted$block2,
           block3 = compacted$block3,
           variable_info = variable_table_fn(),
-          reference_values = logistic_reference_values_static(category_table_fn())
+          reference_values = logistic_reference_values_static(category_table_fn()),
+          category_table = category_table_fn()
         )
         logistic_results(results)
         showNotification(statedu_t("analysis.status.logistic_finished", statedu_current_language(app_language_fn)), type = "message")
       },
       error = function(e) {
         logistic_results(NULL)
-        showNotification(paste(statedu_t("analysis.status.logistic_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        language <- statedu_current_language(app_language_fn)
+        showNotification(paste(statedu_t("analysis.status.logistic_failed", language), logistic_error_ui_text(conditionMessage(e), language)), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
@@ -398,7 +413,8 @@ register_logistic_handlers <- function(
       show_se = options$show_se,
       show_mcfadden = options$show_mcfadden,
       show_cox_snell = options$show_cox_snell,
-      split_ci = options$split_ci
+      split_ci = options$split_ci,
+      output_table_style = options$output_table_style
     )
     showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
@@ -561,6 +577,14 @@ register_logistic_handlers <- function(
     }
   }, ignoreInit = TRUE)
 
+  register_analysis_reorder(input, session, "logistic_y", function(payload) {
+    updated <- analysis_reorder_items(logistic_dependents(), payload)
+    if (updated$changed) {
+      logistic_dependents(updated$order)
+      mark_settings_dirty()
+    }
+  })
+
   observeEvent(input$move_logistic_dependent_up, {
     updated <- move_order_item(logistic_dependents(), input$logistic_y, "up")
     if (updated$changed) {
@@ -573,6 +597,14 @@ register_logistic_handlers <- function(
     updated <- move_order_item(logistic_dependents(), input$logistic_y, "down")
     if (updated$changed) {
       logistic_dependents(updated$order)
+      mark_settings_dirty()
+    }
+  })
+
+  register_analysis_reorder(input, session, "logistic_block1", function(payload) {
+    updated <- analysis_reorder_items(logistic_block1(), payload)
+    if (updated$changed) {
+      logistic_block1(updated$order)
       mark_settings_dirty()
     }
   })
@@ -593,6 +625,14 @@ register_logistic_handlers <- function(
     }
   })
 
+  register_analysis_reorder(input, session, "logistic_block2", function(payload) {
+    updated <- analysis_reorder_items(logistic_block2(), payload)
+    if (updated$changed) {
+      logistic_block2(updated$order)
+      mark_settings_dirty()
+    }
+  })
+
   observeEvent(input$move_logistic_block2_up, {
     updated <- move_order_item(logistic_block2(), input$logistic_block2, "up")
     if (updated$changed) {
@@ -605,6 +645,14 @@ register_logistic_handlers <- function(
     updated <- move_order_item(logistic_block2(), input$logistic_block2, "down")
     if (updated$changed) {
       logistic_block2(updated$order)
+      mark_settings_dirty()
+    }
+  })
+
+  register_analysis_reorder(input, session, "logistic_block3", function(payload) {
+    updated <- analysis_reorder_items(logistic_block3(), payload)
+    if (updated$changed) {
+      logistic_block3(updated$order)
       mark_settings_dirty()
     }
   })

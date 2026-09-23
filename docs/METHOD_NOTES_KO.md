@@ -1,22 +1,41 @@
-# 방법론 노트
+# 방법론 노트 — StatEdu Studio 1.3.0
 
-이 문서는 **StatEdu Studio** 1.2.0에서 사용하는 주요 분석 기법의 선택 기준, 통계적 가정, 해석상 주의점을 정리한다. "왜 이 방법을 쓰는가", "결과를 어떻게 읽어야 하는가", "경고가 뜨면 무엇을 확인해야 하는가"를 설명하는 해석 중심 문서다.
+추정 원리, 가정, 산식, 진단과 해석을 기존 방법론 노트에서 확장합니다.
 
-앱 사용 절차는 `USER_GUIDE_KO.md`를 참고한다. 실제 구현된 분석 메뉴와 출력 항목 목록은 `ANALYSIS_METHODS_KO.md`를 참고한다.
+## 목차
 
-**StatEdu Studio**의 기본 방향은 사용자가 먼저 변수의 measurement level을 검토하고, 앱이 그 정보를 바탕으로 가능한 분석 방법을 자동 또는 반자동으로 선택하는 것이다. 분석이 불가능한 변수나 모델은 전체 분석을 중단시키지 않고 Warnings, Skipped analyses, Skipped models 형태로 분리해 표시한다.
+- [1. 측정수준](#method-1)
+- [2. 기술통계와 빈도분석](#method-2)
+- [3. 교차표 분석](#method-3)
+- [4. t-test / ANOVA](#method-4)
+- [5. 비모수 검정](#method-5)
+- [6. 대응표본 검정](#method-6)
+- [7. 상관분석](#method-7)
+- [8. 신뢰도 분석](#method-8)
+- [9. 요인분석](#method-9)
+- [10. 주성분분석](#method-10)
+- [11. 선형회귀](#method-11)
+- [12. 위계적 회귀](#method-12)
+- [13. 매개·조절 분석 방법론 노트](#method-13)
+- [14. 로지스틱 회귀](#method-14)
+- [15. 일반화선형모형(GLM)](#method-15)
+- [16. 규제 회귀(Ridge·LASSO·Elastic Net)](#method-16)
+- [17. 종단 / 패널 모형](#method-17)
+- [18. 복합표본분석 방법론 노트](#method-18)
+- [19. 기준값 요약](#method-19)
+- [20. 경고와 출력 생략 결과](#method-20)
+- [21. 저장 결과 해석](#method-21)
+- [22. 본문 인용 위치](#method-22)
+- [23. 참고문헌](#method-23)
+- [24. 표본수, 검정력, 효과크기 방법론 노트](#method-24)
+- [25. CFA, CB-SEM, 잠재조절 및 PLS-SEM 방법론 노트](#method-25)
+- [26. 생존분석의 추정대상과 해석](#method-26)
+- [27. 외부 검증 결과를 해석하는 원칙](#method-27)
+- [28. 중요도–수행도 분석(IPA)](#method-28)
 
-이 문서의 기준값은 두 종류로 구분한다. 첫째, **StatEdu Studio** 1.2.0 판정 기준은 앱이 실제로 방법 선택, 경고, 표시 여부를 결정할 때 사용하는 값이다. 둘째, 일반 해석 기준은 통계 교재와 방법론 문헌에서 자주 쓰이는 경험적 기준이며, 연구 분야와 자료 구조에 따라 달라질 수 있다. 기준값이 있는 결과는 숫자만 기계적으로 적용하지 말고 표본 수, 결측, 변수 수, 연구 설계, 효과크기, 신뢰구간을 함께 확인한다.
+<a id="method-1"></a>
 
-## Public 1.2 추가 분석 방법론 노트
-
-Public 1.2에는 다음 정식 Analysis workflow의 방법론 노트가 포함된다.
-
-- 혼합 반복측정 ANOVA: 6.1절 참고.
-- 평가자간 일치도: 8.1절 참고.
-- 매개·조절 사용자 정의 모델: 13.5절 참고.
-
-## 1. Measurement Level
+## 1. 측정수준
 
 분석 방법 선택의 핵심 입력은 변수의 measurement level이다.
 
@@ -27,11 +46,15 @@ Public 1.2에는 다음 정식 Analysis workflow의 방법론 노트가 포함�
 
 SAV 파일에서 가져온 값 라벨과 사용자가 Step 3에서 수정한 변수 라벨은 결과표의 가독성을 높이는 데 사용된다. 분석 전 Step 3에서 measurement level과 라벨을 확인하는 것이 중요하다.
 
+<a id="method-2"></a>
+
 ## 2. 기술통계와 빈도분석
 
 범주형 변수는 빈도와 백분율을 중심으로 요약한다. 값 라벨이 있으면 라벨을 표시한다.
 
 연속형 변수는 N, 결측 수, 평균, 표준편차, 중앙값, IQR, 최솟값, 최댓값, 왜도, 첨도를 함께 제시한다. 평균과 표준편차는 정규분포에 가까운 자료에서 중심과 산포를 설명하기 좋고, 중앙값과 IQR은 비대칭 분포나 이상값이 있는 자료에서 보조적으로 중요하다.
+
+<a id="method-3"></a>
 
 ## 3. 교차표 분석
 
@@ -44,7 +67,9 @@ SAV 파일에서 가져온 값 라벨과 사용자가 Step 3에서 수정한 변
 - ordered x ordered 조합에서는 score-based ordered-by-ordered trend association을 사용한다.
 - 효과크기는 2 x 2 표에서 odds ratio, 일반 교차표에서 Cramer's V, trend 분석에서 trend odds ratio 또는 Goodman-Kruskal gamma를 표시한다.
 
-**StatEdu Studio** 1.2.0 판정 기준: 기대빈도 5 미만인 셀이 전체 셀의 20% 이상이면 Pearson chi-square test의 근사 p 값이 불안정할 수 있다고 보고 Fisher's exact test를 사용한다. 이때 전체 셀 수가 20개를 초과하면 Fisher's exact test with Monte Carlo simulation을 사용하며, Monte Carlo simulation 반복 수는 10,000회다. 이 기준은 교차표 분석에서 널리 쓰이는 기대빈도 경험칙을 반영한 것이며, 셀 수가 크거나 표본이 매우 불균형한 경우에는 빈도표 자체를 함께 해석해야 한다(Agresti, 2013).
+**StatEdu Studio** 1.3.0 판정 기준: 기대빈도 5 미만인 셀이 전체 셀의 20% 이상이면 Pearson chi-square test의 근사 p 값이 불안정할 수 있다고 보고 Fisher's exact test를 사용한다. 이때 전체 셀 수가 20개를 초과하면 Fisher's exact test with Monte Carlo simulation을 사용하며, Monte Carlo simulation 반복 수는 10,000회다. 이 기준은 교차표 분석에서 널리 쓰이는 기대빈도 경험칙을 반영한 것이며, 셀 수가 크거나 표본이 매우 불균형한 경우에는 빈도표 자체를 함께 해석해야 한다(Agresti, 2013).
+
+<a id="method-4"></a>
 
 ## 4. t-test / ANOVA
 
@@ -54,7 +79,7 @@ t-test / ANOVA는 연속형 종속변수를 집단 변수에 따라 비교할 �
 
 정규성은 옵션에 따라 왜도/첨도 기준, Kolmogorov-Smirnov test, Shapiro-Wilk test를 사용한다(Curran, West, & Finch, 1996; Shapiro & Wilk, 1965). 등분산성은 Levene 방식의 검정을 사용하며, 각 집단 중앙값 기준 절대편차에 대해 ANOVA를 적용해 p 값을 계산한다(Levene, 1960; Fisher, 1935).
 
-**StatEdu Studio** 1.2.0 판정 기준: 왜도/첨도 방식은 `|skewness| <= 2`이고 `|excess kurtosis| <= 7`이면 정규성 만족으로 본다(Curran, West, & Finch, 1996). Kolmogorov-Smirnov와 Shapiro-Wilk 방식은 p 값이 `.05` 이상이면 정규성을 기각하지 않은 것으로 본다(Shapiro & Wilk, 1965). Shapiro-Wilk 검정은 유효 표본 수가 3 이상 5,000 이하인 경우에만 계산한다. Kolmogorov-Smirnov 그룹별 검정은 그룹별 유효 표본 수가 5 미만이거나 표준편차가 0이면 해당 그룹 p 값을 계산하지 않는다. 등분산성은 Levene 방식 p 값이 `.05` 이상이면 만족으로 본다(Levene, 1960).
+**StatEdu Studio** 1.3.0 판정 기준: 왜도/첨도 방식은 `|skewness| <= 2`이고 `|excess kurtosis| <= 7`이면 정규성 만족으로 본다(Curran, West, & Finch, 1996). Kolmogorov-Smirnov와 Shapiro-Wilk 방식은 p 값이 `.05` 이상이면 정규성을 기각하지 않은 것으로 본다(Shapiro & Wilk, 1965). Shapiro-Wilk 검정은 유효 표본 수가 3 이상 5,000 이하인 경우에만 계산한다. Kolmogorov-Smirnov 그룹별 검정은 그룹별 유효 표본 수가 5 미만이거나 표준편차가 0이면 해당 그룹 p 값을 계산하지 않는다. 등분산성은 Levene 방식 p 값이 `.05` 이상이면 만족으로 본다(Levene, 1960).
 
 ### 두 집단 비교
 
@@ -70,6 +95,8 @@ t-test / ANOVA는 연속형 종속변수를 집단 변수에 따라 비교할 �
 
 사후검정은 주검정과 옵션에 따라 명확히 나뉜다. One-way ANOVA 뒤에는 Tukey HSD, Duncan multiple range test, Scheffe post-hoc test, Bonferroni post-hoc test 중 선택한 방법을 사용한다. Welch ANOVA 뒤에는 Games-Howell을 사용한다. Kruskal-Wallis test 뒤에는 pairwise Wilcoxon rank-sum test를 사용하고 p 값 보정은 Bonferroni correction 또는 Holm Bonferroni 중 선택한다.
 
+<a id="method-5"></a>
+
 ## 5. 비모수 검정
 
 Standalone Nonparametric Tests는 자료가 정규성 가정을 만족하기 어렵거나 ordinal 종속변수를 비교할 때 사용한다.
@@ -80,7 +107,9 @@ Standalone Nonparametric Tests는 자료가 정규성 가정을 만족하기 어
 
 비모수 검정은 순위 기반 검정이므로 평균 차이보다 분포 위치 차이 또는 순위 차이에 가깝게 해석한다.
 
-## 6. Paired Tests
+<a id="method-6"></a>
+
+## 6. 대응표본 검정
 
 Paired test는 같은 대상에서 두 시점 또는 두 조건을 반복 측정한 값을 비교할 때 사용한다.
 
@@ -104,6 +133,8 @@ Paired test는 같은 대상에서 두 시점 또는 두 조건을 반복 측정
 
 PP 경로는 선택한 반복 outcome과 모형 변수에 완전한 행을 사용한다. available-case ITT 성격의 혼합모형 대안은 선택 및 적합 가능한 경우 관측된 반복측정 행을 활용하지만, 결측 패턴과 민감도 분석 가정을 보고해야 한다는 점은 그대로 남는다.
 
+<a id="method-7"></a>
+
 ## 7. 상관분석
 
 상관분석은 변수 조합과 measurement level에 따라 방법을 자동 선택한다.
@@ -120,7 +151,9 @@ PP 경로는 선택한 반복 outcome과 모형 변수에 완전한 행을 사�
 
 복합표본 상관분석은 survey design을 사용해 가중 공분산을 추정한다. Pearson correlation은 설계기반 공분산행렬에서 계산하며, 순서형 변수는 공분산 추정 전에 ordinal score로 변환한다. Spearman correlation은 각 numeric 또는 ordinal score를 순위 변환한 뒤 같은 설계기반 공분산 접근을 적용한다. 표준오차와 신뢰구간은 delta-method 근사를 사용하며, 여러 변수쌍의 p 값은 Holm-Bonferroni, Bonferroni, Benjamini-Hochberg FDR 보정 중 선택해 조정할 수 있다.
 
-**StatEdu Studio** 1.2.0 판정 기준: continuous x continuous 조합에서 자동 선택을 사용할 때 각 변수의 `|skewness| <= 2`, `|excess kurtosis| <= 7` 기준을 모두 만족하면 Pearson correlation을 사용하고, 하나라도 만족하지 않으면 Spearman correlation을 사용한다(Curran, West, & Finch, 1996).
+**StatEdu Studio** 1.3.0 판정 기준: continuous x continuous 조합에서 자동 선택을 사용할 때 각 변수의 `|skewness| <= 2`, `|excess kurtosis| <= 7` 기준을 모두 만족하면 Pearson correlation을 사용하고, 하나라도 만족하지 않으면 Spearman correlation을 사용한다(Curran, West, & Finch, 1996).
+
+<a id="method-8"></a>
 
 ## 8. 신뢰도 분석
 
@@ -130,7 +163,7 @@ PP 경로는 선택한 반복 outcome과 모형 변수에 완전한 행을 사�
 - ordinal 문항에서는 polychoric 기반 신뢰도 지표가 보조적으로 중요하다.
 - item-total correlation과 item deleted 지표는 특정 문항이 전체 척도와 맞지 않는지 판단하는 데 사용한다.
 
-**StatEdu Studio** 1.2.0 판정 기준: 정규성 옵션을 사용할 때 각 문항의 `|skewness| < 2`, `|excess kurtosis| < 7` 기준을 모두 만족하면 Pearson 기반 신뢰도 해석을 우선하고, 만족하지 않거나 ordinal 문항이면 polychoric 기반 지표를 보조적으로 확인한다(Curran, West, & Finch, 1996). Cronbach's alpha와 omega에는 앱 차원의 고정 합격/불합격 기준을 두지 않는다.
+**StatEdu Studio** 1.3.0 판정 기준: 정규성 옵션을 사용할 때 각 문항의 `|skewness| < 2`, `|excess kurtosis| < 7` 기준을 모두 만족하면 Pearson 기반 신뢰도 해석을 우선하고, 만족하지 않거나 ordinal 문항이면 polychoric 기반 지표를 보조적으로 확인한다(Curran, West, & Finch, 1996). Cronbach's alpha와 omega에는 앱 차원의 고정 합격/불합격 기준을 두지 않는다.
 
 서열형 신뢰도 워크플로에서 ordinal alpha와 ordinal omega는 polychoric 상관행렬을 기반으로 계산한다. 서열형 문항의 item-total correlation과 corrected item-total correlation은 Spearman 상관으로 계산하므로, Pearson 상관을 쓰는 SPSS 출력과 다를 수 있다.
 
@@ -148,6 +181,8 @@ PP 경로는 선택한 반복 outcome과 모형 변수에 완전한 행을 사�
 
 보고할 때는 권장 지표를 먼저 제시하고, 보조 지표가 결론을 바꿀 정도로 다르면 그 이유를 설명한다. 순서형 문자 라벨은 weighted statistic에 영향을 주므로 Step 3 category table 순서를 확인해야 한다. 평가자가 모든 사례를 평가하지 않은 경우 결측 평정 패턴을 함께 보고한다.
 
+<a id="method-9"></a>
+
 ## 9. 요인분석
 
 탐색적 요인분석은 여러 관측 문항 뒤에 있는 잠재요인 구조를 탐색할 때 사용한다(Kaiser, 1974; Bartlett, 1954).
@@ -157,9 +192,11 @@ PP 경로는 선택한 반복 outcome과 모형 변수에 완전한 행을 사�
 - 요인 수는 eigenvalue >= 1.0 기준 또는 사용자가 지정한 fixed number of factors를 사용한다. Parallel analysis는 현재 자동 선택 기준으로 구현되어 있지 않다.
 - KMO와 Bartlett 검정은 요인분석 적합성을 판단하는 보조 지표다.
 
-**StatEdu Studio** 1.2.0 판정 기준: 표본 수가 100 미만이면 경고를 표시한다. 사례 수 대 변수 수 비율이 5:1 미만이면 강한 주의가 필요하다고 표시하고, 5:1 이상 10:1 미만이면 조심스럽게 해석하라는 경고를 표시한다. 정규성 옵션에서 왜도/첨도 방식을 쓰면 각 문항의 `|skewness| < 2`, `|excess kurtosis| < 7` 기준을 사용한다(Curran, West, & Finch, 1996). Mardia 방식을 쓰면 skewness p 값과 kurtosis p 값이 모두 `.05` 이상일 때 다변량 정규성을 기각하지 않은 것으로 본다(Mardia, 1970).
+**StatEdu Studio** 1.3.0 판정 기준: 표본 수가 100 미만이면 경고를 표시한다. 사례 수 대 변수 수 비율이 5:1 미만이면 강한 주의가 필요하다고 표시하고, 5:1 이상 10:1 미만이면 조심스럽게 해석하라는 경고를 표시한다. 정규성 옵션에서 왜도/첨도 방식을 쓰면 각 문항의 `|skewness| < 2`, `|excess kurtosis| < 7` 기준을 사용한다(Curran, West, & Finch, 1996). Mardia 방식을 쓰면 skewness p 값과 kurtosis p 값이 모두 `.05` 이상일 때 다변량 정규성을 기각하지 않은 것으로 본다(Mardia, 1970).
 
 요인적재량과 문항 판단 기준: 앱은 절대값 `.30` 미만의 적재량을 기본적으로 숨기며, 주적재량이 `.30` 미만이면 낮은 주적재량으로 표시한다. 주된 요인이 아닌 다른 요인에도 절대값 `.30` 이상으로 적재되면 교차적재로 볼 수 있다. 공통성 `h²`가 `.30` 미만이면 문항이 공통요인으로 충분히 설명되지 않을 수 있고, `.90` 초과이면 중복성이나 추정 불안정성을 의심할 수 있다. complexity가 `2` 이상이면 여러 요인에 걸친 문항일 가능성이 있다.
+
+<a id="method-10"></a>
 
 ## 10. 주성분분석
 
@@ -169,7 +206,9 @@ PCA는 문항이나 변수의 정보를 더 적은 수의 성분으로 축약하
 - 성분 수는 eigenvalue >= 1.0, fixed number of components, cumulative variance >= 지정값 중 하나의 기준으로 선택한다.
 - scree plot과 component plot은 성분 수와 구조를 판단하는 보조 자료다.
 
-**StatEdu Studio** 1.2.0 판정 기준: 누적 설명분산 기준을 사용할 때 기본값은 70%다. 성분적재량 표시는 요인분석과 같이 절대값 `.30`을 기본 표시 기준으로 사용한다. KMO와 Bartlett 검정은 PCA에서도 변수들이 충분한 공유 정보를 갖는지 확인하는 보조 진단으로 표시한다(Kaiser, 1974; Bartlett, 1954).
+**StatEdu Studio** 1.3.0 판정 기준: 누적 설명분산 기준을 사용할 때 기본값은 70%다. 성분적재량 표시는 요인분석과 같이 절대값 `.30`을 기본 표시 기준으로 사용한다. KMO와 Bartlett 검정은 PCA에서도 변수들이 충분한 공유 정보를 갖는지 확인하는 보조 진단으로 표시한다(Kaiser, 1974; Bartlett, 1954).
+
+<a id="method-11"></a>
 
 ## 11. 선형회귀
 
@@ -182,7 +221,7 @@ PCA는 문항이나 변수의 정보를 더 적은 수의 성분으로 축약하
 - 자기상관: Durbin-Watson statistic과 dL/dU 기준(Durbin & Watson, 1950, 1951).
 - 다중공선성: VIF(O'Brien, 2007).
 
-**StatEdu Studio** 1.2.0 판정 기준: 잔차 정규성과 잔차의 등분산성 검정은 p 값이 `.05`보다 크면 가정을 기각하지 않은 것으로 본다(Breusch & Pagan, 1979). Durbin-Watson 판단은 임계값 표의 `dL`, `dU`를 사용한다. `dU < d < 4 - dU`이면 독립성 만족으로 표시하고, `d < dL` 또는 `d > 4 - dL`이면 자기상관 가능성이 높다고 표시한다. 그 사이 구간은 inconclusive로 표시한다(Durbin & Watson, 1950, 1951). VIF는 최대값이 `5`를 초과하면 주의, `10`을 초과하면 심각한 다중공선성으로 표시한다(O'Brien, 2007).
+**StatEdu Studio** 1.3.0 판정 기준: 잔차 정규성과 잔차의 등분산성 검정은 p 값이 `.05`보다 크면 가정을 기각하지 않은 것으로 본다(Breusch & Pagan, 1979). Durbin-Watson 판단은 임계값 표의 `dL`, `dU`를 사용한다. `dU < d < 4 - dU`이면 독립성 만족으로 표시하고, `d < dL` 또는 `d > 4 - dL`이면 자기상관 가능성이 높다고 표시한다. 그 사이 구간은 inconclusive로 표시한다(Durbin & Watson, 1950, 1951). VIF는 최대값이 `5`를 초과하면 주의, `10`을 초과하면 심각한 다중공선성으로 표시한다(O'Brien, 2007).
 
 | 잔차 정규성 | 잔차의 등분산성 | 출력 방식 |
 |---|---|---|
@@ -193,17 +232,32 @@ PCA는 문항이나 변수의 정보를 더 적은 수의 성분으로 축약하
 
 HC3 robust standard errors는 잔차의 이분산성이 있을 때 표준오차와 p 값의 왜곡을 줄이기 위한 보정이다(White, 1980; MacKinnon & White, 1985). Bootstrap confidence interval과 bootstrap p value는 잔차 정규성 가정이 약할 때 보조적인 추론으로 사용한다(Efron & Tibshirani, 1993).
 
+HC3가 적용되면 개별 계수뿐 아니라 전체 모형의 비절편 계수 공동검정도 HC3 공분산 행렬에 기반한 `Robust Wald F`로 계산한다. R²와 adjusted R²는 여전히 OLS 적합도이므로 robust 적합도 지수로 오해하지 않는다. 모형행렬이 rank deficient이면 완전 다중공선성 때문에 계수가 유일하게 식별되지 않으므로 결과를 생성하지 않는다.
+
+잔차 정규성 및 Breusch-Pagan p값에 따른 자동 선택은 진단을 구조화한 휴리스틱이지, 자료가 특정 추정법을 참이라고 증명하는 사전검정 절차가 아니다. 표본이 크면 정규성 검정이 사소한 이탈에도 민감하고, 표본이 작으면 중요한 이탈을 놓칠 수 있다. SCI 보고에서는 연구설계와 사전 분석계획에 근거해 OLS/HC3/bootstrap을 정하고, 자동 선택 결과는 잔차 그림과 민감도 분석으로 확인한다.
+
 Bootstrap 반복 수는 1,000, 5,000, 10,000, 20,000, 50,000 중 선택할 수 있으며, 앱은 50,000회를 권장 옵션으로 표시한다. 1,000회는 빠른 확인용으로 적합하고, 보고서에 사용할 최종 추정에서는 가능한 한 더 큰 반복 수를 사용하는 것이 좋다(Efron & Tibshirani, 1993).
+
+Bootstrap 계수표와 Delta R²에는 요청/유효 반복수와 유효 비율을 함께 제시한다. 80% 이상은 `Adequate`, 50% 이상 80% 미만은 `Caution`, 50% 미만 또는 유효 반복 20회 미만은 `Unreliable`이며, Unreliable에서는 CI와 bootstrap p값을 보고하지 않는다. BC는 기본값이고 percentile을 민감도 분석으로 선택할 수 있지만, BC를 모든 자료에서 우월한 방법으로 간주하지 않는다.
+
+<a id="method-12"></a>
 
 ## 12. 위계적 회귀
 
 위계적 회귀는 예측변수를 블록 단위로 추가하면서 설명력 증가를 평가한다.
 
-- Model 1: Block 1.
-- Model 2: Block 1 + Block 2.
-- Model 3: Block 1 + Block 2 + Block 3.
+위계적 회귀는 최대 4개 블록을 지원합니다. 각 단계에서는 앞선 블록의 변수를 유지하고 다음 블록을 추가합니다.
+
+- 모형 1: 블록 1.
+- 모형 2: 블록 1 + 블록 2.
+- 모형 3: 블록 1 + 블록 2 + 블록 3.
+- 모형 4: 블록 1 + 블록 2 + 블록 3 + 블록 4.
 
 각 모델은 선형회귀와 같은 진단 및 보정 로직을 사용한다. 핵심 해석은 각 단계의 R², adjusted R², ΔR², nested model comparison p 값이다.
+
+블록 간 비교는 최종모형의 모든 변수에 대한 완전사례로 표본을 먼저 고정한 뒤 수행한다. OLS 모형은 고전적 F-change, HC3 모형은 추가 블록 계수의 Robust Wald F, bootstrap 모형은 각 반복에서 동일한 사례 인덱스를 사용해 짝지은 ΔR² 신뢰구간을 보고한다. 블록 순서는 결과에 맞춰 바꾸지 말고 이론 또는 사전계획으로 정해야 한다.
+
+<a id="method-13"></a>
 
 ## 13. 매개·조절 분석 방법론 노트
 
@@ -212,6 +266,8 @@ Bootstrap 반복 수는 1,000, 5,000, 10,000, 20,000, 50,000 중 선택할 수 �
 ### 13.1 매개효과
 
 간접효과는 보통 `a * b`로 계산한다. `a`는 X -> M 경로, `b`는 M -> Y 경로다. 간접효과의 표본분포는 비대칭인 경우가 많으므로 bootstrap 신뢰구간을 우선 해석한다. 신뢰구간이 0을 포함하지 않으면 간접효과가 통계적으로 유의하다고 보고할 수 있다.
+
+앱의 기본 신뢰구간은 bias-corrected(BC)이며 percentile을 민감도 분석으로 선택할 수 있다. BC는 관측된 bootstrap 편향을 보정하지만 BCa의 acceleration 보정까지 포함하지 않으며, 모든 표본과 분포에서 percentile보다 항상 우월하다고 해석해서는 안 된다. 효과 표의 bootstrap p값은 0 이하/이상 재표집 비율에 plus-one 보정을 적용한 양측 부호검정형 값이다. 요청 반복 중 유효값이 80% 이상이면 `Adequate`, 50% 이상 80% 미만이면 `Caution`으로 표시하고, 50% 미만이거나 유효 반복이 20회 미만이면 CI와 p값을 억제한다. 최종 논문에는 요청 반복수뿐 아니라 유효 반복수와 비율도 함께 보고한다.
 
 총효과가 유의하지 않아도 간접효과가 유의할 수 있다. 이 경우 효과 방향, 직접효과와 간접효과의 부호, 억제효과 가능성, 이론적 설명을 함께 검토한다.
 
@@ -227,16 +283,19 @@ Bootstrap 반복 수는 1,000, 5,000, 10,000, 20,000, 50,000 중 선택할 수 �
 
 ### 13.4 보고 원칙
 
-- 사용 모형 번호와 변수 역할을 명시한다.
+- 캔버스에서 지정한 변수 역할, 경로, 상호작용 및 공변량의 투입 방정식을 명시한다. 모형 번호는 입력 조건이나 보고의 필수 항목이 아니다.
 - bootstrap 반복 수, 신뢰구간 방법, 평균중심화 여부를 보고한다.
+- bootstrap 요청/유효 반복수와 유효 비율, BC 또는 percentile 선택을 보고하고 Caution 상태에서는 민감도 분석을 확인한다.
 - 공변량을 포함했다면 어떤 방정식에 포함됐는지 설명한다.
 - 간접효과와 조건부 간접효과는 점추정, 신뢰구간, W 기준값을 함께 제시한다.
 - 조절효과는 상호작용 계수만 보고하지 말고 단순기울기 또는 Johnson-Neyman 결과를 함께 보고한다.
-- 다중 독립변수를 넣은 경우 각 초점 X 분석에서 나머지 독립변수가 공변량으로 들어갔음을 밝힌다.
+- 여러 독립변수를 사용하면 각 방정식에 실제로 포함한 예측변수와 공변량을 보고한다.
 
-### 13.5 매개·조절 사용자 정의 모델
+### 13.5 캔버스의 경로 구조와 분석 명세
 
-매개·조절 사용자 정의 모델 캔버스는 같은 매개·조절 분석 엔진에 모형 구조를 전달하는 입력 및 모형 인식 workflow다. 별도의 추정법을 새로 정의하는 기능은 아니다. 표준 `매개·조절` 메뉴와 마찬가지로 인식된 모형 번호, 변수 역할, bootstrap 설정, 지원되지 않거나 제외된 경로를 함께 보고한다.
+매개·조절효과는 캔버스에서 지정한 경로 구조를 회귀 방정식으로 표현해 추정한다. 모형 번호를 선택하는 분석이 아니며, 사용자가 그린 경로와 변수 역할이 분석 명세다. 지원하지 않는 구조는 실행 전에 안내하고, 제외된 경로나 변경된 명세는 결과 해석에 반영한다.
+
+<a id="method-14"></a>
 
 ## 14. 로지스틱 회귀
 
@@ -246,9 +305,17 @@ Bootstrap 반복 수는 1,000, 5,000, 10,000, 20,000, 50,000 중 선택할 수 �
 - ordered dependent: ordinal logistic regression.
 - categorical dependent: multinomial logistic regression.
 
+최종 완전사례 표본에서 outcome 수준이 두 개이면 명목형 또는 순서형 메타데이터와 관계없이 binary logit을 적합한다. 순서형 outcome은 `ordinal::clm` cumulative-logit 모형과 중첩된 nominal-effects 우도비 검정으로 비례오즈 가정을 평가한다. 위계적 분석에서는 최종 모형의 판정을 모든 단계에 적용하여 같은 완전사례 표본과 같은 모형군에서 우도비 변화량을 비교한다.
+
 로지스틱 회귀의 계수는 선형회귀의 평균 차이처럼 직접 해석하지 않고, odds ratio 또는 log-odds 변화 관점에서 해석한다(Agresti, 2013).
 
-**StatEdu Studio** 1.2.0 판정 기준: 로지스틱 회귀에서도 VIF 최대값이 `5`를 초과하면 개별 계수 해석 주의, `10`을 초과하면 심각한 다중공선성 경고를 표시한다(O'Brien, 2007). sparse cell과 separation risk가 있는 경우에는 odds ratio가 매우 커지거나 신뢰구간이 넓어질 수 있으므로, p 값보다 빈도 구조와 사건 수를 먼저 확인한다(Agresti, 2013).
+**StatEdu Studio** 1.3.0 판정 기준: 로지스틱 회귀에서도 VIF 최대값이 `5`를 초과하면 개별 계수 해석 주의, `10`을 초과하면 심각한 다중공선성 경고를 표시한다(O'Brien, 2007). sparse cell과 separation risk가 있는 경우에는 odds ratio가 매우 커지거나 신뢰구간이 넓어질 수 있으므로, p 값보다 빈도 구조와 사건 수를 먼저 확인한다(Agresti, 2013).
+
+완전 다중공선성 또는 비수렴 모형은 추론 결과를 출력하지 않는다. outcome의 최소 수준 사례 수를 예측변수 모수 자유도로 나눈 근사 진단은 불안정성 screen이며 보편적 표본수 규칙이 아니다. OR 신뢰구간은 large-sample Wald 구간이므로 sparse data와 separation에서는 신뢰할 수 없을 수 있다.
+
+이항모형의 AUC, Brier score, Tjur R², log loss와 순서형·다항모형의 accuracy·확률점수는 모두 estimation sample에서 계산한 apparent diagnostic이다. 이를 검증된 예측성능으로 보고하려면 cross-validation, bootstrap optimism correction, 시간적 검증 또는 외부 검증이 별도로 필요하다. 연속형 예측변수의 logit 선형성, 영향점, multinomial IIA, Firth/bias-reduced estimation, partial proportional-odds 모형은 자동화하지 않으므로 연구 맥락에 따라 사전 지정 민감도 분석으로 보완한다.
+
+<a id="method-15"></a>
 
 ## 15. 일반화선형모형(GLM)
 
@@ -269,7 +336,9 @@ SCI 투고용 보고에서는 family/link, offset/exposure 여부, robust SE 종
 
 **참고문헌.** McCullagh & Nelder (1989), Agresti (2013), White (1980), MacKinnon & White (1985).
 
-## 16. Penalized Regression
+<a id="method-16"></a>
+
+## 16. 규제 회귀(Ridge·LASSO·Elastic Net)
 
 다중공선성이 심각한 회귀모형에서는 Ridge regression, LASSO regression, Elastic Net regression을 보조 분석으로 사용할 수 있다(Tibshirani, 1996; Zou & Hastie, 2005; Friedman, Hastie, & Tibshirani, 2010).
 
@@ -278,6 +347,10 @@ SCI 투고용 보고에서는 family/link, offset/exposure 여부, robust SE 종
 - Elastic Net은 Ridge와 LASSO의 성격을 함께 가진다(Zou & Hastie, 2005).
 
 Penalized regression은 기본 회귀 결과를 대체하기보다, 심각한 다중공선성이 있을 때 예측변수 구조를 점검하는 보조 도구로 해석한다(Friedman, Hastie, & Tibshirani, 2010).
+
+규제 강도 λ와 Ridge·LASSO의 혼합 비율 α를 구분한다. 예측변수 표준화, 교차검증 분할과 λ 선택 기준을 보고하고, 같은 자료에서 선택한 변수에 일반 OLS의 p값을 그대로 적용하지 않는다. 예측 성능은 학습 표본의 적합도와 구분해 교차검증 또는 외부 자료에서 평가한다.
+
+<a id="method-17"></a>
 
 ## 17. 종단 / 패널 모형
 
@@ -347,6 +420,8 @@ SCI 투고용 보고에서는 다음 항목을 명시한다.
 
 **참고문헌.** Liang & Zeger (1986), Halekoh, Hojsgaard, & Yan (2006), Pinheiro & Bates (2000), Bates, Machler, Bolker, & Walker (2015), Croissant & Millo (2008), McCullagh & Nelder (1989).
 
+<a id="method-18"></a>
+
 ## 18. 복합표본분석 방법론 노트
 
 복합표본분석은 표본추출 설계를 반영해 점추정, 표준오차, 검정통계량, 자유도를 계산한다. 층화, 집락/PSU, 불균등 추출확률, 사후보정 가중치가 있는 자료를 단순 무작위표본처럼 분석하면 표준오차와 p값이 과소 또는 과대 추정될 수 있다.
@@ -383,9 +458,11 @@ Taylor linearization은 일반적인 복합표본 평균, 비율, 회귀계수�
 - 설계 df, 표준오차, 신뢰구간을 p값과 함께 제시한다.
 - 공공자료는 자료 제공기관의 분석 지침과 앱 설정이 일치하는지 확인한다.
 
+<a id="method-19"></a>
+
 ## 19. 기준값 요약
 
-다음 표는 **StatEdu Studio** 1.2.0에서 실제 판정이나 경고에 사용하는 주요 기준값을 요약한 것이다.
+다음 표는 **StatEdu Studio** 1.3.0에서 실제 판정이나 경고에 사용하는 주요 기준값을 요약한 것이다.
 
 | 영역 | 기준값 | **StatEdu Studio**에서의 의미 |
 |---|---:|---|
@@ -415,9 +492,11 @@ Taylor linearization은 일반적인 복합표본 평균, 비율, 회귀계수�
 
 이 표의 기준값은 해석 출발점이다. 특히 `.05`, `.30`, `.70`, `5`, `10` 같은 값은 연구 맥락과 자료 품질을 무시하고 단독으로 결론을 내리는 절단값이 아니다.
 
-## 20. Warnings와 Skipped Results
+<a id="method-20"></a>
 
-**StatEdu Studio** 버전 1.2.0에서는 분석 중 문제가 발견되면 가능한 결과는 유지하고, 문제가 있는 조합만 분리해 표시한다.
+## 20. 경고와 출력 생략 결과
+
+**StatEdu Studio** 버전 1.3.0에서는 분석 중 문제가 발견되면 가능한 결과는 유지하고, 문제가 있는 조합만 분리해 표시한다.
 
 대표적인 경고와 제외 사유는 다음과 같다.
 
@@ -434,9 +513,11 @@ Taylor linearization은 일반적인 복합표본 평균, 비율, 회귀계수�
 
 Warnings는 결과 해석의 주의 조건이고, Skipped analyses / Skipped models는 해당 분석 조합이 결과표에서 제외되었음을 뜻한다. 경고가 있는 경우 p 값보다 데이터 구조와 제외 사유를 먼저 확인한다.
 
+<a id="method-21"></a>
+
 ## 21. 저장 결과 해석
 
-HTML, PDF 저장 결과는 앱 화면의 결과표를 연구 보고서나 논문 작성에 옮기기 쉽게 정리한 것이다. Excel, Word 결과 저장은 public 1.2에서는 숨겨져 있으며 이후 Pro 기능으로 분리할 예정이다. 저장된 표는 분석 판단을 자동으로 대체하지 않는다.
+HTML 저장 결과는 앱 화면의 결과표를 연구 보고서나 논문 작성에 옮기기 쉽게 정리한 것이다. 1.3.0 공개판에서는 HTML, PDF, Excel, Word 저장을 제공하며 화면의 결과 구성과 주석을 공통으로 반영한다. 매개·조절효과·CFA·SEM·PLS-SEM은 결과 추가 시 현재 모형 그림을 함께 보존한다. 공개판 그림은 300 dpi이며 개발자판과 Pro는 600 dpi 출력을 지원한다. 저장된 표는 분석 판단을 자동으로 대체하지 않는다.
 
 결과를 보고서에 사용할 때는 다음을 함께 확인한다.
 
@@ -445,6 +526,8 @@ HTML, PDF 저장 결과는 앱 화면의 결과표를 연구 보고서나 논문
 - Warnings 또는 Skipped results가 있었는가.
 - 효과크기와 신뢰구간이 p 값과 같은 방향의 결론을 주는가.
 - 표본 수와 결측 처리 방식이 해석에 충분한가.
+
+<a id="method-22"></a>
 
 ## 22. 본문 인용 위치
 
@@ -470,6 +553,8 @@ HTML, PDF 저장 결과는 앱 화면의 결과표를 연구 보고서나 논문
 | White (1980) | 11. 선형회귀의 heteroskedasticity-consistent covariance |
 | Zou & Hastie (2005) | 16. Penalized Regression의 Elastic Net |
 
+<a id="method-23"></a>
+
 ## 23. 참고문헌
 
 - Agresti, A. (2013). *Categorical Data Analysis* (3rd ed.). Wiley.
@@ -491,6 +576,8 @@ HTML, PDF 저장 결과는 앱 화면의 결과표를 연구 보고서나 논문
 - Tibshirani, R. (1996). Regression shrinkage and selection via the lasso. *Journal of the Royal Statistical Society, Series B*, 58(1), 267-288.
 - White, H. (1980). A heteroskedasticity-consistent covariance matrix estimator and a direct test for heteroskedasticity. *Econometrica*, 48(4), 817-838.
 - Zou, H., & Hastie, T. (2005). Regularization and variable selection via the elastic net. *Journal of the Royal Statistical Society, Series B*, 67(2), 301-320.
+
+<a id="method-24"></a>
 
 ## 24. 표본수, 검정력, 효과크기 방법론 노트
 
@@ -1304,7 +1391,7 @@ $$ d_{\mathrm{GLMM}} = \frac{B}{SD_{\mathrm{residual}}} $$
 **표본 수와 검정력.**
 
 - RMSEA close-fit/not-close-fit은 noncentral chi-square distribution을 사용한다.
-- parameter-level Monte Carlo는 standardized SEM/CFA parameter estimate distribution에서 반복 추출해 검정력을 추정한다.
+- 근사 모수 검정력 시뮬레이션은 standardized SEM/CFA parameter estimate distribution에서 반복 추출하며, Fisher-z 계열의 큰표본 표준오차와 모형 복잡도 보정을 사용한다. 전체 SEM 자료를 생성하고 매 반복에서 모형을 다시 적합하는 정식 Monte Carlo 연구는 아니므로 복잡한 모형에서는 별도의 모형 기반 시뮬레이션이 우선이다.
 - model complexity heuristic은 cases-per-free-parameter, observed/latent variable burden, structural path burden, standardized loading/path detectability 중 최대값을 권장 n으로 둔다.
 
 **입력과 보고.**
@@ -1389,3 +1476,303 @@ $$ d_{\mathrm{GLMM}} = \frac{B}{SD_{\mathrm{residual}}} $$
 - Woertman, W., de Hoop, E., Moerbeek, M., Zuidema, S. U., Gerritsen, D. L., & Teerenstra, S. (2013). Stepped wedge designs could reduce the required sample size. *Journal of Clinical Epidemiology*, 66(7), 752-758.
 - Zhang, Z., & Yuan, K.-H. (2018). *Practical Statistical Power Analysis Using Webpower and R*. ISDSA Press.
 - Zhu, H., & Lakkis, H. (2014). Sample size calculation for comparing two negative binomial rates. *Statistics in Medicine*, 33(3), 376-387.
+
+<a id="method-25"></a>
+
+## 25. CFA, CB-SEM, 잠재조절 및 PLS-SEM 방법론 노트
+
+### 25.1 분석목적과 추정대상
+
+구조모형 캔버스는 같은 화살표 그림을 서로 다른 통계적 대상으로 적합할 수
+있으므로 모형을 그리기 전에 구성개념의 성격과 분석목적을 정해야 한다.
+
+- **CFA와 CB-SEM의 공통요인**은 관측지표의 공통분산을 설명하고 측정오차를
+  분리하는 잠재변수다.
+- **표준 PLS의 합성변수**는 지표의 가중결합이다. 반영형 Mode A 블록도 표준
+  PLS에서는 공통요인이 아니라 합성점수 대리변수로 추정된다.
+- **PLSc**는 적격한 반영형 블록의 PLS 상관과 loading을 일관성 보정해
+  공통요인 관계를 근사한다. 모든 모형에서 자동으로 CB-SEM과 같은 추정대상이
+  되는 것은 아니다.
+- **형성형 구성개념**은 지표가 개념을 구성한다는 명세다. 지표 간 내적
+  일관성이 필수조건이 아니므로 alpha, CR, AVE로 합격 여부를 판단하지 않는다.
+
+이론 확인과 측정오차 분리가 주목적이고 모든 구성개념이 반영형 공통요인이면
+CB-SEM을 우선 검토한다. 점수·예측 또는 합성변수 자체가 연구대상이면 PLS-SEM을
+검토한다. 표본이 작거나 정규성 검정이 유의하다는 이유만으로 PLS를 자동
+선택하지 않으며, 적합도가 좋다는 이유만으로 CB-SEM을 자동 선택하지 않는다.
+
+### 25.2 자료구조와 실행 gate
+
+1.3.0의 CFA, SEM/CB-SEM, PLS-SEM 메뉴는 독립 관측 횡단자료만 지원한다.
+따라서 이 메뉴에서는 표집설계 선택창을 표시하지 않고 실행 계약을
+`independent_cross_sectional`로 고정한다. 이는 자료에서 표집설계를 판별한
+결과가 아니므로 분석가는 실제 자료수집 구조가 독립성 가정과 일치하는지
+확인해야 한다.
+
+- 층화·PSU·표본가중치가 있는 자료는 survey-aware SEM이 필요하다.
+- 군집 또는 다층자료는 cluster-robust 또는 multilevel SEM이 필요하다.
+- 종단·반복측정자료는 개인 내 상관과 종단 측정구조를 모형화해야 한다.
+- 군집·다층 SEM, 복합표본 SEM, 종단·반복측정 SEM은 현재 구조방정식 메뉴의
+  옵션으로 넣지 않고 차후 각각의 전용 분석 메뉴에서 제공한다.
+
+현재 캔버스가 이 설계들을 차단한다는 것은 해당 방법이 불가능하다는 의미가
+아니라, 일반 SEM 표준오차를 잘못 보고하지 않기 위한 지원범위 제한이다.
+
+### 25.3 CFA 명세와 식별
+
+CFA를 실행하기 전에 각 요인과 지표의 연결, 교차적재, 잔차공분산, 요인척도
+설정과 집단구조를 이론적으로 정한다. 식별은 단순히 수렴 여부만으로 판단하지
+않는다. 자유모수 수, 지표 수, 요인척도, 공분산구조와 제약을 함께 확인한다.
+
+단일지표 공통요인은 고정된 loading과 측정오차 가정이 필요하며, 그 가정이
+자료만으로 검증된 것처럼 해석하지 않는다. 2지표 요인이나 매우 높은 잠재상관은
+약한 식별과 불안정한 분산추정을 유발할 수 있다. 음의 잔차분산, 비양정치
+공분산행렬, 절댓값 1에 가까운 잠재상관과 불안정한 parameter vcov는 허용가능성
+문제로 보고한다.
+
+### 25.4 CFA와 CB-SEM 추정량
+
+연속형 공통요인 모형은 ML 또는 MLR을 사용한다. ML은 모형의 연속형 정규이론
+likelihood를 적합하며, MLR은 비정규성에 강건한 표준오차와 scaled 검정통계량을
+제공한다. MLR은 CB-SEM을 PLS로 바꾸는 규칙이 아니라 같은 공통요인 모형 안의
+추정량 선택이다.
+
+순서형 공통요인 지표는 WLSMV/DWLS와 theta 모수화를 사용한다. threshold와
+다범주 상관에 기반한 순서형 추정 결과를 연속형 ML 결과와 같은 수치척도로
+직접 비교하지 않는다. 실제 ordered 변수, 추정량, 모수화와 결측처리는 논문과
+Audit에 기록한다.
+
+연속형 기본 ML은 Normal likelihood 규약, 즉 N 분모 공분산과 N 배율 목적함수를
+사용한다. AMOS처럼 N-1 규약을 맞춰야 할 때만 Wishart ML을 명시적으로 선택해
+모형 전체를 재적합한다. 계산 후 chi-square 하나에 배율만 곱하는 방식이 아니다.
+MLR과 WLSMV에는 Wishart 토글을 적용하지 않는다.
+
+### 25.5 전역·국소 적합과 허용가능성
+
+chi-square, CFI, TLI, RMSEA와 신뢰구간, SRMR은 서로 다른 측면의 모형-자료
+불일치를 요약한다. 표본크기, 자유도, 추정량, 비정규성, 모형 복잡도의 영향을
+받으므로 하나의 절단값으로 모형을 자동 채택하지 않는다.
+
+- 관행적 범위 안의 값은 `기준 참고`이며 이론모형이 참이라는 증거가 아니다.
+- 기준에서 크게 벗어난 값은 잔차, modification index, 국소의존과 대안모형을
+  검토하라는 신호다.
+- modification index는 자료기반 후보 순위다. 이론 없이 가장 큰 값을 반복해
+  자유화하면 우연자본화가 발생한다.
+- 표준화 잔차, 잔차상관, 지표 R²와 예상하지 않은 교차관계를 전역 적합도와
+  함께 검토한다.
+
+모형은 최적화가 종료됐다는 이유만으로 허용 가능한 해가 아니다. StatEdu는
+negative variance, covariance·latent covariance·parameter-vcov의 양정치성,
+경계해, 잠재상관과 자유도 등을 함께 확인한다.
+
+### 25.6 신뢰도와 수렴·판별타당도
+
+반영형 공통요인에는 loading과 불확실성, omega, composite reliability, AVE,
+HTMT, 잠재상관과 경쟁 측정모형을 함께 사용한다. alpha, omega, CR은 가정과
+계산대상이 달라 서로 대체 가능한 단일 합격점수가 아니다.
+
+loading .70, CR .70, AVE .50, HTMT .85/.90 같은 값은 관행적 참고값이다.
+기준 미달을 이유로 문항을 자동 삭제하지 않으며 내용타당도, 문항 wording,
+잔차·국소의존, 표본불확실성과 독립표본 재현성을 함께 검토한다. HTMT는
+점추정치뿐 아니라 bootstrap 구간과 유효 반복수를 보고한다. Fornell-Larcker는
+보조정보이며 단독으로 판별타당도를 확립하지 않는다.
+
+CFA의 AVE·신뢰도 percentile 구간은 R quantile type 7, BC/BCa 구간은 type 6을
+사용한다. 구조효과와 HTMT의 percentile·BC·BCa 분위수는 type 6을 사용한다.
+선택한 CI 방법과 quantile type은 결과와 Audit에 남는다.
+
+### 25.7 고차 CFA와 측정불변성
+
+고차 CFA에서는 1차요인 지표의 적재량과 잔차뿐 아니라 1차요인이 고차요인에
+적재되는 관계와 설명된 분산을 함께 해석한다. parcel은 item-level CFA를
+대체하는 기본 도구가 아니며, 현재 기능은 적격성 점검과 배정 미리보기에
+한정한다.
+
+다집단 CFA는 configural, metric, scalar, strict 단계를 순서대로 비교한다.
+Delta CFI, Delta RMSEA, Delta SRMR은 Chen(2007)의 민감도 연구에 기반한
+참고값이며 표본크기·집단불균형·모형복잡도에 따라 달라질 수 있다. 현재 앱은
+부분불변성 제약을 자동 해제해 재적합하지 않는다. score 검정과 표준화 EPC는
+후속 이론검토 후보이지 부분불변성 확립 결과가 아니다.
+
+집단 간 구조경로 비교는 최소한 metric 불변성 gate를 통과한 뒤 수행한다.
+잠재 product 상호작용이 포함된 다집단 비교는 별도의 상호작용 불변성 절차가
+필요하므로 현재 차단한다.
+
+### 25.8 CB-SEM 구조효과와 매개효과
+
+직접효과는 구조회귀계수, 간접효과는 지정된 구성경로 계수의 곱, 총효과는
+직접효과와 관련 간접효과의 합으로 계산한다. 간접효과의 표본분포는 비대칭일
+수 있으므로 bootstrap 구간을 우선 해석한다. 개별 a와 b 경로의 유의성만으로
+간접효과를 판정하지 않는다.
+
+구조효과 bootstrap은 BC 또는 percentile 95% 구간과 양측 부호형 p값을
+제공한다. 기본 반복수는 5,000회이며 최종 보고에는 요청수, 유효수, 유효율,
+CI 방법과 seed를 포함한다. BC는 관측된 편향을 보정하지만 BCa의 acceleration을
+포함하지 않으며 모든 자료에서 percentile보다 우월하다고 해석하지 않는다.
+유효율이 80% 미만이면 주의 상태로 표시하고, 50% 미만이거나 효과별 최소
+유효수가 충족되지 않으면 해당 bootstrap CI와 p값을 신뢰할 수 없는 결과로
+억제한다.
+
+### 25.9 잠재 product-indicator 조절
+
+StatEdu의 CB-SEM 잠재조절은 unconstrained product-indicator 방법이며 LMS가
+아니다. 연속형 예측·조절 잠재변수의 지표로 product indicator를 만든다.
+
+- `all_pairs_dmc`: 모든 지표쌍을 곱하고 double-mean-centering한다.
+- `matched_pair_dmc`: 이론 또는 사전계획으로 정한 순서에 따라 지표를 짝짓고
+  double-mean-centering한다.
+- `all_pairs_mean_centered`: 원지표만 중심화한 과거 호환 방식이다.
+
+bootstrap에서는 각 재표집 표본 안에서 원지표 평균을 다시 계산하고 product를
+생성한 뒤 product 평균도 다시 제거한다. 전체자료에서 미리 만든 product 열을
+행 재표집하는 AMOS native bootstrap과는 다른 추정 절차다.
+
+상호작용계수는 구성요인과 product-indicator의 척도에 의존한다. 비표준화
+계수와 구간을 주 결과로 보고하고, 유일한 표준화 정의가 없는 moderated-
+mediation index는 표준화 값을 억지로 만들지 않는다. Johnson-Neyman 결과는
+적용 가능한 연속 조절척도에서 조건부 효과가 0과 구분되는 영역을 기술하며,
+관측범위 밖 외삽과 다중검정 문제를 함께 확인한다.
+
+### 25.10 bootstrap 실행과 lavaan 권한
+
+StatEdu는 seed에서 사례 재표집 index를 먼저 고정하고 worker에 반복 위치와
+index를 전달한다. 잠재조절에서는 worker가 해당 표본의 DMC를 다시 생성한다.
+빠른 1차 적합은 명백한 부적합을 선별할 수 있지만 최종 raw·standardized
+추정치, 표준오차와 허용가능성 판정은 public full-SE lavaan 적합에서만 가져온다.
+
+worker 오류, 버전 fingerprint 불일치, 계약 위반 또는 경계해는 과학적 실패
+draw로 확정하지 않고 기존 lavaan 경로로 다시 계산한다. 같은 seed와 index에서
+worker 수·chunk 크기가 달라도 draw 순서, 유효 mask와 최종 요약이 같아야 한다.
+이 계약은 속도 향상이 추정대상이나 BC 구간을 바꾸지 않도록 하는 장치다.
+
+### 25.11 PLS-SEM과 PLSc 측정모형
+
+표준 PLS의 반영형 Mode A는 지표와 합성점수의 상관에 기반하고, 형성형 Mode B는
+지표의 다중회귀 가중에 기반한다. 형성형 블록은 weight의 크기·부호·bootstrap
+구간, 보조 loading, item VIF, 내용범위와 외부 redundancy 기준을 함께 검토한다.
+
+PLSc는 반영형 공통요인 명세와 적격한 신뢰도·상관 보정에 조건부다. 형성형
+블록이나 보정 불가능한 혼합모형에서 일부 블록만 보정한 결과를 PLSc라고
+표시하지 않는다. 실행이 차단돼도 사용자는 표준 PLS를 별도 방법으로 선택할 수
+있으며, 그 경우 공통요인을 composite proxy로 추정한다는 제한을 보고한다.
+
+### 25.12 PLS 구조모형, 품질지표와 예측
+
+PLS 경로, R²와 f²는 합성점수 관계를 요약한다. 높은 R²가 인과설명이나 외부
+예측을 보증하지 않으며 f² .02/.15/.35는 관행적 위치표시다. inner VIF가 낮다는
+사실도 구성개념의 판별타당도나 인과적 타당성을 보증하지 않는다.
+
+Approx PLS SRMR, d_G, d_ULS와 NFI는 반영형 측정부분의 saturated
+지표상관행렬에서 계산한 기술적 진단이다. 구조경로를 제약한 estimated-model
+전역적합도가 아니며 수용·기각 절단값을 적용하지 않는다.
+
+PLSpredict는 각 훈련 fold에서 측정·구조모형을 다시 적합하고 지표별 RMSE/MAE를
+선형모형 기준과 비교한다. 기본은 10회 반복 k-fold다. 평균 차이, 분할 간 변동,
+PLS가 우세한 반복 비율과 실제 손실함수를 함께 보고한다. 내부 교차검증이 외부
+모집단 타당화를 대신하지 않는다.
+
+### 25.13 PLS/PLSc bootstrap 유효성
+
+PLS/PLSc bootstrap은 새 분석에서 5,000회가 기본이며 메뉴 선택지는 1,000 / 5,000 /
+10,000 / 20,000 / 50,000회다. 규칙 기반 PLS/PLSc 추천 적용 확인도 새 분석에서 기본으로
+선택하되 저장된 프로젝트의 명시적 선택은 유지한다. 현재 구현에서는
+L'Ecuyer-CMRG 난수 스트림을 반복 위치별로 할당하여 worker 수와 완료순서에
+관계없이 표본을 재현한다. 이 난수열은 이전 seminr `seed + 반복번호`
+방식과 다르므로 버전 간 같은 seed의 bitwise 일치를 보장하지 않는다.
+
+경로, loading, weight, HTMT와 요청 효과 등 필수 통계 전체가 유한할 때만 한
+whole draw를 유효로 센다. 유효 draw가 요청수의 80% 미만이면 bootstrap SE,
+CI, t, p와 유의성 선 표현을 억제한다. 작업 시작 실패, 실행 실패, 사용자 취소와
+빈 결과도 요청수, 유효 0회, 상태와 실패유형을 결과와 Audit에 남긴다.
+
+### 25.14 인과해석과 공통방법편향
+
+구조 화살표는 이론적으로 정한 회귀 방향이다. 시간적 선행성, 처치배정,
+미측정교란 부재와 매개-결과 교란 가정은 앱이 검증하지 않는다. 따라서 경로와
+간접효과는 기본적으로 가정한 연관구조의 통계적 분해로 보고한다. 인과적
+효과라는 표현은 연구설계와 외부 가정이 별도로 정당화될 때만 사용한다.
+
+Harman 단일요인 분산과 full-collinearity VIF는 공통방법편향의 존재·부재를
+검정하지 않는다. 설계단계 절차, 응답원·측정시점, marker 또는 method-factor
+모형과 민감도 분석을 함께 사용한다. 현재 marker 입력은 기록용이며 계수보정
+분석을 실행한 것으로 보고하지 않는다.
+
+### 25.15 결과 보고 체크리스트
+
+논문 또는 연구보고서에는 최소한 다음을 기록한다.
+
+1. 분석목적과 공통요인·합성변수·형성형 명세.
+2. 표본설계, 분석 N, 결측처리와 ordered 변수.
+3. 엔진, 추정량, Normal/Wishart likelihood와 모수화.
+4. 모형식별 방식, loading·경로·공분산·잔차공분산 명세.
+5. 수렴 및 허용가능성, 전역·국소 적합과 경쟁모형 검토.
+6. 신뢰도·AVE·HTMT의 공식, CI 방법과 유효 반복수.
+7. 직접·간접·총효과와 잠재조절 product 생성방법.
+8. bootstrap 요청·유효 반복수, seed, CI 방법과 quantile type.
+9. PLS/PLSc 선택근거, Mode, weight·loading·VIF·예측 결과.
+10. 자료기반 수정, 제외한 모수, 민감도 분석과 인과해석 제한.
+
+Audit manifest는 이 항목의 재현을 돕지만 원자료, 연구설계의 타당성 또는 분석가의
+이론적 판단을 대신하지 않는다.
+
+### 25.16 외부 프로그램 비교와 재현성
+
+외부 프로그램 비교에서는 같은 그림이나 seed만 맞추는 것으로 충분하지 않다.
+지표 순서, marker와 잠재척도, 자유·고정 공분산, mean structure, 결측처리,
+Normal/Wishart 규약, product 중심화, bootstrap index와 CI 알고리즘을 맞춘다.
+
+StatEdu의 최종 추정 권한은 lavaan에 있다. AMOS 동일-index·표본별 DMC 컨트롤러,
+cSEM 고정행렬 함수와 SmartPLS 표시값 비교는 구현 검증 증거이며 모든 모형에서
+서로 다른 프로그램이 같은 수치를 낸다는 보편적 보장이 아니다. AMOS native
+고정-product bootstrap처럼 추정절차가 다르면 빠르더라도 동일 분석의 속도
+비교로 사용하지 않는다.
+
+### 25.17 주요 참고문헌
+
+- Brown, T. A. (2015). *Confirmatory Factor Analysis for Applied Research*
+  (2nd ed.). Guilford Press.
+- Chen, F. F. (2007). Sensitivity of goodness of fit indexes to lack of
+  measurement invariance. *Structural Equation Modeling*, 14(3), 464-504.
+- Dijkstra, T. K., & Henseler, J. (2015). Consistent partial least squares path
+  modeling. *MIS Quarterly*, 39(2), 297-316.
+- Efron, B., & Tibshirani, R. J. (1993). *An Introduction to the Bootstrap*.
+  Chapman & Hall/CRC.
+- Henseler, J., Ringle, C. M., & Sarstedt, M. (2015). A new criterion for
+  assessing discriminant validity in variance-based structural equation
+  modeling. *Journal of the Academy of Marketing Science*, 43, 115-135.
+- Kline, R. B. (2023). *Principles and Practice of Structural Equation Modeling*
+  (5th ed.). Guilford Press.
+- Little, T. D., Rhemtulla, M., Gibson, K., & Schoemann, A. M. (2013). Why the
+  items versus parcels controversy needn't be one. *Psychological Methods*,
+  18(3), 285-300.
+- Marsh, H. W., Hau, K.-T., & Wen, Z. (2004). In search of golden rules:
+  Comment on hypothesis-testing approaches to setting cutoff values for fit
+  indexes. *Structural Equation Modeling*, 11(3), 320-341.
+- Preacher, K. J., Rucker, D. D., & Hayes, A. F. (2007). Addressing moderated
+  mediation hypotheses. *Multivariate Behavioral Research*, 42(1), 185-227.
+- Schumacker, R. E., & Marcoulides, G. A. (Eds.). (1998). *Interaction and
+  Nonlinear Effects in Structural Equation Modeling*. Lawrence Erlbaum.
+
+<a id="method-26"></a>
+
+## 26. 생존분석의 추정대상과 해석
+
+Kaplan–Meier의 S(t)는 t 시점까지 사건 없이 생존할 확률이다. 검열은 사건이 관찰되지 않은 정보이며 사건 발생과 동일하게 코딩하지 않는다. 비정보성 검열 가정을 검토하고 시간 원점·단위·추적 기간을 보고한다.
+
+RMST는 지정한 제한 시점 τ까지 생존곡선 아래 면적 `∫₀^τ S(t) dt`이다. 비교 집단에 공통인 τ를 사전에 정하고 관측 추적 범위를 넘겨 해석하지 않는다. Cox 모형 `h(t|X)=h₀(t) exp(Xβ)`의 `exp(β)`는 위험비이며 생존확률의 비가 아니다. 비례위험 가정이 부적절하면 시간에 따른 효과 변화와 대안 분석을 검토한다.
+
+경쟁위험에서는 특정 사건의 누적발생함수(CIF)를 일반 KM의 1−S(t)와 구분한다. 원인별 HR과 하위분포 SHR은 추정대상이 다르므로 연구 질문에 맞춰 해석한다.
+
+<a id="method-27"></a>
+
+## 27. 외부 검증 결과를 해석하는 원칙
+
+SPSS·AMOS·SmartPLS 비교는 동일 자료와 대응하는 추정·표시 조건에서 수행했다. 1.3.0 검증 페이지의 예제 수, 비교 셀 수, 남은 차이는 서로 다른 단위이므로 단일 통과율로 합산하지 않는다. 개발 과정에서 수행한 검증이 1.3.0에 반영되었다는 뜻이며, 모든 비교를 최종 설치본에서 새로 실행했다는 의미는 아니다. 방법론 문헌과 수식은 사용자에게 제공하되, 개인 자료·원출력·내부 실행 로그는 공개하지 않는다.
+
+현재 결과를 확인한 뒤 결과 추가로 누적합니다. HTML·PDF·Word·Excel 저장을 지원하며 한국어 UI의 누적 결과 화면에서만 HWPX 저장을 제공합니다. HWPX는 Word나 한컴 변환을 거치지 않고 직접 작성합니다. Word/HWPX는 본표·부록표·설명·그림을 선택할 수 있고 기본은 본표입니다. 저장은 화면에 캡처된 결과를 사용하며 분석을 다시 계산하지 않습니다. Free 그림은 300 dpi, 개발자판은 600 dpi 정책입니다. HTML은 표지와 표 목록 링크를 포함합니다.
+
+<a id="method-28"></a>
+
+## 28. 중요도–수행도 분석(IPA)
+
+도출 중요도는 다른 수행도 속성을 통제한 Pearson 편상관입니다. 수정 IPA의 로그 변환은 양수 입력을 요구하며 음의 편상관 부호를 유지합니다. 집단 내 공통 완전사례 또는 시점 간 공통 대응 표본을 사용합니다. 평균 차이는 독립집단 Welch 또는 대응 t 검정이며 차이는 두 번째−첫 번째입니다. 표시된 직접 점수 검정의 유한 p값에 Holm 보정을 적용하지만 95% 구간은 개별 구간입니다. 도출 중요도와 차이는 백분위 bootstrap을 사용하며 유효 반복이 80% 이상이면서 50회 이상이어야 구간을 표시합니다. 편상관 차이에 t 검정 p값을 붙이지 않습니다. 공통 기준선은 좌표의 응답자 수 가중 평균이며 통합 표본 편상관이 아닙니다. 자료 분할은 집단별 별도 분석이므로 집단 비교는 IPA 내부에서 지정합니다.

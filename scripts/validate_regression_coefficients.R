@@ -8,6 +8,12 @@ if (!file.exists(file.path(repo_root, "R", "app_bootstrap.R"))) {
 
 source(file.path(repo_root, "R", "app_bootstrap.R"))
 source_app_modules(dir = file.path(repo_root, "R"))
+
+# Keep this coefficient/parity validator deterministic in English. The
+# regression screen-contract validator covers Korean and English appendices.
+old_language <- getOption("statedu.app_language")
+on.exit(options(statedu.app_language = old_language), add = TRUE)
+options(statedu.app_language = "en")
 library(shiny)
 library(htmltools)
 
@@ -94,7 +100,22 @@ panel_html <- as.character(htmltools::renderTags(regression_results_panel(partia
 expect_true(grepl("<h3>Warnings / skipped models</h3>", panel_html, fixed = TRUE), "Expected skipped regression section to render")
 guard_xlsx <- tempfile(fileext = ".xlsx")
 save_analysis_excel_file(partial_prepared$results, guard_xlsx, variable_table = guard_info)
-expect_true("Skipped models" %in% openxlsx::getSheetNames(guard_xlsx), "Expected skipped regression Excel sheet")
+# Snapshot exports derive sheet names from visible headings and sanitize Excel's
+# forbidden characters. Check the saved warning content, not a legacy tab name.
+guard_sheets <- lapply(openxlsx::getSheetNames(guard_xlsx), function(sheet) {
+  openxlsx::read.xlsx(guard_xlsx, sheet = sheet, colNames = FALSE)
+})
+warning_sheets <- Filter(function(sheet) {
+  ncol(sheet) > 0L && any(sheet[[1L]] == "Warnings / skipped models", na.rm = TRUE)
+}, guard_sheets)
+expect_true(length(warning_sheets) == 1L, "Expected one saved regression warnings table")
+warning_sheet <- warning_sheets[[1L]]
+expected_message <- attr(partial_prepared$results, "skipped")$Message[[1L]]
+expect_true(ncol(warning_sheet) >= 5L && any(
+  warning_sheet[[1L]] == "Skipped" & warning_sheet[[2L]] == "Constant outcome" &
+    warning_sheet[[4L]] == as.character(nrow(guard_data)) & warning_sheet[[5L]] == expected_message,
+  na.rm = TRUE
+), "Expected the excluded outcome, sample size and exact reason in the saved Excel row")
 
 message("Checking regression saved Result / Word table parity...")
 regression_data <- data.frame(

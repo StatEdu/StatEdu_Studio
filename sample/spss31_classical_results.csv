@@ -1,0 +1,63 @@
+"Section","Variable","Level","Metric","Value"
+"descriptive","time","","Valid",72
+"descriptive","age","","Valid",72
+"descriptive","age_m","","Valid",70
+"descriptive","time","","Missing",0
+"descriptive","age","","Missing",0
+"descriptive","age_m","","Missing",2
+"descriptive","time","","Mean",266.33333333333
+"descriptive","age","","Mean",59.972222222222
+"descriptive","age_m","","Mean",60.071428571429
+"descriptive","time","","Median",259.5
+"descriptive","age","","Median",60
+"descriptive","age_m","","Median",60
+"descriptive","time","","Std. Deviation",146.09528050528
+"descriptive","age","","Std. Deviation",11.855909826288
+"descriptive","age_m","","Std. Deviation",11.974999837913
+"descriptive","time","","Skewness",0.10474512999327
+"descriptive","age","","Skewness",0.029431693156011
+"descriptive","age_m","","Skewness",0.010031834321163
+"descriptive","time","","Kurtosis",-1.2289479810269
+"descriptive","age","","Kurtosis",-1.1986221068435
+"descriptive","age_m","","Kurtosis",-1.2255761178617
+"descriptive","time","","Minimum",36
+"descriptive","age","","Minimum",40
+"descriptive","age_m","","Minimum",40
+"descriptive","time","","Maximum",519
+"descriptive","age","","Maximum",80
+"descriptive","age_m","","Maximum",80
+"descriptive","time","","P25",135
+"descriptive","age","","P25",50
+"descriptive","age_m","","P25",49.75
+"descriptive","time","","P75",389.75
+"descriptive","age","","P75",70.75
+"descriptive","age_m","","P75",71
+"frequency","status","0","Frequency",22
+"frequency","status","0","Percent",30.555555555556
+"frequency","status","0","Valid Percent",30.555555555556
+"frequency","status","1","Frequency",50
+"frequency","status","1","Percent",69.444444444444
+"frequency","status","1","Valid Percent",69.444444444444
+"frequency","sex","1","Frequency",36
+"frequency","sex","1","Percent",50
+"frequency","sex","1","Valid Percent",50
+"frequency","sex","2","Frequency",36
+"frequency","sex","2","Percent",50
+"frequency","sex","2","Valid Percent",50
+"frequency","ph_ecog","0","Frequency",24
+"frequency","ph_ecog","0","Percent",33.333333333333
+"frequency","ph_ecog","0","Valid Percent",33.333333333333
+"frequency","ph_ecog","1","Frequency",24
+"frequency","ph_ecog","1","Percent",33.333333333333
+"frequency","ph_ecog","1","Valid Percent",33.333333333333
+"frequency","ph_ecog","2","Frequency",24
+"frequency","ph_ecog","2","Percent",33.333333333333
+"frequency","ph_ecog","2","Valid Percent",33.333333333333
+"frequency","status_m","0","Frequency",21
+"frequency","status_m","0","Percent",29.166666666667
+"frequency","status_m","0","Valid Percent",29.577464788732
+"frequency","status_m","1","Frequency",50
+"frequency","status_m","1","Percent",69.444444444444
+"frequency","status_m","1","Valid Percent",70.422535211268
+"frequency","status_m","(Missing)","Frequency",1
+"frequency","status_m","(Missing)","Percent",1.3888888888889

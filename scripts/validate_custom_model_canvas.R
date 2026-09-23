@@ -4,16 +4,57 @@ script_path <- tryCatch(
 )
 repo_root <- normalizePath(file.path(dirname(script_path), ".."), winslash = "/", mustWork = TRUE)
 setwd(repo_root)
+options(statedu.output_decimal_digits = 3L)
 
+suppressPackageStartupMessages(library(shiny))
 tags <- htmltools::tags
+div <- htmltools::tags$div
+tagList <- htmltools::tagList
 source(file.path(repo_root, "R", "utils.R"))
+source(file.path(repo_root, "R", "ui_helpers.R"))
+source(file.path(repo_root, "R", "analysis_commands.R"))
+source(file.path(repo_root, "R", "result_export_files.R"))
 source(file.path(repo_root, "R", "result_labels.R"))
 source(file.path(repo_root, "R", "setup_analysis_ui.R"))
 source(file.path(repo_root, "R", "result_table_ui.R"))
+source(file.path(repo_root, "R", "result_coefficients.R"))
 source(file.path(repo_root, "R", "result_panels_ui.R"))
 source(file.path(repo_root, "R", "analysis_regression.R"))
+source(file.path(repo_root, "R", "setup_ui.R"))
 source(file.path(repo_root, "R", "setup_mediation_moderation_ui.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_snapshot.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_i18n.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_variables.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_components.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_options.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_toolbar.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_structural_toolbar_icons.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_result_snapshot.R"))
 source(file.path(repo_root, "R", "setup_custom_model_canvas_ui.R"))
+
+bridge_source <- paste(
+  readLines(file.path(repo_root, "www", "model-canvas", "shiny-bridge.js"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+stopifnot(
+  grepl('root.querySelector(\'.custom-model-toolbar-panel[data-toolbar-panel="result"]\')', bridge_source, fixed = TRUE),
+  grepl('window.StatEduModelCanvas.canvas.showResult(instance);', bridge_source, fixed = TRUE),
+  grepl("cachedStateForRoot", bridge_source, fixed = TRUE),
+  grepl("StatEduModelCanvasMountCache", bridge_source, fixed = TRUE)
+)
+canvas_source <- paste(
+  readLines(file.path(repo_root, "www", "model-canvas", "canvas.js"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+stopifnot(
+  grepl("cachedCanvas && cachedCanvas.source", canvas_source, fixed = TRUE),
+  grepl("bridge.cacheInstance(instance, instance.sourceSnapshot)", canvas_source, fixed = TRUE)
+)
+custom_canvas_server_source <- paste(
+  readLines(file.path(repo_root, "R", "setup_custom_model_canvas_ui.R"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+stopifnot(grepl('rootId = "custom-model-canvas-root"', custom_canvas_server_source, fixed = TRUE))
 
 message("Checking custom model canvas snapshot-to-analysis maps...")
 
@@ -54,6 +95,179 @@ snapshot <- list(
   ),
   covariates = c("C")
 )
+
+message("Checking custom model canvas snapshots survive reactive UI rebuilds...")
+workspace_html <- htmltools::renderTags(custom_model_canvas_workspace(
+  selected_names = c("X1", "X2", "M1", "M2", "Y", "W", "Z", "UnusedW", "C"),
+  initial_snapshot = snapshot
+))$html
+stopifnot(
+  grepl("data-initial-snapshot", workspace_html, fixed = TRUE),
+  grepl("e_x1_m1", workspace_html, fixed = TRUE),
+  grepl("custom-model-canvas-root", workspace_html, fixed = TRUE)
+)
+result_workspace_html <- htmltools::renderTags(custom_model_canvas_workspace(
+  selected_names = c("X1", "X2", "M1", "M2", "Y", "W", "Z", "UnusedW", "C"),
+  initial_snapshot = snapshot,
+  initial_result_snapshot = snapshot,
+  initial_view = "result"
+))$html
+stopifnot(
+  grepl("data-result-snapshot", result_workspace_html, fixed = TRUE),
+  grepl('data-initial-view="result"', result_workspace_html, fixed = TRUE),
+  grepl("parseResultSnapshot", canvas_source, fixed = TRUE)
+)
+
+message("Checking bootstrap progress remains monotonic and ETA waits for a stable rate...")
+progress_dir <- tempfile("statedu-progress-validation-")
+dir.create(progress_dir, recursive = TRUE, showWarnings = FALSE)
+on.exit(unlink(progress_dir, recursive = TRUE, force = TRUE), add = TRUE)
+progress_file <- file.path(progress_dir, "progress.rds")
+progress_started_at <- Sys.time() - 20
+progress_state <- new.env(parent = emptyenv())
+progress_state$progress <- list(
+  phase = "starting", done = 0L, total = 1000L, focal = "X1", boot_r = 1000L,
+  updated_at = progress_started_at
+)
+progress_state$last_sample_done <- 0L
+progress_state$last_sample_at <- as.numeric(progress_started_at)
+progress_state$rate_samples <- numeric(0)
+progress_job <- list(
+  progress_file = progress_file,
+  requested_total = 1000L,
+  boot_r = 1000L,
+  started_at = progress_started_at,
+  progress_state = progress_state
+)
+write_progress_sample <- function(done, elapsed, phase = "resampling") {
+  saveRDS(list(
+    phase = phase, done = as.integer(done), total = 1000L, focal = "X1", boot_r = 1000L,
+    updated_at = progress_started_at + elapsed
+  ), progress_file)
+}
+progress_samples <- lapply(seq_along(c(100L, 200L, 300L, 400L)), function(index) {
+  write_progress_sample(c(100L, 200L, 300L, 400L)[[index]], 10 + index)
+  mediation_moderation_bootstrap_job_progress(progress_job, "ko")
+})
+stopifnot(
+  is.na(progress_samples[[1L]]$rate),
+  grepl("재표집 잔여 계산 중", progress_samples[[1L]]$detail, fixed = TRUE),
+  isTRUE(all.equal(progress_samples[[4L]]$rate, 100, tolerance = 0.01)),
+  isTRUE(all.equal(progress_samples[[4L]]$remaining, 6, tolerance = 0.01))
+)
+write_progress_sample(200L, 15)
+regressed_progress <- mediation_moderation_bootstrap_job_progress(progress_job, "ko")
+writeLines("temporarily incomplete", progress_file, useBytes = TRUE)
+unreadable_progress <- mediation_moderation_bootstrap_job_progress(progress_job, "ko")
+stopifnot(
+  identical(regressed_progress$done, 400L),
+  identical(unreadable_progress$done, 400L),
+  identical(unreadable_progress$percent, 40)
+)
+mediation_moderation_write_bootstrap_progress(progress_file, 500L, 1000L, "X1", 1000L)
+stopifnot(identical(readRDS(progress_file)$done, 500L))
+write_progress_sample(1000L, 20, phase = "finalizing")
+finalizing_progress <- mediation_moderation_bootstrap_job_progress(progress_job, "ko")
+stopifnot(
+  identical(finalizing_progress$phase_label, "부트스트랩 통계 계산 중"),
+  is.na(finalizing_progress$percent),
+  is.na(finalizing_progress$rate),
+  is.na(finalizing_progress$remaining)
+)
+stage_progress_state <- new.env(parent = emptyenv())
+stage_progress_state$progress <- NULL
+stage_progress_state$last_sample_done <- 0L
+stage_progress_state$last_sample_at <- as.numeric(progress_started_at)
+stage_progress_state$rate_samples <- numeric(0)
+stage_progress_job <- progress_job
+stage_progress_job$progress_state <- stage_progress_state
+write_progress_sample(0L, 21, phase = "preparing")
+preparing_progress <- mediation_moderation_bootstrap_job_progress(stage_progress_job, "ko")
+stopifnot(
+  identical(preparing_progress$phase_label, "모형 준비 중"),
+  grepl("모형 행렬과 진단 통계를 준비", preparing_progress$detail, fixed = TRUE),
+  is.na(preparing_progress$percent)
+)
+write_progress_sample(1000L, 22, phase = "serializing")
+serializing_progress <- mediation_moderation_bootstrap_job_progress(stage_progress_job, "ko")
+stopifnot(
+  identical(serializing_progress$phase_label, "결과 저장 중"),
+  grepl("분석 결과를 저장", serializing_progress$detail, fixed = TRUE),
+  is.na(serializing_progress$percent)
+)
+write_progress_sample(1000L, 22.5, phase = "finalizing")
+stage_regressed_progress <- mediation_moderation_bootstrap_job_progress(stage_progress_job, "ko")
+stopifnot(identical(stage_regressed_progress$phase, "serializing"))
+write_progress_sample(1000L, 23, phase = "complete")
+complete_progress <- mediation_moderation_bootstrap_job_progress(stage_progress_job, "ko")
+stopifnot(identical(complete_progress$percent, 100))
+
+message("Checking mediation/moderation postprocessing caches repeated disk reads...")
+rm(list = ls(envir = mediation_moderation_dw_critical_cache, all.names = TRUE), envir = mediation_moderation_dw_critical_cache)
+original_dw_table_reader <- mediation_moderation_read_dw_critical_table
+dw_table_read_count <- 0L
+mediation_moderation_read_dw_critical_table <- function(...) {
+  dw_table_read_count <<- dw_table_read_count + 1L
+  original_dw_table_reader(...)
+}
+cached_dw_first <- mediation_moderation_cached_dw_critical(75L, 3L)
+cached_dw_second <- mediation_moderation_cached_dw_critical(75L, 3L)
+cached_dw_other_p <- mediation_moderation_cached_dw_critical(75L, 4L)
+mediation_moderation_read_dw_critical_table <- original_dw_table_reader
+stopifnot(
+  identical(cached_dw_first, cached_dw_second),
+  is.list(cached_dw_other_p),
+  identical(dw_table_read_count, 1L)
+)
+bootstrap_worker_source <- paste(
+  readLines(file.path(repo_root, "R", "setup_mediation_moderation_ui.R"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+analysis_regression_source <- paste(
+  readLines(file.path(repo_root, "R", "analysis_regression.R"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+result_panels_source <- paste(
+  readLines(file.path(repo_root, "R", "result_panels_ui.R"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+stopifnot(
+  grepl('options(statedu.mediation_moderation_worker = TRUE)', bootstrap_worker_source, fixed = TRUE),
+  grepl('"utils.R", "labels.R", "result_labels.R", "analysis_scope.R", "analysis_regression.R"', bootstrap_worker_source, fixed = TRUE),
+  grepl('"setup_mediation_moderation_ui.R"', bootstrap_worker_source, fixed = TRUE),
+  !grepl('"result_coefficients.R"', bootstrap_worker_source, fixed = TRUE),
+  !grepl('"result_panels_ui.R"', bootstrap_worker_source, fixed = TRUE),
+  grepl("hierarchical_robust_wald_f_p <- function", analysis_regression_source, fixed = TRUE),
+  !grepl("hierarchical_robust_wald_f_p <- function", result_panels_source, fixed = TRUE),
+  grepl("worker_preferences <- args$worker_preferences", bootstrap_worker_source, fixed = TRUE),
+  grepl("args$worker_preferences <- NULL", bootstrap_worker_source, fixed = TRUE),
+  grepl("statedu_apply_preferences(worker_preferences)", bootstrap_worker_source, fixed = TRUE),
+  grepl('boot_r, "serializing"', bootstrap_worker_source, fixed = TRUE)
+)
+
+message("Checking standard and custom bootstrap jobs share one session coordinator...")
+coordinator_session <- new.env(parent = emptyenv())
+coordinator_session$userData <- new.env(parent = emptyenv())
+cancelled_owner <- character(0)
+mediation_moderation_claim_bootstrap(
+  coordinator_session,
+  "mediation_moderation",
+  function() cancelled_owner <<- c(cancelled_owner, "mediation_moderation")
+)
+mediation_moderation_claim_bootstrap(
+  coordinator_session,
+  "custom_model_canvas",
+  function() cancelled_owner <<- c(cancelled_owner, "custom_model_canvas")
+)
+coordinator <- mediation_moderation_bootstrap_coordinator(coordinator_session)
+stopifnot(
+  identical(cancelled_owner, "mediation_moderation"),
+  identical(coordinator$owner, "custom_model_canvas")
+)
+mediation_moderation_release_bootstrap(coordinator_session, "mediation_moderation")
+stopifnot(identical(coordinator$owner, "custom_model_canvas"))
+mediation_moderation_release_bootstrap(coordinator_session, "custom_model_canvas")
+stopifnot(is.null(coordinator$owner), is.null(coordinator$cancel))
 
 selected_names <- c("X1", "X2", "M1", "M2", "Y", "W", "Z", "UnusedW", "C")
 spec <- custom_model_canvas_snapshot_spec(snapshot, selected_names)
@@ -108,13 +322,13 @@ dw_diagnostics <- mediation_moderation_dw_summary_value(list(
   dw_d = 1.79,
   dw_crit = list(dU = 1.89)
 ))
-stopifnot(identical(dw_diagnostics, "1.79 (1.89~2.11)"))
+stopifnot(identical(dw_diagnostics, "1.790 (1.890~2.110)"))
 dw_plain <- mediation_moderation_dw_summary_value(list(
   residual_diagnostics = FALSE,
   dw_d = 1.79,
   dw_crit = list(dU = 1.89)
 ))
-stopifnot(identical(dw_plain, "1.79"))
+stopifnot(identical(dw_plain, "1.790"))
 
 message("Checking numeric-label factor responses are converted before lm...")
 numeric_factor_data <- data.frame(
@@ -152,6 +366,62 @@ stopifnot(!isTRUE(var_factor_warning))
 stopifnot(is.numeric(numeric_factor_result$data$Y))
 stopifnot(is.numeric(numeric_factor_result$data$M))
 
+message("Checking categorical moderators produce conditional and relative indirect effects...")
+set.seed(120)
+categorical_n <- 72L
+categorical_data <- data.frame(
+  X = rep(seq(-1.5, 1.5, length.out = 24L), 3L),
+  W = factor(rep(c("control", "low", "high"), each = 24L), levels = c("control", "low", "high"))
+)
+categorical_data$M <- 0.30 +
+  (0.40 + ifelse(categorical_data$W == "low", 0.25, ifelse(categorical_data$W == "high", 0.55, 0))) * categorical_data$X +
+  ifelse(categorical_data$W == "low", 0.10, ifelse(categorical_data$W == "high", 0.20, 0)) +
+  stats::rnorm(categorical_n, sd = 0.03)
+categorical_data$Y <- 0.20 + 0.70 * categorical_data$M + 0.15 * categorical_data$X + stats::rnorm(categorical_n, sd = 0.03)
+categorical_info <- data.frame(
+  name = c("Y", "X", "M", "W"),
+  var_label = c("Y", "X", "M", "W"),
+  role = c("", "", "", ""),
+  measurement = c("continuous", "continuous", "continuous", "category"),
+  stringsAsFactors = FALSE
+)
+categorical_result <- mediation_moderation_boot_effects(
+  categorical_data,
+  roles = list(y = "Y", x = "X", mediators = "M", w = "W", covariates = character(0)),
+  focal = "X",
+  structure = "single",
+  model = "7",
+  mean_center = FALSE,
+  variable_info = categorical_info,
+  boot_r = 20L,
+  seed = 120L,
+  residual_diagnostics = FALSE,
+  moderated_paths = "xm"
+)
+categorical_effects <- as.character(categorical_result$effect_table$Effect)
+stopifnot(any(startsWith(categorical_effects, "Conditional indirect effect")))
+stopifnot(any(startsWith(categorical_effects, "Relative indirect effect")))
+stopifnot(is.data.frame(categorical_result$simple_slopes_table) || is.null(categorical_result$simple_slopes_table))
+categorical_simple <- mediation_moderation_simple_slopes_table(categorical_result$path_results)
+stopifnot(is.data.frame(categorical_simple), nrow(categorical_simple) >= 3L)
+stopifnot(any(as.character(categorical_simple$Level) == "high"))
+categorical_moderation_result <- mediation_moderation_boot_effects(
+  transform(categorical_data, Y = 0.10 + (0.35 + ifelse(W == "low", 0.20, ifelse(W == "high", 0.45, 0))) * X + stats::rnorm(categorical_n, sd = 0.03)),
+  roles = list(y = "Y", x = "X", mediators = character(0), w = "W", covariates = character(0)),
+  focal = "X",
+  structure = "none",
+  model = "1",
+  mean_center = FALSE,
+  variable_info = categorical_info[c(1, 2, 4), , drop = FALSE],
+  boot_r = 20L,
+  seed = 121L,
+  residual_diagnostics = FALSE,
+  moderated_paths = "xy"
+)
+categorical_moderation_simple <- mediation_moderation_simple_slopes_table(categorical_moderation_result$path_results)
+stopifnot(is.data.frame(categorical_moderation_simple), nrow(categorical_moderation_simple) >= 3L)
+stopifnot(!any(!nzchar(trimws(as.character(categorical_moderation_result$effect_table$Estimate %||% "")))))
+
 message("Checking B5 portrait width metadata survives summary rows...")
 width_table <- data.frame(
   Term = c("(Intercept)", "X"),
@@ -175,6 +445,130 @@ stopifnot(identical(
   length(attr(summary_width_table, "compact_column_widths", exact = TRUE)),
   ncol(summary_width_table)
 ))
+
+message("Checking Delta R-squared rows follow the value instead of the model position...")
+delta_summary_values <- structure(
+  list(
+    list(f = "1.00(.002)", r2 = ".20 (.18)", delta = ".125 (.001)", dw = "1.90"),
+    list(f = "2.00(.010)", r2 = ".30 (.28)", delta = NULL, dw = "1.80")
+  ),
+  delta_label = "Delta R\u00B2(p)"
+)
+delta_first_table <- hierarchical_standard_summary_table(
+  width_table,
+  summary = delta_summary_values[[1L]],
+  model_index = 1L,
+  summary_values = delta_summary_values,
+  include_delta = TRUE
+)
+delta_second_table <- hierarchical_standard_summary_table(
+  width_table,
+  summary = delta_summary_values[[2L]],
+  model_index = 2L,
+  summary_values = delta_summary_values,
+  include_delta = TRUE
+)
+stopifnot(
+  sum(as.character(delta_first_table$Term) == "Delta R\u00B2(p)") == 1L,
+  identical(
+    as.character(delta_first_table$B[as.character(delta_first_table$Term) == "Delta R\u00B2(p)"][[1L]]),
+    ".125 (.001)"
+  ),
+  !any(as.character(delta_second_table$Term) == "Delta R\u00B2(p)")
+)
+
+delta_wide_html <- htmltools::renderTags(hierarchical_coefficient_html_table(
+  list(width_table, width_table),
+  list("Model 1", "Model 2"),
+  delta_summary_values,
+  include_delta = TRUE,
+  output_table_style = "wide"
+))$html
+stopifnot(
+  grepl("Delta R\u00B2(p)", delta_wide_html, fixed = TRUE),
+  grepl(".125 (.001)", delta_wide_html, fixed = TRUE)
+)
+no_delta_values <- delta_summary_values
+no_delta_values[[1L]]$delta <- ""
+no_delta_html <- htmltools::renderTags(hierarchical_coefficient_html_table(
+  list(width_table, width_table),
+  list("Model 1", "Model 2"),
+  no_delta_values,
+  include_delta = TRUE,
+  output_table_style = "wide"
+))$html
+stopifnot(!grepl("Delta R\u00B2(p)", no_delta_html, fixed = TRUE))
+
+message("Checking the combined-path Y model keeps its hierarchical Delta R-squared value...")
+set.seed(20260822)
+combined_n <- 120L
+combined_data <- data.frame(
+  X = stats::rnorm(combined_n),
+  W = stats::rnorm(combined_n)
+)
+combined_data$M <- .4 * combined_data$X + .2 * combined_data$W +
+  .5 * combined_data$X * combined_data$W + stats::rnorm(combined_n, sd = .7)
+combined_data$Y <- .2 * combined_data$X + .6 * combined_data$M + .15 * combined_data$W +
+  .8 * combined_data$M * combined_data$W + stats::rnorm(combined_n, sd = .8)
+combined_info <- data.frame(
+  name = names(combined_data),
+  var_label = names(combined_data),
+  role = "",
+  measurement = "continuous",
+  stringsAsFactors = FALSE
+)
+combined_path_result <- function(model, equation, mediators = character(0)) {
+  mediation_moderation_path_result(
+    model,
+    focal = "X",
+    equation = equation,
+    w = "W",
+    mediators = mediators,
+    variable_info = combined_info,
+    analysis_method = "process_ols",
+    residual_diagnostics = FALSE,
+    auto_method = FALSE,
+    all_x = "X",
+    show_f2 = FALSE
+  )
+}
+m_base_result <- combined_path_result(stats::lm(M ~ X + W, data = combined_data), "M model: M")
+m_full_result <- combined_path_result(stats::lm(M ~ X * W, data = combined_data), "M model: M")
+m_full_result$hierarchical_base <- m_base_result
+y_base_result <- combined_path_result(stats::lm(Y ~ X + M + W, data = combined_data), "Y model", "M")
+y_full_result <- combined_path_result(stats::lm(Y ~ X + M * W, data = combined_data), "Y model", "M")
+y_full_result$hierarchical_base <- y_base_result
+expected_y_delta <- hierarchical_delta_line(y_base_result, y_full_result)
+stopifnot(hierarchical_summary_value_available(expected_y_delta))
+combined_path_html <- htmltools::renderTags(mediation_moderation_combined_path_table_ui(
+  list(m_full_result, y_full_result),
+  result = list(roles = list(mediators = "M")),
+  output_table_style = "standard"
+))$html
+stopifnot(
+  grepl("Model 2", combined_path_html, fixed = TRUE),
+  grepl(as.character(htmltools::htmlEscape(expected_y_delta)), combined_path_html, fixed = TRUE)
+)
+combined_path_wide_html <- htmltools::renderTags(mediation_moderation_combined_path_table_ui(
+  list(m_full_result, y_full_result),
+  result = list(roles = list(mediators = "M")),
+  output_table_style = "wide"
+))$html
+stopifnot(grepl(as.character(htmltools::htmlEscape(expected_y_delta)), combined_path_wide_html, fixed = TRUE))
+combined_no_delta_standard <- htmltools::renderTags(mediation_moderation_combined_path_table_ui(
+  list(m_base_result, y_base_result),
+  result = list(roles = list(mediators = "M")),
+  output_table_style = "standard"
+))$html
+combined_no_delta_wide <- htmltools::renderTags(mediation_moderation_combined_path_table_ui(
+  list(m_base_result, y_base_result),
+  result = list(roles = list(mediators = "M")),
+  output_table_style = "wide"
+))$html
+stopifnot(
+  !grepl("Delta R²", combined_no_delta_standard, fixed = TRUE),
+  !grepl("Delta R²", combined_no_delta_wide, fixed = TRUE)
+)
 
 message("Checking compact path table consolidates SE and p columns...")
 compact_boot_table <- data.frame(
@@ -360,8 +754,31 @@ stopifnot(all(grepl("X1-->M[12]-->Y", as.character(index_table$Path))))
 
 message("Checking custom model canvas file extension policy...")
 dialogs_js <- paste(readLines(file.path(repo_root, "www", "model-canvas", "dialogs.js"), warn = FALSE), collapse = "\n")
-stopifnot(grepl('timestampName\\("model-canvas", "stmodel"\\)', dialogs_js))
-stopifnot(grepl('"\\.stmodel", "\\.studio", "\\.json"', dialogs_js))
-stopifnot(grepl('input\\.accept = "\\.stmodel,\\.studio,\\.json,application/json"', dialogs_js))
+stopifnot(grepl('timestampName\\(modelCanvasFilePrefix\\(instance\\), modelCanvasFileExtension\\(instance\\)\\)', dialogs_js))
+stopifnot(grepl('cfa: "stcfa"', dialogs_js, fixed = TRUE))
+stopifnot(grepl('cbsem: "stsem"', dialogs_js, fixed = TRUE))
+stopifnot(grepl('plssem: "stpls"', dialogs_js, fixed = TRUE))
+stopifnot(grepl('\\|\\| "streg"', dialogs_js))
+stopifnot(grepl('input\\.accept = "\\." \\+ modelCanvasFileExtension\\(instance\\)', dialogs_js))
+stopifnot(!grepl('"\\.stmodel"|"\\.studio"|"\\.json"|"\\.customization"', dialogs_js))
+stopifnot(grepl('function exportPng\\(instance\\)', dialogs_js))
+stopifnot(grepl('timestampName\\("model-canvas", "png"\\)', dialogs_js))
+stopifnot(grepl('data: new Uint8Array\\(await payload\\.arrayBuffer\\(\\)\\)', dialogs_js))
+stopifnot(!grepl('timestampName\\("model-canvas", "svg"\\)', dialogs_js))
+
+electron_package <- jsonlite::fromJSON(file.path(repo_root, "packaging", "electron", "package.json"), simplifyVector = FALSE)
+associated_extensions <- vapply(electron_package$build$fileAssociations, function(item) item$ext, character(1))
+stopifnot(all(c("studio", "streg", "stcfa", "stsem", "stpls", "stmm") %in% associated_extensions))
+stopifnot(!"stmodel" %in% associated_extensions)
+electron_main <- paste(readLines(file.path(repo_root, "packaging", "electron", "main.js"), warn = FALSE), collapse = "\n")
+stopifnot(grepl('"\\.streg", "\\.stcfa", "\\.stsem", "\\.stpls"', electron_main))
+stopifnot(!grepl('"\\.stmodel"', electron_main))
+stopifnot(grepl('ipcMain\\.handle\\("statedu:canvas-open-text"', electron_main))
+stopifnot(grepl('ipcMain\\.handle\\("statedu:canvas-save"', electron_main))
+stopifnot(grepl('defaultPath: canvasDialogDirectory\\(\\)', electron_main))
+stopifnot(grepl('defaultPath: path\\.join\\(canvasDialogDirectory\\(\\), suggestedName\\)', electron_main))
+electron_preload <- paste(readLines(file.path(repo_root, "packaging", "electron", "preload.js"), warn = FALSE), collapse = "\n")
+stopifnot(grepl('webUtils\\.getPathForFile\\(input\\.files\\[0\\]\\)', electron_preload))
+stopifnot(grepl('contextBridge\\.exposeInMainWorld\\("stateduDesktopFiles"', electron_preload))
 
 message("All custom model canvas validations passed.")

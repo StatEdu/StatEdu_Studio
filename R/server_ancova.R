@@ -24,15 +24,19 @@ register_ancova_handlers <- function(
   influence_sensitivity_value <- reactiveVal(FALSE)
   force_ranked_value <- reactiveVal(FALSE)
   sum_of_squares_value <- reactiveVal("type2")
-  ordered_significance_value <- reactiveVal(FALSE)
+  ordered_significance_value <- reactiveVal(TRUE)
   posthoc_method_value <- reactiveVal(statedu_multiple_correction_default())
   show_df_value <- reactiveVal(FALSE)
-  mean_se_value <- reactiveVal(FALSE)
+  mean_se_value <- reactiveVal(TRUE)
   plot_adjusted_means_value <- reactiveVal(TRUE)
   plot_raw_overlay_value <- reactiveVal(FALSE)
   plot_regression_lines_value <- reactiveVal(FALSE)
   plot_linearity_diagnostics_value <- reactiveVal(FALSE)
-  result_value <- reactiveVal(NULL)
+  result_value <- analysis_scope_result_val(NULL)
+  # Multiple outcomes each include three plots plus one per numeric covariate.
+  export_images <- correlation_export_image_cache(max_bytes = 48 * 1024^2, max_entries = 32L)
+  session$onSessionEnded(export_images$clear)
+  observeEvent(result_value(), { export_images$clear() }, ignoreNULL = FALSE, priority = 100)
 
   current_selected <- reactive(as.character(selected_names_fn() %||% character(0)))
   current_variable_table <- reactive(variable_table_fn())
@@ -331,6 +335,11 @@ register_ancova_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
+  register_analysis_reorder(input, session, "ancova_dependents", function(payload) {
+    updated <- analysis_reorder_items(dependent_variables(), payload)
+    if (isTRUE(updated$changed)) dependent_variables(updated$order)
+  })
+
   observeEvent(input$ancova_dependent_up, {
     updated <- move_order_item(dependent_variables(), input$ancova_dependents, "up")
     if (isTRUE(updated$changed)) dependent_variables(updated$order)
@@ -339,6 +348,11 @@ register_ancova_handlers <- function(
     updated <- move_order_item(dependent_variables(), input$ancova_dependents, "down")
     if (isTRUE(updated$changed)) dependent_variables(updated$order)
   })
+  register_analysis_reorder(input, session, "ancova_covariates", function(payload) {
+    updated <- analysis_reorder_items(covariates(), payload)
+    if (isTRUE(updated$changed)) covariates(updated$order)
+  })
+
   observeEvent(input$ancova_covariate_up, {
     updated <- move_order_item(covariates(), input$ancova_covariates, "up")
     if (isTRUE(updated$changed)) covariates(updated$order)
@@ -348,7 +362,11 @@ register_ancova_handlers <- function(
     if (isTRUE(updated$changed)) covariates(updated$order)
   })
 
-  observeEvent(input$run_ancova, {
+  register_analysis_command_handler(
+    "run_ancova", input, output, session,
+    states = list(dependent_variables = dependent_variables, factor_variable = factor_variable, covariates = covariates),
+    dataset_fn = dataset_fn, context_fn = function() list(selected = selected_names_fn(), variables = variable_table_fn(), labels = labels_fn(), categories = category_table_fn()),
+    run_fn = function() {
     if (length(dependent_variables()) == 0 || length(factor_variable()) == 0 || length(covariates()) == 0) {
       showNotification(statedu_t("analysis.validation.ancova_required", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return()
@@ -421,7 +439,7 @@ register_ancova_handlers <- function(
     path <- choose_html_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) return()
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) path <- paste0(path, ".html")
-    write_ancova_results_html(result, path, current_variable_table(), labels_fn())
+    write_ancova_results_html(result, path, current_variable_table(), labels_fn(), plot_renderer = export_images$render)
     showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
@@ -431,7 +449,7 @@ register_ancova_handlers <- function(
     path <- choose_pdf_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) return()
     if (!grepl("\\.pdf$", path, ignore.case = TRUE)) path <- paste0(path, ".pdf")
-    write_ancova_results_pdf(result, path, current_variable_table(), labels_fn())
+    write_ancova_results_pdf(result, path, current_variable_table(), labels_fn(), plot_renderer = export_images$render)
     showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
@@ -441,7 +459,7 @@ register_ancova_handlers <- function(
     path <- choose_excel_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) return()
     if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) path <- paste0(path, ".xlsx")
-    save_ancova_excel_file(result, path, current_variable_table(), labels_fn())
+    save_ancova_excel_file(result, path, current_variable_table(), labels_fn(), plot_renderer = export_images$render)
     showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
@@ -461,7 +479,7 @@ register_ancova_handlers <- function(
         showNotification(sprintf(statedu_t("result.figures_saved", statedu_current_language(app_language_fn)), length(saved), directory), type = "message")
       }
     }, error = function(e) {
-      showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+      showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
     })
   })
 

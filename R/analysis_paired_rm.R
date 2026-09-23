@@ -14,8 +14,46 @@ paired_rm_complete_matrix <- function(data, variables, measurement) {
 paired_rm_has_within_subject_change <- function(values) {
   if (!is.data.frame(values) && !is.matrix(values)) return(FALSE)
   if (nrow(values) == 0 || ncol(values) < 2) return(FALSE)
-  any(apply(as.matrix(values), 1, function(row) length(unique(row[!is.na(row)])) > 1))
+  matrix <- as.matrix(values)
+  if ((is.double(matrix) || is.integer(matrix)) && !is.object(matrix) && !anyNA(matrix)) {
+    first <- matrix[, 1L]
+    for (column in seq.int(2L, ncol(matrix))) {
+      if (any(matrix[, column] != first)) return(TRUE)
+    }
+    return(FALSE)
+  }
+  any(apply(matrix, 1, function(row) length(unique(row[!is.na(row)])) > 1))
 }
+
+paired_rm_build_friedman_engine <- function(reference = get("friedman.test.default", asNamespace("stats"))) {
+  # Only specialize the verified bundled implementation; retain the stats fallback.
+  expected <- "618341e60eed434c8308f4a96cc2f9b7a240b5b2e21290f7e565676945e93606"
+  actual <- digest::digest(paste(deparse(reference), collapse = "\n"), algo = "sha256", serialize = FALSE)
+  if (!identical(actual, expected)) return(stats::friedman.test)
+  code <- body(reference)
+  target <- quote(TIES <- tapply(c(r), row(r), table))
+  index <- which(vapply(as.list(code), identical, logical(1), y = target))
+  if (length(index) != 1L) return(stats::friedman.test)
+  # Average ranks are integers or half-integers. Keep ascending nonzero counts
+  # in each row, preserving the subsequent u^3-u calculation and summation order.
+  code[index] <- list(quote(TIES <- lapply(seq_len(nrow(r)), function(i) {
+    counts <- tabulate(2 * r[i, ], nbins = 2 * ncol(r))
+    counts[counts > 0L]
+  })))
+  body(reference) <- code
+  reference
+}
+
+paired_rm_friedman_test <- local({
+  engine <- NULL
+  function(y, ...) {
+    if (!is.matrix(y) || is.object(y) || !(is.double(y) || is.integer(y))) {
+      return(stats::friedman.test(y, ...))
+    }
+    if (is.null(engine)) engine <<- paired_rm_build_friedman_engine()
+    engine(y, ...)
+  }
+})
 
 paired_rm_method_label <- function(method) {
   switch(
@@ -236,6 +274,40 @@ paired_rm_pair_label <- function(a, b, variable_info, labels, category_table) {
   )
 }
 
+paired_rm_build_wilcox_engine <- function(reference = get("wilcox.test.default", asNamespace("stats"))) {
+  expected <- "8fa00d3fa461cb114e013ebc13b4e70f9d67607618ef9f33d23f38a87eb9ea05"
+  actual <- digest::digest(paste(deparse(reference), collapse = "\n"), algo = "sha256", serialize = FALSE)
+  if (!identical(actual, expected)) return(stats::wilcox.test)
+  replacements <- 0L
+  replace <- function(node) {
+    if (!is.call(node)) return(node)
+    if (identical(node, quote(NTIES <- table(r)))) {
+      replacements <<- replacements + 1L
+      # Preserve ascending tie counts and the original correction arithmetic.
+      return(quote(NTIES <- if (isTRUE(paired)) {
+        counts <- tabulate(2 * r, nbins = 2 * length(r))
+        counts[counts > 0L]
+      } else table(r)))
+    }
+    for (i in seq_along(node)) {
+      if (!identical(node[[i]], quote(expr=))) node[i] <- list(replace(node[[i]]))
+    }
+    node
+  }
+  code <- replace(body(reference))
+  if (replacements != 2L) return(stats::wilcox.test)
+  body(reference) <- code
+  reference
+}
+
+paired_rm_wilcox_engine <- local({
+  engine <- NULL
+  function() {
+    if (is.null(engine)) engine <<- paired_rm_build_wilcox_engine()
+    engine
+  }
+})
+
 paired_rm_posthoc_scale <- function(y, method, adjustment, variable_info, labels, category_table) {
   pairs <- utils::combn(colnames(y), 2, simplify = FALSE)
   raw <- lapply(pairs, function(pair) {
@@ -250,7 +322,7 @@ paired_rm_posthoc_scale <- function(y, method, adjustment, variable_info, labels
       effect_label <- "Hedges' g"
       effect <- paired_effect_value(effects$g)
     } else {
-      test <- tryCatch(suppressWarnings(stats::wilcox.test(z, x, paired = TRUE, exact = FALSE)), error = function(e) NULL)
+      test <- tryCatch(suppressWarnings(paired_rm_wilcox_engine()(z, x, paired = TRUE, exact = FALSE)), error = function(e) NULL)
       statistic <- if (is.null(test)) NA_real_ else unname(as.numeric(test$statistic))
       p <- if (is.null(test)) NA_real_ else as.numeric(test$p.value)
       label <- "W"
@@ -324,7 +396,8 @@ paired_rm_posthoc_notation <- function(variables, posthoc, means = NULL, labels 
       if (startsWith(p_text, "<")) p_value <- 0
       if (!is.finite(p_value) || p_value >= alpha) next
       if (!is.null(means) && all(c(first, second) %in% names(means))) {
-        left <- if (means[[first]] >= means[[second]]) first else second
+        if (!is.finite(means[[first]]) || !is.finite(means[[second]]) || means[[first]] == means[[second]]) next
+        left <- if (means[[first]] > means[[second]]) first else second
         right <- if (identical(left, first)) second else first
       } else {
         left <- first
@@ -333,31 +406,13 @@ paired_rm_posthoc_notation <- function(variables, posthoc, means = NULL, labels 
       sig[left, right] <- TRUE
     }
   }
-  statements <- character(0)
-  for (start in variables) {
-    lower <- variables[sig[start, variables]]
-    if (length(lower) == 0) next
-    chain <- start
-    current <- start
-    remaining <- lower
-    while (length(remaining) > 0) {
-      next_values <- remaining[sig[current, remaining]]
-      if (length(next_values) == 0) break
-      next_value <- next_values[[1]]
-      chain <- c(chain, next_value)
-      current <- next_value
-      remaining <- setdiff(remaining, next_value)
-    }
-    rest <- setdiff(lower, chain[-1])
-    if (length(chain) > 1 && length(rest) == 0) {
-      statements <- c(statements, paste(display[chain], collapse = ">"))
-    } else if (length(chain) > 1 && length(rest) > 0) {
-      statements <- c(statements, paste0(paste(display[chain], collapse = ">"), ",", paste(display[rest], collapse = ",")))
-    } else {
-      statements <- c(statements, sprintf("%s>%s", display[[start]], paste(display[lower], collapse = ",")))
-    }
-  }
-  paste(statements, collapse = "; ")
+  if (is.null(means)) return("")
+  ordered <- variables[order(-means[variables], seq_along(variables), na.last = NA)]
+  pairs <- which(sig, arr.ind = TRUE)
+  significant_pairs <- data.frame(
+    higher = unname(display[rownames(sig)[pairs[, 1]]]),
+    lower = unname(display[colnames(sig)[pairs[, 2]]]), stringsAsFactors = FALSE)
+  paste(ttest_ordered_marker_statements(unname(display[ordered]), significant_pairs), collapse = "; ")
 }
 
 paired_rm_time_header_labels <- function(n) {
@@ -519,7 +574,7 @@ paired_rm_binary_display_table <- function(result, values, variable_info, labels
   row[["StatisticLabel"]] <- result$table$Statistic[[1]]
   row[["Statistic"]] <- result$table$Value[[1]]
   row[["p"]] <- result$table$p[[1]]
-  row[["Post-hoc"]] <- paired_rm_posthoc_notation(variables, result$posthoc, NULL, contrast_markers, contrast_labels)
+  row[["Post-hoc"]] <- paired_rm_posthoc_notation(variables, result$posthoc, if (!is.null(binary_matrix)) colMeans(binary_matrix, na.rm = TRUE) else NULL, contrast_markers, contrast_labels)
   posthoc_methods <- unique(as.character(result$posthoc$Method %||% ""))
   posthoc_methods <- posthoc_methods[nzchar(posthoc_methods)]
   row[["PosthocMethodLabel"]] <- paste(posthoc_methods, collapse = ", ")
@@ -532,6 +587,7 @@ paired_rm_binary_display_table <- function(result, values, variable_info, labels
 }
 
 prepare_paired_rm_single_result <- function(data, variables, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("variables"))
   variables <- as.character(variables %||% character(0))
   if (length(variables) < 3) {
     stop("Select three or more repeated-measures variables.", call. = FALSE)
@@ -572,7 +628,7 @@ prepare_paired_rm_single_result <- function(data, variables, variable_info = NUL
       "rm_anova"
     }
     if (identical(method_key, "friedman")) {
-      test <- stats::friedman.test(y)
+      test <- paired_rm_friedman_test(y)
       main <- data.frame(Method = paired_rm_method_label(method_key), N = nrow(y), Statistic = stat_chisq_label(FALSE), Value = format_decimal3(unname(as.numeric(test$statistic))), df1 = format_decimal3(unname(as.numeric(test$parameter))), df2 = "", p = format_p(test$p.value), stringsAsFactors = FALSE, check.names = FALSE)
       main[["Effect size"]] <- "Kendall's W"
       main[["ES"]] <- paired_effect_value(paired_rm_kendalls_w(unname(as.numeric(test$statistic)), nrow(y), ncol(y)))
@@ -601,7 +657,7 @@ prepare_paired_rm_single_result <- function(data, variables, variable_info = NUL
 
   if (identical(measurement, "ordered")) {
     y <- as.matrix(values)
-    test <- stats::friedman.test(y)
+    test <- paired_rm_friedman_test(y)
     main <- data.frame(Method = paired_rm_method_label("friedman"), N = nrow(y), Statistic = stat_chisq_label(FALSE), Value = format_decimal3(unname(as.numeric(test$statistic))), df1 = format_decimal3(unname(as.numeric(test$parameter))), df2 = "", p = format_p(test$p.value), stringsAsFactors = FALSE, check.names = FALSE)
     main[["Effect size"]] <- "Kendall's W"
     main[["ES"]] <- paired_effect_value(paired_rm_kendalls_w(unname(as.numeric(test$statistic)), nrow(y), ncol(y)))
@@ -643,6 +699,7 @@ paired_rm_bind_rows <- function(tables) {
 }
 
 prepare_paired_rm_results <- function(data, variables = NULL, variable_groups = NULL, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("variables", "variable_groups"))
   groups <- variable_groups %||% list()
   if (length(groups) == 0 && length(variables %||% character(0)) > 0) {
     groups <- list(as.character(variables))

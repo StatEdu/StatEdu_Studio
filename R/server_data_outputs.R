@@ -24,6 +24,7 @@ register_data_workspace_outputs <- function(
   app_language_fn = NULL
 ) {
   output$data_steps <- renderUI({
+    start <- Sys.time()
     language <- if (is.function(app_language_fn)) app_language_fn() else statedu_initial_language()
     file <- current_data_file_fn()
     pending_file <- if (is.function(active_data_file_fn)) active_data_file_fn() else NULL
@@ -50,7 +51,9 @@ register_data_workspace_outputs <- function(
       controls = control_names_fn(),
       has_calculated_variables = (is.data.frame(calculated) && ncol(calculated) > 0) || length(renamed) > 0
     )
-    do.call(data_steps_panel, c(state, list(language = language)))
+    out <- do.call(data_steps_panel, c(state, list(language = language)))
+    statedu_log_timing("render data_steps", start, sprintf("file=%s has_data=%s", as.character((file %||% list())$name %||% ""), isTRUE(state$has_data)))
+    out
   })
 
   output$excel_import_preview <- DT::renderDT({
@@ -93,6 +96,7 @@ register_data_workspace_outputs <- function(
   })
 
   output$data_loaded_message <- renderUI({
+    start <- Sys.time()
     language <- if (is.function(app_language_fn)) app_language_fn() else statedu_initial_language()
     pending_file <- if (is.function(active_data_file_fn)) active_data_file_fn() else NULL
     if (valid_pending_excel_file_value(pending_file)) {
@@ -105,7 +109,9 @@ register_data_workspace_outputs <- function(
       restored_info = restored_variable_info_fn(),
       restored_file_name = restored_data_file_fn()
     )
-    tags$span(do.call(data_loaded_message_text, c(state, list(language = language))))
+    out <- tags$span(do.call(data_loaded_message_text, c(state, list(language = language))))
+    statedu_log_timing("render data_loaded_message", start, sprintf("file=%s", as.character((file %||% list())$name %||% "")))
+    out
   })
 
   output$data_view_title <- renderUI({
@@ -172,8 +178,8 @@ register_data_table_outputs <- function(
         rownames = FALSE,
         colnames = data_table_colnames(names(table_state$table_data), language),
         escape = FALSE,
-        filter = "top",
-        options = variable_table_options(language),
+        filter = if (nrow(table_state$table_data) <= 20L) "none" else "top",
+        options = variable_table_options(language, compact = nrow(table_state$table_data) <= 20L),
         callback = variable_table_callback(
           selected_names = table_state$checked_names,
           dependent_only = FALSE,
@@ -276,6 +282,7 @@ register_data_table_outputs <- function(
 }
 
 register_variable_table_output <- function(
+  input,
   output,
   current_data_file_fn,
   restored_variable_info_fn,
@@ -291,6 +298,21 @@ register_variable_table_output <- function(
   measurement_overrides_fn,
   app_language_fn = NULL
 ) {
+  observeEvent(input$variable_table_client_timing, {
+    timing <- input$variable_table_client_timing
+    elapsed_ms <- suppressWarnings(as.numeric(timing$elapsed_ms %||% NA_real_))
+    rows <- suppressWarnings(as.integer(timing$rows %||% NA_integer_))
+    visible_rows <- suppressWarnings(as.integer(timing$visible_rows %||% NA_integer_))
+    compact <- isTRUE(timing$compact)
+    message(sprintf(
+      "[StatEdu timing] client variable_table callback+paint: %.3fs rows=%s visible=%s compact=%s",
+      elapsed_ms / 1000,
+      ifelse(is.na(rows), "", rows),
+      ifelse(is.na(visible_rows), "", visible_rows),
+      compact
+    ))
+  }, ignoreInit = TRUE)
+
   output$variable_table <- DT::renderDT({
     start <- Sys.time()
     if (is.null(current_data_file_fn()) && is.null(restored_variable_info_fn())) {
@@ -319,13 +341,14 @@ register_variable_table_output <- function(
     language <- if (is.function(app_language_fn)) app_language_fn() else statedu_initial_language()
     checked_names <- table_state$checked_names
     table_data <- table_state$table_data
+    compact_table <- nrow(table_data) <= 20L
     out <- DT::datatable(
       table_data,
       rownames = FALSE,
       colnames = data_table_colnames(names(table_data), language),
       escape = FALSE,
-      filter = "top",
-      options = variable_table_options(language),
+      filter = if (isTRUE(compact_table)) "none" else "top",
+      options = variable_table_options(language, compact = compact_table),
       callback = variable_table_callback(
         selected_names = checked_names,
         dependent_only = isTRUE(selection_applied_fn()) && identical(active_role_fn(), "dependent"),
@@ -335,7 +358,7 @@ register_variable_table_output <- function(
     )
     statedu_log_timing("render variable_table", start, sprintf("rows=%s selection_applied=%s", nrow(table_data), isTRUE(selection_applied_fn())))
     out
-  })
+  }, server = FALSE)
 
   invisible(TRUE)
 }

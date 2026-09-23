@@ -746,12 +746,18 @@ set_safe_colwidths <- function(wb, sheet_name, df) {
 # 2. reload current pipeline objects
 # ------------------------------------------------------------
 FIT_SUMMARY          <- load_step_rds("FIT_SUMMARY",          dir_rds = DIR_RDS, default = data.frame())
+MODEL_CANDIDATES_RAW <- load_step_rds(
+  "MODEL_CANDIDATES_RAW",
+  dir_rds = DIR_RDS,
+  default = FIT_SUMMARY
+)
 ESTIMATION_REGISTRY  <- load_step_rds("ESTIMATION_REGISTRY",  dir_rds = DIR_RDS, default = data.frame())
 CLASS_SUMMARY_FINAL  <- load_step_rds("CLASS_SUMMARY_FINAL",  dir_rds = DIR_RDS, default = data.frame())
 CLASS_SUMMARY        <- load_step_rds("CLASS_SUMMARY",        dir_rds = DIR_RDS, default = data.frame())
 T3_indicator_profile <- load_step_rds("T3_indicator_profile", dir_rds = DIR_RDS, default = data.frame())
 T3_indicator_profile_z <- load_step_rds("T3_indicator_profile_z", dir_rds = DIR_RDS, default = data.frame())
 R3STEP_RESULTS_RAW   <- load_step_rds("R3STEP_RESULTS",       dir_rds = DIR_RDS, default = list())
+R3STEP_SPEC          <- load_step_rds("R3STEP_SPEC",          dir_rds = DIR_RDS, default = data.frame())
 T5_RRR_RAW           <- load_step_rds("T5_rrr",               dir_rds = DIR_RDS, default = data.frame())
 BCH_RESULTS          <- load_step_rds("BCH_RESULTS",          dir_rds = DIR_RDS, default = data.frame())
 BCH_RESULTS_FULL     <- load_step_rds("BCH_RESULTS_FULL",     dir_rds = DIR_RDS, default = data.frame())
@@ -847,8 +853,23 @@ filter_retained_profile <- function(df, best_k, best_tag = NULL) {
   df <- safe_df(df)
   if (nrow(df) == 0) return(df)
 
-
-
+  if (!is.null(best_tag) && length(best_tag) > 0 && !is.na(best_tag[1]) && nzchar(as.character(best_tag[1]))) {
+    if (!"model_tag" %in% names(df)) return(df[0, , drop = FALSE])
+    df <- df[as.character(df$model_tag) == as.character(best_tag[1]), , drop = FALSE]
+  }
+  if (nrow(df) == 0) return(df)
+  if (!is.null(best_k) && length(best_k) > 0 && !is.na(best_k[1])) {
+    class_num <- if ("class_num" %in% names(df)) {
+      safe_int(df$class_num)
+    } else if ("Class" %in% names(df)) {
+      extract_class_num_from_text(df$Class)
+    } else if ("class" %in% names(df)) {
+      extract_class_num_from_text(df$class)
+    } else {
+      rep(NA_integer_, nrow(df))
+    }
+    df <- df[!is.na(class_num) & class_num >= 1L & class_num <= as.integer(best_k[1]), , drop = FALSE]
+  }
   rownames(df) <- NULL
   df
 }
@@ -984,7 +1005,7 @@ get_var_label <- function(v) {
 
   out <- v
   for (i in seq_along(v)) {
-    hit <- DICT_META[DICT_META$var_name == v[i], , drop = FALSE]
+    hit <- DICT_META[tolower(as.character(DICT_META$var_name)) == tolower(v[i]), , drop = FALSE]
     if (nrow(hit) == 0) next
 
     cand <- character(0)
@@ -1009,15 +1030,15 @@ get_display_order <- function(v) {
 
   if ("display_order" %in% names(DICT_META)) {
     ord_map <- DICT_META[, c("var_name", "display_order"), drop = FALSE]
-    ord_map <- ord_map[!duplicated(ord_map$var_name), , drop = FALSE]
+    ord_map <- ord_map[!duplicated(tolower(as.character(ord_map$var_name))), , drop = FALSE]
 
-    out <- suppressWarnings(as.numeric(ord_map$display_order[match(v, ord_map$var_name)]))
+    out <- suppressWarnings(as.numeric(ord_map$display_order[match(tolower(v), tolower(as.character(ord_map$var_name)))]))
     miss <- is.na(out)
     if (any(miss)) out[miss] <- 999999 + seq_len(sum(miss))
     return(out)
   }
 
-  out <- match(v, DICT_META$var_name)
+  out <- match(tolower(v), tolower(as.character(DICT_META$var_name)))
   out[is.na(out)] <- 999999 + seq_len(sum(is.na(out)))
   out
 }
@@ -1259,7 +1280,7 @@ get_reference_class_label <- function(x = REFERENCE_CLASS) {
 }
 
 make_table_note <- function(
-    type = c("mean_sd", "m_se", "n_pct", "weighted_n_pct", "weighted_n_pct_app_occ", "pct_psig", "rrr", "rrr_compact", "mean_sd_compact", "mean_se_compact", "mixed_split", "generic"),
+    type = c("mean_sd", "m_se", "model_mse_ci", "modal_raw", "modal_z", "n_pct", "weighted_n_pct", "weighted_n_pct_app_occ", "pct_psig", "rrr", "rrr_compact", "mean_sd_compact", "mean_se_compact", "mixed_split", "selection_quality", "generic"),
     reference_class = REFERENCE_CLASS
 ) {
   type <- match.arg(type)
@@ -1269,6 +1290,33 @@ make_table_note <- function(
     type,
     mean_sd         = "Values are M and SD.",
     m_se            = "Values are M and SE.",
+    model_mse_ci    = "M and SE are retained-model parameter estimates. LLCI and ULCI are 95% Wald confidence limits (M +/- 1.96 SE).",
+    modal_raw       = if (tolower(as.character(mixture_mode %||% "lpa")) == "lca") {
+      paste0(
+        "Values are modal-assignment descriptives (n and ",
+        if (isTRUE(HAS_WEIGHT)) "weighted %; n is the unweighted observed count" else "%",
+        "). They do not account for classification uncertainty and are not model parameters."
+      )
+    } else if (isTRUE(has_mixed_indicators())) {
+      paste0(
+        "Values are modal-assignment descriptives (continuous indicators: ",
+        if (isTRUE(HAS_WEIGHT)) "weighted M and SD" else "M and SD",
+        "; categorical indicators: n and ",
+        if (isTRUE(HAS_WEIGHT)) "weighted %; n is the unweighted observed count" else "%",
+        "). They do not account for classification uncertainty and are not model parameters."
+      )
+    } else {
+      paste0(
+        "Values are modal-assignment descriptives (",
+        if (isTRUE(HAS_WEIGHT)) "weighted M and SD" else "M and SD",
+        "). They do not account for classification uncertainty and are not model parameters."
+      )
+    },
+    modal_z         = paste0(
+      "Values are modal-assignment descriptives after full-sample standardization (",
+      if (isTRUE(HAS_WEIGHT)) "weighted M and SD within profiles" else "M and SD",
+      "). They do not account for classification uncertainty and are not model parameters."
+    ),
     n_pct           = "Values are n and %.",
     weighted_n_pct  = "Values are n and weighted %.",
       weighted_n_pct_app_occ = "Values are weighted n, weighted %, APP, and OCC. OCC is omitted when APP is effectively 1.00 because the odds ratio diverges.",
@@ -1282,6 +1330,12 @@ make_table_note <- function(
     } else {
       paste0("For each ", latent_group_term_lower(), ", the first statistic column reports M for continuous indicators and n for categorical indicators; the second statistic column reports SD for continuous indicators and % for categorical indicators.")
     },
+    selection_quality = paste0(
+      "Only eligible candidates were considered for retention. Eligibility required successful fit parsing, normal termination, ",
+      "replication of the best loglikelihood for models with more than one class/profile, required selection metrics, ",
+      "and the prespecified class-size and entropy criteria. Fit indices for excluded candidates are diagnostic only. ",
+      "N/R = not required for a one-class model."
+    ),
     generic         = ""
   )
 }
@@ -1314,7 +1368,123 @@ append_note_row   <- function(df, note_text) {
 # ------------------------------------------------------------
 # 5. builders: T1 / T2 / T3
 # ------------------------------------------------------------
+candidate_quality_source <- function() {
+  candidates <- safe_df(MODEL_CANDIDATES_RAW)
+  if (nrow(candidates) == 0L) candidates <- safe_df(FIT_SUMMARY)
+  candidates
+}
+
+candidate_quality_column <- function(df, candidates, default = NULL) {
+  hit <- candidates[candidates %in% names(df)]
+  if (length(hit) == 0L) {
+    if (is.null(default)) return(rep(NA, nrow(df)))
+    return(rep_len(default, nrow(df)))
+  }
+  df[[hit[[1L]]]]
+}
+
+candidate_quality_logical <- function(x) {
+  raw <- tolower(trimws(as.character(x)))
+  out <- rep(NA, length(raw))
+  out[raw %in% c("true", "t", "1", "yes", "y", "ok", "eligible")] <- TRUE
+  out[raw %in% c("false", "f", "0", "no", "n", "failed", "ineligible", "excluded")] <- FALSE
+  out
+}
+
+candidate_quality_flag <- function(x, true = "Yes", false = "No", unknown = "Not reported") {
+  value <- candidate_quality_logical(x)
+  ifelse(is.na(value), unknown, ifelse(value, true, false))
+}
+
+candidate_failure_reason_text <- function(x) {
+  values <- as.character(x)
+  values[is.na(values)] <- ""
+
+  min_prop <- suppressWarnings(as.numeric(BEST_K_SUMMARY$min_class_prop %||% NA_real_))
+  min_n <- suppressWarnings(as.numeric(BEST_K_SUMMARY$min_class_n %||% NA_real_))
+  min_entropy <- suppressWarnings(as.numeric(BEST_K_SUMMARY$min_entropy_hard %||% NA_real_))
+
+  label_one <- function(code) {
+    code <- trimws(as.character(code))
+    if (!nzchar(code)) return("")
+    if (grepl("^metric_missing:", code)) {
+      metric <- sub("^metric_missing:", "", code)
+      return(paste0("Required selection metric missing (", toupper(metric), ")"))
+    }
+    labels <- c(
+      status_not_ok = "Estimation run failed",
+      parse_failed = "Fit statistics could not be parsed",
+      not_converged = "Normal termination was not established",
+      loglik_not_replicated = "Best loglikelihood was not replicated",
+      loglik_replication_missing = "Best-loglikelihood replication was not reported",
+      class_prop_missing = "Smallest-class proportion was not available",
+      class_n_missing = "Smallest-class count was not available",
+      entropy_missing = "Entropy was not available"
+    )
+    if (code %in% names(labels)) return(unname(labels[[code]]))
+    if (identical(code, "class_prop_below_min")) {
+      if (is.finite(min_prop)) return(sprintf("Smallest-class proportion was below %.1f%%", 100 * min_prop))
+      return("Smallest-class proportion was below the minimum")
+    }
+    if (identical(code, "class_n_below_min")) {
+      if (is.finite(min_n)) return(sprintf("Smallest-class count was below %.0f", min_n))
+      return("Smallest-class count was below the minimum")
+    }
+    if (identical(code, "entropy_below_min")) {
+      if (is.finite(min_entropy)) return(sprintf("Entropy was below %.2f", min_entropy))
+      return("Entropy was below the minimum")
+    }
+    gsub("_", " ", code, fixed = TRUE)
+  }
+
+  vapply(values, function(value) {
+    codes <- trimws(unlist(strsplit(value, ";", fixed = TRUE), use.names = FALSE))
+    codes <- codes[nzchar(codes)]
+    if (length(codes) == 0L) return("")
+    paste(unique(vapply(codes, label_one, character(1))), collapse = "; ")
+  }, character(1))
+}
+
 build_T1_model_selection <- function() {
+  candidates <- candidate_quality_source()
+  tags <- if ("model_tag" %in% names(candidates)) as.character(candidates$model_tag) else rep(NA_character_, nrow(candidates))
+  selected <- candidates[
+    !is.na(tags) & !is.na(best_tag) & nzchar(best_tag) & tags == best_tag,
+    , drop = FALSE
+  ]
+  if (nrow(selected) > 1L) selected <- selected[1L, , drop = FALSE]
+
+  eligible_all <- candidate_quality_logical(candidate_quality_column(candidates, "eligible"))
+  eligible_count <- if (length(eligible_all) > 0L && any(!is.na(eligible_all))) {
+    sprintf("%d of %d", sum(eligible_all %in% TRUE, na.rm = TRUE), nrow(candidates))
+  } else {
+    "Not evaluated"
+  }
+
+  selected_eligible <- if (nrow(selected) > 0L) {
+    candidate_quality_flag(candidate_quality_column(selected, "eligible"))[[1L]]
+  } else {
+    "Not reported"
+  }
+  selected_termination <- if (nrow(selected) > 0L) {
+    candidate_quality_flag(candidate_quality_column(selected, c("terminated_normally", "converged")))[[1L]]
+  } else {
+    "Not reported"
+  }
+  selected_replication <- if (!is.na(best_k) && best_k <= 1L) {
+    "Not required (one-class model)"
+  } else if (nrow(selected) > 0L) {
+    candidate_quality_flag(candidate_quality_column(selected, c("loglik_replicated", "best_ll_replicated")))[[1L]]
+  } else {
+    "Not reported"
+  }
+  selection_rationale <- as.character(
+    BEST_K_SUMMARY$best_reason_detail %||%
+      BEST_K_SUMMARY$best_reason %||%
+      BEST_K_SUMMARY$selection_reason %||%
+      "Not reported"
+  )[[1L]]
+
   data.frame(
     Characteristic = c(
       "Analysis type",
@@ -1322,6 +1492,11 @@ build_T1_model_selection <- function() {
       "Selected number of profiles",
       "Primary selection criterion",
       "Best tag",
+      "Eligible candidate solutions",
+      "Retained solution eligible",
+      "Normal termination",
+      "Best loglikelihood replicated",
+      "Selection rationale",
       "Reference class"
     ),
     Value = c(
@@ -1330,6 +1505,11 @@ build_T1_model_selection <- function() {
       best_k,
       BEST_K_SUMMARY$best_rule %||% BEST_K_SUMMARY$BEST_K_RULE %||% "hybrid",
       best_tag,
+      eligible_count,
+      selected_eligible,
+      selected_termination,
+      selected_replication,
+      selection_rationale,
       normalize_latent_group_text(REFERENCE_CLASS)
     ),
     stringsAsFactors = FALSE
@@ -1402,24 +1582,32 @@ resolve_t2_out_files <- function(df) {
   reg <- safe_df(ESTIMATION_REGISTRY)
   if (nrow(reg) == 0 || !"out_file" %in% names(reg)) return(out)
 
+  reg_tag <- if ("model_tag" %in% names(reg)) as.character(reg$model_tag) else rep(NA_character_, nrow(reg))
   reg_k <- if ("k" %in% names(reg)) safe_int(reg$k) else rep(NA_integer_, nrow(reg))
   reg_model <- if ("model_structure" %in% names(reg)) tolower(as.character(reg$model_structure)) else rep(NA_character_, nrow(reg))
 
+  df_tag <- if ("model_tag" %in% names(df)) as.character(df$model_tag) else rep(NA_character_, nrow(df))
   df_k <- if ("k" %in% names(df)) safe_int(df$k) else rep(NA_integer_, nrow(df))
   df_model <- if ("model_structure" %in% names(df)) tolower(as.character(df$model_structure)) else rep(NA_character_, nrow(df))
 
   for (i in seq_len(nrow(df))) {
+    has_exact_tag <- !is.na(df_tag[i]) && nzchar(trimws(df_tag[i]))
+    if (has_exact_tag) {
+      hit <- which(!is.na(reg_tag) & reg_tag == df_tag[i])
+      if (length(hit) == 1L) out[i] <- as.character(reg$out_file[hit])
+      next
+    }
     if (!is.na(out[i]) && file.exists(out[i])) next
     hit <- which(!is.na(reg_k) & reg_k == df_k[i] & !is.na(reg_model) & reg_model == df_model[i])
-    if (length(hit) == 0) hit <- which(!is.na(reg_k) & reg_k == df_k[i])
-    if (length(hit) > 0) out[i] <- as.character(reg$out_file[hit[1]])
+    if (length(hit) == 0L) hit <- which(!is.na(reg_k) & reg_k == df_k[i])
+    if (length(hit) == 1L) out[i] <- as.character(reg$out_file[hit])
   }
 
   out
 }
 
 build_T2_model_fit <- function() {
-  df <- safe_df(FIT_SUMMARY)
+  df <- candidate_quality_source()
   if (nrow(df) == 0) return(data.frame())
 
   n <- nrow(df)
@@ -1462,15 +1650,35 @@ build_T2_model_fit <- function() {
     smallest_n_raw[swap_idx] <- round(n_total * smallest_n_raw[swap_idx], 0)
   }
 
+  model_tags <- if ("model_tag" %in% names(df)) as.character(df$model_tag) else rep(NA_character_, n)
+  normal_termination <- candidate_quality_column(df, c("terminated_normally", "converged"))
+  ll_replicated <- candidate_quality_column(df, c("loglik_replicated", "best_ll_replicated"))
+  eligible <- candidate_quality_column(df, "eligible")
+  failure_reason <- candidate_failure_reason_text(candidate_quality_column(df, "failure_reasons", ""))
+  local_maxima <- candidate_quality_logical(candidate_quality_column(df, "local_maxima_warning"))
+  eligible_flag <- candidate_quality_logical(eligible)
+  add_local_maxima <- local_maxima %in% TRUE & eligible_flag %in% FALSE &
+    !grepl("local", failure_reason, ignore.case = TRUE)
+  failure_reason[add_local_maxima] <- ifelse(
+    nzchar(failure_reason[add_local_maxima]),
+    paste0(failure_reason[add_local_maxima], "; Local-maxima warning reported"),
+    "Local-maxima warning reported"
+  )
+
   out <- data.frame(
     Selected = ifelse(
-      !is.na(k_num) & !is.na(model_chr) &
-        k_num == best_k &
-        model_chr == tolower(model_structure),
+      !is.na(model_tags) & !is.na(best_tag) & nzchar(best_tag) & model_tags == best_tag,
       "Yes", ""
     ),
     Model                   = as.character(df$model_structure),
     Profiles                = k_num,
+    `Normal termination`    = candidate_quality_flag(normal_termination),
+    `Best LL replicated`    = ifelse(
+      !is.na(k_num) & k_num <= 1L,
+      "N/R",
+      candidate_quality_flag(ll_replicated)
+    ),
+    Eligible                = candidate_quality_flag(eligible, unknown = "Not evaluated"),
     LogLik                  = get_col_num(c("loglik", "logLik", "ll")),
     Parameters              = get_col_num(c("npar", "parameters", "n_parameters")),
     AIC                     = get_col_num(c("aic", "AIC")),
@@ -1489,6 +1697,7 @@ build_T2_model_fit <- function() {
       x <- smallest_p_raw
       ifelse(!is.na(x) & x <= 1, 100 * x, x)
     },
+    `Exclusion reason`      = failure_reason,
     stringsAsFactors        = FALSE,
     check.names            = FALSE
   )
@@ -1562,15 +1771,7 @@ build_T2_model_fit <- function() {
 size_note_type <- if (isTRUE(HAS_WEIGHT)) "weighted_n_pct" else "n_pct"
 spread_note_type <- if (isTRUE(HAS_WEIGHT)) "m_se" else "mean_sd"
 compact_spread_note_type <- if (isTRUE(HAS_WEIGHT)) "mean_se_compact" else "mean_sd_compact"
-t4_table_type <- if (tolower(as.character(mixture_mode %||% "lpa")) == "lca") {
-  "twoline_npct"
-} else if (isTRUE(has_mixed_indicators())) {
-  "normal"
-} else if (isTRUE(HAS_WEIGHT)) {
-  "twoline_mse"
-} else {
-  "twoline_mean"
-}
+t4_table_type <- "twoline_model_ci"
 t6d_table_type <- if (isTRUE(HAS_WEIGHT)) "twoline_mse" else "twoline_mean"
 a5_note_type <- if (isTRUE(HAS_WEIGHT)) "weighted_n_pct_app_occ" else "generic"
 
@@ -1894,7 +2095,11 @@ build_mixed_profile_from_classified <- function(df, indicators_continuous, indic
       category = "",
       label = as.character(cont$var_label),
       mean = suppressWarnings(as.numeric(cont$Mean)),
-      se = suppressWarnings(as.numeric(cont$SD)),
+      sd = suppressWarnings(as.numeric(cont$SD)),
+      spread_value = suppressWarnings(as.numeric(cont$SD)),
+      source_type = "modal_class_descriptive",
+      estimate_source = "modal_class_assignment",
+      spread_type = "SD",
       stringsAsFactors = FALSE
     )
   }
@@ -2141,11 +2346,7 @@ build_mixed_profile_split <- function(df) {
     }
   }
 
-  spread_col <- if (isTRUE(HAS_WEIGHT)) {
-    first_existing_col(df, c("SE", "se", "SD", "sd"))
-  } else {
-    first_existing_col(df, c("SD", "sd", "SE", "se"))
-  }
+  spread_col <- first_existing_col(df, c("spread_value", "SD", "sd"))
   df$spread_value <- if (!is.na(spread_col)) safe_num(df[[spread_col]]) else NA_real_
 
   if (!"category" %in% names(df)) df$category <- ""
@@ -2161,8 +2362,12 @@ build_mixed_profile_split <- function(df) {
     n_base <- rep(NA_real_, nrow(df))
   }
 
-  df$n_value <- ifelse(is_categorical_row, round(df$mean * safe_num(n_base), 0), NA_real_)
-  df$pct_value <- ifelse(is_categorical_row, 100 * df$mean, NA_real_)
+  if (!"n_value" %in% names(df)) df$n_value <- NA_real_
+  if (!"pct_value" %in% names(df)) df$pct_value <- NA_real_
+  missing_n <- is_categorical_row & !is.finite(safe_num(df$n_value))
+  missing_pct <- is_categorical_row & !is.finite(safe_num(df$pct_value))
+  df$n_value[missing_n] <- round(df$mean[missing_n] * safe_num(n_base[missing_n]), 0)
+  df$pct_value[missing_pct] <- 100 * df$mean[missing_pct]
 
   ord_var <- get_display_order(df$var_name)
   ord_cat <- get_category_order(df$var_name, level = df$category, label = df$Category)
@@ -2179,7 +2384,7 @@ build_mixed_profile_split <- function(df) {
   out <- id_df[, c("Variable", "Category"), drop = FALSE]
   key_out <- paste(id_df$var_name, id_df$category, sep = "||")
   prof_nums <- sort(unique(safe_int(df$class_num)))
-  spread_key <- if (isTRUE(HAS_WEIGHT)) "SE/%" else "SD/%"
+  spread_key <- "SD/%"
 
   for (cl in prof_nums) {
     prof_lab <- latent_group_label(cl)
@@ -2205,161 +2410,127 @@ build_mixed_profile_split <- function(df) {
   out
 }
 
-resolve_lpa_profile_source <- function(prefer_z = FALSE) {
-  src <- if (isTRUE(prefer_z)) safe_df(T3_indicator_profile_z) else safe_df(T3_indicator_profile)
-
-  indicators_continuous <- SETTINGS_SUMMARY$INDICATORS_CONTINUOUS %||%
+resolve_retained_model_profile <- function() {
+  mode <- tolower(as.character(mixture_mode %||% "lpa"))
+  indicators <- SETTINGS_SUMMARY$INDICATORS_CONTINUOUS %||%
     SETTINGS_SUMMARY$indicators_continuous %||%
     character(0)
-  indicators_categorical <- SETTINGS_SUMMARY$INDICATORS_CATEGORICAL %||%
+  if (length(indicators) == 0L && identical(mode, "lpa")) {
+    indicators <- SETTINGS_SUMMARY$INDICATORS %||%
+      SETTINGS_SUMMARY$indicators %||%
+      character(0)
+  }
+  indicators <- unique_nz(as.character(indicators))
+  if (length(indicators) == 0L) {
+    return(profile_empty_model_result(
+      "No continuous indicators are available for a model-estimated mean table."
+    ))
+  }
+
+  resolved <- profile_resolve_retained_out_file(
+    best_tag = best_tag,
+    best_model_row = BEST_MODEL_ROW,
+    registry = ESTIMATION_REGISTRY,
+    fit_summary = FIT_SUMMARY,
+    search_dirs = unique_nz(c(
+      if (exists("DIR_MPLUS_INP")) DIR_MPLUS_INP else character(0),
+      if (exists("DIR_MPLUS_OUT")) DIR_MPLUS_OUT else character(0)
+    ))
+  )
+  if (!isTRUE(resolved$available)) {
+    return(profile_empty_model_result(resolved$reason))
+  }
+
+  parsed <- profile_parse_mplus_means(
+    path = resolved$path,
+    indicators = indicators,
+    model_tag = best_tag,
+    expected_k = best_k,
+    conf_level = 0.95,
+    require_normal_termination = TRUE
+  )
+  if (!isTRUE(parsed$available)) return(parsed)
+
+  parsed$data$var_label <- get_var_label(parsed$data$var_name)
+  parsed$data$Class <- latent_group_label(parsed$data$class_num)
+  parsed$data$class <- parsed$data$Class
+  parsed$data$out_file <- resolved$path
+  parsed$data$best_k <- best_k
+  parsed$data$model_structure <- model_structure
+  parsed$data$estimate_source <- "retained_mplus_model"
+  parsed$data$spread_type <- "SE"
+  parsed$data$source_type <- "retained_mplus_model"
+  parsed$data$category <- ""
+  parsed$data$label <- parsed$data$var_label
+  parsed$data$mean <- parsed$data$Mean
+  parsed$data$se <- parsed$data$SE
+  parsed
+}
+
+resolve_modal_profile_source <- function(prefer_z = FALSE) {
+  classified <- safe_df(CLASSIFIED_ANALYSIS)
+  if (nrow(classified) == 0L) classified <- safe_df(ANALYSIS_DATA_CLASSIFIED)
+  if (nrow(classified) == 0L) return(data.frame())
+
+  mode <- tolower(as.character(mixture_mode %||% "lpa"))
+  indicators_all <- SETTINGS_SUMMARY$INDICATORS %||%
+    SETTINGS_SUMMARY$indicators %||%
+    character(0)
+  continuous <- SETTINGS_SUMMARY$INDICATORS_CONTINUOUS %||%
+    SETTINGS_SUMMARY$indicators_continuous %||%
+    character(0)
+  categorical <- SETTINGS_SUMMARY$INDICATORS_CATEGORICAL %||%
     SETTINGS_SUMMARY$indicators_categorical %||%
     character(0)
-  has_mixed_indicators <- length(indicators_continuous) > 0 && length(indicators_categorical) > 0
-  weight_var <- SETTINGS_SUMMARY$WEIGHT_VAR %||% SETTINGS_SUMMARY$weight_var %||% NULL
-  classified_src <- safe_df(CLASSIFIED_ANALYSIS)
-  if (nrow(classified_src) == 0) classified_src <- safe_df(ANALYSIS_DATA_CLASSIFIED)
+  if (identical(mode, "lpa") && length(continuous) == 0L) continuous <- indicators_all
+  if (identical(mode, "lca") && length(categorical) == 0L) categorical <- indicators_all
+  if (isTRUE(prefer_z)) categorical <- character(0)
 
-  append_categorical_part <- function(base_df) {
-    base_df <- safe_df(base_df)
-    if (!isTRUE(has_mixed_indicators) || isTRUE(prefer_z) || nrow(classified_src) == 0) {
-      return(base_df)
-    }
-    if (!"category" %in% names(base_df)) base_df$category <- ""
-    if (!"label" %in% names(base_df)) base_df$label <- ""
-    cat_part <- build_categorical_profile_from_classified(
-      df = classified_src,
-      indicators = indicators_categorical,
-      dict = DICT,
-      weight_var = weight_var
-    )
-    if (nrow(cat_part) == 0) return(base_df)
-    safe_rbind(base_df, cat_part)
+  modal <- profile_modal_descriptives(
+    classified = classified,
+    continuous = continuous,
+    categorical = categorical,
+    weight_var = SETTINGS_SUMMARY$WEIGHT_VAR %||% SETTINGS_SUMMARY$weight_var %||% NULL,
+    standardize = isTRUE(prefer_z)
+  )
+  modal <- safe_df(modal)
+  if (nrow(modal) == 0L) return(modal)
+
+  modal$model_tag <- as.character(best_tag %||% "")
+  modal$Class <- latent_group_label(modal$class_num)
+  modal$class <- modal$Class
+  modal$var_label <- get_var_label(modal$var_name)
+  modal$label <- mapply(
+    function(variable, category, variable_label) {
+      if (is.na(category) || !nzchar(trimws(as.character(category)))) return(variable_label)
+      get_value_label(variable, category)
+    },
+    modal$var_name,
+    modal$category,
+    modal$var_label,
+    USE.NAMES = FALSE
+  )
+  modal$mean <- ifelse(
+    modal$indicator_type == "categorical",
+    safe_num(modal$percent) / 100,
+    safe_num(modal$Mean)
+  )
+  modal$se <- NA_real_
+  modal$spread_value <- ifelse(modal$indicator_type == "continuous", safe_num(modal$SD), NA_real_)
+  modal$n_value <- safe_num(modal$n)
+  modal$pct_value <- safe_num(modal$percent)
+  modal
+}
+
+# Compatibility shim for internal callers.  New table builders must request
+# model estimates and modal-assignment descriptives explicitly.
+resolve_lpa_profile_source <- function(prefer_z = FALSE, source = c("modal", "model")) {
+  source <- match.arg(source)
+  if (identical(source, "model")) {
+    resolved <- resolve_retained_model_profile()
+    return(if (isTRUE(resolved$available)) resolved$data else data.frame())
   }
-
-  if (!isTRUE(HAS_WEIGHT)) {
-    fallback <- if (isTRUE(has_mixed_indicators)) {
-      build_mixed_profile_from_classified(
-        df = classified_src,
-        indicators_continuous = indicators_continuous,
-        indicators_categorical = indicators_categorical,
-        dict = DICT,
-        weight_var = weight_var,
-        standardize = isTRUE(prefer_z)
-      )
-    } else {
-      indicators <- SETTINGS_SUMMARY$INDICATORS %||% SETTINGS_SUMMARY$indicators %||% character(0)
-      build_lpa_profile_from_classified(
-        df = classified_src,
-        indicators = indicators,
-        standardize = isTRUE(prefer_z)
-      )
-    }
-    if (nrow(fallback) > 0) return(fallback)
-  }
-
-  if (nrow(src) > 0 && "model_tag" %in% names(src) && !is.na(best_tag) && nzchar(as.character(best_tag))) {
-    hit_best <- src[as.character(src$model_tag) == as.character(best_tag), , drop = FALSE]
-    if (nrow(hit_best) > 0) {
-      return(append_categorical_part(hit_best))
-    }
-  }
-
-  if (!isTRUE(prefer_z) && !is.na(best_tag) && nzchar(as.character(best_tag))) {
-    out_file <- file.path(DIR_MPLUS_INP, paste0(best_tag, ".out"))
-    if (file.exists(out_file)) {
-      indicators <- SETTINGS_SUMMARY$INDICATORS_CONTINUOUS %||%
-        SETTINGS_SUMMARY$indicators_continuous %||%
-        SETTINGS_SUMMARY$INDICATORS %||%
-        SETTINGS_SUMMARY$indicators %||%
-        character(0)
-      indicators <- toupper(unique_nz(indicators))
-
-      if (length(indicators) > 0) {
-        lines <- tryCatch(readLines(out_file, warn = FALSE, encoding = "UTF-8"), error = function(e) character(0))
-        lines <- trimws(lines)
-        if (length(lines) > 0) {
-          in_model_results <- FALSE
-          in_means_block <- FALSE
-          current_class <- NA_integer_
-          out_list <- list()
-          idx <- 1L
-
-          for (ln in lines) {
-            if (!nzchar(ln)) next
-            up_ln <- toupper(ln)
-            if (grepl("MODEL RESULTS", up_ln, fixed = TRUE)) {
-              in_model_results <- TRUE
-              in_means_block <- FALSE
-              current_class <- NA_integer_
-              next
-            }
-            if (!in_model_results) next
-            if (grepl("LATENT CLASS\\s+[0-9]+", up_ln)) {
-              current_class <- suppressWarnings(as.integer(gsub(".*LATENT CLASS\\s+([0-9]+).*", "\\1", up_ln)))
-              in_means_block <- FALSE
-              next
-            }
-            if (grepl("^MEANS$", up_ln)) {
-              in_means_block <- TRUE
-              next
-            }
-            if (grepl("^(VARIANCES|INTERCEPTS|THRESHOLDS|CATEGORICAL LATENT VARIABLES|LATENT CLASS|QUALITY OF NUMERICAL RESULTS)", up_ln)) {
-              in_means_block <- FALSE
-            }
-            if (!in_means_block || is.na(current_class)) next
-
-            parts <- unlist(strsplit(ln, "\\s+"))
-            if (length(parts) < 3) next
-            var_i <- toupper(parts[1])
-            if (!(var_i %in% indicators)) next
-
-            est_i <- suppressWarnings(as.numeric(parts[2]))
-            se_i <- suppressWarnings(as.numeric(parts[3]))
-            if (is.na(est_i)) next
-
-            out_list[[idx]] <- data.frame(
-              model_tag = as.character(best_tag),
-              var_name = tolower(var_i),
-              Class = paste0("Class ", current_class),
-              Mean = est_i,
-              SE = se_i,
-              class = paste0("Class ", current_class),
-              var_label = get_var_label(tolower(var_i)),
-              stringsAsFactors = FALSE
-            )
-            idx <- idx + 1L
-          }
-
-          if (length(out_list) > 0) {
-            parsed_best <- do.call(rbind, out_list)
-            rownames(parsed_best) <- NULL
-            return(append_categorical_part(parsed_best))
-          }
-        }
-      }
-    }
-  }
-
-  fallback <- if (isTRUE(has_mixed_indicators)) {
-    build_mixed_profile_from_classified(
-      df = classified_src,
-      indicators_continuous = indicators_continuous,
-      indicators_categorical = indicators_categorical,
-      dict = DICT,
-      weight_var = weight_var,
-      standardize = isTRUE(prefer_z)
-    )
-  } else {
-    indicators <- SETTINGS_SUMMARY$INDICATORS %||% SETTINGS_SUMMARY$indicators %||% character(0)
-    build_lpa_profile_from_classified(
-      df = classified_src,
-      indicators = indicators,
-      standardize = isTRUE(prefer_z)
-    )
-  }
-  if (nrow(fallback) > 0) return(fallback)
-
-  append_categorical_part(src)
+  resolve_modal_profile_source(prefer_z = prefer_z)
 }
 
 build_profile_wide_from_T3 <- function(df_in) {
@@ -2400,12 +2571,13 @@ build_profile_wide_from_T3 <- function(df_in) {
   if (!"Class" %in% names(df) && "Profile" %in% names(df)) df$Class <- as.character(df$Profile)
 
   mean_col <- first_existing_col(df, c("Mean", "mean", "mu", "estimate", "value", "class_mean"))
-  spread_col <- if (isTRUE(HAS_WEIGHT)) {
-    first_existing_col(df, c("SE", "se", "stderr", "std_error", "SD", "sd"))
+  spread_type <- toupper(unique_nz(as.character(df$spread_type %||% character(0))))
+  spread_key <- if (length(spread_type) == 1L && identical(spread_type, "SE")) "SE" else "SD"
+  spread_col <- if (identical(spread_key, "SE")) {
+    first_existing_col(df, c("SE", "se", "stderr", "std_error"))
   } else {
-    first_existing_col(df, c("SD", "sd", "SE", "se", "stderr", "std_error"))
+    first_existing_col(df, c("SD", "sd", "spread_value"))
   }
-  spread_key <- if (isTRUE(HAS_WEIGHT)) "SE" else "SD"
 
   if (all(c("Variable", "Class") %in% names(df)) && !is.na(mean_col)) {
     df$Class <- clean_profile_text(df$Class, prefix = "Profile")
@@ -2490,12 +2662,13 @@ build_profile_wide_from_T3_twoline <- function(df) {
   if (!"var_name" %in% names(df) && "Variable" %in% names(df)) df$var_name <- as.character(df$Variable)
 
   mean_col <- first_existing_col(df, c("Mean", "mean", "mu", "estimate", "value", "class_mean"))
-  spread_col <- if (isTRUE(HAS_WEIGHT)) {
-    first_existing_col(df, c("SE", "se", "stderr", "std_error", "SD", "sd"))
+  spread_type <- toupper(unique_nz(as.character(df$spread_type %||% character(0))))
+  spread_key <- if (length(spread_type) == 1L && identical(spread_type, "SE")) "SE" else "SD"
+  spread_col <- if (identical(spread_key, "SE")) {
+    first_existing_col(df, c("SE", "se", "stderr", "std_error"))
   } else {
-    first_existing_col(df, c("SD", "sd", "SE", "se", "stderr", "std_error"))
+    first_existing_col(df, c("SD", "sd", "spread_value"))
   }
-  spread_key <- if (isTRUE(HAS_WEIGHT)) "SE" else "SD"
   if (!all(c("Variable", "Class") %in% names(df)) || is.na(mean_col)) return(data.frame())
 
   df$Class  <- clean_profile_text(df$Class, prefix = "Profile")
@@ -2567,8 +2740,16 @@ build_lca_t4_twoline <- function(df) {
     sort = FALSE
   )
 
-  df$n_cat  <- round(df$mean * safe_num(df$n), 0)
-  df$pct_cat <- 100 * df$mean
+  if ("n_value" %in% names(df)) {
+    df$n_cat <- safe_num(df$n_value)
+  } else {
+    df$n_cat <- round(df$mean * safe_num(df$n), 0)
+  }
+  if ("pct_value" %in% names(df)) {
+    df$pct_cat <- safe_num(df$pct_value)
+  } else {
+    df$pct_cat <- 100 * df$mean
+  }
 
   df$Class <- paste0("Class ", df$class_num)
 
@@ -2610,21 +2791,87 @@ build_lca_t4_twoline <- function(df) {
   out
 }
 
-build_T4_profile_raw <- function() {
-  if (tolower(as.character(mixture_mode %||% "lpa")) == "lca") {
-    build_lca_t4_twoline(T3_indicator_profile)
-  } else {
-    df <- resolve_lpa_profile_source(prefer_z = FALSE)
-    if ("category" %in% names(df) && any(nzchar(trimws(as.character(df$category))), na.rm = TRUE)) {
-      build_mixed_profile_split(df)
-    } else {
-      build_profile_wide_from_T3_twoline(df)
-    }
+build_model_profile_twoline_ci <- function(df) {
+  df <- safe_df(df)
+  if (nrow(df) == 0L) return(data.frame())
+  required <- c("var_name", "class_num", "Mean", "SE", "LLCI", "ULCI")
+  if (!all(required %in% names(df))) return(data.frame())
+
+  df$Variable <- if ("var_label" %in% names(df)) as.character(df$var_label) else get_var_label(df$var_name)
+  df$Profile <- latent_group_label(df$class_num)
+  df <- df[order(get_display_order(df$var_name), df$var_name, safe_int(df$class_num)), , drop = FALSE]
+  id <- unique(df[, c("var_name", "Variable"), drop = FALSE])
+  out <- id[, "Variable", drop = FALSE]
+  profiles <- latent_group_label(sort(unique(safe_int(df$class_num))))
+
+  for (profile in profiles) {
+    sub <- df[df$Profile == profile, , drop = FALSE]
+    index <- match(id$var_name, sub$var_name)
+    out[[twoline_key("M", profile)]] <- fmt_m2(sub$Mean[index])
+    out[[twoline_key("SE", profile)]] <- fmt_sd2(sub$SE[index])
+    out[[twoline_key("LLCI", profile)]] <- fmt_m2(sub$LLCI[index])
+    out[[twoline_key("ULCI", profile)]] <- fmt_m2(sub$ULCI[index])
   }
+  out
+}
+
+build_T4_profile_raw <- function() {
+  resolved <- resolve_retained_model_profile()
+  if (!isTRUE(resolved$available)) {
+    return(data.frame(
+      Note = paste0("Model-estimated indicator means are unavailable: ", resolved$reason),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    ))
+  }
+  out <- build_model_profile_twoline_ci(resolved$data)
+  if (nrow(out) == 0L) {
+    return(data.frame(
+      Note = "Model-estimated indicator means are unavailable because the retained-model table could not be constructed.",
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    ))
+  }
+  out
+}
+
+append_full_sample_modal_summary <- function(out, prefer_z = FALSE) {
+  out <- safe_df(out)
+  if (nrow(out) == 0L || !"Variable" %in% names(out)) return(out)
+
+  classified <- safe_df(CLASSIFIED_ANALYSIS)
+  if (nrow(classified) == 0L) classified <- safe_df(ANALYSIS_DATA_CLASSIFIED)
+  if (nrow(classified) == 0L) return(out)
+
+  indicators <- SETTINGS_SUMMARY$INDICATORS_CONTINUOUS %||%
+    SETTINGS_SUMMARY$indicators_continuous %||%
+    SETTINGS_SUMMARY$INDICATORS %||%
+    SETTINGS_SUMMARY$indicators %||%
+    character(0)
+  indicators <- intersect(unique(as.character(indicators)), names(classified))
+  if (length(indicators) == 0L) return(out)
+
+  full_sample <- classified
+  full_sample$class_num <- 1L
+  summary <- profile_modal_descriptives(
+    classified = full_sample,
+    continuous = indicators,
+    categorical = character(0),
+    weight_var = SETTINGS_SUMMARY$WEIGHT_VAR %||% SETTINGS_SUMMARY$weight_var %||% NULL,
+    standardize = isTRUE(prefer_z)
+  )
+  summary <- safe_df(summary)
+  if (nrow(summary) == 0L) return(out)
+
+  summary$Variable <- get_var_label(summary$var_name)
+  summary$cell <- fmt_mean_sd_cell(summary$Mean, summary$SD)
+  out[[compact_mean_name(FALSE)]] <- summary$cell[match(out$Variable, summary$Variable)]
+  out[[compact_mean_name(FALSE)]][is.na(out[[compact_mean_name(FALSE)]])] <- ""
+  out
 }
 
 build_A3_profile_raw_wide <- function() {
-  df <- resolve_lpa_profile_source(prefer_z = FALSE)
+  df <- resolve_modal_profile_source(prefer_z = FALSE)
   if (nrow(df) == 0) return(data.frame())
 
   if (tolower(as.character(mixture_mode %||% "lpa")) == "lca") {
@@ -2634,26 +2881,28 @@ build_A3_profile_raw_wide <- function() {
     return(build_mixed_profile_split(df))
   }
 
-  out <- build_profile_wide_from_T3(df)
-  if (isTRUE(HAS_WEIGHT)) {
-    if (compact_mean_name(FALSE) %in% names(out)) names(out)[names(out) == compact_mean_name(FALSE)] <- compact_mean_name(TRUE)
-  }
-  out
+  append_full_sample_modal_summary(build_profile_wide_from_T3_twoline(df), prefer_z = FALSE)
 }
 
 build_A4_profile_z_wide <- function() {
-  df <- resolve_lpa_profile_source(prefer_z = TRUE)
-  if (nrow(df) == 0) return(data.frame())
+  df <- resolve_modal_profile_source(prefer_z = TRUE)
+  if (nrow(df) == 0) {
+    return(data.frame(
+      Note = "Standardized modal-assignment descriptives are unavailable because no continuous indicators were classified.",
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    ))
+  }
 
   if (tolower(as.character(mixture_mode %||% "lpa")) == "lca") {
-    return(build_lca_t4_twoline(df))
+    return(data.frame(
+      Note = "Standardized continuous-indicator descriptives are not applicable to latent class analysis.",
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    ))
   }
 
-  out <- build_profile_wide_from_T3(df)
-  if (isTRUE(HAS_WEIGHT)) {
-    if (compact_mean_name(FALSE) %in% names(out)) names(out)[names(out) == compact_mean_name(FALSE)] <- compact_mean_name(TRUE)
-  }
-  out
+  append_full_sample_modal_summary(build_profile_wide_from_T3_twoline(df), prefer_z = TRUE)
 }
 
 # ------------------------------------------------------------
@@ -2712,6 +2961,27 @@ standardize_rrr_table <- function(df) {
   df$level[df$predictor_type %in% c("continuous", "numeric", "scale")]    <- ""
   df
 }
+
+resolve_r3step_primary_raw <- function() {
+  candidates <- list(
+    if (is.list(R3STEP_RESULTS_RAW)) R3STEP_RESULTS_RAW$multivariable else NULL,
+    if (is.list(R3STEP_RESULTS_RAW)) R3STEP_RESULTS_RAW$T5_rrr else NULL,
+    T5_RRR_RAW
+  )
+  for (i in seq_along(candidates)) {
+    candidate <- candidates[[i]]
+    candidate <- safe_df(candidate)
+    if (nrow(candidate) == 0L) next
+    if (i > 1L && "analysis" %in% names(candidate)) {
+      analysis_type <- unique(tolower(trimws(as.character(candidate$analysis))))
+      analysis_type <- analysis_type[!is.na(analysis_type) & nzchar(analysis_type)]
+      if (length(analysis_type) > 0L && !any(analysis_type %in% c("multivariable", "primary", "joint"))) next
+    }
+    return(candidate)
+  }
+  data.frame()
+}
+
 build_covariate_long_common <- function(df) {
   df <- standardize_rrr_table(df)
   if (nrow(df) == 0) return(data.frame())
@@ -2742,10 +3012,16 @@ build_covariate_long_common <- function(df) {
     stop("build_covariate_long_common(): outcome_class column is missing", call. = FALSE)
   }
 
-  df$reference_class <- ref_class
+  if (!"reference_class" %in% names(df)) {
+    df[["reference_class"]] <- rep(ref_class, nrow(df))
+  } else {
+    ref_missing <- is.na(df$reference_class) |
+      !nzchar(trimws(as.character(df$reference_class)))
+    df$reference_class[ref_missing] <- ref_class
+  }
   df$outcome_class <- as.character(df$outcome_class)
 
-  ref_norm <- normalize_class_label_local(ref_class)
+  ref_norm <- normalize_class_label_local(df$reference_class)
   out_norm <- normalize_class_label_local(df$outcome_class)
 
   # self-comparison ???????????????
@@ -2753,7 +3029,8 @@ build_covariate_long_common <- function(df) {
   if (nrow(df) == 0) return(data.frame())
 
   df$outcome_class <- normalize_latent_group_text(df$outcome_class)
-  df$Comparison <- paste0(df$outcome_class, " vs ", ref_class)
+  df$reference_class <- normalize_latent_group_text(df$reference_class)
+  df$Comparison <- paste0(df$outcome_class, " vs ", df$reference_class)
 
   # --------------------------------------------------
   # dictionary ???????????????base_rows ?????????ш끽維뽳쭩?뱀땡???얩맪???????????
@@ -2904,7 +3181,7 @@ build_covariate_long_common <- function(df) {
   # --------------------------------------------------
   # univariable parse???????extra row ???????????ㅻ깹??????
   # --------------------------------------------------
-  uni_df <- safe_df(R3STEP_RESULTS_RAW$univariable %||% data.frame())
+  uni_df <- safe_df(df)
   if (nrow(uni_df) > 0) {
     if (!"var_name" %in% names(uni_df) && "predictor" %in% names(uni_df)) {
       uni_df$var_name <- as.character(uni_df$predictor)
@@ -3322,16 +3599,13 @@ format_t5_twoline <- function(df) {
 # 8. T5 / T5b / T5c / T5d
 # ------------------------------------------------------------
 build_T5_naive <- function() {
-  df <- build_covariate_long_common(T5_RRR_RAW)
-  if (nrow(df) == 0) return(data.frame())
+  df <- build_covariate_long_common(safe_df(R3STEP_RESULTS_RAW$univariable %||% data.frame()))
+  if (nrow(df) == 0) return(make_empty_twoline_rrr())
   format_t5_twoline(df)
 }
 
 build_T5b_postwgt <- function() {
-  df <- safe_df(T5_RRR_RAW)
-  if (nrow(df) == 0 && is.list(R3STEP_RESULTS_RAW)) {
-    df <- safe_df(R3STEP_RESULTS_RAW$T5_rrr %||% R3STEP_RESULTS_RAW$univariable)
-  }
+  df <- resolve_r3step_primary_raw()
   df <- build_covariate_long_common(df)
   if (nrow(df) == 0) return(data.frame())
   format_t5_twoline(df)
@@ -3359,7 +3633,7 @@ build_T5c_LTRBLT <- function() {
 
 build_T5d_compare <- function() {
   naive_long   <- build_covariate_long_common(safe_df(R3STEP_RESULTS_RAW$univariable %||% data.frame()))
-  primary_long <- build_covariate_long_common(T5_RRR_RAW)
+  primary_long <- build_covariate_long_common(resolve_r3step_primary_raw())
   modal_long   <- build_covariate_long_common(safe_df(R3STEP_RESULTS_RAW$modal %||% data.frame()))
 
   prep <- function(df, suffix) {
@@ -3510,6 +3784,120 @@ parse_bch_posthoc_pairs <- function(pair_text = "", pairs_df = NULL, alpha = .05
   out <- out[!duplicated(out$key), c("class1", "class2"), drop = FALSE]
   rownames(out) <- NULL
   out
+}
+
+normalize_bch_pairwise_rows <- function(df) {
+  df <- safe_df(df)
+  if (nrow(df) == 0L) return(data.frame())
+
+  if (!"var_name" %in% names(df) && "outcome" %in% names(df)) df$var_name <- as.character(df$outcome)
+  if (!"var_label" %in% names(df) && "var_name" %in% names(df)) df$var_label <- get_var_label(df$var_name)
+  if (!"stat" %in% names(df)) {
+    stat_col <- first_existing_col(df, c("chi_sq", "wald", "Wald", "Statistic"))
+    df$stat <- if (is.na(stat_col)) NA_real_ else safe_num(df[[stat_col]])
+  }
+  if (!"p" %in% names(df)) df$p <- NA_real_
+  if (!"df" %in% names(df)) df$df <- 1
+
+  if (!"class1" %in% names(df)) {
+    source_col <- first_existing_col(df, c("class_i", "contrast", "Comparison"))
+    if (!is.na(source_col) && identical(source_col, "class_i")) {
+      df$class1 <- safe_int(df[[source_col]])
+    } else if (!is.na(source_col)) {
+      df$class1 <- suppressWarnings(as.integer(sub(
+        "^.*?(?:Class|C)\\s*([0-9]+)\\s*(?:vs\\.?|-)\\s*(?:Class|C)?\\s*([0-9]+).*$",
+        "\\1", as.character(df[[source_col]]), perl = TRUE, ignore.case = TRUE
+      )))
+    } else {
+      df$class1 <- NA_integer_
+    }
+  }
+  if (!"class2" %in% names(df)) {
+    source_col <- first_existing_col(df, c("class_j", "contrast", "Comparison"))
+    if (!is.na(source_col) && identical(source_col, "class_j")) {
+      df$class2 <- safe_int(df[[source_col]])
+    } else if (!is.na(source_col)) {
+      df$class2 <- suppressWarnings(as.integer(sub(
+        "^.*?(?:Class|C)\\s*([0-9]+)\\s*(?:vs\\.?|-)\\s*(?:Class|C)?\\s*([0-9]+).*$",
+        "\\2", as.character(df[[source_col]]), perl = TRUE, ignore.case = TRUE
+      )))
+    } else {
+      df$class2 <- NA_integer_
+    }
+  }
+
+  if (all(is.na(safe_int(df$class1))) && all(is.na(safe_int(df$class2)))) {
+    k <- if ("best_k" %in% names(df)) unique(safe_int(df$best_k)) else safe_int(best_k)
+    k <- k[!is.na(k) & k >= 2L]
+    if (length(k) > 0L) {
+      expected_pairs <- utils::combn(seq_len(k[1]), 2L)
+      if (nrow(df) == ncol(expected_pairs)) {
+        df$class1 <- expected_pairs[1, ]
+        df$class2 <- expected_pairs[2, ]
+      }
+    }
+  }
+
+  df$class1 <- safe_int(df$class1)
+  df$class2 <- safe_int(df$class2)
+  df$stat <- safe_num(df$stat)
+  df$df <- safe_num(df$df)
+  df$df[is.na(df$df)] <- 1
+  df$p <- safe_num(df$p)
+  df <- df[!is.na(df$class1) & !is.na(df$class2) & df$class1 != df$class2, , drop = FALSE]
+  if (nrow(df) == 0L) return(data.frame())
+
+  low <- pmin(df$class1, df$class2)
+  high <- pmax(df$class1, df$class2)
+  df$class1 <- low
+  df$class2 <- high
+  key <- paste(as.character(df$var_name %||% ""), low, high, sep = "||")
+  df <- df[!duplicated(key), , drop = FALSE]
+  rownames(df) <- NULL
+  df
+}
+
+resolve_bch_omnibus_values <- function(var_name, full_df = BCH_RESULTS_FULL, omnibus_df = BCH_OMNIBUS_BASIC) {
+  full_df <- safe_df(full_df)
+  omnibus_df <- safe_df(omnibus_df)
+  var_name <- as.character(var_name %||% "")[1]
+
+  stat_value <- df_value <- p_value <- NA_real_
+  if (nrow(omnibus_df) > 0L) {
+    if (nzchar(var_name) && "var_name" %in% names(omnibus_df)) {
+      hit <- omnibus_df[as.character(omnibus_df$var_name) == var_name, , drop = FALSE]
+      if (nrow(hit) > 0L) omnibus_df <- hit
+    }
+    stat_col <- first_existing_col(omnibus_df, c("chi_sq", "stat", "Statistic"))
+    p_col <- first_existing_col(omnibus_df, c("p", "omnibus_p"))
+    df_col <- first_existing_col(omnibus_df, c("df", "degrees_freedom"))
+    if (!is.na(stat_col) || !is.na(p_col) || !is.na(df_col)) {
+      row_index <- 1L
+      if (!is.na(df_col)) {
+        finite_df <- which(!is.na(safe_num(omnibus_df[[df_col]])))
+        if (length(finite_df) > 0L) row_index <- finite_df[1]
+      }
+      stat_value <- if (is.na(stat_col)) NA_real_ else safe_num(omnibus_df[[stat_col]][row_index])
+      df_value <- if (is.na(df_col)) NA_real_ else safe_num(omnibus_df[[df_col]][row_index])
+      p_value <- if (is.na(p_col)) NA_real_ else safe_num(omnibus_df[[p_col]][row_index])
+    }
+  }
+
+  if (nrow(full_df) > 0L && nzchar(var_name) && "var_name" %in% names(full_df)) {
+    full_df <- full_df[as.character(full_df$var_name) == var_name, , drop = FALSE]
+  }
+  if (nrow(full_df) > 0L && "result_type" %in% names(full_df)) {
+    overall <- full_df[as.character(full_df$result_type) == "overall", , drop = FALSE]
+    if (nrow(overall) > 0L) full_df <- rbind(overall, full_df)
+  }
+  full_stat <- if ("stat" %in% names(full_df)) safe_num(full_df$stat[which(!is.na(safe_num(full_df$stat)))[1]]) else NA_real_
+  full_df_value <- if ("df" %in% names(full_df)) safe_num(full_df$df[which(!is.na(safe_num(full_df$df)))[1]]) else NA_real_
+  full_p <- if ("p" %in% names(full_df)) safe_num(full_df$p[which(!is.na(safe_num(full_df$p)))[1]]) else if ("omnibus_p" %in% names(full_df)) safe_num(full_df$omnibus_p[which(!is.na(safe_num(full_df$omnibus_p)))[1]]) else NA_real_
+  list(
+    stat = if (is.na(stat_value)) full_stat else stat_value,
+    df = if (is.na(df_value)) full_df_value else df_value,
+    p = if (is.na(p_value)) full_p else p_value
+  )
 }
 
 bch_ordered_posthoc_notation <- function(means, pair_text = "", pairs_df = NULL, alpha = .05, label_prefix = "Profile ") {
@@ -3742,44 +4130,9 @@ build_classified_outcome_summary <- function(outcome_vars, moderator_var = NULL)
 }
 
 replace_t6_spread_with_sd <- function(out_df, outcome_vars, moderator_var = NULL) {
-  out_df <- safe_df(out_df)
-  if (isTRUE(HAS_WEIGHT) || nrow(out_df) == 0) return(out_df)
-
-  reorder_t6_columns <- function(df) {
-    preferred <- c("Variable", "Profile", "M", "SD", "Statistic", "p", "sig", "Post-hoc")
-    preferred <- preferred[preferred %in% names(df)]
-    remain <- setdiff(names(df), preferred)
-    df[, c(preferred, remain), drop = FALSE]
-  }
-
-  summ <- build_classified_outcome_summary(outcome_vars = outcome_vars, moderator_var = moderator_var)
-  if (nrow(summ) == 0) {
-    if ("SE" %in% names(out_df) && !"SD" %in% names(out_df)) {
-      names(out_df)[names(out_df) == "SE"] <- "SD"
-    }
-    return(reorder_t6_columns(out_df))
-  }
-
-  if ("Profile" %in% names(out_df)) {
-    prof_num <- suppressWarnings(as.integer(gsub("^Profile\\s+", "", as.character(out_df$Profile))))
-    if (!"Variable" %in% names(out_df) || all(!nzchar(trimws(as.character(out_df$Variable))))) {
-      sd_vals <- summ$SD[match(prof_num, summ$class_num)]
-    } else {
-      var_lab_map <- setNames(get_var_label(unique(summ$var_name)), unique(summ$var_name))
-      summ$Variable <- unname(var_lab_map[summ$var_name])
-      var_fill <- as.character(out_df$Variable)
-      for (i in seq_along(var_fill)) if ((!nzchar(trimws(var_fill[i])) || is.na(var_fill[i])) && i > 1) var_fill[i] <- var_fill[i - 1]
-      key_out <- paste(var_fill, prof_num, sep = "||")
-      key_sum <- paste(summ$Variable, summ$class_num, sep = "||")
-      sd_vals <- summ$SD[match(key_out, key_sum)]
-      if (all(is.na(sd_vals)) && length(unique(summ$var_name)) == 1L) {
-        sd_vals <- summ$SD[match(prof_num, summ$class_num)]
-      }
-    }
-    out_df$SD <- fmt_sd2(sd_vals)
-    if ("SE" %in% names(out_df)) out_df$SE <- NULL
-  }
-  reorder_t6_columns(out_df)
+  # A BCH table must retain the model-based standard error.  Modal-assignment
+  # standard deviations are descriptive statistics and belong in A3/A4, not T6.
+  safe_df(out_df)
 }
 
 resolve_bch_moderator_var_for_t6 <- function() {
@@ -4102,61 +4455,10 @@ build_T6_bch_moderated_summary <- function() {
 # 9.        T6
 # ------------------------------------------------------------
 build_T6_bch <- function() {
-  moderated_t6 <- build_T6_bch_moderated_summary()
-  if (is.data.frame(moderated_t6) && nrow(moderated_t6) > 0) {
-    return(moderated_t6)
-  }
-
   df_full  <- safe_df(BCH_RESULTS_FULL)
   df_one   <- safe_df(BCH_RESULTS)
   df_ph    <- safe_df(BCH_POSTHOC)
   om_basic <- safe_df(BCH_OMNIBUS_BASIC)
-
-  parse_bch_overall_from_out <- function(out_path) {
-    out <- list(stat = NA_real_, p = NA_real_, posthoc = "")
-    if (is.null(out_path) || !nzchar(as.character(out_path)) || !file.exists(out_path)) return(out)
-
-    lines <- tryCatch(readLines(out_path, warn = FALSE, encoding = "UTF-8"), error = function(e) character(0))
-    if (length(lines) == 0) return(out)
-
-    x <- trimws(gsub("[[:space:]]+", " ", lines))
-    x <- x[nzchar(x)]
-
-    idx <- grep("EQUALITY TESTS OF MEANS ACROSS CLASSES USING THE BCH PROCEDURE", x, ignore.case = TRUE)
-    if (length(idx) == 0) return(out)
-
-    blk <- x[idx[1]:length(x)]
-    blk <- blk[!grepl("^TECHNICAL\\s+[0-9]+\\s+OUTPUT", blk, ignore.case = TRUE)]
-
-    pair_txt <- character(0)
-    for (ln in blk) {
-      hit_overall <- regexec("Overall test\\s+([-]?[0-9]*\\.?[0-9]+)\\s+([.0-9]+)", ln, ignore.case = TRUE)
-      tok_overall <- regmatches(ln, hit_overall)[[1]]
-      if (length(tok_overall) >= 3) {
-        out$stat <- suppressWarnings(as.numeric(tok_overall[2]))
-        out$p <- suppressWarnings(as.numeric(tok_overall[3]))
-      }
-
-      hit_pairs <- gregexpr("Class\\s+([0-9]+)\\s+vs\\.\\s+([0-9]+)\\s+([-]?[0-9]*\\.?[0-9]+)\\s+([.0-9]+)", ln, perl = TRUE, ignore.case = TRUE)
-      pair_str <- regmatches(ln, hit_pairs)[[1]]
-      if (length(pair_str) > 0) {
-        for (one in pair_str) {
-          tok <- regmatches(one, regexec("Class\\s+([0-9]+)\\s+vs\\.\\s+([0-9]+)\\s+([-]?[0-9]*\\.?[0-9]+)\\s+([.0-9]+)", one, perl = TRUE, ignore.case = TRUE))[[1]]
-          if (length(tok) >= 5) {
-            p_i <- suppressWarnings(as.numeric(tok[5]))
-            if (!is.na(p_i) && p_i < .05) {
-              pair_txt <- c(pair_txt, paste0("C", tok[2], "-C", tok[3]))
-            }
-          }
-        }
-      }
-    }
-
-    if (length(pair_txt) > 0) {
-      out$posthoc <- paste(unique(pair_txt), collapse = ", ")
-    }
-    out
-  }
 
   if (nrow(df_full) == 0) {
     return(data.frame(
@@ -4175,22 +4477,31 @@ build_T6_bch <- function() {
       "var_name" %in% names(df_one) &&
       any(grepl("^class[0-9]+$", names(df_one)))) {
 
-    out_file_path <- NA_character_
-    if ("out_file" %in% names(df_full)) {
-      out_file_candidates <- unique(as.character(df_full$out_file))
-      out_file_candidates <- out_file_candidates[!is.na(out_file_candidates) & nzchar(out_file_candidates)]
-      if (length(out_file_candidates) > 0) out_file_path <- out_file_candidates[1]
+    outcome_var <- as.character(df_one$var_name[1] %||% "")
+    omnibus <- resolve_bch_omnibus_values(outcome_var, df_full, om_basic)
+    pairwise <- normalize_bch_pairwise_rows(df_ph)
+    if (nrow(pairwise) > 0L && nzchar(outcome_var) && "var_name" %in% names(pairwise)) {
+      pairwise <- pairwise[as.character(pairwise$var_name) == outcome_var, , drop = FALSE]
     }
-
-    parsed_out <- parse_bch_overall_from_out(out_file_path)
+    significant_pairs <- if (nrow(pairwise) > 0L) {
+      pairwise[!is.na(pairwise$p) & pairwise$p < .05, , drop = FALSE]
+    } else {
+      data.frame()
+    }
+    pair_text <- if (nrow(significant_pairs) > 0L) {
+      paste(unique(paste0("C", significant_pairs$class1, "-C", significant_pairs$class2)), collapse = ", ")
+    } else {
+      ""
+    }
 
     class_cols <- grep("^class[0-9]+$", names(df_one), value = TRUE)
     class_cols <- class_cols[order(suppressWarnings(as.integer(gsub("^class", "", class_cols))))]
     se_cols <- paste0("se_", class_cols)
     se_cols[!se_cols %in% names(df_one)] <- paste0("se_class", gsub("^class", "", se_cols[!se_cols %in% names(df_one)]))
 
-    p_val <- suppressWarnings(as.numeric(parsed_out$p))
-    stat_val <- suppressWarnings(as.numeric(parsed_out$stat))
+    p_val <- safe_num(omnibus$p)
+    stat_val <- safe_num(omnibus$stat)
+    df_val <- safe_num(omnibus$df)
 
     out <- data.frame(
       Variable = rep(if ("label" %in% names(df_one)) as.character(df_one$label[1]) else get_var_label(df_one$var_name[1]), length(class_cols)),
@@ -4201,6 +4512,7 @@ build_T6_bch <- function() {
         if (se_col_i %in% names(df_one)) fmt_sd2(df_one[[se_col_i]][1]) else ""
       }, character(1)),
       Statistic = rep("", length(class_cols)),
+      df = rep("", length(class_cols)),
       p = rep("", length(class_cols)),
       sig = rep("", length(class_cols)),
       `Post-hoc` = rep("", length(class_cols)),
@@ -4210,36 +4522,20 @@ build_T6_bch <- function() {
 
     if (nrow(out) > 0) {
       out$Statistic[1] <- if (!is.na(stat_val)) sprintf("%.2f", stat_val) else ""
+      out$df[1] <- if (!is.na(df_val)) formatC(df_val, format = "f", digits = 0) else ""
       out$p[1] <- fmt_p3_strict(p_val)
       out$sig[1] <- fmt_sig_cell(sig_mark(p_val))
       class_nums <- suppressWarnings(as.integer(gsub("^class", "", class_cols)))
       class_means <- vapply(class_cols, function(cc) safe_num(df_one[[cc]][1]), numeric(1))
       names(class_means) <- as.character(class_nums)
-      ordered_posthoc <- bch_ordered_posthoc_notation(class_means, pair_text = parsed_out$posthoc)
-      out$`Post-hoc`[1] <- if (nzchar(ordered_posthoc)) ordered_posthoc else as.character(parsed_out$posthoc %||% "")
+      ordered_posthoc <- bch_ordered_posthoc_notation(class_means, pair_text = pair_text)
+      out$`Post-hoc`[1] <- if (nzchar(ordered_posthoc)) ordered_posthoc else pair_text
       if (nrow(out) > 1) {
         out$Variable[2:nrow(out)] <- ""
       }
     }
 
-    if (!isTRUE(HAS_WEIGHT)) {
-      classified_src <- safe_df(CLASSIFIED_ANALYSIS)
-      if (nrow(classified_src) == 0) classified_src <- safe_df(ANALYSIS_DATA_CLASSIFIED)
-      outcome_var <- as.character(df_one$var_name[1] %||% "")
-      if (nzchar(outcome_var) && all(c("class_num", outcome_var) %in% names(classified_src))) {
-        prof_num <- suppressWarnings(as.integer(gsub("^Profile\\s+", "", as.character(out$Profile))))
-        sd_map <- tapply(
-          safe_num(classified_src[[outcome_var]]),
-          safe_int(classified_src$class_num),
-          stats::sd,
-          na.rm = TRUE
-        )
-        out$SD <- fmt_sd2(as.numeric(sd_map[as.character(prof_num)]))
-        out$SE <- NULL
-      }
-    }
-
-    return(replace_t6_spread_with_sd(out, outcome_vars = unique(df_one$var_name)))
+    return(out)
   }
 
   var_col_full0 <- first_existing_col(df_full, c("var_name", "Variable", "outcome", "distal", "y"))
@@ -4603,36 +4899,6 @@ build_T6_bch <- function() {
             )
             posthoc_map$pair_txt <- NULL
           }
-        }
-      }
-
-      if ("out_file" %in% names(tmp)) {
-        posthoc_from_out <- lapply(unique(tmp$var_name), function(vv) {
-          out_files <- unique(as.character(tmp$out_file[as.character(tmp$var_name) == as.character(vv)]))
-          out_files <- out_files[!is.na(out_files) & nzchar(out_files)]
-          parsed_v <- if (length(out_files) > 0) parse_bch_overall_from_out(out_files[1]) else list(posthoc = "")
-          data.frame(
-            var_name = vv,
-            posthoc_from_out = as.character(parsed_v$posthoc %||% ""),
-            stringsAsFactors = FALSE
-          )
-        })
-        posthoc_from_out <- if (length(posthoc_from_out) > 0) do.call(rbind, posthoc_from_out) else data.frame()
-        if (is.data.frame(posthoc_from_out) && nrow(posthoc_from_out) > 0) {
-          var_map_out <- unique(tmp[, c("var_name", "Variable"), drop = FALSE])
-          posthoc_from_out <- merge(posthoc_from_out, var_map_out, by = "var_name", all.x = TRUE, sort = FALSE)
-          posthoc_map <- merge(
-            posthoc_map,
-            posthoc_from_out[, c("Variable", "posthoc_from_out"), drop = FALSE],
-            by = "Variable",
-            all.x = TRUE,
-            sort = FALSE
-          )
-          fill_out <- !nzchar(trimws(posthoc_map$posthoc)) &
-            !is.na(posthoc_map$posthoc_from_out) &
-            nzchar(trimws(posthoc_map$posthoc_from_out))
-          posthoc_map$posthoc[fill_out] <- posthoc_map$posthoc_from_out[fill_out]
-          posthoc_map$posthoc_from_out <- NULL
         }
       }
 
@@ -5076,49 +5342,6 @@ build_T6B_bch_stratified <- function() {
   need_df <- c("moderator", "moderator_level", "class_num", "estimate", "se", "var_name")
   if (!all(need_df %in% names(df))) return(data.frame())
 
-  parse_bch_overall_from_out_local <- function(out_path) {
-    out <- list(stat = "", p = "", sig = "", posthoc = "")
-    if (is.null(out_path) || !nzchar(as.character(out_path)) || !file.exists(out_path)) return(out)
-
-    lines <- tryCatch(readLines(out_path, warn = FALSE, encoding = "UTF-8"), error = function(e) character(0))
-    if (length(lines) == 0) return(out)
-
-    x <- trimws(gsub("[[:space:]]+", " ", lines))
-    x <- x[nzchar(x)]
-    idx <- grep("EQUALITY TESTS OF MEANS ACROSS CLASSES USING THE BCH PROCEDURE", x, ignore.case = TRUE)
-    if (length(idx) == 0) return(out)
-
-    blk <- x[idx[1]:length(x)]
-    pair_txt <- character(0)
-
-    for (ln in blk) {
-      hit_overall <- regexec("Overall test\\s+([-]?[0-9]*\\.?[0-9]+)\\s+([.0-9]+)", ln, ignore.case = TRUE)
-      tok_overall <- regmatches(ln, hit_overall)[[1]]
-      if (length(tok_overall) >= 3) {
-        stat_i <- suppressWarnings(as.numeric(tok_overall[2]))
-        p_i <- suppressWarnings(as.numeric(tok_overall[3]))
-        out$stat <- if (!is.na(stat_i)) sprintf("%.2f", stat_i) else ""
-        out$p <- fmt_p3_strict(p_i)
-        out$sig <- fmt_sig_cell(sig_mark(p_i))
-      }
-
-      hit_pairs <- gregexpr("Class\\s+([0-9]+)\\s+vs\\.\\s+([0-9]+)\\s+([-]?[0-9]*\\.?[0-9]+)\\s+([.0-9]+)", ln, perl = TRUE, ignore.case = TRUE)
-      pair_str <- regmatches(ln, hit_pairs)[[1]]
-      if (length(pair_str) > 0) {
-        for (one in pair_str) {
-          tok <- regmatches(one, regexec("Class\\s+([0-9]+)\\s+vs\\.\\s+([0-9]+)\\s+([-]?[0-9]*\\.?[0-9]+)\\s+([.0-9]+)", one, perl = TRUE, ignore.case = TRUE))[[1]]
-          if (length(tok) >= 5) {
-            p_i <- suppressWarnings(as.numeric(tok[5]))
-            if (!is.na(p_i) && p_i < .05) pair_txt <- c(pair_txt, paste0("C", tok[2], "-C", tok[3]))
-          }
-        }
-      }
-    }
-
-    if (length(pair_txt) > 0) out$posthoc <- paste(unique(pair_txt), collapse = ", ")
-    out
-  }
-
   num_class <- suppressWarnings(as.integer(df$class_num))
   df_class <- df[!is.na(num_class), , drop = FALSE]
   df_overall <- df[
@@ -5134,16 +5357,8 @@ build_T6B_bch_stratified <- function() {
   df_class$Level <- as.character(df_class$moderator_level)
   df_class$Profile <- paste0("Profile ", suppressWarnings(as.integer(df_class$class_num)))
   df_class$M <- fmt_m2(df_class$estimate)
-  if (isTRUE(HAS_WEIGHT)) {
-    df_class$SPREAD <- fmt_sd2(df_class$se)
-    spread_key <- "SE"
-  } else {
-    raw_sum <- build_classified_outcome_summary(unique(df_class$var_name), moderator_var = unique(df_class$moderator)[1])
-    raw_key <- paste(raw_sum$var_name, raw_sum$class_num, raw_sum$moderator_level, sep = "||")
-    cls_key <- paste(df_class$var_name, df_class$class_num, df_class$moderator_level, sep = "||")
-    df_class$SPREAD <- fmt_sd2(raw_sum$SD[match(cls_key, raw_key)])
-    spread_key <- "SD"
-  }
+  df_class$SPREAD <- fmt_sd2(df_class$se)
+  spread_key <- "SE"
   if ("var_label" %in% names(df_class)) {
     df_class$Variable <- as.character(df_class$var_label)
   } else {
@@ -5189,6 +5404,7 @@ build_T6B_bch_stratified <- function() {
     moderator_level = character(0),
     var_name = character(0),
     Statistic = character(0),
+    df = character(0),
     p = character(0),
     sig = character(0),
     `post-hoc` = character(0),
@@ -5210,6 +5426,10 @@ build_T6B_bch_stratified <- function() {
           zz <- safe_num(z)
           if (is.na(zz)) "" else sprintf("%.2f", zz)
         }),
+        df = if ("df" %in% names(one)) build_first_nonempty(one$df, function(z) {
+          zz <- safe_num(z)
+          if (is.na(zz)) "" else formatC(zz, format = "f", digits = 0)
+        }) else "",
         p = build_first_nonempty(one$p, function(z) fmt_p3_strict(safe_num(z))),
         sig = build_first_nonempty(one$p, function(z) fmt_sig_cell(sig_mark(safe_num(z)))),
         `post-hoc` = "",
@@ -5218,39 +5438,6 @@ build_T6B_bch_stratified <- function() {
       )
     })
     if (length(stat_list) > 0) stat_map <- do.call(rbind, stat_list)
-  }
-
-  if ("out_file" %in% names(df)) {
-    file_rows <- unique(df[, intersect(c("moderator", "moderator_level", "var_name", "out_file"), names(df)), drop = FALSE])
-    file_rows <- file_rows[!is.na(file_rows$out_file) & nzchar(as.character(file_rows$out_file)), , drop = FALSE]
-    if (nrow(file_rows) > 0) {
-      parsed_list <- lapply(seq_len(nrow(file_rows)), function(i) {
-        pp <- parse_bch_overall_from_out_local(file_rows$out_file[i])
-        data.frame(
-          moderator = as.character(file_rows$moderator[i]),
-          moderator_level = as.character(file_rows$moderator_level[i]),
-          var_name = as.character(file_rows$var_name[i]),
-          Statistic = as.character(pp$stat %||% ""),
-          p = as.character(pp$p %||% ""),
-          sig = as.character(pp$sig %||% ""),
-          `post-hoc` = as.character(pp$posthoc %||% ""),
-          stringsAsFactors = FALSE,
-          check.names = FALSE
-        )
-      })
-      parsed_df <- do.call(rbind, parsed_list)
-      parsed_key <- paste(parsed_df$moderator, parsed_df$moderator_level, parsed_df$var_name, sep = "||")
-      if (nrow(stat_map) == 0) {
-        stat_map <- parsed_df
-      } else {
-        stat_key <- paste(stat_map$moderator, stat_map$moderator_level, stat_map$var_name, sep = "||")
-        for (cc in c("Statistic", "p", "sig", "post-hoc")) {
-          miss <- is.na(stat_map[[cc]]) | !nzchar(as.character(stat_map[[cc]]))
-          stat_map[[cc]][miss] <- parsed_df[[cc]][match(stat_key[miss], parsed_key)]
-          stat_map[[cc]][is.na(stat_map[[cc]])] <- ""
-        }
-      }
-    }
   }
 
   if (is.data.frame(ph) && nrow(ph) > 0 && all(c("moderator", "moderator_level", "p") %in% names(ph))) {
@@ -5307,9 +5494,10 @@ build_T6B_bch_stratified <- function() {
           if (length(miss_key) > 0) {
             add_rows <- ph_map[ph_key %in% miss_key, , drop = FALSE]
             add_rows$Statistic <- ""
+            add_rows$df <- ""
             add_rows$p <- ""
             add_rows$sig <- ""
-            add_rows <- add_rows[, c("moderator", "moderator_level", "var_name", "Statistic", "p", "sig", "post-hoc"), drop = FALSE]
+            add_rows <- add_rows[, c("moderator", "moderator_level", "var_name", "Statistic", "df", "p", "sig", "post-hoc"), drop = FALSE]
             stat_map <- rbind(stat_map, add_rows)
           }
         }
@@ -5329,10 +5517,12 @@ build_T6B_bch_stratified <- function() {
     out[[twoline_key(spread_key, lv_label)]][is.na(out[[twoline_key(spread_key, lv_label)]])] <- ""
 
     stat_col <- twoline_key("Statistic", lv_label)
+    df_col <- twoline_key("df", lv_label)
     p_col <- twoline_key("p", lv_label)
     sig_col <- twoline_key("sig", lv_label)
     ph_col <- twoline_key("post-hoc", lv_label)
     out[[stat_col]] <- ""
+    out[[df_col]] <- ""
     out[[p_col]] <- ""
     out[[sig_col]] <- ""
     out[[ph_col]] <- ""
@@ -5345,16 +5535,19 @@ build_T6B_bch_stratified <- function() {
         first_row <- !duplicated(var_key)
 
         stat_vals <- st$Statistic[idx]
+        df_vals <- st$df[idx]
         p_vals <- st$p[idx]
         sig_vals <- st$sig[idx]
         ph_vals <- st$`post-hoc`[idx]
 
         stat_vals[is.na(stat_vals)] <- ""
+        df_vals[is.na(df_vals)] <- ""
         p_vals[is.na(p_vals)] <- ""
         sig_vals[is.na(sig_vals)] <- ""
         ph_vals[is.na(ph_vals)] <- ""
 
         out[[stat_col]][first_row] <- stat_vals[first_row]
+        out[[df_col]][first_row] <- df_vals[first_row]
         out[[p_col]][first_row] <- p_vals[first_row]
         out[[sig_col]][first_row] <- sig_vals[first_row]
         out[[ph_col]][first_row] <- ph_vals[first_row]
@@ -5380,14 +5573,17 @@ build_T6B_bch_stratified <- function() {
       block_key <- do.call(paste, c(out[block_cols], sep = "||"))
     }
 
-    format_f_p <- function(stat, p) {
+    format_wald <- function(stat, df, p) {
       stat <- as.character(stat %||% "")
+      df <- as.character(df %||% "")
       p <- as.character(p %||% "")
       stat[is.na(stat)] <- ""
+      df[is.na(df)] <- ""
       p[is.na(p)] <- ""
-      if (!nzchar(stat) && !nzchar(p)) return("")
+      if (!nzchar(stat) && !nzchar(df) && !nzchar(p)) return("")
+      if (nzchar(stat) && nzchar(df) && nzchar(p)) return(paste0(stat, " (", df, "), ", p))
       if (nzchar(stat) && nzchar(p)) return(paste0(stat, " (", p, ")"))
-      paste0(stat, p)
+      paste0(stat, df, p)
     }
 
     out_rows <- list()
@@ -5404,20 +5600,21 @@ build_T6B_bch_stratified <- function() {
         f_row[[cc]] <- block[[cc]][1]
         posthoc_row[[cc]] <- block[[cc]][1]
       }
-      f_row$Profile <- "F(p)"
-      posthoc_row$Profile <- intToUtf8(c(0xD3C9, 0xADE0, 0xC21C, 0x20, 0xC720, 0xC758, 0xC131, 0x20, 0xD45C, 0xAE30))
+      f_row$Profile <- "Wald chi-square (df), p"
+      posthoc_row$Profile <- "BCH pairwise result"
 
       for (lv in levels_ord) {
         lv_label <- level_labels[[lv]]
         m_col <- twoline_key("M", lv_label)
         sd_col <- twoline_key(spread_key, lv_label)
         stat_col <- twoline_key("Statistic", lv_label)
+        df_col <- twoline_key("df", lv_label)
         p_col <- twoline_key("p", lv_label)
         ph_col <- twoline_key("post-hoc", lv_label)
         if (!m_col %in% names(f_row)) next
 
         first_i <- idx[[1]]
-        f_row[[m_col]] <- format_f_p(out[[stat_col]][first_i], out[[p_col]][first_i])
+        f_row[[m_col]] <- format_wald(out[[stat_col]][first_i], out[[df_col]][first_i], out[[p_col]][first_i])
         if (sd_col %in% names(f_row)) f_row[[sd_col]] <- ""
 
         pair_text <- as.character(out[[ph_col]][first_i] %||% "")
@@ -5782,7 +5979,23 @@ build_S1_overview <- function() {
 }
 
 build_S2_desc_cont <- function() {
-  data.frame(Note = "Reserved for continuous auxiliary descriptions", stringsAsFactors = FALSE)
+  df <- normalize_bch_pairwise_rows(BCH_POSTHOC)
+  if (nrow(df) == 0L) return(data.frame())
+
+  if (!"var_label" %in% names(df)) df$var_label <- get_var_label(df$var_name)
+  out <- data.frame(
+    Variable = as.character(df$var_label),
+    Comparison = paste0("C", df$class1, " vs C", df$class2),
+    `Wald chi-square` = ifelse(is.na(df$stat), "", sprintf("%.3f", df$stat)),
+    df = ifelse(is.na(df$df), "", formatC(df$df, format = "f", digits = 0)),
+    p = fmt_p3_strict(df$p),
+    Significant = ifelse(!is.na(df$p) & df$p < .05, "Yes", "No"),
+    Method = "BCH pairwise Wald test",
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  out$Variable[duplicated(out$Variable)] <- ""
+  out
 }
 
 build_T0_sample_flow <- function() {
@@ -5883,7 +6096,69 @@ build_S5_primary_rrr_twoline <- function() {
 }
 
 build_S3_desc_cat <- function() {
-  data.frame(Note = "Reserved for categorical auxiliary descriptions", stringsAsFactors = FALSE)
+  classified <- safe_df(CLASSIFIED_ANALYSIS)
+  if (nrow(classified) == 0L) classified <- safe_df(ANALYSIS_DATA_CLASSIFIED)
+  if (nrow(classified) == 0L || !"class_num" %in% names(classified)) return(data.frame())
+
+  spec <- safe_df(R3STEP_SPEC)
+  if (nrow(spec) == 0L && is.list(R3STEP_RESULTS_RAW)) {
+    spec <- safe_df(R3STEP_RESULTS_RAW$predictors_expanded %||% data.frame())
+  }
+  covariates <- if (nrow(spec) > 0L) {
+    unique(as.character(spec$source_var %||% spec$var_name %||% character(0)))
+  } else {
+    unique(as.character(
+      SETTINGS_SUMMARY$COVARIATES %||% SETTINGS_SUMMARY$covariates %||% character(0)
+    ))
+  }
+  covariates <- intersect(covariates[!is.na(covariates) & nzchar(covariates)], names(classified))
+  if (length(covariates) == 0L) return(data.frame())
+
+  class_ids <- sort(unique(safe_int(classified$class_num)))
+  class_ids <- class_ids[!is.na(class_ids)]
+  rows <- list()
+  for (variable in covariates) {
+    type_i <- ""
+    if (nrow(spec) > 0L && "source_var" %in% names(spec) && "predictor_type" %in% names(spec)) {
+      hit_type <- unique(tolower(as.character(spec$predictor_type[as.character(spec$source_var) == variable])))
+      hit_type <- hit_type[!is.na(hit_type) & nzchar(hit_type)]
+      if (length(hit_type) > 0L) type_i <- hit_type[1]
+    }
+    values <- classified[[variable]]
+    observed <- sort(unique(as.character(stats::na.omit(values))))
+    if (type_i %in% c("continuous", "numeric", "scale") || length(observed) < 2L || length(observed) > 20L) next
+
+    for (level in observed) {
+      counts <- vapply(class_ids, function(class_id) {
+        sum(safe_int(classified$class_num) == class_id & !is.na(values) & as.character(values) == level)
+      }, integer(1))
+      zero_profiles <- class_ids[counts == 0L]
+      sparse_profiles <- class_ids[counts > 0L & counts < 5L]
+      status <- if (length(zero_profiles) > 0L) {
+        "Zero cell; separation risk / estimate not interpretable"
+      } else if (length(sparse_profiles) > 0L) {
+        "Sparse cell (<5); estimate may be unstable"
+      } else {
+        "No sparse cell detected"
+      }
+      row <- data.frame(
+        Variable = get_var_label(variable),
+        Category = get_value_label(variable, level),
+        `Total n` = sum(counts),
+        `Minimum profile n` = min(counts),
+        `Zero-cell profiles` = if (length(zero_profiles) > 0L) paste0("Profile ", zero_profiles, collapse = ", ") else "",
+        Diagnostic = status,
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
+      for (i in seq_along(class_ids)) row[[paste0("Profile ", class_ids[i], " n")]] <- counts[i]
+      rows[[length(rows) + 1L]] <- row
+    }
+  }
+  if (length(rows) == 0L) return(data.frame())
+  out <- do.call(rbind, rows)
+  out$Variable[duplicated(out$Variable)] <- ""
+  out
 }
 
 build_S4_summary_merged <- function() {
@@ -5939,7 +6214,7 @@ build_rrr_detail_twoline <- function(df) {
 }
 
 build_S6_multinom_detail <- function() {
-  df <- build_covariate_long_common(safe_df(R3STEP_RESULTS_RAW$univariable %||% data.frame()))
+  df <- build_covariate_long_common(resolve_r3step_primary_raw())
   if (nrow(df) == 0) return(data.frame())
   out <- build_rrr_detail_twoline(df)
   keep <- names(out) %in% c("Variable", "Category") |
@@ -6079,24 +6354,23 @@ TABLE_BUILDERS <- list(
 
 TABLE_META <- list(
   T0  = list(caption = "Table 0. Overview of analysis inputs and settings", type = "normal", note_type = "generic"),
-  T1  = list(caption = paste0("Table 1. Summary of the retained latent ", latent_group_term_lower(), " solution"), type = "normal", note_type = "generic"),
-  T2  = list(caption = paste0("Table 2. Fit indices for candidate ", latent_group_term_lower(), " solutions"), type = "normal", note_type = "generic"),
+  T1  = list(
+    caption = paste0("Table 1. Summary of the retained latent ", latent_group_term_lower(), " solution"),
+    description = "Retained solution, selection rule, and estimation-quality audit",
+    type = "normal",
+    note_type = "generic"
+  ),
+  T2  = list(
+    caption = paste0("Table 2. Fit indices and eligibility diagnostics for candidate ", latent_group_term_lower(), " solutions"),
+    description = "Candidate fit indices, estimation quality, eligibility, and exclusion reasons",
+    type = "normal",
+    note_type = "selection_quality"
+  ),
   T3  = list(caption = paste0("Table 3. ", latent_group_term(), " sizes in the retained solution"), type = "normal", note_type = size_note_type),
     T4  = list(
-      caption = if (tolower(as.character(mixture_mode %||% "lpa")) == "lca")
-        "Table 4. Indicator category distribution by class"
-      else if (length(SETTINGS_SUMMARY$INDICATORS_CONTINUOUS %||% SETTINGS_SUMMARY$indicators_continuous %||% character(0)) > 0 &&
-               length(SETTINGS_SUMMARY$INDICATORS_CATEGORICAL %||% SETTINGS_SUMMARY$indicators_categorical %||% character(0)) > 0)
-        paste0("Table 4. Indicator means and category distributions by ", tolower(latent_group_term()))
-      else
-        paste0("Table 4. Indicator means by ", tolower(latent_group_term())),
-      type = if (isTRUE(has_mixed_indicators())) "twoline_mixed" else t4_table_type,
-      note_type = if (tolower(as.character(mixture_mode %||% "lpa")) == "lca")
-        "n_pct"
-      else if (isTRUE(has_mixed_indicators()))
-        "mixed_split"
-      else
-        spread_note_type
+      caption = paste0("Table 4. Retained-model continuous-indicator means by ", tolower(latent_group_term())),
+      type = t4_table_type,
+      note_type = "model_mse_ci"
     ),
   T5  = list(caption = paste0("Table 5. Covariates predicting ", tolower(latent_group_term()), " membership"), type = "twoline_rrr", note_type = "rrr"),
   T5b = list(caption = paste0("Table 5b. Covariates predicting ", tolower(latent_group_term()), " membership: primary analysis"), type = "twoline_rrr", note_type = "rrr"),
@@ -6109,31 +6383,37 @@ TABLE_META <- list(
   T6  = list(
     caption   = paste0("Table 6. Distal outcomes by ", tolower(latent_group_term())),
     type      = "normal",
-    note_type = spread_note_type
+    note_type = "m_se"
   ),
   T6b = list(caption = paste0("Table 6b. Multinomial logistic regression for categorical distal outcomes by ", tolower(latent_group_term())), type = "twoline_rrr", note_type = "rrr"),
   T6C = list(caption = paste0("Table 6C. PROCESS Model 1-style regression coefficients for ", latent_group_term_lower(), " x moderator effects on distal outcomes"),type = "normal", note_type = "generic"),
   T6D = list(caption = paste0("Table 6D. Distal outcome means by ", tolower(latent_group_term()), " across moderator levels"), type = t6d_table_type, note_type = spread_note_type),
-  T6E = list(caption = paste0("Table 6E. Distal outcomes by ", tolower(latent_group_term()), " within moderator levels"), type = "twoline_mean", note_type = spread_note_type),
+  T6E = list(caption = paste0("Table 6E. Distal outcomes by ", tolower(latent_group_term()), " within moderator levels"), type = "twoline_t6b", note_type = "m_se"),
   T7  = list(caption = "Table 7. Analysis summary", type = "normal", note_type = "generic"),
 
   A3  = list(
-    caption = if (length(SETTINGS_SUMMARY$INDICATORS_CONTINUOUS %||% SETTINGS_SUMMARY$indicators_continuous %||% character(0)) > 0 &&
-                  length(SETTINGS_SUMMARY$INDICATORS_CATEGORICAL %||% SETTINGS_SUMMARY$indicators_categorical %||% character(0)) > 0)
-      paste0("Appendix Table A3. Indicator means and category distributions by ", tolower(latent_group_term()), " (raw scale)")
-    else
-      paste0("Appendix Table A3. Indicator means by ", tolower(latent_group_term()), " (raw scale)"),
-    type = if (isTRUE(has_mixed_indicators())) "twoline_mixed" else "normal",
-    note_type = if (isTRUE(has_mixed_indicators())) "mixed_split" else compact_spread_note_type
+    caption = paste0("Appendix Table A3. Modal-assignment indicator descriptives by ", tolower(latent_group_term()), " (raw scale)"),
+    type = if (tolower(as.character(mixture_mode %||% "lpa")) == "lca") {
+      "twoline_npct"
+    } else if (isTRUE(has_mixed_indicators())) {
+      "twoline_modal_mixed"
+    } else {
+      "twoline_mean"
+    },
+    note_type = "modal_raw"
   ),
-  A4  = list(caption = paste0("Appendix Table A4. Indicator means by ", tolower(latent_group_term()), " (standardized scale)"), type = "normal", note_type = compact_spread_note_type),
+  A4  = list(
+    caption = paste0("Appendix Table A4. Standardized descriptives by modal ", latent_group_term_lower(), " assignment"),
+    type = "twoline_mean",
+    note_type = "modal_z"
+  ),
     A5  = list(caption = "Appendix Table A5. Classification summary", type = "normal", note_type = a5_note_type),
   A6  = list(caption = paste0("Appendix Table A6. Classification quality by ", tolower(latent_group_term())), type = "normal", note_type = "generic"),
   A8  = list(caption = "Appendix Table A8. Misclassification matrix", type = "normal", note_type = "generic"),
 
   S1  = list(caption = "Supplement Table S1. Overview of auxiliary analyses", type = "normal", note_type = "generic"),
-  S2  = list(caption = paste0("Supplement Table S2. Continuous auxiliary variables by ", tolower(latent_group_term())), type = "normal", note_type = "mean_sd_compact"),
-  S3  = list(caption = paste0("Supplement Table S3. Categorical auxiliary variables by ", tolower(latent_group_term())), type = "normal", note_type = "n_pct"),
+  S2  = list(caption = "Supplement Table S2. BCH pairwise Wald tests", type = "normal", note_type = "generic"),
+  S3  = list(caption = paste0("Supplement Table S3. Covariate cell frequencies by modal ", tolower(latent_group_term()), " (sparse-cell diagnostics)"), type = "normal", note_type = "generic"),
   S4  = list(caption = paste0("Supplement Table S4. Auxiliary variable summary across ", tolower(latent_group_term()), "s"), type = "normal", note_type = "generic"),
   S5  = list(caption = "Supplement Table S5. Primary multinomial results", type = "twoline_s5", note_type = "rrr_compact"),
   S6  = list(caption = "Supplement Table S6. Multinomial model details", type = "twoline_s5", note_type = "rrr_compact")
@@ -6676,8 +6956,103 @@ validate_table_structure <- function(table_name, df, meta_i = NULL) {
 
   nm <- names(df)
 
-  if (grepl("^[AS][0-9]", table_name) && "Note" %in% nm) {
+  if (identical(table_name, "T1")) {
+    if (!all(c("Characteristic", "Value") %in% nm)) {
+      out$valid <- FALSE
+      out$issue <- "T1 requires Characteristic and Value columns"
+      return(out)
+    }
+    quality_rows <- c(
+      "Eligible candidate solutions",
+      "Retained solution eligible",
+      "Normal termination",
+      "Best loglikelihood replicated",
+      "Selection rationale"
+    )
+    missing_rows <- setdiff(quality_rows, as.character(df$Characteristic))
+    if (length(missing_rows) > 0L) {
+      out$valid <- FALSE
+      out$issue <- paste0("T1 missing selection-quality rows: ", paste(missing_rows, collapse = ", "))
+      return(out)
+    }
+    value_for <- function(label) {
+      hit <- match(label, as.character(df$Characteristic))
+      if (is.na(hit)) return("")
+      trimws(as.character(df$Value[[hit]]))
+    }
+    retained_ok <- tolower(value_for("Retained solution eligible")) == "yes"
+    termination_ok <- tolower(value_for("Normal termination")) == "yes"
+    replication_value <- tolower(value_for("Best loglikelihood replicated"))
+    replication_ok <- replication_value == "yes" || grepl("^not required", replication_value)
+    rationale_ok <- nzchar(value_for("Selection rationale")) &&
+      !tolower(value_for("Selection rationale")) %in% c("not reported", "not evaluated")
+    if (!retained_ok || !termination_ok || !replication_ok || !rationale_ok) {
+      out$valid <- FALSE
+      out$issue <- "T1 retained solution must be eligible, normally terminated, replicated when required, and have a selection rationale"
+      return(out)
+    }
+  }
+
+  if (identical(table_name, "T2")) {
+    required <- c(
+      "Selected", "Model", "Normal termination", "Best LL replicated",
+      "Eligible", "Exclusion reason"
+    )
+    if (!any(c("Profiles", "Classes") %in% nm)) required <- c(required, "Profiles/Classes")
+    missing <- setdiff(required, nm)
+    if (length(missing) > 0L) {
+      out$valid <- FALSE
+      out$issue <- paste0("T2 missing selection-quality columns: ", paste(missing, collapse = ", "))
+      return(out)
+    }
+
+    selected <- tolower(trimws(as.character(df$Selected))) == "yes"
+    eligible <- tolower(trimws(as.character(df$Eligible)))
+    termination <- tolower(trimws(as.character(df[["Normal termination"]])))
+    replicated <- tolower(trimws(as.character(df[["Best LL replicated"]])))
+    exclusion_reason <- trimws(as.character(df[["Exclusion reason"]]))
+    exclusion_reason[is.na(exclusion_reason)] <- ""
+
+    if (sum(selected, na.rm = TRUE) != 1L) {
+      out$valid <- FALSE
+      out$issue <- "T2 requires exactly one selected candidate"
+      return(out)
+    }
+    if (any(!eligible %in% c("yes", "no"))) {
+      out$valid <- FALSE
+      out$issue <- "T2 Eligible must be explicitly Yes or No for every candidate"
+      return(out)
+    }
+    if (any(eligible == "no" & !nzchar(exclusion_reason))) {
+      out$valid <- FALSE
+      out$issue <- "T2 excluded candidates require a nonempty exclusion reason"
+      return(out)
+    }
+    selected_index <- which(selected)[[1L]]
+    selected_replication_ok <- replicated[[selected_index]] == "yes" || replicated[[selected_index]] == "n/r"
+    if (eligible[[selected_index]] != "yes" || termination[[selected_index]] != "yes" || !selected_replication_ok) {
+      out$valid <- FALSE
+      out$issue <- "T2 selected candidate must be eligible, normally terminated, and replicated when required"
+      return(out)
+    }
+  }
+
+  if ((grepl("^[AS][0-9]", table_name) || identical(table_name, "T4")) && "Note" %in% nm) {
     return(out)
+  }
+
+  if (type_i == "twoline_model_ci") {
+    need <- c("M__", "SE__", "LLCI__", "ULCI__")
+    miss <- need[!vapply(need, function(prefix) has_any_prefix(nm, prefix), logical(1))]
+    if (length(miss) > 0L || has_any_prefix(nm, "SD__")) {
+      out$valid <- FALSE
+      out$issue <- if (length(miss) > 0L) {
+        paste0("twoline_model_ci missing prefixes: ", paste(miss, collapse = ", "))
+      } else {
+        "twoline_model_ci must not contain SD__ columns"
+      }
+      return(out)
+    }
   }
 
   if (type_i == "twoline_mean") {
@@ -6707,7 +7082,7 @@ validate_table_structure <- function(table_name, df, meta_i = NULL) {
   }
 
   if (type_i == "twoline_t6b") {
-    need <- c("M__", if (isTRUE(HAS_WEIGHT)) "SE__" else "SD__", "Statistic__", "p__", "sig__", "post-hoc__")
+    need <- c("M__", "SE__", "Statistic__", "p__", "sig__", "post-hoc__")
     miss <- need[!vapply(need, function(pf) has_any_prefix(nm, pf), logical(1))]
     if (length(miss) > 0) {
       out$valid <- FALSE
@@ -6758,6 +7133,20 @@ validate_table_structure <- function(table_name, df, meta_i = NULL) {
     }
   }
 
+  if (type_i == "twoline_modal_mixed") {
+    need <- c("M/n__", "SD/%__")
+    miss <- need[!vapply(need, function(prefix) has_any_prefix(nm, prefix), logical(1))]
+    if (length(miss) > 0L || has_any_prefix(nm, "SE/%__")) {
+      out$valid <- FALSE
+      out$issue <- if (length(miss) > 0L) {
+        paste0("twoline_modal_mixed missing prefixes: ", paste(miss, collapse = ", "))
+      } else {
+        "twoline_modal_mixed must not contain SE/%__ columns"
+      }
+      return(out)
+    }
+  }
+
   if (type_i == "twoline_s5") {
     need <- c("RRR__", "(LLCI~ULCI)__", "p__")
     miss <- need[!vapply(need, function(pf) has_any_prefix(nm, pf), logical(1))]
@@ -6770,7 +7159,7 @@ validate_table_structure <- function(table_name, df, meta_i = NULL) {
 
   if (type_i == "normal") {
     # exclude overview/wide tables from strict compact warning
-    if (table_name %in% c("A3", "A4", "A5", "A6", "A8", "S1")) {
+    if (table_name %in% c("A3", "A4", "A5", "A6", "A8", "S1", "S2", "S3")) {
       return(out)
     }
 
@@ -6939,7 +7328,8 @@ reorder_covariate_display_table <- function(df, blank_repeated_variables = TRUE)
   label_rows <- list()
   for (i in seq_len(nrow(meta))) {
     vn <- trim_chr(meta$var_name[i])
-    if (!nzchar(vn)) next
+    if (length(vn) == 0L || is.na(vn[1]) || !nzchar(vn[1])) next
+    vn <- vn[1]
     var_labels <- unique(trim_chr(c(
       vn,
       if ("var_label" %in% names(meta)) meta$var_label[i] else "",
@@ -7088,12 +7478,6 @@ A4 <- postprocess_table_output(TABLE_BUILDERS$A4(), "A4")
 A5 <- postprocess_table_output(TABLE_BUILDERS$A5(), "A5")
 A6 <- postprocess_table_output(TABLE_BUILDERS$A6(), "A6")
 A8 <- postprocess_table_output(TABLE_BUILDERS$A8(), "A8")
-if (is.data.frame(A3) && nrow(A3) > 0) {
-  names(A3) <- gsub("M.+(SE|SD)$", compact_mean_name(isTRUE(HAS_WEIGHT)), names(A3))
-}
-if (is.data.frame(A4) && nrow(A4) > 0) {
-  names(A4) <- gsub("M.+(SE|SD)$", compact_mean_name(isTRUE(HAS_WEIGHT)), names(A4))
-}
 log_info("Building S1/S2/S3/S4/S5/S6 ...")
 S1 <- postprocess_table_output(TABLE_BUILDERS$S1(), "S1")
 S2 <- postprocess_table_output(TABLE_BUILDERS$S2(), "S2")
@@ -7121,6 +7505,11 @@ TABLE_REGISTRY <- list(
 if (is.data.frame(T6) && any(grepl("^F__", names(T6)))) {
   TABLE_META$T6$type <- "twoline_t6_mod"
   TABLE_META$T6$caption <- paste0("Table 6. Distal outcomes by ", tolower(latent_group_term()), " and moderator")
+}
+if (is.data.frame(T6E) && !any(grepl("^Statistic__", names(T6E)))) {
+  # Older caches may contain class estimates but no saved subgroup omnibus rows.
+  # Keep the available BCH M/SE table without manufacturing tests from .out files.
+  TABLE_META$T6E$type <- "twoline_mse"
 }
 
 # ------------------------------------------------------------
@@ -7177,6 +7566,12 @@ write_csv_safe(TABLE_VALIDATION, file.path(DIR_TABLES, "TABLE_VALIDATION.csv"))
 TABLE_MANIFEST <- data.frame(
   table_name = names(TABLE_REGISTRY),
   file_path = file.path(DIR_TABLES, paste0(names(TABLE_REGISTRY), ".csv")),
+  caption = vapply(names(TABLE_REGISTRY), function(name) {
+    as.character(TABLE_META[[name]]$caption %||% name)
+  }, character(1)),
+  description = vapply(names(TABLE_REGISTRY), function(name) {
+    as.character(TABLE_META[[name]]$description %||% TABLE_META[[name]]$caption %||% name)
+  }, character(1)),
   stringsAsFactors = FALSE
 )
 
@@ -7200,13 +7595,6 @@ for (nm in names(TABLE_REGISTRY_FOR_EXPORT)) {
   TABLE_REGISTRY_FOR_EXPORT[[nm]] <- append_note_row(dat_i, note_text_i)
 }
 
-for (nm in c("A3", "A4")) {
-  dat_i <- safe_df(TABLE_REGISTRY_FOR_EXPORT[[nm]])
-  if (!is.data.frame(dat_i) || nrow(dat_i) == 0) next
-  names(dat_i) <- gsub("M.+(SE|SD)$", compact_mean_name(isTRUE(HAS_WEIGHT)), names(dat_i))
-  TABLE_REGISTRY_FOR_EXPORT[[nm]] <- dat_i
-}
-
 # ------------------------------------------------------------
 # 17. save workbook
 # ------------------------------------------------------------
@@ -7227,19 +7615,21 @@ for (nm in names(TABLE_REGISTRY_FOR_EXPORT)) {
       title_text = title_i
     )
 
-    } else if (type_i %in% c("twoline_mean", "twoline_mse", "twoline_mse_psig", "twoline_npct", "twoline_rrr", "twoline_t6b", "twoline_t6_mod", "twoline_s5", "twoline_mixed")) {
+    } else if (type_i %in% c("twoline_mean", "twoline_mse", "twoline_model_ci", "twoline_mse_psig", "twoline_npct", "twoline_rrr", "twoline_t6b", "twoline_t6_mod", "twoline_s5", "twoline_mixed", "twoline_modal_mixed")) {
 
     stat_order_i <- switch(
       type_i,
       twoline_mean     = c("M", "SD"),
         twoline_mse      = c("M", "SE"),
+        twoline_model_ci = c("M", "SE", "LLCI", "ULCI"),
         twoline_mse_psig = c("M", "SE", "p", "sig"),
         twoline_npct     = c("n", "%"),
         twoline_rrr      = c("RRR", "LLCI", "ULCI", "p", "sig"),
-        twoline_t6b      = c("M", if (isTRUE(HAS_WEIGHT)) "SE" else "SD", "Statistic", "p", "sig", "post-hoc"),
+        twoline_t6b      = c("M", "SE", "Statistic", "p", "sig", "post-hoc"),
         twoline_t6_mod   = c("M", if (isTRUE(HAS_WEIGHT)) "SE" else "SD", "F", "p", "post-hoc"),
         twoline_s5       = c("RRR", "(LLCI~ULCI)", "p"),
-        twoline_mixed    = c("M/n", if (isTRUE(HAS_WEIGHT)) "SE/%" else "SD/%")
+        twoline_mixed    = c("M/n", if (isTRUE(HAS_WEIGHT)) "SE/%" else "SD/%"),
+        twoline_modal_mixed = c("M/n", "SD/%")
       )
 
     group_stat_map_i <- NULL
@@ -7256,15 +7646,15 @@ for (nm in names(TABLE_REGISTRY_FOR_EXPORT)) {
         }
       } else {
         t6_profile_groups <- t6_groups[grepl("^(Profile|Class)\\s+[0-9]+$", t6_groups)]
-        for (gg in t6_profile_groups) group_stat_map_i[[gg]] <- c("M", if (isTRUE(HAS_WEIGHT)) "SE" else "SD")
-        if ("Overall" %in% t6_groups) group_stat_map_i[["Overall"]] <- c("Statistic", "p", "sig", "post-hoc")
+        for (gg in t6_profile_groups) group_stat_map_i[[gg]] <- c("M", "SE")
+        if ("Overall" %in% t6_groups) group_stat_map_i[["Overall"]] <- c("Statistic", "df", "p", "sig", "post-hoc")
       }
     } else if (identical(nm, "T6E")) {
       t6b_key_cols <- names(dat_i)[grepl("__", names(dat_i), fixed = TRUE)]
       t6b_parts <- lapply(t6b_key_cols, extract_twoline_parts)
       t6b_groups <- unique(vapply(t6b_parts, `[[`, "", "group"))
       group_stat_map_i <- setNames(vector("list", length(t6b_groups)), t6b_groups)
-      for (gg in t6b_groups) group_stat_map_i[[gg]] <- c("M", if (isTRUE(HAS_WEIGHT)) "SE" else "SD")
+      for (gg in t6b_groups) group_stat_map_i[[gg]] <- c("M", "SE", "Statistic", "p", "sig", "post-hoc")
       fixed_cols_i <- latent_group_term()
     } else if (identical(nm, "T6D")) {
       t6d_key_cols <- names(dat_i)[grepl("__", names(dat_i), fixed = TRUE)]

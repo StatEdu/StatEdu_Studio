@@ -392,6 +392,11 @@ run_plan <- data.frame(
   inp_file         = character(),
   out_file         = character(),
   cprob_file       = character(),
+  starts           = character(),
+  stiterations     = integer(),
+  processors       = integer(),
+  estimator        = character(),
+  lratio_starts    = character(),
   stringsAsFactors = FALSE
 )
 
@@ -542,6 +547,11 @@ for (model_structure_i in MODEL_STRUCTURES) {
         inp_file         = inp_file,
         out_file         = out_file,
         cprob_file       = cprob_file,
+        starts           = as.character(STARTS),
+        stiterations     = as.integer(STITERATIONS),
+        processors       = as.integer(PROCESSORS),
+        estimator        = as.character(ESTIMATOR),
+        lratio_starts    = as.character(LRT_STARTS),
         stringsAsFactors = FALSE
       )
     )
@@ -565,7 +575,7 @@ for (model_structure_i in MODEL_STRUCTURES) {
       strata_var         = STRATA_VAR,
       cluster_var        = CLUSTER_VAR,
       missing_code       = MISSING_CODE,
-      starts             = NA_integer_,
+      starts             = as.character(STARTS),
       stiterations       = STITERATIONS,
       processors         = PROCESSORS,
       estimator          = ESTIMATOR,

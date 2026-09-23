@@ -12,7 +12,7 @@ register_crosstab_handlers <- function(
   mark_settings_dirty,
   language_fn = NULL
 ) {
-  crosstab_result <- reactiveVal(NULL)
+  crosstab_result <- analysis_scope_result_val(NULL)
   crosstab_row_vars <- reactiveVal(character(0))
   crosstab_col_vars <- reactiveVal(character(0))
   active_crosstab_list <- reactiveVal(NULL)
@@ -272,6 +272,15 @@ register_crosstab_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
+  register_analysis_reorder(input, session, "crosstab_row", function(payload) {
+    state <- current_crosstab_allowed()
+    updated <- analysis_reorder_items(state$row_vars, payload)
+    if (!updated$changed) return()
+    crosstab_row_vars(updated$order)
+    active_crosstab_list("crosstab_row")
+    mark_settings_dirty()
+  })
+
   observeEvent(input$crosstab_row_up, {
     state <- current_crosstab_allowed()
     updated <- move_order_item(state$row_vars, input$crosstab_row, "up")
@@ -349,6 +358,15 @@ register_crosstab_handlers <- function(
     if (changed) mark_settings_dirty()
   }, ignoreInit = TRUE)
 
+  register_analysis_reorder(input, session, "crosstab_col", function(payload) {
+    state <- current_crosstab_allowed()
+    updated <- analysis_reorder_items(state$col_vars, payload)
+    if (!updated$changed) return()
+    crosstab_col_vars(updated$order)
+    active_crosstab_list("crosstab_col")
+    mark_settings_dirty()
+  })
+
   observeEvent(input$crosstab_col_up, {
     state <- current_crosstab_allowed()
     updated <- move_order_item(state$col_vars, input$crosstab_col, "up")
@@ -374,7 +392,11 @@ register_crosstab_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
-  observeEvent(input$run_crosstab, {
+  register_analysis_command_handler(
+    "run_crosstab", input, output, session,
+    states = list(crosstab_row_vars = crosstab_row_vars, crosstab_col_vars = crosstab_col_vars),
+    dataset_fn = dataset_fn, context_fn = function() list(selected = selected_names_fn(), variables = variable_table_fn(), labels = labels_fn(), categories = category_table_fn()),
+    run_fn = function() {
     current <- current_crosstab_allowed()
     shiny::validate(shiny::need(length(current$row_vars) > 0, "Select at least one row variable."))
     shiny::validate(shiny::need(length(current$col_vars) > 0, "Select at least one column variable."))
@@ -486,7 +508,7 @@ register_crosstab_handlers <- function(
         showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(language_fn)), result_export_error_text(e, statedu_current_language(language_fn))), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
@@ -508,7 +530,7 @@ register_crosstab_handlers <- function(
         showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(language_fn)), result_export_error_text(e, statedu_current_language(language_fn))), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
@@ -530,7 +552,7 @@ register_crosstab_handlers <- function(
         showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(language_fn)), result_export_error_text(e, statedu_current_language(language_fn))), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)

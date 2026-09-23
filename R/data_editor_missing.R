@@ -699,6 +699,14 @@ register_missing_value_handlers <- function(
     }
   )
 
+  register_analysis_reorder(input, session, "missing_values_selected", function(payload) {
+    updated <- analysis_reorder_items(selected_variables(), payload)
+    if (isTRUE(updated$changed)) {
+      selected_variables(updated$order)
+      mark_settings_dirty()
+    }
+  })
+
   observeEvent(input$missing_values_up, {
     updated <- move_order_item(selected_variables(), input$missing_values_selected, "up")
     if (isTRUE(updated$changed)) {

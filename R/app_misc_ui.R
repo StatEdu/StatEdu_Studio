@@ -8,20 +8,20 @@ result_tab_panel <- function(language = statedu_initial_language()) {
       class = "page-shell",
       div(
         class = "app-heading",
-        h1(statedu_ui_label("result", language)),
-        div(statedu_t("result.subtitle", language), class = "app-subtitle")
+        h1(statedu_ui_label("result", language), `data-statedu-i18n-key` = "ui.result"),
+        div(statedu_t("result.subtitle", language), class = "app-subtitle", `data-statedu-i18n-key` = "result.subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        h3(statedu_ui_label("result", language)),
+        h3(statedu_ui_label("result", language), `data-statedu-i18n-key` = "ui.result"),
         div(
           class = "result-toolbar",
           div(
             class = "result-toolbar-group result-toolbar-primary",
-            actionButton("open_result_history_dialog", statedu_t("result.open", language), class = "btn-default"),
-            analysis_save_button("save_result_history_dialog", statedu_t("result.save", language), "result_history", class = "btn-default"),
-            actionButton("clear_saved_results", statedu_t("result.clear", language), class = "btn-default")
+            actionButton("open_result_history_dialog", span(statedu_t("result.open", language), `data-statedu-i18n-key` = "result.open"), class = "btn-default"),
+            analysis_save_button("save_result_history_dialog", span(statedu_t("result.save", language), `data-statedu-i18n-key` = "result.save"), "result_history", class = "btn-default"),
+            actionButton("clear_saved_results", span(statedu_t("result.clear", language), `data-statedu-i18n-key` = "result.clear"), class = "btn-default")
           ),
           uiOutput("result_export_controls")
         ),
@@ -99,13 +99,26 @@ about_document_language_label <- function(language) {
 
 about_document_specs <- function(language = "ko") {
   language <- normalize_app_language(language)
+  specs <- about_legacy_document_specs(language)
+  path <- about_resolve_document_path(file.path("docs", "i18n", "document_specs.json"))
+  if (!nzchar(path)) stop("Missing localized documentation manifest.", call. = FALSE)
+  localized <- jsonlite::fromJSON(about_read_utf8_text(path), simplifyVector = FALSE)[[language]]
+  for (key in c("overview", "user_guide", "analysis_methods", "method_notes", "validation", "version_history")) {
+    if (is.null(localized[[key]])) stop(sprintf("Missing %s documentation: %s", language, key), call. = FALSE)
+    specs[[key]] <- localized[[key]]
+  }
+  specs
+}
+
+about_legacy_document_specs <- function(language = "ko") {
+  language <- normalize_app_language(language)
   if (!identical(language, "ko")) {
     return(list(
       overview = list(title = "Overview", path = "README.md", subtitle = "Project scope, current version, validation, and citation."),
       user_guide = list(title = "User Guide", path = file.path("docs", "USER_GUIDE_EN.md"), subtitle = "Step-by-step operating guide for loading data, selecting variables, running analyses, and saving results."),
       analysis_methods = list(title = "Analyses", path = file.path("docs", "ANALYSIS_METHODS_EN.md"), subtitle = "Implementation inventory of analysis menus, statistical outputs, tables, and export coverage."),
       method_notes = list(title = "Method Notes", path = file.path("docs", "METHOD_NOTES_EN.md"), subtitle = "Interpretive notes on method choice, assumptions, warnings, and result interpretation."),
-      validation = list(title = "Validation", path = file.path("docs", "ANALYSIS_REFERENCE_COMPARISON_PUBLIC.md"), subtitle = "Reference comparisons for public 1.2 calculations and automatic decision paths."),
+      validation = list(title = "Validation", path = file.path("docs", "ANALYSIS_REFERENCE_COMPARISON_PUBLIC.md"), subtitle = "Version-based reference comparisons, evidence, and validation scope."),
       version_history = list(title = "Version History", path = "CHANGELOG.md", subtitle = "Release notes and version history.")
     ))
   }
@@ -135,15 +148,65 @@ about_text_document <- function(path) {
   )
 }
 
-about_license_report_document <- function(path = "license_report.csv") {
-  resolved_path <- about_resolve_document_path(path)
-  if (!nzchar(resolved_path)) {
-    return(NULL)
-  }
-  report <- tryCatch(
-    utils::read.csv(resolved_path, stringsAsFactors = FALSE, check.names = FALSE),
+about_installed_license_report <- function() {
+  db <- tryCatch(
+    installed.packages(fields = c("URL", "License")),
     error = function(e) NULL
   )
+  if (is.null(db) || nrow(db) == 0) {
+    return(NULL)
+  }
+
+  package_names <- rownames(db)
+  package_urls <- db[, "URL"]
+  package_urls[is.na(package_urls) | !nzchar(package_urls)] <- paste0(
+    "https://cran.r-project.org/package=",
+    package_names[is.na(package_urls) | !nzchar(package_urls)]
+  )
+  package_scopes <- ifelse(
+    package_names %in% required_packages,
+    "Direct StatEdu Studio package",
+    ifelse(db[, "Priority"] %in% c("base", "recommended"), "R base/recommended", "Bundled dependency")
+  )
+
+  package_rows <- data.frame(
+    Scope = package_scopes,
+    Component = paste0("R package: ", package_names),
+    Version = db[, "Version"],
+    License = db[, "License"],
+    URL = package_urls,
+    Notes = "",
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  runtime_row <- data.frame(
+    Scope = "R runtime",
+    Component = "R runtime",
+    Version = paste(R.version$major, R.version$minor, sep = "."),
+    License = "GPL-2 | GPL-3; LGPL applies to selected R libraries where stated",
+    URL = "https://www.r-project.org/Licenses/",
+    Notes = "Runtime used by the current StatEdu Studio session.",
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  report <- rbind(runtime_row, package_rows)
+  report[order(match(report$Scope, c(
+    "R runtime", "Direct StatEdu Studio package", "Bundled dependency", "R base/recommended"
+  )), report$Component), , drop = FALSE]
+}
+
+about_license_report_document <- function(path = "license_report.csv", fallback = FALSE) {
+  resolved_path <- about_resolve_document_path(path)
+  report <- if (nzchar(resolved_path)) {
+    tryCatch(
+      utils::read.csv(resolved_path, stringsAsFactors = FALSE, check.names = FALSE),
+      error = function(e) NULL
+    )
+  } else if (isTRUE(fallback)) {
+    about_installed_license_report()
+  } else {
+    NULL
+  }
   if (!is.data.frame(report) || nrow(report) == 0) {
     return(NULL)
   }
@@ -172,8 +235,18 @@ about_license_report_document <- function(path = "license_report.csv") {
 }
 
 about_oss_license_document <- function() {
-  notices <- about_text_document("THIRD-PARTY-NOTICES.txt")
-  report <- about_license_report_document()
+  notice_path <- about_resolve_document_path("THIRD-PARTY-NOTICES.txt")
+  notices <- if (nzchar(notice_path)) {
+    about_text_document("THIRD-PARTY-NOTICES.txt")
+  } else {
+    div(
+      class = "about-markdown-document",
+      h2("Third-Party Notices"),
+      p("StatEdu Studio uses the R runtime and the third-party R packages listed below."),
+      p("The packaged application includes the complete generated notices and copied license files.")
+    )
+  }
+  report <- about_license_report_document(fallback = !nzchar(notice_path))
   if (is.null(report)) {
     return(notices)
   }
@@ -388,7 +461,7 @@ about_preferences_tab_panel <- function(language = statedu_initial_language()) {
                 ),
                 actionButton(
                   "browse_default_save_dir",
-                  if (identical(language, "ko")) "\ucc3e\uc544\ubcf4\uae30" else "Browse",
+                  statedu_localized_text(language, "Browse", "\ucc3e\uc544\ubcf4\uae30"),
                   class = "btn btn-default"
                 )
               )

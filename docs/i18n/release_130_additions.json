@@ -1,0 +1,306 @@
+{
+  "ko": {
+    "overview": "개요",
+    "user_guide": "사용자 안내서",
+    "validation": "검증",
+    "subtitle": "StatEdu Studio 1.3.0의 추가 분석, 사용 절차와 검증 범위.",
+    "scope": "1.3.0은 CFA, SEM, PLS-SEM/PLSc를 공개 분석 범위에 추가하고 생존분석의 RMST·경쟁위험 경로를 제공합니다. 매개·조절효과 캔버스, 일반 분석, 종단·패널, 복합표본과 표본수·효과크기 기능을 함께 사용합니다. 기존 기능의 개선과 이번 버전의 신규 공개 기능은 버전 이력에서 구분합니다.",
+    "edition": "개발자 설치본은 StatEdu Studio Dev 1.3.0-dev입니다. 일반 공개판과 별도 앱 이름을 사용하며 개발 메뉴를 유지합니다. 공개판에서는 메타분석과 동일 대상 내 처치 반복측정 ANOVA를 제외합니다. 혼합 반복측정 ANOVA와 대응표본 검정은 유지됩니다.",
+    "headings": [
+      "실행과 데이터 준비",
+      "CFA",
+      "SEM",
+      "PLS-SEM / PLSc",
+      "생존분석",
+      "결과 확인·추가·저장",
+      "문서와 검증 범위"
+    ],
+    "steps": [
+      "설치 후 시작 메뉴의 StatEdu Studio Dev를 실행합니다. 데이터 파일을 열고 변수명·측정수준·결측값과 범주 코딩을 확인합니다. 케이스 선택과 자료 분할이 활성화되어 있으면 분석에 적용되는 범위를 먼저 확인합니다. 분석에 필요한 변수와 옵션을 지정하고 실행합니다. UI 언어를 바꿔도 사용자 변수명과 데이터 값은 원문을 유지합니다.",
+      "CFA 화면에서 측정변수를 잠재요인에 배정하고 요인 간 관계를 지정합니다. 자료와 지원 옵션에 맞는 추정법·결측 처리·표준화·부트스트랩 설정을 선택합니다. 실행 후 식별·수렴·부적합해 경고를 먼저 읽고 적재량, 적합도, 신뢰도·AVE·HTMT를 확인합니다. 집단 비교에서는 지원되는 측정동일성 설정과 제약을 확인합니다.",
+      "SEM 캔버스에서 측정모형과 구조경로를 구성하고 직접·간접효과에 필요한 경로를 확인합니다. 추정법과 부트스트랩 옵션을 지정한 뒤 실행합니다. 경로계수·신뢰구간·적합도와 유효 반복 수를 함께 보고합니다. 분석 후 경로나 노드를 변경하면 기존 결과는 무효화되므로 다시 실행합니다. 화면 배치와 모형 파일을 저장해 재사용할 수 있습니다.",
+      "PLS-SEM 화면에서 구성개념과 지표를 배정하고 반영형 Mode A 또는 형성형 Mode B를 선택합니다. PLSc는 지원되는 반영형 모형에 적용합니다. 경로와 부트스트랩·예측·집단 비교 옵션을 확인하고 실행합니다. 적재량 또는 가중치, 공선성, 신뢰도·타당도와 구조경로를 함께 검토합니다. 요청 반복 수와 유효 반복 수를 구분하며 추정 거부와 불충분한 반복 경고를 무시하지 않습니다.",
+      "생존분석 설정에서 시간·사건 변수, 사건/검열 코드, 시간 단위와 필요한 집단·설명변수를 지정합니다. 추천 분석과 지원 조건을 확인해 Kaplan–Meier·생명표·RMST·Cox 또는 경쟁위험으로 이동합니다. RMST는 제한 시점 τ를 확인하고 Cox는 비례위험 진단을 검토합니다. 경쟁위험에서는 관심 사건과 다른 사건을 구분하며 CIF, 원인별 HR, Fine–Gray SHR을 같은 지표로 해석하지 않습니다.",
+      "현재 결과를 확인한 뒤 결과 추가로 누적합니다. HTML·PDF·Word·Excel 저장을 지원하며 한국어 UI의 누적 결과 화면에서만 HWPX 저장을 제공합니다. HWPX는 Word나 한컴 변환을 거치지 않고 직접 작성합니다. Word/HWPX는 본표·부록표·설명·그림을 선택할 수 있고 기본은 본표입니다. 저장은 화면에 캡처된 결과를 사용하며 분석을 다시 계산하지 않습니다. Free 그림은 300 dpi, 개발자판은 600 dpi 정책입니다. HTML은 표지와 표 목록 링크를 포함합니다.",
+      "정보 메뉴에서 개요·사용자 안내서·분석·방법론 노트·검증·버전 이력을 엽니다. 통계 본표는 영어 표시 원칙을 유지하고 메뉴와 보조 설명은 UI 언어를 따릅니다. 문서의 검증 결과는 명시된 자료와 옵션에 한정되며 모든 조합의 정확성이나 원어민 검수를 의미하지 않습니다."
+    ],
+    "evidence": [
+      "CFA·SEM: 과거 AMOS 비교는 55개 대상 중 50개 비교 가능, 49/50모형 일치입니다. 5개는 자료 부족, 1개는 코딩 확인이 필요하며 bootstrap 전체 비교는 제외합니다.",
+      "PLS-SEM·PLSc: 과거 SmartPLS 9개 보고서 모형 중 원표본 경로 7/9 일치, 2개는 추정 거부입니다. 1.3.0 HS100 재실행의 saturated SRMR·d_ULS·d_G는 PLS/PLSc 합계 6/6 표시값 일치입니다. 이를 모든 모형·bootstrap·예측의 일치로 확대하지 않습니다.",
+      "Cox: SPSS 수렴 기준을 강화한 11개 실행에서 66/66셀 일치입니다. 기본 조건의 17셀 차이는 남아 있습니다. RMST·경쟁위험의 모든 옵션에 대한 외부 프로그램 일치를 뜻하지 않습니다.",
+      "다국어: 기존 점검에서 73개 화면 × 8언어의 584개 생성 검사를 통과했습니다. 대표 현재·누적 저장 검사와 사용자 값 보존 근거가 있으며 전체 클릭·OS 파일 창·편집기 시각 검수·원어민 검수와는 구분합니다.",
+      "최종 설치본의 검증 결과는 해당 빌드 기록과 SHA-256 대조로 확인합니다. 과거 수치 비교를 이번 설치본에서 전부 다시 실행했다는 뜻은 아닙니다."
+    ],
+    "history": [
+      "1.3.0 개발자 설치본 준비: 신규 분석의 개요·사용자 안내서·분석·방법론 노트·검증·버전 이력을 8언어로 연결하고 이전 저장 정책 설명을 갱신했습니다.",
+      "케이스 선택·자료 분할, 누적 결과 관리와 한국어 누적 결과의 직접 HWPX 저장을 반영했습니다. Word/HWPX 출력 항목 선택과 HTML 표지·표 목록 링크를 문서에 반영했습니다.",
+      "IPA를 추가했습니다. 직접 평가·도출 중요도, 전체·독립집단·대응 전후 설계, 기준선·도표와 지원되는 차이 추론을 제공하며 8언어 문서와 결과 저장 안내를 포함합니다."
+    ]
+  },
+  "en": {
+    "overview": "Overview",
+    "user_guide": "User Guide",
+    "validation": "Validation",
+    "subtitle": "New analyses, operating steps and validation scope for StatEdu Studio 1.3.0.",
+    "scope": "Version 1.3.0 adds CFA, SEM and PLS-SEM/PLSc to the public analysis scope and provides RMST and competing-risk workflows in survival analysis. These accompany the mediation/moderation canvas, general analyses, longitudinal/panel models, complex samples and planning tools. Version History distinguishes newly public analyses from improvements to existing features.",
+    "edition": "The developer installer is StatEdu Studio Dev 1.3.0-dev, with a separate app name and development menus retained. The public edition excludes meta-analysis and within-subject treatment repeated-measures ANOVA; mixed repeated-measures ANOVA and paired tests remain available.",
+    "headings": [
+      "Start and prepare data",
+      "CFA",
+      "SEM",
+      "PLS-SEM / PLSc",
+      "Survival analysis",
+      "Review, collect and save results",
+      "Documentation and validation scope"
+    ],
+    "steps": [
+      "After installation, open StatEdu Studio Dev from the Start menu. Load data and check variable names, measurement levels, missing values and category codes. Check active case selection and split settings before analysis. Assign variables, choose options and run. Changing the UI language preserves original user variable names and data values.",
+      "In CFA, assign observed indicators to latent factors and specify factor relationships. Select an estimator, missing-data handling, standardization and bootstrap settings supported for the data. Review identification, convergence and inadmissible-solution warnings before loadings, fit, reliability, AVE and HTMT. For group comparisons, check supported measurement-invariance settings and constraints.",
+      "On the SEM canvas, construct measurement and structural paths, including the paths needed for direct and indirect effects. Choose estimation and bootstrap options and run. Report coefficients, confidence intervals, fit and valid replicate counts together. Changing a path or node invalidates the existing result; run again. Save the layout and model file for reuse.",
+      "Assign constructs and indicators in PLS-SEM and choose reflective Mode A or formative Mode B. Use PLSc for supported reflective models. Check paths and bootstrap, prediction or group-comparison options before running. Review loadings or weights, collinearity, reliability, validity and structural paths together. Distinguish requested from valid replicates; do not ignore rejected estimation or insufficient-replicate warnings.",
+      "In survival setup, assign time and event variables, event/censoring codes, time units and any group or predictor variables. Review recommendations and supported conditions before opening Kaplan–Meier, life tables, RMST, Cox or competing risks. Check the restriction time τ for RMST and proportional-hazards diagnostics for Cox. Distinguish the event of interest from competing events; CIF, cause-specific HR and Fine–Gray SHR have different meanings.",
+      "Review current results and use Add to Results to collect them. HTML, PDF, Word and Excel saving is supported. HWPX is available only in the accumulated Results screen with Korean UI and is written directly, without Word or Hancom conversion. Word/HWPX offer main tables, appendix tables, explanations and figures; main tables are selected by default. Saving uses captured displayed results without rerunning analyses. Free figures use 300 dpi and developer figures use 600 dpi. HTML includes a cover and linked table list.",
+      "Open Overview, User Guide, Analyses, Method Notes, Validation and Version History in About. Main statistical tables remain in English; menus and supplementary explanations follow the UI language. Validation applies to the stated data and options, not every combination or native-speaker review."
+    ],
+    "evidence": [
+      "CFA/SEM: historical AMOS comparisons included 55 targets, 50 comparable models and 49/50 matches. Five lacked data and one needs coding review. Full bootstrap comparison was excluded.",
+      "PLS-SEM/PLSc: historical SmartPLS reports matched original-sample paths in 7/9 models; two estimations were rejected. The 1.3.0 HS100 rerun matched all six displayed saturated SRMR, d_ULS and d_G values across PLS/PLSc. This does not establish agreement for all models, bootstrap or prediction.",
+      "Cox: 11 SPSS runs with tighter convergence criteria matched 66/66 cells. Seventeen differences remain under default conditions. This is not an external comparison of every RMST or competing-risk option.",
+      "Multilingual checks: the existing audit passed 73 panels × 8 languages, or 584 rendering combinations. Representative current/collected exports and user-value preservation have supporting evidence. This is separate from full interaction, native file-dialog, editor visual and native-speaker review.",
+      "Check the build record and SHA-256 comparison for the final installer. Historical numerical comparisons were not all rerun in this installer."
+    ],
+    "history": [
+      "Prepared the 1.3.0 developer installer documentation: linked Overview, User Guide, Analyses, Method Notes, Validation and Version History in eight languages and updated obsolete export instructions.",
+      "Documented case selection, data splitting, collected-result management and direct HWPX writing for Korean collected results, plus Word/HWPX content selection and the HTML cover and linked table list.",
+      "Added IPA: direct ratings and derived importance, overall/independent-group/matched pre-post designs, reference lines, charts and supported difference inference, with eight-language documentation and export guidance."
+    ]
+  },
+  "ja": {
+    "overview": "概要",
+    "user_guide": "ユーザーガイド",
+    "validation": "検証",
+    "subtitle": "StatEdu Studio 1.3.0 の追加分析、操作手順と検証範囲。",
+    "scope": "1.3.0 は CFA、SEM、PLS-SEM/PLSc を公開分析に追加し、生存時間分析で RMST と競合リスクの処理を提供します。媒介・調整効果のキャンバス、一般分析、縦断・パネル、複雑標本、標本数・効果量の機能も利用できます。既存機能の改善と新たな公開機能は変更履歴で区別します。",
+    "edition": "開発者版は StatEdu Studio Dev 1.3.0-dev です。公開版とは別のアプリ名で、開発用メニューを保持します。公開版はメタ分析と同一対象内の処置反復測定 ANOVA を除外しますが、混合反復測定 ANOVA と対応のある検定は利用できます。",
+    "headings": [
+      "起動とデータ準備",
+      "CFA",
+      "SEM",
+      "PLS-SEM / PLSc",
+      "生存時間分析",
+      "結果の確認・追加・保存",
+      "文書と検証範囲"
+    ],
+    "steps": [
+      "インストール後、スタートメニューから StatEdu Studio Dev を起動します。データを開き、変数名、測定水準、欠測、カテゴリの符号化を確認します。ケース選択とデータ分割が有効なら適用範囲を確認し、変数とオプションを指定して実行します。UI 言語を変更してもユーザーの変数名とデータ値は保持されます。",
+      "CFA で観測指標を潜在因子に割り当て、因子間の関係を設定します。対応する推定法、欠測処理、標準化、ブートストラップを選びます。識別、収束、不適解の警告を確認してから、負荷量、適合度、信頼性、AVE、HTMT を読みます。群間比較では測定不変性の設定と制約を確認します。",
+      "SEM キャンバスで測定モデルと構造パスを構成し、直接・間接効果に必要なパスを確認します。推定とブートストラップの設定後に実行し、係数、信頼区間、適合度、有効反復数を併記します。パスやノードを変更すると旧結果は無効になるため再実行します。配置とモデルファイルを保存できます。",
+      "構成概念と指標を割り当て、反映型 Mode A または形成型 Mode B を選択します。PLSc は対応する反映型モデルに適用します。パス、ブートストラップ、予測、群間比較の設定を確認し実行します。負荷量・重み、共線性、信頼性、妥当性、構造パスを併せて確認し、要求反復数と有効反復数を区別します。推定拒否や反復不足の警告を無視しないでください。",
+      "時間・イベント変数、イベントと打切りのコード、時間単位、群・説明変数を設定します。推奨と対応条件を確認し、Kaplan–Meier、生命表、RMST、Cox、競合リスクへ進みます。RMST の制限時点 τ と Cox の比例ハザード診断を確認します。関心イベントと競合イベントを区別し、CIF、原因別 HR、Fine–Gray SHR を同一視しないでください。",
+      "現在の結果を確認し、結果追加で蓄積します。HTML・PDF・Word・Excel に保存できます。HWPX は韓国語 UI の累積結果画面のみで提供し、Word や Hancom を介さず直接作成します。Word/HWPX は主表・付録表・説明・図を選択でき、初期選択は主表です。保存時に再分析せず表示結果を使用します。画像は Free 300 dpi、開発者版 600 dpi です。HTML は表紙と表一覧リンクを含みます。",
+      "情報メニューから概要、ガイド、分析、方法論ノート、検証、変更履歴を開きます。統計主表は英語、メニューと補足説明は UI 言語を使用します。検証は記載したデータと条件に限られ、全組合せや母語話者による校閲を意味しません。"
+    ],
+    "evidence": [
+      "CFA・SEM：過去の AMOS 比較は対象55、比較可能50、49/50モデル一致です。5件はデータ不足、1件は符号化の確認が必要で、ブートストラップ全体の比較は除外されています。",
+      "PLS-SEM・PLSc：過去の SmartPLS は原標本パス7/9モデル一致、2件は推定拒否です。1.3.0 HS100 再実行では PLS/PLSc の saturated SRMR・d_ULS・d_G の表示値6/6が一致しました。全モデル・ブートストラップ・予測の一致を意味しません。",
+      "Cox：収束基準を厳しくした SPSS 11実行で66/66セル一致、既定条件では17セルの差が残ります。RMST・競合リスクの全オプションの外部比較ではありません。",
+      "多言語：既存監査で73画面×8言語、584生成検査を通過しました。代表的な現在・累積保存とユーザー値保持の根拠はありますが、全操作、OS ダイアログ、編集ソフトの目視、母語話者校閲とは別です。",
+      "最終インストーラーはビルド記録と SHA-256 で確認します。過去の数値比較をすべて今回再実行したわけではありません。"
+    ],
+    "history": [
+      "1.3.0 開発者版の準備として、概要・ガイド・分析・方法論ノート・検証・変更履歴を8言語で接続し、古い保存手順を更新しました。",
+      "ケース選択、データ分割、累積結果管理、韓国語の直接 HWPX 保存、Word/HWPX の内容選択、HTML の表紙と表一覧リンクを文書化しました。",
+      "IPA を追加しました。直接評価・導出重要度、全体・独立群・対応前後、基準線・図と対応する差の推論を提供し、8言語文書と保存手順を含めました。"
+    ]
+  },
+  "zh": {
+    "overview": "概述",
+    "user_guide": "用户指南",
+    "validation": "验证",
+    "subtitle": "StatEdu Studio 1.3.0 新增分析、操作步骤与验证范围。",
+    "scope": "1.3.0 将 CFA、SEM、PLS-SEM/PLSc 加入公开分析范围，并提供生存分析的 RMST 和竞争风险流程。还可使用中介与调节画布、常规分析、纵向与面板、复杂抽样和样本量与效应量工具。版本历史区分既有功能改进与本次新增公开功能。",
+    "edition": "开发者安装包为 StatEdu Studio Dev 1.3.0-dev，使用独立应用名称并保留开发菜单。公开版排除元分析和同一对象内处理的重复测量 ANOVA，但保留混合重复测量 ANOVA 与配对检验。",
+    "headings": [
+      "启动与数据准备",
+      "CFA",
+      "SEM",
+      "PLS-SEM / PLSc",
+      "生存分析",
+      "查看、累积与保存结果",
+      "文档与验证范围"
+    ],
+    "steps": [
+      "安装后从开始菜单打开 StatEdu Studio Dev。载入数据，核对变量名、测量水平、缺失值与类别编码。若启用了个案选择或数据拆分，先核对分析范围，再分配变量、设置选项并运行。切换界面语言会保留用户变量名和原始数据值。",
+      "在 CFA 中将观测指标分配给潜在因子并设置因子关系。根据数据选择支持的估计方法、缺失处理、标准化与自助法设置。先查看识别、收敛和不当解警告，再查看载荷、拟合、信度、AVE 与 HTMT。组间比较须核对测量不变性设置和约束。",
+      "在 SEM 画布上建立测量模型和结构路径，核对直接与间接效应所需路径。设置估计方法和自助法后运行，同时报告系数、置信区间、拟合和有效重复次数。修改路径或节点会使原结果失效，须重新运行。可保存布局和模型文件。",
+      "分配构念与指标，选择反映型 Mode A 或形成型 Mode B。PLSc 用于支持的反映型模型。核对路径、自助法、预测和组间比较选项后运行。结合载荷或权重、共线性、信度、效度和结构路径进行判断。区分请求与有效重复次数，不要忽略估计拒绝或重复不足警告。",
+      "设置时间与事件变量、事件/删失编码、时间单位以及组别和预测变量。查看推荐方法和支持条件，再进入 Kaplan–Meier、生命表、RMST、Cox 或竞争风险。核对 RMST 限制时间 τ 和 Cox 比例风险诊断。区分关注事件和竞争事件，不应将 CIF、原因别 HR、Fine–Gray SHR 视为同一指标。",
+      "查看当前结果并添加到结果集中。支持 HTML、PDF、Word、Excel；HWPX 仅在韩语界面的累积结果页提供，直接生成而不经 Word 或 Hancom 转换。Word/HWPX 可选择主表、附录表、说明和图形，默认主表。保存使用已捕获的显示结果，不重新计算。Free 图像为300 dpi，开发者版为600 dpi。HTML 包含封面和表目录链接。",
+      "在信息菜单打开概述、用户指南、分析、方法说明、验证和版本历史。统计主表保持英语，菜单与补充说明使用界面语言。验证仅适用于列明的数据和条件，不代表全部组合或母语审校。"
+    ],
+    "evidence": [
+      "CFA/SEM：历史 AMOS 比较包含55个对象，其中50个可比，49/50模型一致。5个缺少数据，1个需检查编码；不包含完整自助法比较。",
+      "PLS-SEM/PLSc：历史 SmartPLS 原样本路径7/9模型一致，2个拒绝估计。1.3.0 HS100 重跑中，PLS/PLSc 的 saturated SRMR、d_ULS、d_G 显示值6/6一致，不代表所有模型、自助法与预测均一致。",
+      "Cox：提高 SPSS 收敛要求后11次运行66/66单元格一致；默认条件仍有17处差异。这不代表 RMST 和竞争风险全部选项均经外部比较。",
+      "多语言：已有审计通过73个面板×8种语言的584项生成检查。有代表性当前/累积导出和用户值保留证据；与完整交互、系统文件对话框、编辑器目视及母语审校分开记录。",
+      "最终安装包须核对构建记录和 SHA-256；并非本次安装包重新执行了全部历史数值比较。"
+    ],
+    "history": [
+      "准备1.3.0开发者安装包：以8种语言连接概述、用户指南、分析、方法说明、验证和版本历史，并更新旧保存说明。",
+      "补充个案选择、数据拆分、累积结果管理、韩语直接 HWPX 保存、Word/HWPX 内容选择以及 HTML 封面和表目录链接说明。",
+      "新增 IPA：直接评分、推导重要性、总体/独立组/配对前后设计、参考线、图形和支持的差异推断，并补充8语言文档与保存指南。"
+    ]
+  },
+  "es": {
+    "overview": "Descripción general",
+    "user_guide": "Guía del usuario",
+    "validation": "Validación",
+    "subtitle": "Nuevos análisis, pasos de uso y alcance de validación de StatEdu Studio 1.3.0.",
+    "scope": "La versión 1.3.0 incorpora CFA, SEM y PLS-SEM/PLSc al alcance público y ofrece RMST y riesgos competitivos en supervivencia. Se complementan con el lienzo de mediación/moderación, análisis generales, modelos longitudinales y de panel, muestras complejas y herramientas de planificación. El historial distingue las novedades públicas de las mejoras de funciones existentes.",
+    "edition": "El instalador de desarrollo es StatEdu Studio Dev 1.3.0-dev, con nombre de aplicación separado y menús de desarrollo. La edición pública excluye metaanálisis y ANOVA de tratamientos con medidas repetidas intraindividuales; conserva ANOVA mixto de medidas repetidas y pruebas pareadas.",
+    "headings": [
+      "Inicio y preparación",
+      "CFA",
+      "SEM",
+      "PLS-SEM / PLSc",
+      "Supervivencia",
+      "Revisar, acumular y guardar",
+      "Documentación y alcance"
+    ],
+    "steps": [
+      "Abra StatEdu Studio Dev desde Inicio tras instalarlo. Cargue los datos y revise nombres, niveles de medida, valores ausentes y códigos. Compruebe la selección de casos y la división de datos activas; asigne variables, elija opciones y ejecute. Cambiar el idioma conserva los nombres y valores originales del usuario.",
+      "Asigne indicadores a factores latentes y defina sus relaciones. Elija estimador, tratamiento de ausentes, estandarización y bootstrap compatibles. Revise identificación, convergencia y soluciones inadmisibles antes de cargas, ajuste, fiabilidad, AVE y HTMT. En comparaciones de grupos compruebe la invariancia de medida y las restricciones.",
+      "Construya el modelo de medida y las rutas estructurales en el lienzo SEM, incluidas las necesarias para efectos directos e indirectos. Configure estimación y bootstrap y ejecute. Informe coeficientes, intervalos, ajuste y réplicas válidas. Modificar una ruta o nodo invalida el resultado: vuelva a ejecutar. Puede guardar la disposición y el archivo del modelo.",
+      "Asigne constructos e indicadores y seleccione Mode A reflectivo o Mode B formativo. PLSc corresponde a modelos reflectivos compatibles. Revise rutas y opciones de bootstrap, predicción y grupos. Examine cargas o pesos, colinealidad, fiabilidad, validez y rutas. Distinga réplicas solicitadas y válidas; atienda los rechazos de estimación y las réplicas insuficientes.",
+      "Defina tiempo, evento, códigos de evento/censura, unidades y variables de grupo o predictoras. Revise recomendaciones y condiciones antes de Kaplan–Meier, tablas de vida, RMST, Cox o riesgos competitivos. Compruebe τ en RMST y riesgos proporcionales en Cox. Distinga el evento de interés de los competidores: CIF, HR específico por causa y SHR de Fine–Gray no son equivalentes.",
+      "Revise y añada los resultados a la colección. Se admiten HTML, PDF, Word y Excel. HWPX solo aparece en resultados acumulados con interfaz coreana y se escribe directamente, sin Word ni Hancom. Word/HWPX permiten tablas principales, anexos, explicaciones y figuras; por defecto se seleccionan las principales. Se guarda la captura sin recalcular. Free usa 300 dpi y desarrollo 600 dpi. HTML incluye portada y lista enlazada de tablas.",
+      "Abra Descripción general, Guía, Análisis, Notas metodológicas, Validación e Historial en Información. Las tablas estadísticas principales siguen en inglés; menús y explicaciones siguen el idioma de interfaz. La validación se limita a los datos y opciones indicados; no abarca todas las combinaciones ni revisión por hablantes nativos."
+    ],
+    "evidence": [
+      "CFA/SEM: comparación histórica con AMOS de 55 objetivos,50 comparables y 49/50 modelos concordantes; cinco sin datos suficientes y uno pendiente de revisar la codificación. Excluye bootstrap completo.",
+      "PLS-SEM/PLSc: rutas originales concordantes en 7/9 modelos históricos de SmartPLS; dos estimaciones rechazadas. HS 100 de 1.3.0 coincidió en 6/6 valores mostrados de SRMR, d_ULS y d_G saturados de PLS/PLSc. No generalizar a todo modelo, bootstrap o predicción.",
+      "Cox:11 ejecuciones SPSS con convergencia más estricta coincidieron en 66/66 celdas; quedan 17 diferencias con valores predeterminados. No valida externamente todas las opciones RMST o de riesgos competitivos.",
+      "Idiomas: la auditoría existente pasó 73 paneles×8 idiomas,584 combinaciones de renderizado. Hay evidencia de exportaciones representativas actuales/acumuladas y preservación de valores, separada de interacción completa, diálogos nativos, revisión visual en editores y revisión lingüística nativa.",
+      "Consulte el registro de compilación y SHA-256 del instalador final. No se repitieron en él todas las comparaciones numéricas históricas."
+    ],
+    "history": [
+      "Preparada la documentación del instalador de desarrollo 1.3.0: seis secciones conectadas en ocho idiomas e instrucciones de exportación actualizadas.",
+      "Documentadas selección de casos, división de datos, gestión de resultados, HWPX directo en coreano, selección de contenido Word/HWPX y portada y lista de tablas HTML.",
+      "Añadido IPA con valoraciones directas/importancia derivada, diseños total/independiente/pre-post pareado, referencias, gráficos e inferencia compatible, con documentación y exportación en ocho idiomas."
+    ]
+  },
+  "fr": {
+    "overview": "Présentation",
+    "user_guide": "Guide utilisateur",
+    "validation": "Validation",
+    "subtitle": "Nouvelles analyses, utilisation et périmètre de validation de StatEdu Studio 1.3.0.",
+    "scope": "La version 1.3.0 ajoute CFA, SEM et PLS-SEM/PLSc aux analyses publiques et propose RMST et risques concurrents en survie. Ces fonctions complètent le canevas médiation/modération, les analyses générales, les modèles longitudinaux et de panel, les sondages complexes et la planification. L’historique distingue les nouveautés publiques des améliorations existantes.",
+    "edition": "L’installeur de développement est StatEdu Studio Dev 1.3.0-dev, avec un nom distinct et les menus de développement. L’édition publique exclut la méta-analyse et l’ANOVA des traitements répétés chez un même sujet; l’ANOVA mixte à mesures répétées et les tests appariés restent disponibles.",
+    "headings": [
+      "Démarrage et données",
+      "CFA",
+      "SEM",
+      "PLS-SEM / PLSc",
+      "Survie",
+      "Examiner, cumuler et enregistrer",
+      "Documentation et périmètre"
+    ],
+    "steps": [
+      "Après installation, ouvrez StatEdu Studio Dev depuis Démarrer. Chargez les données et vérifiez noms, niveaux de mesure, valeurs manquantes et codage. Vérifiez la sélection des observations et la segmentation actives, affectez les variables et lancez l’analyse. Changer la langue conserve les noms et valeurs d’origine.",
+      "Affectez les indicateurs aux facteurs latents et définissez leurs relations. Choisissez estimateur, gestion des données manquantes, standardisation et bootstrap compatibles. Examinez identification, convergence et solutions inadmissibles avant saturations, ajustement, fiabilité, AVE et HTMT. Vérifiez l’invariance de mesure et les contraintes pour comparer les groupes.",
+      "Construisez les modèles de mesure et structurel sur le canevas SEM, avec les chemins nécessaires aux effets directs et indirects. Choisissez estimation et bootstrap puis exécutez. Rapportez coefficients, intervalles, ajustement et réplications valides. Modifier un chemin ou nœud invalide le résultat: relancez l’analyse. Enregistrez disposition et fichier du modèle.",
+      "Affectez construits et indicateurs; choisissez Mode A réflectif ou Mode B formatif. PLSc concerne les modèles réflectifs compatibles. Vérifiez chemins, bootstrap, prédiction et comparaisons de groupes. Examinez saturations ou poids, colinéarité, fiabilité, validité et chemins. Distinguez réplications demandées et valides; respectez les avertissements de refus ou d’insuffisance.",
+      "Définissez temps, événement, codes d’événement/censure, unités, groupe et prédicteurs. Vérifiez recommandations et conditions avant Kaplan–Meier, tables de survie, RMST, Cox ou risques concurrents. Vérifiez τ pour RMST et les risques proportionnels pour Cox. Distinguez événement d’intérêt et concurrents: CIF, HR spécifique de cause et SHR de Fine–Gray ne sont pas équivalents.",
+      "Examinez puis ajoutez les résultats à la collection. HTML, PDF, Word et Excel sont disponibles. HWPX apparaît uniquement dans les résultats cumulés en interface coréenne et est écrit directement, sans Word ni Hancom. Word/HWPX proposent tableaux principaux, annexes, explications et figures; les tableaux principaux sont présélectionnés. La capture est enregistrée sans recalcul. Free utilise 300 dpi, le développement 600 dpi. HTML inclut couverture et liste de tableaux avec liens.",
+      "Dans Informations, ouvrez Présentation, Guide, Analyses, Notes méthodologiques, Validation et Historique. Les tableaux statistiques principaux restent en anglais; menus et explications suivent la langue choisie. La validation concerne les données et options indiquées, pas toutes les combinaisons ni une relecture par des locuteurs natifs."
+    ],
+    "evidence": [
+      "CFA/SEM: comparaison AMOS historique de 55 cibles,50 comparables,49/50 modèles concordants. Cinq cas manquent de données et un exige une vérification du codage; bootstrap complet exclu.",
+      "PLS-SEM/PLSc: chemins d’échantillon initial concordants dans 7/9 modèles SmartPLS historiques; deux estimations refusées. HS 100 de 1.3.0 concorde sur 6/6 valeurs affichées de SRMR, d_ULS et d_G saturés pour PLS/PLSc. Ne pas généraliser à tous les modèles, bootstrap ou prédictions.",
+      "Cox:11 exécutions SPSS avec convergence renforcée concordent sur 66/66 cellules;17 écarts persistent avec les réglages par défaut. Ce n’est pas une comparaison externe de toutes les options RMST ou risques concurrents.",
+      "Langues: l’audit existant a réussi 73 panneaux×8 langues, soit 584 rendus. Des preuves couvrent des exports courants/cumulés représentatifs et la préservation des valeurs, distinctement des interactions complètes, dialogues natifs, contrôles visuels dans les éditeurs et relecture native.",
+      "Consultez le journal de compilation et SHA-256 de l’installeur final. Toutes les comparaisons numériques historiques n’y ont pas été réexécutées."
+    ],
+    "history": [
+      "Préparation de la documentation du développement 1.3.0: six rubriques reliées dans huit langues et anciennes consignes d’export mises à jour.",
+      "Documentation de la sélection et segmentation, des résultats cumulés, de HWPX direct en coréen, du choix de contenu Word/HWPX et de la couverture et liste de tableaux HTML.",
+      "Ajout d’IPA: évaluations directes/importance dérivée, ensemble/groupes indépendants/avant-après apparié, références, graphiques et inférence compatible, avec documentation et export en huit langues."
+    ]
+  },
+  "de": {
+    "overview": "Überblick",
+    "user_guide": "Benutzerhandbuch",
+    "validation": "Validierung",
+    "subtitle": "Neue Analysen, Bedienung und Validierungsumfang von StatEdu Studio 1.3.0.",
+    "scope": "Version 1.3.0 ergänzt CFA, SEM und PLS-SEM/PLSc im öffentlichen Analyseumfang sowie RMST und konkurrierende Risiken in der Überlebensanalyse. Hinzu kommen bestehende Mediations-/Moderationsmodelle, allgemeine Analysen, Längsschnitt-/Panelmodelle, komplexe Stichproben und Planungswerkzeuge. Der Versionsverlauf unterscheidet neue öffentliche Funktionen von Verbesserungen.",
+    "edition": "Die Entwicklerversion heißt StatEdu Studio Dev 1.3.0-dev und verwendet einen separaten App-Namen mit Entwicklungsmenüs. Die öffentliche Ausgabe schließt Metaanalyse und die ANOVA wiederholter Behandlungen innerhalb derselben Personen aus; gemischte Messwiederholungs-ANOVA und gepaarte Tests bleiben verfügbar.",
+    "headings": [
+      "Start und Datenvorbereitung",
+      "CFA",
+      "SEM",
+      "PLS-SEM / PLSc",
+      "Überlebensanalyse",
+      "Ergebnisse prüfen, sammeln und speichern",
+      "Dokumentation und Umfang"
+    ],
+    "steps": [
+      "Öffnen Sie nach der Installation StatEdu Studio Dev im Startmenü. Laden Sie Daten und prüfen Sie Namen, Skalenniveaus, fehlende Werte und Kategorien. Prüfen Sie aktive Fallauswahl und Datenaufteilung, weisen Sie Variablen zu und starten Sie die Analyse. Sprachwechsel erhalten ursprüngliche Variablennamen und Datenwerte.",
+      "Ordnen Sie Indikatoren latenten Faktoren zu und legen Sie Beziehungen fest. Wählen Sie unterstützte Schätzung, Behandlung fehlender Werte, Standardisierung und Bootstrap. Prüfen Sie Identifikation, Konvergenz und unzulässige Lösungen vor Ladungen, Modellfit, Reliabilität, AVE und HTMT. Prüfen Sie Messinvarianz und Einschränkungen bei Gruppenvergleichen.",
+      "Erstellen Sie Messmodell und Strukturpfade auf der SEM-Arbeitsfläche, einschließlich der Pfade für direkte und indirekte Effekte. Wählen Sie Schätzung und Bootstrap und führen Sie das Modell aus. Berichten Sie Koeffizienten, Intervalle, Fit und gültige Wiederholungen gemeinsam. Pfad-/Knotenänderungen machen alte Ergebnisse ungültig; rechnen Sie erneut. Layout und Modelldatei lassen sich speichern.",
+      "Ordnen Sie Konstrukte und Indikatoren zu; wählen Sie reflektiven Mode A oder formativen Mode B. PLSc gilt für unterstützte reflektive Modelle. Prüfen Sie Pfade, Bootstrap, Vorhersage und Gruppenoptionen. Beurteilen Sie Ladungen/Gewichte, Kollinearität, Reliabilität, Validität und Strukturpfade. Unterscheiden Sie angeforderte und gültige Wiederholungen; beachten Sie Ablehnungen und unzureichende Replikationen.",
+      "Legen Sie Zeit, Ereignis, Ereignis-/Zensierungscodes, Zeiteinheiten sowie Gruppen und Prädiktoren fest. Prüfen Sie Empfehlungen und Bedingungen vor Kaplan–Meier, Sterbetafeln, RMST, Cox oder konkurrierenden Risiken. Prüfen Sie τ für RMST und proportionale Hazards für Cox. Unterscheiden Sie Zielereignis und konkurrierende Ereignisse; CIF, ursachenspezifische HR und Fine–Gray-SHR sind nicht gleichbedeutend.",
+      "Prüfen und sammeln Sie Ergebnisse. HTML, PDF, Word und Excel werden unterstützt. HWPX ist nur bei koreanischer Oberfläche in gesammelten Ergebnissen verfügbar und wird ohne Word/Hancom direkt geschrieben. Word/HWPX bieten Haupttabellen, Anhänge, Erläuterungen und Abbildungen; Haupttabellen sind vorausgewählt. Gespeichert wird die erfasste Darstellung ohne Neuberechnung. Free nutzt 300 dpi, Entwicklung 600 dpi. HTML enthält Deckblatt und verlinkte Tabellenliste.",
+      "Öffnen Sie Überblick, Handbuch, Analysen, Methodische Hinweise, Validierung und Versionsverlauf im Informationsmenü. Statistische Haupttabellen bleiben englisch; Menüs und Ergänzungen folgen der Oberflächensprache. Die Validierung gilt für genannte Daten und Optionen, nicht alle Kombinationen oder muttersprachliche Prüfung."
+    ],
+    "evidence": [
+      "CFA/SEM: historische AMOS-Vergleiche umfassen 55 Ziele,50 vergleichbare Modelle und 49/50 Übereinstimmungen. Fünf Fälle ohne ausreichende Daten, ein Fall mit zu prüfender Kodierung; vollständiger Bootstrap-Vergleich ausgeschlossen.",
+      "PLS-SEM/PLSc: ursprüngliche Stichprobenpfade stimmen in 7/9 historischen SmartPLS-Modellen überein; zwei Schätzungen abgelehnt. HS 100 für 1.3.0 stimmt in 6/6 angezeigten saturierten SRMR-, d_ULS- und d_G-Werten von PLS/PLSc überein. Keine Verallgemeinerung auf alle Modelle, Bootstrap oder Vorhersagen.",
+      "Cox:11 SPSS-Läufe mit strengeren Konvergenzkriterien stimmen in 66/66 Zellen überein; bei Standardwerten bleiben 17 Unterschiede. Kein externer Vergleich aller RMST-/Risikooptionen.",
+      "Sprachen: die bestehende Prüfung bestand 73 Ansichten×8 Sprachen,584 Darstellungen. Belege für repräsentative aktuelle/gesammelte Exporte und Werterhaltung sind von vollständiger Interaktion, nativen Dialogen, visueller Editorprüfung und muttersprachlicher Prüfung getrennt.",
+      "Prüfen Sie Build-Protokoll und SHA-256 des endgültigen Installers. Nicht alle historischen Zahlenvergleiche wurden darin erneut ausgeführt."
+    ],
+    "history": [
+      "Dokumentation für Entwicklung 1.3.0 vorbereitet: sechs Bereiche in acht Sprachen verknüpft und alte Exportanweisungen aktualisiert.",
+      "Fallauswahl, Datenaufteilung, Ergebnissammlung, direktes koreanisches HWPX, Word/HWPX-Inhaltsauswahl sowie HTML-Deckblatt und Tabellenlinks dokumentiert.",
+      "IPA ergänzt: direkte Bewertungen/abgeleitete Wichtigkeit, Gesamtstichprobe/unabhängige Gruppen/gepaarte Vorher-Nachher-Daten, Referenzen, Diagramme und unterstützte Inferenz samt Dokumentation und Exporthinweisen in acht Sprachen."
+    ]
+  },
+  "vi": {
+    "overview": "Tổng quan",
+    "user_guide": "Hướng dẫn sử dụng",
+    "validation": "Kiểm chứng",
+    "subtitle": "Phân tích bổ sung, thao tác và phạm vi kiểm chứng của StatEdu Studio 1.3.0.",
+    "scope": "Phiên bản 1.3.0 bổ sung CFA, SEM và PLS-SEM/PLSc vào phạm vi công khai, đồng thời cung cấp RMST và nguy cơ cạnh tranh trong phân tích sống còn. Các chức năng này đi cùng khung trung gian/điều tiết, phân tích chung, mô hình dọc/bảng, mẫu phức tạp và công cụ lập kế hoạch. Lịch sử phân biệt tính năng mới công khai với cải tiến tính năng cũ.",
+    "edition": "Bộ cài phát triển là StatEdu Studio Dev 1.3.0-dev, có tên ứng dụng riêng và giữ các menu phát triển. Bản công khai không gồm phân tích tổng hợp và ANOVA điều trị lặp lại trên cùng đối tượng; vẫn có ANOVA hỗn hợp đo lặp và kiểm định cặp.",
+    "headings": [
+      "Khởi động và chuẩn bị dữ liệu",
+      "CFA",
+      "SEM",
+      "PLS-SEM / PLSc",
+      "Phân tích sống còn",
+      "Xem, tích lũy và lưu kết quả",
+      "Tài liệu và phạm vi"
+    ],
+    "steps": [
+      "Sau khi cài, mở StatEdu Studio Dev từ menu Start. Nạp dữ liệu, kiểm tra tên biến, mức đo, giá trị thiếu và mã nhóm. Kiểm tra chọn trường hợp và chia dữ liệu đang bật, gán biến, chọn tùy chọn rồi chạy. Đổi ngôn ngữ giữ nguyên tên biến và giá trị người dùng.",
+      "Gán chỉ báo quan sát cho nhân tố tiềm ẩn và xác định quan hệ. Chọn phương pháp ước lượng, xử lý thiếu, chuẩn hóa và bootstrap được hỗ trợ. Xem cảnh báo nhận dạng, hội tụ và nghiệm không hợp lệ trước tải, độ phù hợp, độ tin cậy, AVE và HTMT. Khi so sánh nhóm, kiểm tra bất biến đo lường và ràng buộc.",
+      "Dựng mô hình đo lường và đường cấu trúc trên khung SEM, gồm đường cho hiệu ứng trực tiếp và gián tiếp. Chọn ước lượng và bootstrap rồi chạy. Báo cáo hệ số, khoảng tin cậy, độ phù hợp và số lần lặp hợp lệ cùng nhau. Sửa đường hoặc nút làm kết quả cũ mất hiệu lực; cần chạy lại. Có thể lưu bố cục và tệp mô hình.",
+      "Gán cấu trúc và chỉ báo; chọn Mode A phản ánh hoặc Mode B cấu tạo. PLSc dùng cho mô hình phản ánh được hỗ trợ. Kiểm tra đường, bootstrap, dự báo và so sánh nhóm. Xem tải/trọng số, đa cộng tuyến, độ tin cậy, giá trị đo lường và đường cấu trúc. Phân biệt số lặp yêu cầu và hợp lệ; không bỏ qua cảnh báo từ chối ước lượng hoặc thiếu lần lặp.",
+      "Chọn biến thời gian, biến sự kiện, mã sự kiện/kiểm duyệt, đơn vị thời gian, nhóm và biến dự báo. Xem khuyến nghị và điều kiện trước Kaplan–Meier, bảng sống, RMST, Cox hoặc nguy cơ cạnh tranh. Kiểm tra thời điểm giới hạn τ của RMST và giả định nguy cơ tỷ lệ của Cox. Phân biệt sự kiện quan tâm và cạnh tranh; CIF, HR theo nguyên nhân và SHR Fine–Gray không tương đương.",
+      "Xem kết quả và thêm vào bộ kết quả tích lũy. Có HTML, PDF, Word và Excel. HWPX chỉ có ở màn hình kết quả tích lũy với giao diện Hàn và được ghi trực tiếp, không qua Word/Hancom. Word/HWPX cho chọn bảng chính, phụ lục, giải thích và hình; mặc định là bảng chính. Lưu bản hiển thị đã ghi nhận, không tính lại. Free dùng 300 dpi, bản phát triển 600 dpi. HTML có trang bìa và danh sách bảng liên kết.",
+      "Mở Tổng quan, Hướng dẫn, Phân tích, Ghi chú phương pháp, Kiểm chứng và Lịch sử trong menu thông tin. Bảng thống kê chính giữ tiếng Anh; menu và giải thích theo ngôn ngữ giao diện. Kiểm chứng chỉ áp dụng cho dữ liệu và tùy chọn đã nêu, không phải mọi tổ hợp hay rà soát bởi người bản ngữ."
+    ],
+    "evidence": [
+      "CFA/SEM: so sánh AMOS trước đây có 55 đối tượng,50 mô hình so sánh được,49/50 khớp. Năm trường hợp thiếu dữ liệu, một cần kiểm tra mã hóa; không gồm so sánh toàn bộ bootstrap.",
+      "PLS-SEM/PLSc: đường mẫu gốc khớp 7/9 mô hình SmartPLS trước đây; hai bị từ chối ước lượng. HS 100 của 1.3.0 khớp 6/6 giá trị hiển thị saturated SRMR, d_ULS, d_G cho PLS/PLSc. Không suy rộng cho mọi mô hình, bootstrap hay dự báo.",
+      "Cox:11 lần chạy SPSS với tiêu chuẩn hội tụ chặt hơn khớp 66/66 ô; mặc định vẫn khác 17 ô. Không phải so sánh ngoài cho mọi tùy chọn RMST/nguy cơ cạnh tranh.",
+      "Ngôn ngữ: kiểm tra trước đây đạt 73 màn hình×8 ngôn ngữ,584 tổ hợp hiển thị. Có bằng chứng cho xuất hiện tại/tích lũy đại diện và bảo toàn giá trị, tách biệt với toàn bộ tương tác, hộp thoại hệ thống, kiểm tra trực quan trình soạn thảo và rà soát bản ngữ.",
+      "Xem nhật ký dựng và SHA-256 của bộ cài cuối. Không phải mọi so sánh số liệu trước đây đều đã chạy lại trên bộ cài này."
+    ],
+    "history": [
+      "Chuẩn bị tài liệu bản phát triển 1.3.0: liên kết sáu mục bằng tám ngôn ngữ và cập nhật hướng dẫn xuất cũ.",
+      "Bổ sung chọn trường hợp, chia dữ liệu, quản lý kết quả tích lũy, HWPX trực tiếp bằng giao diện Hàn, chọn nội dung Word/HWPX và trang bìa cùng danh sách bảng HTML.",
+      "Bổ sung IPA: đánh giá trực tiếp/tầm quan trọng suy ra, toàn bộ/nhóm độc lập/cặp trước-sau, tham chiếu, biểu đồ và suy luận được hỗ trợ, kèm tài liệu và hướng dẫn xuất bằng tám ngôn ngữ."
+    ]
+  }
+}

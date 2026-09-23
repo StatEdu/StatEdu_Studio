@@ -5,6 +5,8 @@ Use this protocol after automated stabilization checks pass and before a public
 tests cannot fully prove, especially visual consistency, file dialogs, packaged
 runtime behavior, and export handoffs.
 
+For the 1.2.3 release line, record the final non-development package in `docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md`. Results obtained from a `-dev` installer are corroborating development evidence only and must not be copied as final public-package passes.
+
 For each item, record `Pass`, `Fail`, or `NA`. Every `Fail` must reference a
 stabilization defect, the fix commit, and the automated validation that was
 re-run after the fix.
@@ -19,17 +21,18 @@ re-run after the fix.
 
 ## Preflight
 
-1. Run `scripts/validate_stabilization.ps1 -Full` before packaging.
-2. Run `scripts/release_preflight.ps1`.
-3. After Electron packaging, run `scripts/release_preflight.ps1 -FullElectronSmoke`.
-4. Confirm the Git working tree is clean.
-5. Confirm `docs/RELEASE_READINESS_STATUS.md` is current.
-6. Confirm `docs/RELEASE_1_0_DECISION_LOG.md` records any public 1.0 deferrals.
-7. Record the manual QA pass in `docs/RELEASE_1_0_MANUAL_QA_RECORD.md`.
-8. For a public 1.0 release candidate, complete
+1. Run `scripts/validate_installer_regressions.ps1` and record the timing and visual checks from `docs/INSTALLER_REGRESSION_CHECKLIST_2026-08-22_KO.md`.
+2. Run `scripts/validate_stabilization.ps1 -Full` before packaging.
+3. Run `scripts/release_preflight.ps1`.
+4. After Electron packaging, run `scripts/release_preflight.ps1 -FullElectronSmoke`.
+5. Confirm the Git working tree is clean.
+6. Confirm `docs/RELEASE_READINESS_STATUS.md` is current.
+7. Confirm `docs/RELEASE_1_0_DECISION_LOG.md` records any public 1.0 deferrals.
+8. Record the manual QA pass in `docs/RELEASE_1_0_MANUAL_QA_RECORD.md`.
+9. For a public 1.0 release candidate, complete
    `docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md` before packaging.
-9. Complete `docs/RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md` after packaging.
-10. Keep the completed QA record with the release notes and validation artifacts.
+10. Complete `docs/RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md` after packaging.
+11. Keep the completed QA record with the release notes and validation artifacts.
 
 ## App Startup
 
@@ -105,6 +108,9 @@ writer smoke tests pass.
 4. Confirm closing the Electron window stops the bundled R/Shiny process.
 5. Confirm the packaged app can import data, run one analysis, and export one result.
 6. Confirm About > Open Source Licenses displays bundled notices.
+7. For the 1.2.1 installer, select English, restart the packaged app, and confirm the header, Latent, Result, and every Analysis submenu render in English without a blank page.
+8. Switch the packaged app back to Korean, restart it, and confirm the same menus render in Korean without a blank page.
+9. Repeat the check for every additional supported language; a blank Analysis page, mixed-language navigation, or a language selection that is not restored after restart is a release-blocking failure.
 
 ## Public Release Gates
 

@@ -6,15 +6,16 @@
 
 모든 통계분석은 CRAN 패키지만 사용합니다.
 
+1.3.0은 CFA, SEM, PLS-SEM/PLSc를 공개 분석 범위에 추가하고 생존분석의 RMST·경쟁위험 경로를 제공합니다. 매개·조절효과 캔버스, 일반 분석, 종단·패널, 복합표본과 표본수·효과크기 기능을 함께 사용합니다. 기존 기능의 개선과 이번 버전의 신규 공개 기능은 버전 이력에서 구분합니다.
+
 ## 현재 버전
 
-현재 공개 버전: `1.2.0`
+현재 공개 버전: `1.3.0`
 
-현재 릴리스 후보 버전: `1.2.0`
 
-버전 1.2.0은 로컬 데이터 불러오기, 데이터 편집, 가정 검토 기반 통계분석, 신뢰도 및 평가자간 일치도 분석, 표본수/효과크기 계산기, 잠재분석, 혼합 반복측정 ANOVA, 매개/조절 사용자 정의 모델, HTML/PDF 결과 출력 기능을 제공하는 공개 릴리스 라인입니다. 1.1.3 이후 안정화 작업을 반영하여 평가자간 일치도 분석, pre-post 및 다시점 반복측정 집단 비교, 공개판 매개/조절 사용자 정의 모델 캔버스, 사용자 정의 모델 표 정리, 통계 검증 범위 확대를 포함합니다. 자세한 정식 배포 이력은 **About > Version History**에서 확인할 수 있습니다.
+버전 1.3.0은 일반 공개판에 PDF·Word·Excel 결과 저장을 제공하며 결과표·모형 캔버스·검증 페이지 개선을 반영합니다. 이번 설치본에서는 메타분석과 동일 대상 내 처치 반복측정 분산분석을 제외합니다.
 
-공개 1.2.0에는 회귀/모형 workflow 그룹에 매개/조절 사용자 정의 모델 캔버스가 포함됩니다. 공개판의 직접 저장 버튼은 화면에 표시되지만 기본적으로 HTML 저장만 활성화되며, t-test / ANOVA는 예외로 HTML, 그림, PDF, Excel, 결과 추가가 활성화됩니다. t-test / ANOVA에서 결과에 추가한 항목은 Result 화면에서 Excel 또는 Word로 저장할 수 있습니다.
+공개 Free 판은 HTML·PDF·Word·Excel 결과 저장, 300 dpi 투명 배경 그림 저장 및 결과 모음을 지원합니다. Pro는 이후 버전에서 제공할 계획이며 개발자·Pro의 그림 해상도는 600 dpi입니다.
 
 ## 현재 범위
 
@@ -40,10 +41,10 @@
 - 독립 관측자료의 Gaussian, binary logistic, Gamma, count outcome을 위한 일반화선형모형(GLM). Poisson 대 negative-binomial 선별, robust standard error 옵션, 결측 민감도 분석, offset/exposure 처리, SCI 스타일 진단, publication notes, reporting checklist, suggested manuscript text 포함
 - 심한 다중공선성 상황을 위한 penalized regression 보조 분석
 - 방법 노트와 참고문헌을 포함한 독립 표본수, power, 효과크기 계산기
-- HTML, PDF, 그림, 누적 Result collection 저장
-- Result collection의 HTML 및 PDF 출력
+- HTML, 그림, 누적 Result collection 저장
+- 그림은 기본 300 dpi, Pro 버전에서만 별도 600 dpi 지원
 
-전체 공개 분석 방법 목록은 [docs/ANALYSIS_METHODS_KO.md](docs/ANALYSIS_METHODS_KO.md)를 참고하십시오.
+전체 공개 분석 방법 목록은 [docs/ANALYSIS_METHODS_KO.md](docs/ANALYSIS_METHODS_KO.md)를 참고하십시오. 분석 선택, 가정과 해석 원칙 및 1.3.0 CFA·CB-SEM·잠재조절·PLS/PLSc 방법론은 [docs/METHOD_NOTES_KO.md](docs/METHOD_NOTES_KO.md)를 참고하십시오.
 
 ## 실행 환경
 
@@ -79,6 +80,8 @@
 
 ## 검증
 
+분석별 예제 수·비교 결과와 최종 판단은 [누적 분석 검증 기록](docs/ANALYSIS_REFERENCE_COMPARISON_PUBLIC_KO.md)에 정리되어 있으며, 앱의 **About → 검증**에서도 확인할 수 있습니다. 통계 수치 비교와 저장 검증을 구분하고 남은 차이를 명시합니다.
+
 버전 1.2.0은 안정화 검증 suite를 이어받고, 혼합 반복측정 ANOVA, 평가자간 일치도 출력, 사용자 정의 모델 표 중복 제거, 공유 레이아웃 계약에 대한 집중 검증을 추가합니다. 공개 검증 범위에는 계산기, 데이터 불러오기, 데이터 편집, 교차표, 상관분석 자동 선택, 요인분석/PCA, 신뢰도 및 평가자간 일치도, 로지스틱 분석과 UI, paired guard 처리, p 값 형식, 회귀계수 출력, GLM 출력, 복합표본, 종단/패널, 혼합 반복측정, 잠재분석, t-test / ANOVA guard 처리가 포함됩니다. 효과크기 비교는 정의가 앱 계산과 일치하는 경우 `effectsize`를 검증 기준으로 사용합니다. `effectsize`는 런타임 필수 패키지가 아닙니다.
 
 병합 또는 패키징 전에는 repository root에서 안정화 검증 suite를 실행합니다.
@@ -91,15 +94,15 @@ powershell -ExecutionPolicy Bypass -File scripts\validate_stabilization.ps1 -Ful
 Release candidate 준비 전에는 Shiny 및 Electron smoke check를 실행합니다.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\release_preflight.ps1
-powershell -ExecutionPolicy Bypass -File scripts\smoke_shiny_app.ps1
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\release_preflight.ps1
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\smoke_shiny_app.ps1
 powershell -ExecutionPolicy Bypass -File scripts\smoke_electron_release.ps1 -SkipUnpackedChecks
 ```
 
 Electron packaging이 완료되면 full packaged-output preflight를 실행합니다.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\release_preflight.ps1 -FullElectronSmoke
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts\release_preflight.ps1 -FullElectronSmoke
 ```
 
 자동 검사 통과 후에는 [docs/RELEASE_MANUAL_QA.md](docs/RELEASE_MANUAL_QA.md)를 완료하고, 완료된 QA 기록을 release notes 및 validation artifacts와 함께 보관합니다.
@@ -110,7 +113,7 @@ powershell -ExecutionPolicy Bypass -File scripts\release_preflight.ps1 -FullElec
 
 연구에서 **StatEdu Studio**를 사용한 경우 다음과 같이 인용해 주십시오.
 
-LEE, I. H. (2026). **StatEdu Studio** (Version 1.2.0) [Computer software].
+LEE, I. H. (2026). **StatEdu Studio** (Version 1.3.0) [Computer software].
 https://doi.org/10.22934/statedu.studio
 
 ## 개발 모델

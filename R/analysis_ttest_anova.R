@@ -396,6 +396,83 @@ ttest_games_howell_pairwise <- function(values, groups) {
   matrix_out
 }
 
+ttest_cached_nonparametric_test <- function(original) {
+  force(original)
+  entries <- list()
+  rng_state <- function() {
+    if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) get(".Random.seed", envir = .GlobalEnv) else NULL
+  }
+  function(values, groups, method = "bonferroni") {
+    key <- list(values, groups, method)
+    for (entry in entries) {
+      if (identical(key, entry$key, num.eq = FALSE)) return(entry$value)
+    }
+    before <- rng_state()
+    quiet <- TRUE
+    value <- withCallingHandlers(original(values, groups, method),
+      warning = function(e) quiet <<- FALSE,
+      message = function(e) quiet <<- FALSE
+    )
+    # Keep this cache local to one analysis and bound retained data combinations.
+    if (quiet && identical(before, rng_state()) && length(entries) < 16L) {
+      entries[[length(entries) + 1L]] <<- list(key = key, value = value)
+    }
+    value
+  }
+}
+
+ttest_cached_nonparametric_pairwise <- function(original = ttest_nonparametric_pairwise) {
+  ttest_cached_nonparametric_test(original)
+}
+
+ttest_nonparametric_main_test <- function(values, groups, method) {
+  if (identical(method, "mw")) {
+    stats::wilcox.test(values ~ as.factor(groups), exact = FALSE, correct = FALSE)
+  } else if (identical(method, "mw_z")) {
+    ttest_mann_whitney_z(values, groups)
+  } else {
+    stats::kruskal.test(values ~ as.factor(groups))
+  }
+}
+
+ttest_build_pairwise_wilcox_engine <- function(pairwise_reference = stats::pairwise.wilcox.test, wilcox_reference = get("wilcox.test.default", asNamespace("stats"))) {
+  code_hash <- function(f) digest::digest(paste(deparse(f), collapse = "\n"), algo = "sha256", serialize = FALSE)
+  if (!identical(code_hash(pairwise_reference), "5ad783c027c00d476f2928988882633c133d9a8c4ee8d6e0c173e8ccb5c85b0c") ||
+      !identical(code_hash(wilcox_reference), "8fa00d3fa461cb114e013ebc13b4e70f9d67607618ef9f33d23f38a87eb9ea05")) return(stats::pairwise.wilcox.test)
+  replacements <- 0L
+  replace <- function(node) {
+    if (!is.call(node)) return(node)
+    if (identical(node, quote(NTIES <- table(r)))) {
+      replacements <<- replacements + 1L
+      # Average ranks are integers or half-integers; retain ascending tie counts.
+      return(quote(NTIES <- if (!isTRUE(paired)) {
+        counts <- tabulate(2 * r, nbins = 2 * length(r))
+        counts[counts > 0L]
+      } else table(r)))
+    }
+    for (i in seq_along(node)) {
+      if (!identical(node[[i]], quote(expr=))) node[i] <- list(replace(node[[i]]))
+    }
+    node
+  }
+  code <- replace(body(wilcox_reference))
+  if (replacements != 2L) return(stats::pairwise.wilcox.test)
+  body(wilcox_reference) <- code
+  # Only the app's numeric pairwise path uses this private function copy.
+  scope <- new.env(parent = environment(pairwise_reference))
+  scope$wilcox.test <- wilcox_reference
+  environment(pairwise_reference) <- scope
+  pairwise_reference
+}
+
+ttest_pairwise_wilcox_engine <- local({
+  engine <- NULL
+  function() {
+    if (is.null(engine)) engine <<- ttest_build_pairwise_wilcox_engine()
+    engine
+  }
+})
+
 ttest_nonparametric_pairwise <- function(values, groups, method = "bonferroni") {
   data <- data.frame(y = as.numeric(values), g = as.factor(groups))
   data <- data[stats::complete.cases(data), , drop = FALSE]
@@ -407,7 +484,7 @@ ttest_nonparametric_pairwise <- function(values, groups, method = "bonferroni") 
   if (!method %in% c("bonferroni", "holm")) {
     method <- "bonferroni"
   }
-  pairwise <- stats::pairwise.wilcox.test(data$y, data$g, p.adjust.method = method, exact = FALSE)
+  pairwise <- ttest_pairwise_wilcox_engine()(data$y, data$g, p.adjust.method = method, exact = FALSE)
   if (is.matrix(pairwise$p.value)) {
     for (row in rownames(pairwise$p.value)) {
       for (col in colnames(pairwise$p.value)) {
@@ -655,11 +732,19 @@ ttest_jt_test <- function(values, groups, alternative = "two.sided") {
   }
 
   split_values <- lapply(levels, function(level) data$y[data$g == level])
+  sorted_values <- if (all(is.finite(data$y))) lapply(split_values, sort) else NULL
   jt <- 0
   for (i in seq_len(k - 1)) {
     for (j in seq.int(i + 1, k)) {
-      comparisons <- outer(split_values[[j]], split_values[[i]], "-")
-      jt <- jt + sum(comparisons > 0, na.rm = TRUE) + 0.5 * sum(comparisons == 0, na.rm = TRUE)
+      if (!is.null(sorted_values)) {
+        below <- findInterval(split_values[[j]], sorted_values[[i]], left.open = TRUE)
+        at_or_below <- findInterval(split_values[[j]], sorted_values[[i]])
+        jt <- jt + sum(below) + 0.5 * sum(at_or_below - below)
+      } else {
+        # Retain subtraction semantics for Inf - Inf and -Inf - -Inf.
+        comparisons <- outer(split_values[[j]], split_values[[i]], "-")
+        jt <- jt + sum(comparisons > 0, na.rm = TRUE) + 0.5 * sum(comparisons == 0, na.rm = TRUE)
+      }
     }
   }
 
@@ -835,6 +920,19 @@ ttest_ordered_marker_statements <- function(ordered_markers, significant_pairs) 
   pair_key <- function(higher, lower) paste(higher, lower, sep = "\r")
   pair_keys <- unique(pair_key(significant_pairs$higher, significant_pairs$lower))
   has_pair <- function(higher, lower) pair_key(higher, lower) %in% pair_keys
+  marker_group_label <- function(markers) {
+    markers <- ordered_markers[ordered_markers %in% as.character(markers %||% character(0))]
+    markers <- unique(markers[nzchar(markers)])
+    if (length(markers) < 2L) {
+      return(paste(markers, collapse = ","))
+    }
+    all_internal_pairs <- all(vapply(seq_len(length(markers) - 1L), function(index) {
+      all(vapply(markers[seq.int(index + 1L, length(markers))], function(candidate) {
+        has_pair(markers[[index]], candidate) || has_pair(candidate, markers[[index]])
+      }, logical(1)))
+    }, logical(1)))
+    paste(markers, collapse = if (isTRUE(all_internal_pairs)) ">" else ",")
+  }
 
   chain_pairs <- character(0)
   chain_statements <- data.frame(first = character(0), statement = character(0), stringsAsFactors = FALSE)
@@ -891,24 +989,18 @@ ttest_ordered_marker_statements <- function(ordered_markers, significant_pairs) 
       if (length(higher) < 2L) {
         next
       }
-      has_internal_difference <- any(vapply(seq_len(length(higher) - 1L), function(index) {
-        any(vapply(higher[seq.int(index + 1L, length(higher))], function(candidate) {
-          has_pair(higher[[index]], candidate) || has_pair(candidate, higher[[index]])
-        }, logical(1)))
-      }, logical(1)))
-      if (!has_internal_difference) {
-        grouped_pairs <- c(grouped_pairs, pair_key(higher, lower))
-        grouped_statements <- rbind(
-          grouped_statements,
-          data.frame(
-            first = higher[[1]],
-            higher_key = paste(higher, collapse = "\r"),
-            lower = lower,
-            statement = sprintf("%s>%s", paste(higher, collapse = ","), lower),
-            stringsAsFactors = FALSE
-          )
+      grouped_pairs <- c(grouped_pairs, pair_key(higher, lower))
+      grouped_statements <- rbind(
+        grouped_statements,
+        data.frame(
+          first = higher[[1]],
+          higher_key = paste(higher, collapse = "\r"),
+          higher_label = marker_group_label(higher),
+          lower = lower,
+          statement = sprintf("%s>%s", marker_group_label(higher), lower),
+          stringsAsFactors = FALSE
         )
-      }
+      )
     }
   }
   if (nrow(grouped_statements) > 0L && all(c("higher_key", "lower") %in% names(grouped_statements))) {
@@ -916,6 +1008,7 @@ ttest_ordered_marker_statements <- function(ordered_markers, significant_pairs) 
     for (higher_key in unique(grouped_statements$higher_key)) {
       group_rows <- grouped_statements[grouped_statements$higher_key == higher_key, , drop = FALSE]
       higher <- strsplit(higher_key, "\r", fixed = TRUE)[[1]]
+      higher_label <- as.character(group_rows$higher_label[[1]] %||% marker_group_label(higher))
       lower <- unique(as.character(group_rows$lower))
       lower <- ordered_markers[ordered_markers %in% lower]
       has_lower_internal_difference <- length(lower) > 1L && any(vapply(seq_len(length(lower) - 1L), function(index) {
@@ -928,7 +1021,7 @@ ttest_ordered_marker_statements <- function(ordered_markers, significant_pairs) 
           consolidated_grouped_statements,
           data.frame(
             first = higher[[1]],
-            statement = sprintf("%s>%s", paste(higher, collapse = ","), paste(lower, collapse = ",")),
+            statement = sprintf("%s>%s", higher_label, paste(lower, collapse = ",")),
             stringsAsFactors = FALSE
           )
         )
@@ -1196,7 +1289,8 @@ ttest_numbered_notes <- function(items) {
   note_type_order <- c("method", "trend", "effect")
   for (type in note_type_order[note_type_order %in% unique(out$type)]) {
     rows_for_type <- which(out$type == type)
-    if (length(rows_for_type) <= 1L) next
+    # Welch must identify the affected row even when it is the only special method.
+    if (length(rows_for_type) <= 1L && !(type == "method" && any(out$key[rows_for_type] == "welch"))) next
     for (row_index in rows_for_type) {
       marker_index <- marker_index + 1L
       out$marker[[row_index]] <- as.character(marker_index)
@@ -1292,26 +1386,14 @@ ttest_analysis_note_line <- function(items) {
     if (!is.data.frame(note_rows) || nrow(note_rows) == 0) return(character(0))
     ifelse(nzchar(note_rows$marker), sprintf("%s. %s", note_rows$marker, note_rows$note), note_rows$note)
   }
-  marker_parts <- if (is.data.frame(notes) && nrow(notes) > 0) {
-    marker_notes <- notes[nzchar(notes$marker), , drop = FALSE]
-    if (nrow(marker_notes) > 0) {
-      marker_notes <- marker_notes[order(suppressWarnings(as.integer(marker_notes$marker))), , drop = FALSE]
-    }
-    format_note_rows(marker_notes)
-  } else {
-    character(0)
+  # As in regression: displayed descriptive terms, method/assumptions, then effects.
+  notes <- notes[order(match(notes$type, c("method", "trend", "effect"))), , drop = FALSE]
+  parts <- format_note_rows(notes)
+  if (any(vapply(items, function(item) isTRUE(item$notes$mean_sd), logical(1)))) {
+    parts <- c("M \u00B1 SD = mean \u00B1 standard deviation.", parts)
   }
-  unmarked_parts <- if (is.data.frame(notes) && nrow(notes) > 0) {
-    format_note_rows(notes[!nzchar(notes$marker), , drop = FALSE])
-  } else {
-    character(0)
-  }
-  parts <- c(marker_parts, unmarked_parts)
   if (length(posthoc_notes) > 0) {
     parts <- c(parts, sprintf("Post-hoc: %s.", paste(posthoc_notes, collapse = ", ")))
-  }
-  if (any(vapply(items, function(item) isTRUE(item$notes$mean_sd), logical(1)))) {
-    parts <- c(parts, "M \u00B1 SD = mean \u00B1 standard deviation.")
   }
   paste(parts, collapse = " ")
 }
@@ -1342,7 +1424,7 @@ ttest_bind_result_rows <- function(rows) {
   out
 }
 
-ttest_single_result <- function(data, dependent, factor, variable_info, labels, category_table, options) {
+ttest_single_result <- function(data, dependent, factor, variable_info, labels, category_table, options, nonparametric_pairwise = ttest_nonparametric_pairwise, nonparametric_main = ttest_nonparametric_main_test, effect_size = ttest_effect_size) {
   values <- as.numeric(data[[dependent]])
   groups <- as.character(data[[factor]])
   keep <- !is.na(values) & !is.na(groups) & nzchar(groups)
@@ -1475,7 +1557,8 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       analysis <- if (isTRUE(equal_variance)) "Independent samples t-test" else "Welch t-test"
       test_type <- "t"
     } else {
-      fit <- ttest_safe_call(stats::wilcox.test(values ~ as.factor(groups), exact = FALSE))
+      # Match the uncorrected, tie-adjusted z reported below to its two-sided p.
+      fit <- ttest_safe_call(nonparametric_main(values, groups, "mw"))
       if (is.null(fit)) {
         return(list(
           skipped = ttest_skipped_item(
@@ -1490,7 +1573,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
           warnings = ttest_bind_result_rows(warning_rows)
         ))
       }
-      statistic <- ttest_mann_whitney_z(values, groups)
+      statistic <- nonparametric_main(values, groups, "mw_z")
       statistic_label <- "z"
       p_value <- fit$p.value
       analysis <- "Mann-Whitney U test (Wilcoxon rank-sum test)"
@@ -1579,7 +1662,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       }
     }
   } else {
-    fit <- ttest_safe_call(stats::kruskal.test(values ~ as.factor(groups)))
+    fit <- ttest_safe_call(nonparametric_main(values, groups, "kw"))
     if (is.null(fit)) {
       return(list(
         skipped = ttest_skipped_item(
@@ -1607,7 +1690,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       }
       correction_label <- if (identical(method, "holm")) "Holm Bonferroni" else "Bonferroni correction"
       posthoc_label <- sprintf("Pairwise Wilcoxon rank-sum test with %s", correction_label)
-      p_matrix <- ttest_safe_call(ttest_nonparametric_pairwise(values, groups, method))
+      p_matrix <- ttest_safe_call(nonparametric_pairwise(values, groups, method))
       if (!is.null(p_matrix)) {
         letters <- ttest_safe_call(ttest_group_letters(values, groups, p_matrix, ordered = FALSE))
       } else {
@@ -1637,7 +1720,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
   p_note <- ttest_p_note(test_type, analysis)
   trend_note <- ttest_trend_note(trend_method)
   effect_size_text <- if (isTRUE(options$effect_size)) {
-    ttest_safe_call(ttest_effect_size(values, groups, test_type), "")
+    ttest_safe_call(effect_size(values, groups, test_type), "")
   } else {
     ""
   }
@@ -1769,7 +1852,7 @@ ttest_model_overview_wide <- function(overview, dependents = NULL, variable_info
     if (!nzchar(value)) return("")
     p_values <- suppressWarnings(as.numeric(unlist(regmatches(value, gregexpr("(?<=\\()[<>.]?[0-9.]+(?=\\))", value, perl = TRUE)))))
     if (length(p_values) > 0 && any(!is.na(p_values))) {
-      return(if (all(p_values[!is.na(p_values)] >= .05)) "\uc815\uaddc\uc131 \ub9cc\uc871" else "\uc815\uaddc\uc131 \ubd88\ub9cc\uc871")
+      return(if (all(p_values[!is.na(p_values)] >= .05)) "Normality met" else "Normality not met")
     }
     if (grepl("skew\\s*=|kurtosis\\s*=", value, ignore.case = TRUE)) {
       skew_match <- regmatches(value, regexpr("skew\\s*=\\s*-?[0-9.]+", value, ignore.case = TRUE))
@@ -1947,14 +2030,17 @@ ttest_result_overview_tables <- function(result) {
   )
 }
 
-prepare_ttest_anova_results <- function(
+prepare_ttest_anova_results_core <- function(
   data,
   dependents,
   factors,
   variable_info = NULL,
   labels = character(0),
   category_table = NULL,
-  options = list()
+  options = list(),
+  nonparametric_pairwise = ttest_nonparametric_pairwise,
+  nonparametric_main = ttest_nonparametric_main_test,
+  effect_size = ttest_effect_size
 ) {
   if (!is.data.frame(data)) {
     stop("No data frame is available for t-test / ANOVA.")
@@ -1969,7 +2055,7 @@ prepare_ttest_anova_results <- function(
     dependent_items <- list()
     for (factor in factors) {
       item <- tryCatch(
-        ttest_single_result(data, dependent, factor, variable_info, labels, category_table, options),
+        ttest_single_result(data, dependent, factor, variable_info, labels, category_table, options, nonparametric_pairwise, nonparametric_main, effect_size),
         error = function(e) {
           list(skipped = ttest_skipped_item(dependent, factor, conditionMessage(e), NA_integer_, variable_info, labels, category_table))
         }
@@ -1996,8 +2082,9 @@ prepare_ttest_anova_results <- function(
       statistic_labels <- vapply(dependent_items, function(item) item$statistic_label %||% "", character(1))
       combined_table <- ttest_apply_statistic_heading(combined_table, statistic_labels)
       if (isTRUE(options$median_iqr) && !isTRUE(options$mean_sd)) {
-        names(combined_table)[names(combined_table) == "M"] <- "Median"
-        names(combined_table)[names(combined_table) == "SD"] <- "Q1~Q3"
+        combined_table$M <- paste0(combined_table$M, " (", combined_table$SD, ")")
+        combined_table$SD <- NULL
+        names(combined_table)[names(combined_table) == "M"] <- "Median(Q1~Q3)"
       }
       has_trend_result <- any(vapply(dependent_items, function(item) {
         nzchar(as.character(item$notes$trend %||% ""))
@@ -2065,43 +2152,205 @@ ttest_anova_results_ui <- function(result) {
     return(tags$div(class = "analysis-error", result$error))
   }
 
+  appendix_language <- result_appendix_table_language()
+  appendix_text <- function(en, ko) {
+    statedu_localized_text(appendix_language, en, ko)
+  }
+  localize_appendix_value <- function(value) {
+    value <- as.character(value %||% "")
+    guard_keys <- c(
+      "At least two groups and three complete observations are required." = "minimum_cases",
+      "The dependent variable has no variance after complete-case filtering." = "constant_outcome",
+      "No valid t-test / ANOVA result." = "no_result")
+    if (value %in% names(guard_keys)) return(statedu_t(paste0("analysis.ttest.", guard_keys[[value]]), appendix_language))
+    guard_patterns <- c(
+      small_groups = "^Each group must have at least 2 valid observations\\. Insufficient group\\(s\\): (.*)\\.$",
+      zero_sd = "^Zero standard deviation in group\\(s\\): (.*)\\. Variance-sensitive statistics may be unavailable or interpreted cautiously\\.$")
+    for (key in names(guard_patterns)) {
+      matched <- regmatches(value, regexec(guard_patterns[[key]], value))[[1]]
+      if (length(matched) == 2L) return(sprintf(statedu_t(paste0("analysis.ttest.", key), appendix_language), matched[[2]]))
+    }
+    detail <- regmatches(value, regexec("^skew=([^,]+), kurtosis=([^,]+), cutoff=(.+)$", value))[[1]]
+    if (length(detail) == 4L) return(sprintf(statedu_t("analysis.ttest.skew_kurtosis_detail", appendix_language), detail[[2]], detail[[3]], detail[[4]]))
+    if (!identical(appendix_language, "ko") || !nzchar(value)) return(result_appendix_ui_text(value, appendix_language))
+    exact <- c(
+      "At least two groups and three complete observations are required." = "집단이 최소 2개이고 완전 관측값이 최소 3개 필요합니다.",
+      "The dependent variable has no variance after complete-case filtering." = "완전 사례를 선별한 후 종속변수의 분산이 없습니다.",
+      "Independent samples t-test could not be computed, commonly because one or more groups have zero variance." = "하나 이상의 집단에서 분산이 0인 경우가 많아 독립표본 t 검정을 계산할 수 없습니다.",
+      "Mann-Whitney U test could not be computed for this variable-group combination." = "이 변수-집단 조합에서 Mann-Whitney U 검정을 계산할 수 없습니다.",
+      "One-way ANOVA could not be computed for this variable-group combination." = "이 변수-집단 조합에서 일원분산분석을 계산할 수 없습니다.",
+      "Welch ANOVA was not performed because one or more groups have zero variance." = "하나 이상의 집단에서 분산이 0이므로 Welch 분산분석을 실행하지 않았습니다.",
+      "Welch ANOVA could not be computed for this variable-group combination." = "이 변수-집단 조합에서 Welch 분산분석을 계산할 수 없습니다.",
+      "Kruskal-Wallis test could not be computed for this variable-group combination." = "이 변수-집단 조합에서 Kruskal-Wallis 검정을 계산할 수 없습니다.",
+      "No valid t-test / ANOVA result." = "유효한 t 검정 / 분산분석 결과가 없습니다.",
+      "Normality not checked" = "정규성 검토 안 함",
+      "Parametric test selected by option" = "옵션에서 모수 검정 선택",
+      "Selected by analysis menu" = "분석 메뉴에서 선택",
+      "Nonparametric test used" = "비모수 검정 사용",
+      "Mann-Whitney U test (Wilcoxon rank-sum test)" = "Mann-Whitney U 검정(Wilcoxon 순위합 검정)",
+      "Kruskal-Wallis test" = "Kruskal-Wallis 검정"
+    )
+    if (value %in% names(exact)) return(unname(exact[[value]]))
+    if (grepl("^Each group must have at least 2 valid observations\\. Insufficient group\\(s\\): ", value)) {
+      return(sub(
+        "^Each group must have at least 2 valid observations\\. Insufficient group\\(s\\): (.*)\\.$",
+        "각 집단에 유효 관측값이 최소 2개 필요합니다. 관측값이 부족한 집단: \\1.",
+        value
+      ))
+    }
+    if (grepl("^Zero standard deviation in group\\(s\\): ", value)) {
+      return(sub(
+        "^Zero standard deviation in group\\(s\\): (.*)\\. Variance-sensitive statistics may be unavailable or interpreted cautiously\\.$",
+        "다음 집단의 표준편차가 0입니다: \\1. 분산에 민감한 통계량은 계산되지 않거나 주의해서 해석해야 합니다.",
+        value
+      ))
+    }
+    if (grepl("^skew=.*kurtosis=.*cutoff=", value)) {
+      value <- sub("^skew=", "왜도=", value)
+      value <- sub(", kurtosis=", ", 첨도=", value, fixed = TRUE)
+      value <- sub(", cutoff=", ", 기준=", value, fixed = TRUE)
+      return(value)
+    }
+    value
+  }
+  localize_appendix_values <- function(table) {
+    if (!is.data.frame(table)) return(table)
+    source_table <- table
+    character_columns <- names(table)[vapply(table, function(column) is.character(column) || is.factor(column), logical(1))]
+    for (column in character_columns) {
+      table[[column]] <- vapply(as.character(table[[column]]), function(value) {
+        lines <- strsplit(value, "\n", fixed = TRUE)[[1]]
+        paste(vapply(lines, localize_appendix_value, character(1)), collapse = "\n")
+      }, character(1))
+    }
+    result_appendix_preserve_data(table, source_table)
+  }
+  localize_appendix_table <- function(table) {
+    if (!is.data.frame(table)) return(table)
+    source_table <- table
+    if (!is.null(attr(table, "dependent_count", exact = TRUE))) {
+      attr(source_table, "result_user_headers") <- seq.int(3L, ncol(source_table))
+      attr(table, "result_user_headers") <- seq.int(3L, ncol(table))
+    }
+    table <- localize_appendix_values(table)
+    if (identical(appendix_language, "ko")) {
+      if ("Item" %in% names(table)) {
+        table$Item <- vapply(as.character(table$Item), function(value) {
+          translations <- c(
+            "Analysis" = "분석 방법",
+            "Reason" = "선정 근거",
+            "Normality" = "정규성",
+            "Homogeneity" = "등분산성",
+            "Post-hoc" = "사후분석",
+            "Package" = "패키지"
+          )
+          if (value %in% names(translations)) unname(translations[[value]]) else value
+        }, character(1))
+      }
+      character_columns <- names(table)[vapply(table, is.character, logical(1))]
+      for (column in character_columns) {
+        table[[column]] <- gsub("Normality met", "정규성 충족", table[[column]], fixed = TRUE)
+        table[[column]] <- gsub("Homogeneity met", "등분산성 충족", table[[column]], fixed = TRUE)
+        table[[column]] <- gsub("Post-hoc included", "사후분석 포함", table[[column]], fixed = TRUE)
+      }
+      names(table)[names(table) == "Item"] <- "항목"
+    }
+    result_appendix_preserve_data(result_appendix_localize_table(table, appendix_language), source_table)
+  }
+
   overview_tables <- ttest_result_overview_tables(result)
+  overview_tables$overview <- localize_appendix_table(overview_tables$overview)
+  overview_tables$assumption_review <- localize_appendix_table(overview_tables$assumption_review)
   overview_landscape_class <- if (isTRUE(ttest_model_overview_landscape(overview_tables$overview))) " landscape-table-panel" else ""
   assumption_landscape_class <- if (isTRUE(ttest_model_overview_landscape(overview_tables$assumption_review))) " landscape-table-panel" else ""
 
   sections <- list(
     tags$div(
       class = paste0("result-section regression-result-panel ttest-anova-overview-panel", overview_landscape_class),
-      tags$h3("Model overview"),
+      tags$h3(appendix_text("Model overview", "모형 선택 개요")),
       model_overview_html_table(overview_tables$overview)
     )
   )
 
   for (item in result$results %||% list()) {
+    main_table <- item$table
+    if (is.data.frame(main_table) && "post-hoc" %in% names(main_table)) {
+      posthoc_values <- trimws(as.character(main_table[["post-hoc"]] %||% ""))
+      if (all(!nzchar(posthoc_values))) {
+        main_table[["post-hoc"]] <- NULL
+      } else {
+        names(main_table)[names(main_table) == "post-hoc"] <- "Post hoc"
+      }
+    }
+    attr(main_table, "result_table_role") <- "main"
+    main_note <- trimws(result_sci_note_text(abbreviations = item$note %||% "", prefix = ""))
     sections[[length(sections) + 1]] <- tags$div(
       class = "result-section regression-result-panel ttest-anova-result-panel",
       tags$h3(item$title),
-      coefficient_html_table(item$table, note_line = item$note %||% ""),
-      if (is.data.frame(item$posthoc) && nrow(item$posthoc) > 0) {
-        tags$div(
-          class = "ttest-anova-posthoc-section",
-          tags$h4("Post-hoc"),
-          coefficient_html_table(item$posthoc)
-        )
-      }
+      coefficient_html_table(main_table, note_line = main_note,
+        sheet_orientation = if (nrow(coefficient_display_columns(main_table)) <= 9L) "portrait" else "auto")
     )
+    if (!is.null(item$mean_sd_extra)) {
+      extra <- item$mean_sd_extra
+      sections[[length(sections) + 1L]] <- tags$div(class = "result-section regression-result-panel ttest-anova-result-panel",
+        tags$h3(paste0(item$title, ": M ± SD")), coefficient_html_table(extra$table, note_line = extra$note, sheet_orientation = "portrait"))
+    }
+    if (is.data.frame(item$posthoc) && nrow(item$posthoc) > 0) {
+      posthoc_table <- item$posthoc
+      attr(posthoc_table, "result_table_role") <- "main"
+      sections[[length(sections) + 1]] <- tags$div(
+        class = "result-section regression-result-panel ttest-anova-posthoc-panel",
+        tags$h3(sprintf("%s: Post hoc comparisons", item$title)),
+        coefficient_html_table(posthoc_table)
+      )
+    }
   }
 
   if (is.data.frame(overview_tables$assumption_review) && nrow(overview_tables$assumption_review) > 0) {
     sections[[length(sections) + 1]] <- tags$div(
       class = paste0("result-section regression-result-panel ttest-anova-assumption-review-panel", assumption_landscape_class),
-      tags$h3("Assumption review"),
+      tags$h3(appendix_text("Assumption review", "가정 검토")),
       model_overview_html_table(overview_tables$assumption_review)
     )
   }
 
-  diagnostics_section <- analysis_diagnostics_section(result$warnings, result$skipped)
+  diagnostics_section <- analysis_diagnostics_section(
+    localize_appendix_values(result$warnings),
+    localize_appendix_values(result$skipped),
+    messages_localized = TRUE
+  )
   if (!is.null(diagnostics_section)) sections[[length(sections) + 1]] <- diagnostics_section
 
   do.call(tagList, sections)
+}
+
+prepare_ttest_anova_results <- function(data, dependents, factors, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("dependents", "factors"))
+  if (isTRUE(options$force_nonparametric)) {
+    options$median_iqr <- options$median_iqr %||% TRUE
+    options$ordered_significance <- options$ordered_significance %||% TRUE
+    options$mean_sd <- !isTRUE(options$median_iqr)
+  }
+  pairwise <- ttest_nonparametric_pairwise
+  main_test <- ttest_nonparametric_main_test
+  effect_size <- ttest_effect_size
+  if (isTRUE(options$force_nonparametric) && isTRUE(options$add_mean_sd) && isTRUE(options$median_iqr)) {
+    main_test <- ttest_cached_nonparametric_test(main_test)
+    if (isTRUE(options$effect_size)) {
+      cached_effect_size <- ttest_cached_nonparametric_test(effect_size)
+      effect_size <- function(values, groups, test_type) {
+        if (identical(test_type, "kw")) cached_effect_size(values, groups, test_type) else ttest_effect_size(values, groups, test_type)
+      }
+    }
+  }
+  if (isTRUE(options$force_nonparametric) && isTRUE(options$add_mean_sd) && isTRUE(options$median_iqr) && isTRUE(options$post_hoc)) {
+    pairwise <- ttest_cached_nonparametric_pairwise(pairwise)
+  }
+  out <- prepare_ttest_anova_results_core(data, dependents, factors, variable_info, labels, category_table, options, pairwise, main_test, effect_size)
+  if (isTRUE(options$force_nonparametric) && isTRUE(options$add_mean_sd) && isTRUE(options$median_iqr)) {
+    extra_options <- modifyList(options, list(median_iqr = FALSE, mean_sd = TRUE, add_mean_sd = FALSE))
+    extra <- prepare_ttest_anova_results_core(data, dependents, factors, variable_info, labels, category_table, extra_options, pairwise, main_test, effect_size)
+    for (i in seq_along(out$results)) out$results[[i]]$mean_sd_extra <- extra$results[[i]]
+  }
+  out
 }

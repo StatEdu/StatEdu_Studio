@@ -117,4 +117,39 @@ settings_en <- app$cv_settings[app$cv_settings$Method == "Elastic Net", , drop =
 assert_true(nrow(settings_en) == 1L, "Elastic Net settings row should exist")
 assert_identical(settings_en[["Selected alpha"]], format_decimal3(best_elastic$alpha), "Elastic Net selected alpha")
 
+old_app_language <- getOption("statedu.app_language", NULL)
+options(statedu.app_language = "ko")
+screen_html <- paste(htmltools::renderTags(penalized_result_block(app))$html, collapse = "\n")
+if (is.null(old_app_language)) options(statedu.app_language = NULL) else options(statedu.app_language = old_app_language)
+assert_true(
+  grepl('data-result-table-role="main"', screen_html, fixed = TRUE) &&
+    grepl('data-result-table-role="appendix"', screen_html, fixed = TRUE),
+  "Penalized output must separate publication and appendix table roles"
+)
+assert_true(
+  grepl("부록표 A1. 교차검증 튜닝 및 모형 성능", screen_html, fixed = TRUE),
+  "Penalized appendix titles must follow the Korean UI language"
+)
+expected_screen_tables <- sum(vapply(
+  list(
+    app$publication_summary,
+    app$publication_selected_predictors,
+    app$publication_stability,
+    app$summary,
+    app$coefficient_comparison,
+    app$selected_predictors,
+    app$cv_settings,
+    app$selection_stability
+  ),
+  function(table) is.data.frame(table) && nrow(table) > 0L,
+  logical(1)
+))
+sheet_hits <- gregexpr('data-result-table-sheet="true"', screen_html, fixed = TRUE)[[1]]
+sheet_count <- if (identical(sheet_hits[[1]], -1L)) 0L else length(sheet_hits)
+assert_true(sheet_count == expected_screen_tables, "Every penalized result table must render as one independent table sheet")
+assert_true(
+  grepl('data-result-table-orientation="landscape"', screen_html, fixed = TRUE),
+  "Wide penalized tables must use the B5 landscape screen contract"
+)
+
 message("Penalized regression validation passed.")

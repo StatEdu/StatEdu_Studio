@@ -1,0 +1,26 @@
+Sys.setlocale('LC_ALL','Korean_Korea.utf8')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules();options(statedu.app_language='ko')
+out<-'outputs/spss_phase25_20260906';dir.create(out,showWarnings=FALSE)
+set.seed(20260911)
+d<-data.frame(pre=rnorm(100),post=rnorm(100)+.6,ord1=sample(1:5,100,TRUE),ord2=sample(1:5,100,TRUE),bin1=sample(0:1,100,TRUE),bin2=sample(0:1,100,TRUE),cat1=sample(c('낮음','중간','높음'),100,TRUE),cat2=sample(c('낮음','중간','높음'),100,TRUE))
+info<-data.frame(name=names(d),measurement=c('continuous','continuous','ordered','ordered','binary','binary','category','category'),var_label=c('사전 점수','사후 점수','순서 사전','순서 사후','이분 사전','이분 사후','범주 사전','범주 사후'))
+make<-function(data=d,groups=list(c('pre','post')),extra=list(),vi=info)prepare_paired_unified_results(data,groups,variable_info=vi,options=modifyList(list(assumption_check=FALSE,effect_size=TRUE,cohen_d=TRUE,mean_sd=TRUE),extra))
+m<-d;m$pre[1:7]<-NA;m$post[8:11]<-NA
+zero<-d;zero$post<-zero$pre
+long<-as.data.frame(sapply(1:40,function(i)rnorm(100)+i/20));names(long)<-paste0('measure',1:40)
+li<-data.frame(name=names(long),measurement='continuous',var_label=paste('측정',1:40))
+cases<-list(paired_t=make(),wilcoxon=make(groups=list(c('ord1','ord2')),extra=list(assumption_check=TRUE,mean_sd=FALSE,median_iqr=TRUE)),mcnemar=make(groups=list(c('bin1','bin2'))),stuart=make(groups=list(c('cat1','cat2'))),bowker=make(groups=list(c('cat1','cat2')),extra=list(bowker=TRUE)),missing=make(m),mixed=make(groups=list(c('pre','post'),c('ord1','ord2'),c('bin1','bin2'),c('cat1','cat2')),extra=list(assumption_check=TRUE,median_iqr=TRUE)),zero_difference=make(zero),long_pairs=make(long,groups=lapply(seq(1,39,2),function(i)names(long)[i:(i+1)]),vi=li))
+for(name in names(cases)) {
+ r<-cases[[name]];folder<-file.path(out,name);dir.create(folder,showWarnings=FALSE)
+ write_paired_results_html(r,file.path(folder,'result.html'))
+ html<-paste(readLines(file.path(folder,'result.html'),encoding='UTF-8'),collapse='\n')
+ a<-xml2::read_html(as.character(htmltools::renderTags(paired_results_ui(r))$html));b<-xml2::read_html(html)
+ cells<-function(doc)vapply(xml2::xml_find_all(doc,'.//table//th|.//table//td'),result_html_text,character(1))
+ stopifnot(identical(cells(a),cells(b)))
+ e<-list(title='Paired tests',html=html,saved_at='2026-09-06')
+ write_paired_results_pdf(r,file.path(folder,'result.pdf'));save_paired_excel_file(r,file.path(folder,'result.xlsx'));write_result_collection_docx(list(e),file.path(folder,'result.docx'))
+ tables<-result_entry_tables(e)
+ expected<-list(tables=lapply(tables,function(t)list(title=t$title,orientation=t$orientation,notes=t$notes,cells=lapply(t$screen$cells,function(c)c(c,list(value=t$screen$values[c$row,c$col]))))),images=as.list(xml2::xml_attr(xml2::xml_find_all(b,'.//img'),'alt')))
+ jsonlite::write_json(expected,file.path(folder,'expected.json'),auto_unbox=TRUE);saveRDS(r,file.path(folder,'analysis.rds'))
+ cat(name,length(tables),'tables',length(expected$images),'images; screen/HTML matched\n')
+}

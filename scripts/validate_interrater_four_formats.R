@@ -1,0 +1,27 @@
+Sys.setlocale('LC_ALL','Korean_Korea.utf8')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules();options(statedu.app_language='ko')
+out<-'outputs/spss_phase40_20260907';dir.create(out,showWarnings=FALSE)
+set.seed(20260909);n<-120;latent<-rnorm(n)
+continuous<-as.data.frame(sapply(1:45,function(i)latent+rnorm(n,sd=.4)));names(continuous)<-paste0('r',1:45)
+ordinal<-as.data.frame(lapply(continuous,function(x)as.integer(cut(x,breaks=c(-Inf,-.8,-.2,.3,.9,Inf)))))
+nominal<-as.data.frame(lapply(ordinal,function(x)c('A','B','C','D','E')[x]));missing<-nominal;missing$r1[1:9]<-NA;missing$r2[10:14]<-NA
+make<-function(data=nominal,k=2,measurement='category',extra=list())prepare_interrater_agreement_results(data,names(data)[1:k],variable_info=data.frame(name=names(data),var_label=names(data),measurement=measurement),options=extra)
+cases<-list(nominal_two=function()make(),nominal_multi=function()make(k=4),nominal_missing=function()make(missing,k=4),ordinal_linear=function()make(ordinal,measurement='ordered',extra=list(weight='linear')),ordinal_quadratic=function()make(ordinal,k=3,measurement='ordered',extra=list(weight='quadratic')),icc1=function()make(continuous,k=3,measurement='continuous',extra=list(icc_model='icc1')),icc2_bootstrap=function()make(continuous,k=3,measurement='continuous',extra=list(icc_model='icc2',normality=TRUE,bootstrap_ci=TRUE,bootstrap_resamples=100L,seed=2026L)),icc3_average=function()make(continuous,k=4,measurement='continuous',extra=list(icc_model='icc3',icc_type='consistency',icc_unit='average')),long_raters=function()make(continuous,k=45,measurement='continuous',extra=list(icc_model='icc2',normality=TRUE)))
+for(name in names(cases)) {
+ r<-cases[[name]]();folder<-file.path(out,name);dir.create(folder,showWarnings=FALSE)
+ write_interrater_agreement_results_html(r,file.path(folder,'result.html'))
+ html<-paste(readLines(file.path(folder,'result.html'),encoding='UTF-8'),collapse='\n');b<-xml2::read_html(html)
+ a<-xml2::read_html(as.character(htmltools::renderTags(interrater_agreement_results_ui(r))$html))
+ cells<-function(doc)vapply(xml2::xml_find_all(doc,'.//table//th|.//table//td'),result_html_text,character(1));stopifnot(identical(cells(a),cells(b)))
+ e<-list(title='Interrater',html=html,saved_at='2026-09-07')
+ write_interrater_agreement_results_pdf(r,file.path(folder,'result.pdf'));save_interrater_agreement_excel_file(r,file.path(folder,'result.xlsx'));write_result_collection_docx(list(e),file.path(folder,'result.docx'))
+  tables<-result_entry_tables(e)
+  image_items<-result_entry_images(e)
+  orders<-vapply(c(tables,image_items),`[[`,numeric(1),'output_order')
+  sheet_indices<-rank(orders,ties.method='first')[seq_along(tables)]
+  unlink(vapply(image_items,`[[`,character(1),'path'))
+ expected<-list(tables=lapply(tables,function(t)list(title=t$title,orientation=t$orientation,notes=t$notes,cells=lapply(t$screen$cells,function(c)c(c,list(value=t$screen$values[c$row,c$col]))))),images=as.list(xml2::xml_attr(xml2::xml_find_all(b,'.//img'),'alt')))
+  for(i in seq_along(expected$tables))expected$tables[[i]]$sheet_index<-unname(sheet_indices[i])
+  jsonlite::write_json(expected,file.path(folder,'expected.json'),auto_unbox=TRUE);saveRDS(r,file.path(folder,'analysis.rds'))
+ cat(name,length(tables),'tables',length(expected$images),'images\n')
+}

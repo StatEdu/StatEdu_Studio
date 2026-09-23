@@ -47,7 +47,27 @@ interrater_pair_table <- function(x, y, levels) {
   ok <- !is.na(x) & !is.na(y)
   x <- factor(as.character(x[ok]), levels = levels)
   y <- factor(as.character(y[ok]), levels = levels)
-  table(x, y)
+  # The factors already define the complete row/column levels. Count their
+  # column-major cell codes directly, retaining table's integer counts/labels.
+  nx <- nlevels(x)
+  ny <- nlevels(y)
+  if (as.double(nx) * ny > .Machine$integer.max) return(table(x, y))
+  counts <- tabulate(as.integer(x) + (as.integer(y) - 1L) * nx, nbins = as.double(nx) * ny)
+  structure(array(counts, dim = c(nx, ny), dimnames = list(x = levels(x), y = levels(y))), class = "table")
+}
+
+interrater_row_frame <- function(frame) {
+  # Homogeneous plain columns keep their row values in a matrix. Preserve
+  # dataframe extraction for mixed types, factors and custom classes.
+  if (identical(class(frame), "data.frame")) {
+    column_types <- vapply(frame, typeof, character(1))
+    if (length(unique(column_types)) == 1L &&
+        column_types[[1L]] %in% c("character", "integer", "double", "logical") &&
+        all(vapply(frame, function(x) !is.object(x) && is.null(dim(x)), logical(1)))) {
+      return(as.matrix(frame))
+    }
+  }
+  frame
 }
 
 interrater_percent_agreement <- function(frame) {
@@ -55,13 +75,27 @@ interrater_percent_agreement <- function(frame) {
   if (raters < 2) {
     return(list(value = NA_real_, pairs = 0L, method = "Percent agreement"))
   }
+  row_frame <- interrater_row_frame(frame)
   total_agree <- 0
   total_pairs <- 0
+  pair_count <- NULL
+  pair_size <- 0L
+  pair_cache <- vector("list", min(raters, 32L))
   for (row_index in seq_len(nrow(frame))) {
-    values <- as.character(unlist(frame[row_index, , drop = TRUE], use.names = FALSE))
+    values <- as.character(unlist(row_frame[row_index, , drop = TRUE], use.names = FALSE))
     values <- values[!is.na(values)]
     if (length(values) < 2) next
-    pair_count <- utils::combn(seq_along(values), 2L)
+    # Cache small rater counts locally; preserve pair and summation order.
+    if (length(values) != pair_size) {
+      size <- length(values)
+      if (size <= length(pair_cache) && !is.null(pair_cache[[size]])) {
+        pair_count <- pair_cache[[size]]
+      } else {
+        pair_count <- utils::combn(seq_along(values), 2L)
+        if (size <= length(pair_cache)) pair_cache[[size]] <- pair_count
+      }
+      pair_size <- length(values)
+    }
     total_pairs <- total_pairs + ncol(pair_count)
     total_agree <- total_agree + sum(values[pair_count[1, ]] == values[pair_count[2, ]])
   }
@@ -112,9 +146,19 @@ interrater_fleiss_kappa <- function(frame, levels) {
   if (ncol(frame) < 3 || length(levels) < 2) {
     return(NA_real_)
   }
-  counts <- t(apply(frame, 1L, function(row) {
-    tabulate(match(as.character(row[!is.na(row)]), levels), nbins = length(levels))
-  }))
+  ratings <- as.matrix(frame)
+  cell_count <- as.double(nrow(ratings)) * length(levels)
+  if (nrow(ratings) > 0L && cell_count <= .Machine$integer.max) {
+    codes <- match(as.character(ratings), levels)
+    codes[is.na(ratings)] <- NA_integer_
+    # Each category occupies one column; preserve the original integer counts.
+    counts <- matrix(tabulate(seq_len(nrow(ratings)) + (codes - 1L) * nrow(ratings),
+                              nbins = cell_count), nrow = nrow(ratings))
+  } else {
+    counts <- t(apply(frame, 1L, function(row) {
+      tabulate(match(as.character(row[!is.na(row)]), levels), nbins = length(levels))
+    }))
+  }
   ratings_per_subject <- rowSums(counts)
   counts <- counts[ratings_per_subject >= 2, , drop = FALSE]
   ratings_per_subject <- ratings_per_subject[ratings_per_subject >= 2]
@@ -145,13 +189,17 @@ interrater_gwet_ac <- function(frame, levels, ordinal = FALSE, weight = "quadrat
   if (ncol(frame) < 2 || length(levels) < 2) {
     return(NA_real_)
   }
+  row_frame <- interrater_row_frame(frame)
   agreement_weights <- if (isTRUE(ordinal)) interrater_weight_matrix(levels, weight = weight, agreement = TRUE) else diag(length(levels))
   total_unit_agreement <- 0
   total_unit_proportions <- numeric(length(levels))
   eligible_units <- 0
   rated_units <- 0
+  pair_indices <- NULL
+  pair_size <- 0L
+  pair_cache <- vector("list", min(ncol(frame), 32L))
   for (row_index in seq_len(nrow(frame))) {
-    values <- match(as.character(unlist(frame[row_index, , drop = TRUE], use.names = FALSE)), levels)
+    values <- match(as.character(unlist(row_frame[row_index, , drop = TRUE], use.names = FALSE)), levels)
     values <- values[!is.na(values)]
     if (length(values) > 0) {
       counts <- tabulate(values, nbins = length(levels))
@@ -161,7 +209,18 @@ interrater_gwet_ac <- function(frame, levels, ordinal = FALSE, weight = "quadrat
     if (length(values) < 2) {
       next
     }
-    pairs <- utils::combn(values, 2L)
+    # Cache small rater counts locally; preserve pair and summation order.
+    if (length(values) != pair_size) {
+      size <- length(values)
+      if (size <= length(pair_cache) && !is.null(pair_cache[[size]])) {
+        pair_indices <- pair_cache[[size]]
+      } else {
+        pair_indices <- utils::combn(seq_along(values), 2L)
+        if (size <= length(pair_cache)) pair_cache[[size]] <- pair_indices
+      }
+      pair_size <- length(values)
+    }
+    pairs <- matrix(values[pair_indices], nrow = 2L)
     total_unit_agreement <- total_unit_agreement + sum(agreement_weights[cbind(pairs[1, ], pairs[2, ])]) / ncol(pairs)
     eligible_units <- eligible_units + 1L
   }
@@ -196,16 +255,30 @@ interrater_krippendorff_alpha <- function(frame, levels = NULL, level = "nominal
   }
   observed_num <- 0
   observed_den <- 0
+  pair_indices <- NULL
+  pair_size <- 0L
+  pair_cache <- vector("list", min(ncol(values), 32L))
   for (row_index in seq_len(nrow(values))) {
     row <- values[row_index, ]
     row <- row[!is.na(row)]
     if (length(row) < 2) next
-    pairs <- utils::combn(row, 2L)
+    # Cache small rater counts locally; preserve pair and summation order.
+    if (length(row) != pair_size) {
+      size <- length(row)
+      if (size <= length(pair_cache) && !is.null(pair_cache[[size]])) {
+        pair_indices <- pair_cache[[size]]
+      } else {
+        pair_indices <- utils::combn(seq_along(row), 2L)
+        if (size <= length(pair_cache)) pair_cache[[size]] <- pair_indices
+      }
+      pair_size <- length(row)
+    }
+    pairs <- matrix(row[pair_indices], nrow = 2L)
     unit_weight <- 1 / (length(row) - 1)
     observed_num <- observed_num + sum(distance(pairs[1, ], pairs[2, ])) * unit_weight
     observed_den <- observed_den + ncol(pairs) * unit_weight
   }
-  eligible_rows <- apply(!is.na(values), 1L, sum) >= 2
+  eligible_rows <- rowSums(!is.na(values)) >= 2
   pooled <- values[eligible_rows, , drop = FALSE]
   pooled <- pooled[!is.na(pooled)]
   if (observed_den <= 0 || length(pooled) < 2) return(NA_real_)
@@ -227,6 +300,11 @@ interrater_krippendorff_alpha <- function(frame, levels = NULL, level = "nominal
 interrater_icc_value <- function(matrix, model = "icc2", agreement = TRUE, average = FALSE) {
   matrix <- as.matrix(matrix)
   matrix <- matrix[stats::complete.cases(matrix), , drop = FALSE]
+  interrater_icc_complete_value(matrix, model, agreement, average)
+}
+
+# Internal kernel: caller supplies an already complete numeric matrix.
+interrater_icc_complete_value <- function(matrix, model = "icc2", agreement = TRUE, average = FALSE) {
   n <- nrow(matrix)
   k <- ncol(matrix)
   if (n < 2 || k < 2) return(NA_real_)
@@ -234,12 +312,18 @@ interrater_icc_value <- function(matrix, model = "icc2", agreement = TRUE, avera
   row_means <- rowMeans(matrix)
   col_means <- colMeans(matrix)
   ms_row <- k * sum((row_means - grand)^2) / (n - 1)
-  ss_within <- sum((matrix - row_means)^2)
-  ms_within <- ss_within / (n * (k - 1))
-  ms_col <- n * sum((col_means - grand)^2) / (k - 1)
-  residual <- sweep(matrix, 1L, row_means, "-")
-  residual <- sweep(residual, 2L, col_means - grand, "-")
-  ms_error <- sum(residual^2) / ((n - 1) * (k - 1))
+  # The within-row mean square is used by ICC(1), not ICC(2) or ICC(3).
+  if (!identical(model, "icc2") && !identical(model, "icc3")) {
+    ss_within <- sum((matrix - row_means)^2)
+    ms_within <- ss_within / (n * (k - 1))
+  }
+  # ICC(1) uses ms_row and ms_within only; avoid two full residual matrices.
+  if (!identical(model, "icc1")) {
+    ms_col <- n * sum((col_means - grand)^2) / (k - 1)
+    residual <- matrix - row_means
+    residual <- sweep(residual, 2L, col_means - grand, "-")
+    ms_error <- sum(residual^2) / ((n - 1) * (k - 1))
+  }
 
   value <- switch(
     model,
@@ -270,7 +354,7 @@ interrater_icc_bootstrap_ci <- function(matrix, model, agreement, average, resam
   if (!is.null(seed) && is.finite(seed)) set.seed(as.integer(seed))
   values <- replicate(resamples, {
     rows <- sample.int(n, n, replace = TRUE)
-    interrater_icc_value(matrix[rows, , drop = FALSE], model = model, agreement = agreement, average = average)
+    interrater_icc_complete_value(matrix[rows, , drop = FALSE], model = model, agreement = agreement, average = average)
   })
   values <- values[is.finite(values)]
   if (length(values) < 20) return(c(lower = NA_real_, upper = NA_real_))
@@ -428,6 +512,7 @@ interrater_recommended_tables <- function(overview, measurement, raters, frame, 
 }
 
 prepare_interrater_agreement_results <- function(data, variables, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("variables"))
   variables <- intersect(as.character(variables %||% character(0)), names(data))
   shiny::validate(shiny::need(length(variables) >= 2, "Select at least two rater variables."))
   frame <- interrater_frame(data, variables)

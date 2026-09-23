@@ -311,6 +311,21 @@ data_steps_panel <- function(
     )
   }
 
+  codebook_controls <- function() {
+    div(
+      class = "codebook-controls",
+      fileInput(
+        "codebook_file",
+        statedu_localized_text(language, "Apply coding book", "코딩북 적용"),
+        accept = c(".xlsx", ".xls"),
+        buttonLabel = statedu_localized_text(language, "Choose file", "파일 선택"),
+        placeholder = statedu_localized_text(language, "No coding book selected", "선택된 코딩북 없음"),
+        width = "100%"
+      ),
+      uiOutput("codebook_status")
+    )
+  }
+
   tagList(
     div(
       class = step_class("step1"),
@@ -358,12 +373,14 @@ data_steps_panel <- function(
               "dat_delimiter",
               statedu_t("data.dat_delimiter", language),
               choices = dat_delimiter_choices(language),
-              selected = "whitespace"
+              selected = "whitespace",
+              width = "100%"
             ),
             checkboxInput("dat_has_names", statedu_t("data.dat_first_row_names", language), FALSE)
           )
         }
-      }
+      },
+      if (has_open_data && !isTRUE(has_pending_excel)) codebook_controls()
     ),
     if (has_data) {
       div(

@@ -105,7 +105,7 @@ T0_CLASSIFY <- Sys.time()
   cand
 }
 
-.detect_savedata_structure <- function(savedata, best_k) {
+.detect_savedata_structure <- function(savedata, best_k, expected_prefix_n = NA_integer_) {
   nms <- names(savedata)
 
   # 1) ID 후보
@@ -122,43 +122,27 @@ T0_CLASSIFY <- Sys.time()
 
   # Mplus SAVE = CPROBABILITIES without headers is usually:
   # original USEVARIABLES, posterior probabilities for C#1..C#K,
-  # most-likely class, and sometimes an ID column. Generic V* names
-  # make the early 0/1 indicator columns look like posterior columns,
-  # so resolve the rightmost valid class column first.
+  # most-likely class, and sometimes weight/ID/strata columns. Generic
+  # V* names cannot be resolved by position alone: a later binary strata
+  # column can look like a class variable. Require one unique contiguous
+  # probability block whose rows sum to one and whose argmax agrees with
+  # the immediately following class column.
   generic_names <- length(nms) > 0 && all(grepl("^V[0-9]+$", nms))
   cprob_posterior_cols <- character(0)
+  generic_cprob_ambiguous <- FALSE
   if (isTRUE(generic_names) && ncol(savedata) >= best_k + 1L) {
-    numeric_ok <- vapply(savedata, function(z) {
-      x <- suppressWarnings(as.numeric(as.character(z)))
-      mean(!is.na(x)) > 0.8
-    }, logical(1))
-
-    class_score <- rep(NA_real_, length(nms))
-    for (i in seq_along(nms)) {
-      if (!isTRUE(numeric_ok[i])) next
-      x <- .safe_num(savedata[[nms[i]]])
-      fin <- is.finite(x)
-      if (sum(fin) == 0) next
-      is_int <- abs(x[fin] - round(x[fin])) < 1e-8
-      in_class <- x[fin] %in% seq_len(best_k)
-      class_score[i] <- mean(is_int & in_class)
+    if (!exists("mixture_detect_generic_cprob_block", mode = "function")) {
+      .safe_stop("mixture_detect_generic_cprob_block() is unavailable.")
     }
-
-    class_idx <- which(!is.na(class_score) & class_score > 0.8)
-    if (length(class_idx) > 0) {
-      class_idx <- max(class_idx)
-      cand_idx <- seq.int(class_idx - best_k, class_idx - 1L)
-      if (min(cand_idx) >= 1L && all(numeric_ok[cand_idx])) {
-        post_ok <- vapply(cand_idx, function(i) {
-          x <- .safe_num(savedata[[nms[i]]])
-          fin <- is.finite(x)
-          sum(fin) > 0 && mean(x[fin] >= -1e-8 & x[fin] <= 1 + 1e-8) > 0.8
-        }, logical(1))
-        if (all(post_ok)) {
-          class_col <- nms[class_idx]
-          cprob_posterior_cols <- nms[cand_idx]
-        }
-      }
+    generic_detection <- mixture_detect_generic_cprob_block(
+      savedata,
+      k = best_k,
+      expected_start = suppressWarnings(as.integer(expected_prefix_n[[1L]])) + 1L
+    )
+    generic_cprob_ambiguous <- isTRUE(generic_detection$ambiguous)
+    if (isTRUE(generic_detection$found)) {
+      class_col <- generic_detection$class_col
+      cprob_posterior_cols <- generic_detection$posterior_cols
     }
   }
 
@@ -190,7 +174,7 @@ T0_CLASSIFY <- Sys.time()
   }
 
   # 이름 기반이 없으면 numeric 열에서 0~1 범위로 best_k개 찾기
-  if (length(posterior_cols) < best_k) {
+  if (!isTRUE(generic_names) && length(posterior_cols) < best_k) {
     score <- rep(NA_real_, length(nms))
     for (i in seq_along(nms)) {
       x <- .safe_num(savedata[[nms[i]]])
@@ -210,7 +194,9 @@ T0_CLASSIFY <- Sys.time()
   list(
     id_col = id_col,
     class_col = class_col,
-    posterior_cols = posterior_cols
+    posterior_cols = posterior_cols,
+    ambiguous = generic_cprob_ambiguous,
+    generic_names = generic_names
   )
 }
 
@@ -299,8 +285,20 @@ T0_CLASSIFY <- Sys.time()
   .safe_stop("Failed to read Mplus savedata: ", path)
 }
 
-.attach_class_by_id_or_row <- function(savedata, analysis_df, display_df, best_k, cfg = NULL, survey_bundle = NULL) {
-  det <- .detect_savedata_structure(savedata, best_k = best_k)
+.attach_class_by_id_or_row <- function(savedata, analysis_df, display_df, best_k, cfg = NULL, survey_bundle = NULL, expected_prefix_n = NA_integer_) {
+  det <- .detect_savedata_structure(
+    savedata,
+    best_k = best_k,
+    expected_prefix_n = expected_prefix_n
+  )
+
+  if (isTRUE(det$ambiguous)) {
+    .safe_stop("Multiple plausible CPROB blocks were detected; classification is ambiguous.")
+  }
+  if (best_k > 1L && isTRUE(det$generic_names) &&
+      (is.na(det$class_col) || length(det$posterior_cols) != best_k)) {
+    .safe_stop("Could not verify a unique posterior-probability and class block in Mplus CPROB data.")
+  }
 
   .safe_msg("INFO", "Detected id_col         = ", det$id_col %||% "NULL")
   .safe_msg("INFO", "Detected class_col      = ", det$class_col %||% "NULL")
@@ -308,7 +306,14 @@ T0_CLASSIFY <- Sys.time()
 
   cls_df <- NULL
 
-  if (!is.na(det$class_col) && nzchar(det$class_col)) {
+  if (best_k == 1L) {
+    cls_df <- data.frame(
+      class_num = rep.int(1L, nrow(savedata)),
+      max_posterior = rep.int(1, nrow(savedata)),
+      post_class1 = rep.int(1, nrow(savedata)),
+      stringsAsFactors = FALSE
+    )
+  } else if (!is.na(det$class_col) && nzchar(det$class_col)) {
     cls_df <- data.frame(
       class_num = .safe_int(savedata[[det$class_col]]),
       stringsAsFactors = FALSE
@@ -347,22 +352,20 @@ T0_CLASSIFY <- Sys.time()
 
   analysis_id_col <- .find_analysis_id(analysis_df, cfg = cfg, survey_bundle = survey_bundle)
   analysis_id_ok  <- !is.na(analysis_id_col) && nzchar(analysis_id_col) && .is_unique_id(analysis_df[[analysis_id_col]])
+  display_id_col <- if (!is.na(analysis_id_col) && analysis_id_col %in% names(display_df)) {
+    analysis_id_col
+  } else {
+    .find_analysis_id(display_df, cfg = cfg, survey_bundle = survey_bundle)
+  }
+  display_id_ok <- !is.na(display_id_col) && nzchar(display_id_col) && .is_unique_id(display_df[[display_id_col]])
 
   # A. ID merge
-  if (isTRUE(savedata_id_ok) && isTRUE(analysis_id_ok)) {
+  if (isTRUE(savedata_id_ok) && isTRUE(analysis_id_ok) && isTRUE(display_id_ok)) {
     .safe_msg("INFO", "Using ID-based merge: savedata(", det$id_col, ") <-> analysis(", analysis_id_col, ")")
 
     cls_df$.merge_id <- .norm_chr(savedata[[det$id_col]])
     analysis_df$.merge_id <- .norm_chr(analysis_df[[analysis_id_col]])
-    display_df$.merge_id  <- .norm_chr(display_df[[analysis_id_col %||% names(display_df)[1]]])
-
-    # display_df의 id 열이 analysis와 다를 수 있어 보정
-    if (!(analysis_id_col %in% names(display_df))) {
-      disp_id_col <- .find_analysis_id(display_df, cfg = cfg, survey_bundle = survey_bundle)
-      if (!is.na(disp_id_col) && nzchar(disp_id_col)) {
-        display_df$.merge_id <- .norm_chr(display_df[[disp_id_col]])
-      }
-    }
+    display_df$.merge_id  <- .norm_chr(display_df[[display_id_col]])
 
     cls_keep <- unique(c(".merge_id", "class_num", "class", "class_label", "max_posterior",
                          paste0("post_class", seq_len(best_k))))
@@ -389,9 +392,8 @@ T0_CLASSIFY <- Sys.time()
       analysis_out$.row_order <- NULL
 
       # display도 자신의 id 순서 복원
-      disp_id_col <- if (analysis_id_col %in% names(display_df)) analysis_id_col else .find_analysis_id(display_df, cfg = cfg, survey_bundle = survey_bundle)
-      if (!is.na(disp_id_col) && nzchar(disp_id_col)) {
-        display_out$.row_order <- match(display_out$.merge_id, .norm_chr(display_df[[disp_id_col]]))
+      if (!is.na(display_id_col) && nzchar(display_id_col)) {
+        display_out$.row_order <- match(display_out$.merge_id, .norm_chr(display_df[[display_id_col]]))
         display_out <- display_out[order(display_out$.row_order), , drop = FALSE]
         display_out$.row_order <- NULL
       }
@@ -567,26 +569,45 @@ tryCatch({
   # ----------------------------------------------------------
   cprob_path <- NA_character_
 
-  if (is.data.frame(ESTIMATION_REGISTRY) && nrow(ESTIMATION_REGISTRY) > 0) {
-    tag_col <- .pick_col(names(ESTIMATION_REGISTRY), c("^model_tag$", "^tag$", "best_tag"))
-    path_col <- .pick_col(names(ESTIMATION_REGISTRY), c("savedata_file$", "cprob", "savedata"))
-    if (!is.na(tag_col) && !is.na(path_col)) {
-      hit <- ESTIMATION_REGISTRY[ESTIMATION_REGISTRY[[tag_col]] == BEST_TAG, , drop = FALSE]
-      if (nrow(hit) > 0) {
-        cprob_path <- as.character(hit[[path_col]][1])
-      }
-    }
+  if (!is.data.frame(ESTIMATION_REGISTRY) || nrow(ESTIMATION_REGISTRY) == 0L) {
+    .safe_stop("Classification registry is unavailable; the selected model's CPROB file cannot be verified.")
+  }
+  tag_col <- .pick_col(names(ESTIMATION_REGISTRY), c("^model_tag$", "^tag$", "best_tag"))
+  path_col <- .pick_col(names(ESTIMATION_REGISTRY), c("^cprob_file$", "^savedata_file$", "savedata"))
+  if (is.na(tag_col) || is.na(path_col)) {
+    .safe_stop("Classification registry is missing the exact model tag or CPROB path column.")
   }
 
-  if (.is_blank_scalar(cprob_path) || !file.exists(cprob_path)) {
-    # fallback: model_structure를 이용한 전형적 경로
-    maybe <- file.path(get0("DIR_MPLUS_SAVEDATA", ifnotfound = file.path(get0("DIR_MPLUS", ifnotfound = "."), "savedata")),
-                       paste0(BEST_MODEL_STRUCTURE, "_cprob_k", BEST_K, ".dat"))
-    if (file.exists(maybe)) cprob_path <- maybe
+  hit <- ESTIMATION_REGISTRY[
+    !is.na(ESTIMATION_REGISTRY[[tag_col]]) & ESTIMATION_REGISTRY[[tag_col]] == BEST_TAG,
+    , drop = FALSE
+  ]
+  if (nrow(hit) != 1L) {
+    .safe_stop("Expected exactly one classification registry row for BEST_TAG: ", BEST_TAG)
   }
+
+  cprob_verified <- if ("cprob_ready" %in% names(hit)) {
+    isTRUE(hit$cprob_ready[[1L]])
+  } else if (all(c("cprob_fresh", "status_ok") %in% names(hit))) {
+    isTRUE(hit$cprob_fresh[[1L]]) && isTRUE(hit$status_ok[[1L]])
+  } else {
+    FALSE
+  }
+  if (!cprob_verified) {
+    .safe_stop("The selected model's classification file is missing, stale, or came from a failed run: ", BEST_TAG)
+  }
+  cprob_path <- as.character(hit[[path_col]][[1L]])
 
   if (.is_blank_scalar(cprob_path) || !file.exists(cprob_path)) {
     .safe_stop("CPROB PATH not found for BEST_TAG: ", BEST_TAG)
+  }
+  if (!mixture_file_signature_matches(
+    cprob_path,
+    expected_size = hit$cprob_size,
+    expected_mtime = hit$cprob_mtime,
+    expected_md5 = hit$cprob_md5
+  )) {
+    .safe_stop("The selected model's CPROB file changed after estimation and cannot be trusted: ", BEST_TAG)
   }
 
   .safe_msg("INFO", "CPROB PATH           = ", cprob_path)
@@ -602,6 +623,22 @@ tryCatch({
   .safe_msg("INFO", "Savedata loaded: nrow=", nrow(savedata), ", ncol=", ncol(savedata))
   .safe_msg("INFO", "Savedata columns: ", paste(names(savedata), collapse = ", "))
 
+  registry_usevariables <- character(0)
+  if ("usevariables" %in% names(hit)) {
+    use_cell <- hit[["usevariables"]]
+    registry_usevariables <- if (is.list(use_cell)) {
+      as.character(unlist(use_cell[[1L]], use.names = FALSE))
+    } else {
+      as.character(use_cell[[1L]])
+    }
+  }
+  registry_usevariables <- unique(trimws(registry_usevariables))
+  registry_usevariables <- registry_usevariables[!is.na(registry_usevariables) & nzchar(registry_usevariables)]
+  expected_prefix_n <- length(registry_usevariables)
+  if (BEST_K > 1L && expected_prefix_n < 1L) {
+    .safe_stop("The selected model registry does not contain USEVARIABLES; CPROB column positions cannot be verified.")
+  }
+
   # ----------------------------------------------------------
   # 4. attach classes
   # ----------------------------------------------------------
@@ -611,7 +648,8 @@ tryCatch({
     display_df    = DISPLAY_DATA,
     best_k        = BEST_K,
     cfg           = CFG,
-    survey_bundle = SURVEY_BUNDLE
+    survey_bundle = SURVEY_BUNDLE,
+    expected_prefix_n = expected_prefix_n
   )
 
   ANALYSIS_DATA_CLASSIFIED  <- attach_res$analysis

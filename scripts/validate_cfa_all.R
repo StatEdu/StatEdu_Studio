@@ -1,0 +1,25 @@
+if (.Platform$OS.type == "windows" && !isTRUE(l10n_info()[["UTF-8"]])) {
+  validation_locale <- Sys.setlocale("LC_ALL", "Korean_Korea.utf8")
+  if (is.na(validation_locale) || !isTRUE(l10n_info()[["UTF-8"]])) {
+    stop("CFA validation requires a Windows UTF-8 locale; Korean_Korea.utf8 could not be activated.")
+  }
+}
+
+scripts <- c(
+  "validate_cfa_canvas.R",
+  "validate_cfa_bootstrap.R",
+  "validate_cfa_identification.R",
+  "validate_cfa_invariance.R",
+  "validate_cfa_mi_holdout.R",
+  "validate_cfa_ordinal.R",
+  "validate_cfa_ui.R",
+  "validate_cfa_reporting_exports.R",
+  "validate_cfa_external_references.R"
+)
+
+for (script in scripts) {
+  message("Running ", script, "...")
+  source(file.path("scripts", script), encoding = "UTF-8")
+}
+
+cat("All CFA validations passed.\n")

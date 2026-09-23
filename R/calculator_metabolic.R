@@ -31,9 +31,13 @@ metabolic_reference_sets <- function() {
   )
 }
 
-metabolic_reference_set_choices <- function() {
+metabolic_reference_set_choices <- function(language = statedu_initial_language()) {
   sets <- metabolic_reference_sets()
-  stats::setNames(names(sets), vapply(sets, function(set) set$label, character(1)))
+  labels <- vapply(sets, function(set) set$label, character(1))
+  labels['korea_asian'] <- statedu_t('calculator.reference.korea_asian', language, labels['korea_asian'])
+  labels['japan'] <- statedu_t('calculator.country.JP', language, labels['japan'])
+  labels['custom'] <- statedu_t('calculator.reference.custom', language, labels['custom'])
+  stats::setNames(names(sets), labels)
 }
 
 metabolic_reference_set_id <- function(input) {
@@ -230,53 +234,52 @@ metabolic_calculator_tab_panel <- function(language = statedu_initial_language()
 metabolic_item_select_control <- function(id, label, choices, selected = "", language = statedu_initial_language()) {
   selectInput(
     paste0("metabolic_", id),
-    label,
+    calculator_field_label(label, language),
     choices = c(stats::setNames("", statedu_ui_label("select_variable", language)), choices),
     selected = selected,
     width = "100%"
   )
 }
 
-metabolic_loaded_message_text <- function(file = NULL, data = NULL) {
-  if (is.null(file)) {
-    return("No data file is open.")
-  }
-  sprintf("Loaded %s: %s variables, %s rows.", file$name, ncol(data), nrow(data))
+metabolic_loaded_message_text <- function(file = NULL, data = NULL, language = statedu_initial_language()) {
+  hint8_loaded_message_text(file, data, language)
 }
 
-metabolic_reference_table <- function(input) {
+metabolic_reference_table <- function(input, language = statedu_initial_language()) {
   refs <- metabolic_reference_inputs(input)
   diagnosis <- metabolic_diagnosis_method(input)
+  tr <- function(key) statedu_t(paste0("calculator.reference.", key), language)
   diagnosis_text <- if (identical(diagnosis, "japan")) {
-    HTML("WC criterion required<br>and 2+ of glucose/BP/lipid")
+    tr("japan_rule")
   } else {
-    HTML("metabolic_syndrome = 1<br>when metabolic_count >= 3")
+    tr("count_rule")
   }
   rows <- list(
-    c("Waist circumference", sprintf("Male >= %s, Female >= %s", refs[["wc_m"]], refs[["wc_f"]])),
-    c("Glucose", sprintf(">= %s or treated for diabetes", refs[["glu"]])),
-    c("Blood pressure", HTML(sprintf("SBP >= %s or DBP >= %s<br>or treated for hypertension", refs[["sbp"]], refs[["dbp"]]))),
-    c("HDL-C", sprintf("Male < %s, Female < %s", refs[["hdlc_m"]], refs[["hdlc_f"]])),
-    c("Triglycerides", sprintf(">= %s", refs[["tg"]])),
-    c("Diagnosis", diagnosis_text)
+    c(calculator_field_label("Waist circumference", language), sprintf(tr("waist_rule"), refs[["wc_m"]], refs[["wc_f"]])),
+    c(calculator_field_label("Glucose", language), sprintf(tr("glucose_rule"), refs[["glu"]])),
+    c(tr("blood_pressure"), sprintf(tr("pressure_rule"), refs[["sbp"]], refs[["dbp"]])),
+    c("HDL-C", sprintf(tr("hdl_rule"), refs[["hdlc_m"]], refs[["hdlc_f"]])),
+    c(calculator_field_label("Triglycerides", language), sprintf(">= %s", refs[["tg"]])),
+    c(tr("diagnosis"), diagnosis_text)
   )
   tags$table(
     class = "hint8-initial-table metabolic-reference-table",
-    tags$thead(tags$tr(tags$th("Criterion"), tags$th("Default"))),
-    tags$tbody(lapply(rows, function(row) tags$tr(tags$td(row[[1]]), tags$td(HTML(as.character(row[[2]]))))))
+    tags$thead(tags$tr(tags$th(tr("criterion")), tags$th(tr("default")))),
+    tags$tbody(lapply(rows, function(row) tags$tr(tags$td(row[[1]]), tags$td(HTML(gsub("\n", "<br>", htmltools::htmlEscape(row[[2]]), fixed = TRUE))))))
   )
 }
 
-metabolic_reference_controls <- function(input) {
+metabolic_reference_controls <- function(input, language = statedu_initial_language()) {
   defaults <- metabolic_reference_set_defaults(input)
+  sex_label <- function(metric, sex) paste(metric, statedu_t(paste0("calculator.reference.", sex), language))
   tagList(
-    numericInput("metabolic_ref_wc_m", "WC male", value = input$metabolic_ref_wc_m %||% defaults$wc_m, min = 0, width = "100%"),
-    numericInput("metabolic_ref_wc_f", "WC female", value = input$metabolic_ref_wc_f %||% defaults$wc_f, min = 0, width = "100%"),
-    numericInput("metabolic_ref_glu", "Glucose", value = input$metabolic_ref_glu %||% defaults$glu, min = 0, width = "100%"),
+    numericInput("metabolic_ref_wc_m", sex_label("WC", "male"), value = input$metabolic_ref_wc_m %||% defaults$wc_m, min = 0, width = "100%"),
+    numericInput("metabolic_ref_wc_f", sex_label("WC", "female"), value = input$metabolic_ref_wc_f %||% defaults$wc_f, min = 0, width = "100%"),
+    numericInput("metabolic_ref_glu", calculator_field_label("Glucose", language), value = input$metabolic_ref_glu %||% defaults$glu, min = 0, width = "100%"),
     numericInput("metabolic_ref_sbp", "SBP", value = input$metabolic_ref_sbp %||% defaults$sbp, min = 0, width = "100%"),
     numericInput("metabolic_ref_dbp", "DBP", value = input$metabolic_ref_dbp %||% defaults$dbp, min = 0, width = "100%"),
-    numericInput("metabolic_ref_hdlc_m", "HDL-C male", value = input$metabolic_ref_hdlc_m %||% defaults$hdlc_m, min = 0, width = "100%"),
-    numericInput("metabolic_ref_hdlc_f", "HDL-C female", value = input$metabolic_ref_hdlc_f %||% defaults$hdlc_f, min = 0, width = "100%"),
+    numericInput("metabolic_ref_hdlc_m", sex_label("HDL-C", "male"), value = input$metabolic_ref_hdlc_m %||% defaults$hdlc_m, min = 0, width = "100%"),
+    numericInput("metabolic_ref_hdlc_f", sex_label("HDL-C", "female"), value = input$metabolic_ref_hdlc_f %||% defaults$hdlc_f, min = 0, width = "100%"),
     numericInput("metabolic_ref_tg", "TG", value = input$metabolic_ref_tg %||% defaults$tg, min = 0, width = "100%")
   )
 }
@@ -307,30 +310,31 @@ metabolic_reference_set_control <- function(input, language = statedu_initial_la
     selectInput(
       "metabolic_reference_set",
       statedu_ui_label("criteria_population", language),
-      choices = metabolic_reference_set_choices(),
+      choices = metabolic_reference_set_choices(language),
       selected = metabolic_reference_set_id(input),
       width = "100%"
     )
   )
 }
 
-metabolic_coding_table <- function() {
+metabolic_coding_table <- function(language = statedu_initial_language()) {
+  tr <- function(label) calculator_field_label(label, language)
   tags$table(
     class = "hint8-initial-table metabolic-reference-table metabolic-coding-table",
     tags$tbody(
-      tags$tr(tags$td("Sex"), tags$td("Male = 1, Female = 2")),
-      tags$tr(tags$td("Diabetes treatment"), tags$td("Yes = 1, No = 0")),
-      tags$tr(tags$td("Hypertension treatment"), tags$td("Yes = 1, No = 0"))
+      tags$tr(tags$td(tr("Sex")), tags$td(tr("Male = 1, Female = 2"))),
+      tags$tr(tags$td(tr("Diabetes treatment")), tags$td(tr("Yes = 1, No = 0"))),
+      tags$tr(tags$td(tr("Hypertension treatment")), tags$td(tr("Yes = 1, No = 0")))
     )
   )
 }
 
-metabolic_output_table <- function() {
+metabolic_output_table <- function(language = statedu_initial_language()) {
   tags$table(
     class = "hint8-initial-table metabolic-reference-table metabolic-output-table",
     tags$tbody(
-      tags$tr(tags$td("Criteria count"), tags$td("metabolic_count")),
-      tags$tr(tags$td("Diagnosis"), tags$td("metabolic_syndrome"))
+      tags$tr(tags$td(statedu_t("calculator.reference.criteria_count", language)), tags$td("metabolic_count")),
+      tags$tr(tags$td(statedu_t("calculator.reference.diagnosis", language)), tags$td("metabolic_syndrome"))
     )
   )
 }
@@ -373,13 +377,13 @@ metabolic_calculator_setup_ui <- function(file, data, variable_info, input, sele
       div(
         class = if (identical(metabolic_reference_set_id(input), "custom")) "metabolic-reference-custom" else "metabolic-reference-hidden",
         div(class = "analysis-option-title", statedu_ui_label("reference_cutoffs", language)),
-        div(class = "metabolic-reference-grid", metabolic_reference_controls(input))
+        div(class = "metabolic-reference-grid", metabolic_reference_controls(input, language))
       ),
-      if (!identical(metabolic_reference_set_id(input), "custom")) metabolic_reference_table(input),
+      if (!identical(metabolic_reference_set_id(input), "custom")) metabolic_reference_table(input, language),
       div(class = "analysis-option-title metabolic-coding-title", statedu_ui_label("coding", language)),
-      metabolic_coding_table(),
+      metabolic_coding_table(language),
       div(class = "analysis-option-title metabolic-output-title", statedu_ui_label("output", language)),
-      metabolic_output_table()
+      metabolic_output_table(language)
     )
   )
 }
@@ -398,7 +402,7 @@ register_metabolic_calculator_handlers <- function(
   output$metabolic_loaded_message <- renderText({
     statedu_current_language(language_fn)
     file <- current_data_file_fn()
-    metabolic_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn())
+    metabolic_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn(), language = statedu_current_language(language_fn))
   })
 
   output$metabolic_calculator_setup <- renderUI({
@@ -442,14 +446,14 @@ register_metabolic_calculator_handlers <- function(
         result_data
       },
       error = function(error) {
-        showNotification(conditionMessage(error), type = "warning", duration = 6)
+        showNotification(calculator_error_text(error, language), type = "warning", duration = 6)
         NULL
       }
     )
   }, ignoreInit = TRUE)
 
   output$metabolic_calculator_summary <- renderUI({
-    statedu_current_language(language_fn)
+    language <- statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) {
       return(NULL)
@@ -458,7 +462,7 @@ register_metabolic_calculator_handlers <- function(
     div(
       class = "empty-message",
       div(sprintf(
-        "Calculated metabolic_count and metabolic_syndrome for %s rows. Metabolic syndrome: %s. Missing diagnosis: %s. The variables are available in analysis menus.",
+        statedu_t("calculator.status.metabolic", language),
         nrow(data),
         sum(g == 1, na.rm = TRUE),
         sum(is.na(g))
@@ -467,6 +471,7 @@ register_metabolic_calculator_handlers <- function(
   })
 
   output$metabolic_calculator_preview <- DT::renderDT({
+    language <- statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) {
       return(NULL)
@@ -477,7 +482,7 @@ register_metabolic_calculator_handlers <- function(
       utils::head(data[, preview_names, drop = FALSE], 50),
       rownames = FALSE,
       filter = "top",
-      options = list(pageLength = 10, scrollX = TRUE)
+      options = with_datatable_language(list(pageLength = 10, scrollX = TRUE), language)
     )
   })
 

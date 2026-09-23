@@ -24,6 +24,13 @@ eq5d_value_set_catalog <- function(type = "5L") {
   )
 }
 
+eq5d_value_set_choices <- function(type = "5L", language = statedu_initial_language()) {
+  choices <- eq5d_value_set_catalog(type)
+  names(choices) <- vapply(seq_along(choices), function(i)
+    statedu_t(paste0("calculator.country.", choices[[i]]), language, names(choices)[i]), character(1))
+  choices
+}
+
 eq5d_normalized_value_set <- function(type = "5L", value_set = "KR") {
   choices <- unname(eq5d_value_set_catalog(type))
   value_set <- toupper(as.character(value_set %||% "KR"))
@@ -614,15 +621,15 @@ eq5d_calculator_tab_panel <- function(language = statedu_initial_language()) {
   )
 }
 
-eq5d_reference_table <- function(type = "5L", value_set = "KR") {
+eq5d_reference_table <- function(type = "5L", value_set = "KR", language = statedu_initial_language()) {
   reference <- eq5d_reference_values(type, value_set)
   if (identical(reference$model, "canada_linear")) {
     return(tags$table(
       class = "hint8-initial-table eq5d-initial-table",
       tags$thead(tags$tr(
         tags$th(""),
-        tags$th("slope"),
-        tags$th("level 4/5")
+        tags$th(statedu_t("calculator.reference.slope", language)),
+        tags$th(statedu_t("calculator.reference.level45", language))
       )),
       tags$tbody(
         lapply(names(reference$slopes), function(dimension) {
@@ -633,7 +640,7 @@ eq5d_reference_table <- function(type = "5L", value_set = "KR") {
           )
         }),
         tags$tr(
-          tags$td("Intercept", class = "eq5d-dimension-label"),
+          tags$td(statedu_t("calculator.reference.intercept", language), class = "eq5d-dimension-label"),
           tags$td(sprintf("%.4f", reference$intercept), colspan = 2)
         ),
         tags$tr(
@@ -661,7 +668,7 @@ eq5d_reference_table <- function(type = "5L", value_set = "KR") {
         )
       }),
       tags$tr(
-        tags$td(if (isTRUE(reference$conditional_constant)) "constant*" else "constant", class = "eq5d-dimension-label"),
+        tags$td(paste0(statedu_t("calculator.reference.constant", language), if (isTRUE(reference$conditional_constant)) "*" else ""), class = "eq5d-dimension-label"),
         tags$td(sprintf("%.3f", reference$constant), colspan = length(levels))
       ),
       tags$tr(
@@ -699,7 +706,7 @@ eq5d_setup_ui <- function(file, data, variable_info, input, selected_names = NUL
   available_items <- analysis_variable_items(choices, variable_info, character(0))
   specs <- eq5d_item_specs()
   selected_type <- if (identical(input$eq5d_type, "3L")) "3L" else "5L"
-  value_set_choices <- eq5d_value_set_catalog(selected_type)
+  value_set_choices <- eq5d_value_set_choices(selected_type, language)
   selected_value_set <- eq5d_normalized_value_set(selected_type, input$eq5d_value_set %||% "KR")
   reference <- eq5d_reference_values(selected_type, selected_value_set)
   profile_as_one <- isTRUE(input$eq5d_profile_11111_as_one %||% TRUE)
@@ -728,6 +735,8 @@ eq5d_setup_ui <- function(file, data, variable_info, input, selected_names = NUL
     div(
       class = "analysis-options-column analysis-options-panel metabolic-reference-panel eq5d-initial-panel calculator-tabbed-panel",
       tabsetPanel(
+        id = "eq5d_options_tab",
+        selected = isolate(input$eq5d_options_tab) %||% "eq5d_settings_tab",
         type = "tabs",
         tabPanel(
           statedu_t("ui.settings", language),
@@ -748,7 +757,7 @@ eq5d_setup_ui <- function(file, data, variable_info, input, selected_names = NUL
             ),
             checkboxInput(
               "eq5d_profile_11111_as_one",
-              "profile 11111 -> EQ5D = 1.0",
+              sprintf(statedu_t("calculator.reference.profile", language), "11111", "EQ5D"),
               value = profile_as_one
             )
           )
@@ -759,7 +768,7 @@ eq5d_setup_ui <- function(file, data, variable_info, input, selected_names = NUL
           div(
             class = "calculator-reference-tab",
             div(sprintf("%s: %s", statedu_ui_label("value_set", language), reference$label), class = "eq5d-value-set-label"),
-            eq5d_reference_table(selected_type, selected_value_set)
+            eq5d_reference_table(selected_type, selected_value_set, language)
           )
         ),
         tabPanel(
@@ -779,7 +788,7 @@ register_eq5d_calculator_handlers <- function(input, output, session, dataset_fn
   output$eq5d_loaded_message <- renderText({
     statedu_current_language(language_fn)
     file <- current_data_file_fn()
-    hint8_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn())
+    hint8_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn(), language = statedu_current_language(language_fn))
   })
   output$eq5d_calculator_setup <- renderUI({
     language <- statedu_current_language(language_fn)
@@ -819,23 +828,24 @@ register_eq5d_calculator_handlers <- function(input, output, session, dataset_fn
       showNotification(sprintf(statedu_t("calculator.variable_added", language), output_name), type = "message", duration = 5)
       result_data
     }, error = function(error) {
-      showNotification(conditionMessage(error), type = "warning", duration = 6)
+      showNotification(calculator_error_text(error, language), type = "warning", duration = 6)
       NULL
     })
   }, ignoreInit = TRUE)
   output$eq5d_calculator_summary <- renderUI({
-    statedu_current_language(language_fn)
+    language <- statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) return(NULL)
     output_name <- eq5d_output_variable_name(input)
-    div(class = "empty-message", div(sprintf("Calculated %s for %s rows. The variable is available in analysis menus.", output_name, nrow(data))))
+    div(class = "empty-message", div(sprintf(statedu_t("calculator.status.variable", language), output_name, nrow(data))))
   })
   output$eq5d_calculator_preview <- DT::renderDT({
+    language <- statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) return(NULL)
     selected <- eq5d_selected_variables(input)
     preview_names <- intersect(c(selected, eq5d_output_variable_name(input)), names(data))
-    DT::datatable(utils::head(data[, preview_names, drop = FALSE], 50), rownames = FALSE, filter = "top", options = list(pageLength = 10, scrollX = TRUE))
+    DT::datatable(utils::head(data[, preview_names, drop = FALSE], 50), rownames = FALSE, filter = "top", options = with_datatable_language(list(pageLength = 10, scrollX = TRUE), language))
   })
   output$download_eq5d_calculator <- downloadHandler(
     filename = function() paste0("StatEdu_Studio_eq5d_", format(Sys.Date(), "%Y%m%d"), ".csv"),

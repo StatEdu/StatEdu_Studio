@@ -4,10 +4,9 @@
 
 statedu_translation_table <- local({
   cache <- NULL
-  function() {
-    if (!is.null(cache)) {
-      return(cache)
-    }
+  # Initialize once as an expression, keeping the frequently called cache
+  # accessor small without changing the application's JIT setting.
+  initialize <- quote({
     h <- statedu_utf8
     row <- function(en, ko = en, ...) c(en = en, ko = ko, ...)
     cache <<- list(
@@ -27,7 +26,7 @@ statedu_translation_table <- local({
       doc_method_notes_title = row("Method Notes", "\uBC29\uBC95\uB860 \uB178\uD2B8"),
       doc_method_notes_subtitle = row("Provides notes on method selection, assumptions, warnings, and interpretation.", "\uBD84\uC11D \uBC29\uBC95 \uC120\uD0DD, \uAC00\uC815, \uACBD\uACE0, \uACB0\uACFC \uD574\uC11D\uC5D0 \uB300\uD55C \uB178\uD2B8\uB97C \uC81C\uACF5\uD569\uB2C8\uB2E4."),
       doc_validation_title = row("Validation", "\uAC80\uC99D"),
-      doc_validation_subtitle = row("Provides reference comparisons for public 1.2 calculations and automatic decision paths.", "\uACF5\uAC1C 1.2 \uACC4\uC0B0\uACFC \uC790\uB3D9 \uD310\uB2E8 \uACBD\uB85C\uC758 \uAE30\uC900 \uBE44\uAD50\uB97C \uC81C\uACF5\uD569\uB2C8\uB2E4."),
+      doc_validation_subtitle = row("Provides R-reference and cross-software validation results.", "R \uAE30\uC900\uACFC \uC678\uBD80 \uD504\uB85C\uADF8\uB7A8 \uAD50\uCC28\uAC80\uC99D \uACB0\uACFC\uB97C \uC81C\uACF5\uD569\uB2C8\uB2E4."),
       doc_version_history_title = row("Version History", "\uBC84\uC804 \uAE30\uB85D"),
       doc_version_history_subtitle = row("Provides release notes and version history.", "\uB9B4\uB9AC\uC2A4 \uB178\uD2B8\uC640 \uBC84\uC804 \uAE30\uB85D\uC744 \uC81C\uACF5\uD569\uB2C8\uB2E4."),
 
@@ -115,8 +114,8 @@ statedu_translation_table <- local({
       data.check_variables_note = row("Check variables to keep, then apply the selection.", h("ec82acec9aa9ed95a020ebb380ec8898eba5bc20ecb2b4ed81aced959c20eb92a420ec84a0ed839dec9d8420eca081ec9aa9ed9598ec84b8ec9a942e")),
       data.set_selected_type_to = row("Set selected variable type to", h("ec84a0ed839d20ebb380ec889820ec9ca0ed989520ec9dbceab48420eca780eca095")),
       data.apply_type = row("Apply type", h("ec9ca0ed989520eca081ec9aa9")),
-      data.apply_variable_selection = row("Apply variable selection", h("ebb380ec889820ec84a0ed839d20eca081ec9aa9")),
-      data.apply_all_variable_selection = row("Select all variables in loaded file", "\ubd88\ub7ec\uc628 \ud30c\uc77c\uc758 \ubaa8\ub4e0 \ubcc0\uc218 \uc120\ud0dd"),
+      data.apply_variable_selection = row("Apply selection", h("ebb380ec889820ec84a0ed839d20eca081ec9aa9")),
+      data.apply_all_variable_selection = row("Select all loaded variables", "\ubd88\ub7ec\uc628 \ud30c\uc77c\uc758 \ubaa8\ub4e0 \ubcc0\uc218 \uc120\ud0dd"),
       data.select_variables_first = row("Select variables first.", h("eba8bceca08020ebb380ec8898eba5bc20ec84a0ed839ded9598ec84b8ec9a942e")),
       data.select_variables_before_type = row("Select variables before applying a variable type.", h("ebb380ec889820ec9ca0ed9895ec9d8420eca081ec9aa9ed9598eab8b020eca084ec979020ebb380ec8898eba5bc20ec84a0ed839ded9598ec84b8ec9a942e")),
       data.changed_selected_variable_types = row("Changed %s selected variable type(s) to %s.", h("ec84a0ed839deb909c20ebb380ec8898202573eab09cec9d9820ec9ca0ed9895ec9d8420257328ec9cbc29eba19c20ebb380eab2bded9688ec8ab5eb8b88eb8ba42e")),
@@ -152,9 +151,13 @@ statedu_translation_table <- local({
       ui.ttest_anova = row("t-test / ANOVA", "t-test / ANOVA"),
       ui.paired = row("Paired test", h("eb8c80ec9d91ed919cebb3b820eab280eca095")),
       ui.ancova = row("ANCOVA", "ANCOVA"),
+      ui.one_group_rm_anova = row(
+        "Within-subject treatment repeated-measures ANOVA",
+        "\uB3D9\uC77C \uB300\uC0C1 \uB0B4 \uCC98\uCE58 \uBC18\uBCF5\uCE21\uC815 \uBD84\uC0B0\uBD84\uC11D"
+      ),
       ui.mixed_rm_anova = row(
-        "Repeated-measures ANOVA",
-        "반복측정 분산분석",
+        "Mixed-design repeated-measures ANOVA",
+        "\uD63C\uD569\uC124\uACC4 \uBC18\uBCF5\uCE21\uC815 \uBD84\uC0B0\uBD84\uC11D",
         ja = "反復測定 ANOVA",
         zh = "重复测量 ANOVA",
         es = "ANOVA de medidas repetidas",
@@ -322,8 +325,8 @@ statedu_translation_table <- local({
       latent.workflow = row("Workflow", h("ec9e91ec978520ed9d90eba684")),
 
       analysis.mediation_moderation = row("Mediation / Moderation", h("eba7a4eab09c2deca1b0eca088")),
-      analysis.custom_model_canvas = c(en = "Mediation / Moderation Custom Model", ko = h("eba7a4eab09cc2b7eca1b0eca08820ec82acec9aa9ec9e9020eca095ec9d9820ebaaa8eb8db8"), ja = "\u5a92\u4ecb\u30fb\u8abf\u6574\u30ab\u30b9\u30bf\u30e0\u30e2\u30c7\u30eb"),
-      custom_model_canvas.title = c(en = "Mediation / Moderation Custom Model", ko = h("eba7a4eab09cc2b7eca1b0eca08820ec82acec9aa9ec9e9020eca095ec9d9820ebaaa8eb8db8"), ja = "\u5a92\u4ecb\u30fb\u8abf\u6574\u30ab\u30b9\u30bf\u30e0\u30e2\u30c7\u30eb"),
+      analysis.custom_model_canvas = c(en = "Mediation / Moderation Effects", ko = "매개·조절효과", ja = "媒介・調整効果"),
+      custom_model_canvas.title = c(en = "Mediation / Moderation Effects", ko = "매개·조절효과", ja = "媒介・調整効果"),
       custom_model_canvas.landscape = row("Landscape", "\uAC00\uB85C"),
       custom_model_canvas.portrait = row("Portrait", "\uC138\uB85C"),
       custom_model_canvas.color_custom = row("Custom", "\uC0AC\uC6A9\uC790 \uC9C0\uC815"),
@@ -637,6 +640,7 @@ statedu_translation_table <- local({
       analysis.ui.block_1 = row("Block 1", h("ebb894eba19d2031")),
       analysis.ui.block_2_independent_variables = row("Block 2: Independent variables", h("ebb894eba19d20323a20eb8f85eba6bdebb380ec8898")),
       analysis.ui.block_3_independent_variables = row("Block 3: Independent variables", h("ebb894eba19d20333a20eb8f85eba6bdebb380ec8898")),
+      analysis.ui.block_4_independent_variables = row("Block 4: Independent variables", h("ebb894eba19d20343a20eb8f85eba6bdebb380ec8898")),
       analysis.ui.previous_block = row("Previous block", h("ec9db4eca08420ebb894eba19d")),
       analysis.ui.next_block = row("Next block", h("eb8ba4ec9d8c20ebb894eba19d")),
       analysis.ui.bootstrap = row("Bootstrap", h("ebb680ed8ab8ec8aa4ed8ab8eb9ea9")),
@@ -1246,7 +1250,7 @@ statedu_translation_table <- local({
       sample_size.label.stepped_wedge_cluster_trial = row("Stepped-wedge cluster trial", h("eab384eb8ba8ed989520eab5b0eca79120ec8b9ced9798")),
       sample_size.label.close_fit_test_detect_poor_fit = row("Close fit test (detect poor fit)", h("ebb080eca09120eca081ed95a920eab280eca095")),
       sample_size.label.not_close_fit_test_support_close_fit = row("Not-close-fit test (support close fit)", h("ebb984ebb080eca09120eca081ed95a920eab280eca095")),
-      sample_size.label.parameter_level_monte_carlo = row("Parameter-level Monte Carlo", h("ebaaa8ec889820ec8898eca480204d6f6e7465204361726c6f")),
+      sample_size.label.parameter_level_monte_carlo = row("Approximate parameter power simulation", h("eab7bcec82ac20ebaaa8ec889820eab280eca095eba0a520ec8b9cebaeaceba088ec9db4ec8598")),
       sample_size.label.model_complexity_heuristic = row("Model complexity heuristic", h("ebaaa8ed989520ebb3b5ec9ea1eb8f8420ed9cb4eba6acec8aa4ed8bb1")),
       sample_size.label.standardized_loading = row("Standardized loading", h("ed919ceca480ed999420ec9a94ec9db8ebb680ed9598")),
       sample_size.label.standardized_path = row("Standardized path", h("ed919ceca480ed999420eab2bdeba19c")),
@@ -1396,7 +1400,7 @@ statedu_translation_table <- local({
       analysis.subtitle_frequencies = row("Move variables into the analysis list and select summary options.", h("ebb380ec8898eba5bc20ebb684ec849d20ebaaa9eba19dec9cbceba19c20ec98aeeab8b0eab3a020ec9a94ec95bd20ec98b5ec8598ec9d8420ec84a0ed839ded9598ec84b8ec9a942e")),
       analysis.subtitle_paired = row("Select two or more repeated-measures variables at a time to create paired rows.", h("eb919020eab09c20ec9db4ec8381ec9d9820ebb098ebb3b5ecb8a1eca09520ebb380ec8898eba5bc20ed959c20ebb288ec979020ec84a0ed839ded95b420eb8c80ec9d9120ed9689ec9d8420eba78ceb939cec84b8ec9a942e")),
       analysis.subtitle_nonparametric_paired = row("Select two or more repeated-measures variables at a time to create nonparametric paired rows.", h("eb919020eab09c20ec9db4ec8381ec9d9820ebb098ebb3b5ecb8a1eca09520ebb380ec8898eba5bc20ed959c20ebb288ec979020ec84a0ed839ded95b420ebb984ebaaa8ec889820eb8c80ec9d9120ed9689ec9d8420eba78ceb939cec84b8ec9a942e")),
-      analysis.subtitle_paired_rm = row("Move three or more repeated-measures variables into the analysis list.", h("ec138820eab09c20ec9db4ec8381ec9d9820ebb098ebb3b5ecb8a1eca09520ebb380ec8898eba5bc20ebb684ec849d20ebaaa9eba19dec9cbceba19c20ec98aeeab8b0ec84b8ec9a942e")),
+      analysis.subtitle_paired_rm = row("Move three or more repeated-measures variables into the analysis list.", "세 개 이상의 반복측정 변수를 분석 목록으로 옮기세요."),
       analysis.subtitle_ttest_anova = row("Move variables into the analysis lists and select test options.", h("ebb380ec8898eba5bc20ebb684ec849d20ebaaa9eba19dec9cbceba19c20ec98aeeab8b0eab3a020eab280eca09520ec98b5ec8598ec9d8420ec84a0ed839ded9598ec84b8ec9a942e")),
       analysis.subtitle_ancova = row("Run covariate-adjusted group comparisons with ANCOVA, robust ANCOVA, ranked ANCOVA, and interaction ANCOVA.", h("eab3b5ebb380eb9f89ec9d8420ebb3b4eca095ed959c20eca791eb8ba820ebb984eab590eba5bc20414e434f56412c20eab095eab1b420414e434f56412c20ec889cec9c8420414e434f56412c20ec8381ed98b8ec9e91ec9aa920414e434f5641eba19c20ec8898ed9689ed95a9eb8b88eb8ba42e")),
       analysis.subtitle_mixed_rm_anova = row(
@@ -1409,6 +1413,40 @@ statedu_translation_table <- local({
         de = "Wählen Sie eine Gruppenvariable und Messwiederholungsvariablen für Prä-Post- oder Mehrzeitpunkt-Gruppenvergleiche.",
         vi = "Chọn biến nhóm và các biến đo lặp lại cho so sánh nhóm trước-sau hoặc nhiều thời điểm."
       ),
+      analysis.subtitle_one_group_rm_anova = row(
+        "Compare experimental and control treatment measured in the same subjects across time.",
+        "\uAC19\uC740 \uB300\uC0C1\uC790\uC5D0\uAC8C \uC801\uC6A9\uD55C \uC2E4\uD5D8\uCC98\uCE58\uC640 \uB300\uC870\uCC98\uCE58\uB97C \uC2DC\uC810\uBCC4\uB85C \uBE44\uAD50\uD569\uB2C8\uB2E4."
+      ),
+      one_group_rm_anova.ui.title = row(
+        "Within-subject treatment repeated-measures ANOVA",
+        "\uB3D9\uC77C \uB300\uC0C1 \uB0B4 \uCC98\uCE58 \uBC18\uBCF5\uCE21\uC815 \uBD84\uC0B0\uBD84\uC11D"
+      ),
+      one_group_rm_anova.ui.subtitle = row(
+        "Compare experimental and control treatment measured in the same subjects across time.",
+        "\uAC19\uC740 \uB300\uC0C1\uC790\uC5D0\uAC8C \uC801\uC6A9\uD55C \uC2E4\uD5D8\uCC98\uCE58\uC640 \uB300\uC870\uCC98\uCE58\uB97C \uC2DC\uC810\uBCC4\uB85C \uBE44\uAD50\uD569\uB2C8\uB2E4."
+      ),
+      one_group_rm_anova.ui.input_format = row("Input data format", "\uC785\uB825 \uB370\uC774\uD130 \uD615\uC2DD"),
+      one_group_rm_anova.ui.wide = row("WIDE", "WIDE"),
+      one_group_rm_anova.ui.long = row("LONG", "LONG"),
+      one_group_rm_anova.ui.wide_help = row(
+        "Assign the same number of time-ordered columns to Experimental and Control treatment, plus optional subject-level covariates.",
+        "\uC2E4\uD5D8\uCC98\uCE58\uC640 \uB300\uC870\uCC98\uCE58\uC5D0 \uAC19\uC740 \uAC1C\uC218\uC758 \uBCC0\uC218\uB97C \uC2DC\uC810 \uC21C\uC11C\uB300\uB85C \uC9C0\uC815\uD558\uACE0, \uB300\uC0C1\uC790 \uC218\uC900 \uACF5\uBCC0\uB7C9\uC744 \uC120\uD0DD\uC801\uC73C\uB85C \uBC30\uC815\uD558\uC138\uC694."
+      ),
+      one_group_rm_anova.ui.long_help = row(
+        "Assign Dependent variable, Subject ID, Time, Independent variable (treatment group), and optional Covariates. Each subject must receive both treatments.",
+        "\uC885\uC18D\uBCC0\uC218, \uB300\uC0C1\uC790 ID, \uC2DC\uC810, \uB3C5\uB9BD\uBCC0\uC218(\uCC98\uCE58 group), \uC120\uD0DD\uC801 \uACF5\uBCC0\uB7C9\uC744 \uBC30\uC815\uD558\uC138\uC694. \uAC01 \uB300\uC0C1\uC790\uC5D0\uAC8C \uB450 \uCC98\uCE58\uAC00 \uBAA8\uB450 \uC788\uC5B4\uC57C \uD569\uB2C8\uB2E4."
+      ),
+      one_group_rm_anova.ui.subject_id = row("Subject ID", "\uB300\uC0C1\uC790 ID"),
+      one_group_rm_anova.ui.group_variable = row("Independent variable (treatment group)", "\uB3C5\uB9BD\uBCC0\uC218(\uCC98\uCE58 group)"),
+      one_group_rm_anova.ui.time_variable = row("Time variable", "\uC2DC\uC810 \uBCC0\uC218"),
+      one_group_rm_anova.ui.outcome_variable = row("Dependent variable", "\uC885\uC18D\uBCC0\uC218"),
+      one_group_rm_anova.ui.select_variable = row("Select a variable", "\uBCC0\uC218 \uC120\uD0DD"),
+      one_group_rm_anova.ui.experimental_variables = row("Experimental-treatment variables (time order)", "\uC2E4\uD5D8\uCC98\uCE58 \uBCC0\uC218(\uC2DC\uC810 \uC21C)"),
+      one_group_rm_anova.ui.control_variables = row("Control-treatment variables (same time order)", "\uB300\uC870\uCC98\uCE58 \uBCC0\uC218(\uB3D9\uC77C \uC2DC\uC810 \uC21C)"),
+      one_group_rm_anova.ui.options = row("Options", "\uC635\uC158"),
+      one_group_rm_anova.ui.check_assumptions = row("Check normality and sphericity", "\uC815\uADDC\uC131\uACFC \uAD6C\uD615\uC131 \uAC80\uD1A0"),
+      one_group_rm_anova.ui.posthoc = row("Post-hoc pairwise comparisons", "\uC0AC\uD6C4 \uC30D\uBCC4 \uBE44\uAD50"),
+      one_group_rm_anova.ui.mean_sd = row("Show M \u00B1 SD", "\uD3C9\uADE0 \u00B1 \uD45C\uC900\uD3B8\uCC28 \uD45C\uC2DC"),
       mixed_rm_anova.ui.labels = row("Labels", "\uB77C\uBCA8", ja = "ラベル", zh = "标签", es = "Etiquetas", fr = "Libellés", de = "Beschriftungen", vi = "Nhãn"),
       mixed_rm_anova.ui.summary_options = row("Summary options", "\uC694\uC57D \uC635\uC158", ja = "要約オプション", zh = "摘要选项", es = "Opciones de resumen", fr = "Options de résumé", de = "Zusammenfassungsoptionen", vi = "Tùy chọn tóm tắt"),
       mixed_rm_anova.ui.within_group_comparison = row("Within-group time comparison", "\uAD70\uB0B4 \uC2DC\uC810 \uBE44\uAD50", ja = "群内時点比較", zh = "组内时间比较", es = "Comparación temporal dentro del grupo", fr = "Comparaison temporelle intra-groupe", de = "Zeitvergleich innerhalb der Gruppe", vi = "So sánh thời điểm trong nhóm"),
@@ -1475,7 +1513,7 @@ statedu_translation_table <- local({
       preferences.default_save_dir = row("Default file save location", "\ud30c\uc77c \uc800\uc7a5 \uae30\ubcf8 \uc704\uce58"),
       preferences.default_save_dir_placeholder = row("Leave blank to use the system download location.", "\ube44\uc6cc\ub450\uba74 \uc2dc\uc2a4\ud15c \ub2e4\uc6b4\ub85c\ub4dc \uc704\uce58\ub97c \uc0ac\uc6a9\ud569\ub2c8\ub2e4."),
       preferences.save_defaults = row("Save settings", "\uc124\uc815 \uc800\uc7a5"),
-      preferences.saved = row("Preferences saved.", h("ed9998eab2bd20ec84a4eca095ec9d8420eca080ec9ea5ed5888ec8ab5eb8b88eb8ba42e")),
+      preferences.saved = row("Preferences saved.", "환경 설정을 저장했습니다."),
       preferences.defaults_detail = row(
         "These defaults apply to newly opened menus and newly rendered result tables. The file save location is applied to downloads in the installed app; when blank, the system default is used.",
         "\uc774 \uae30\ubcf8\uac12\uc740 \uc0c8\ub85c \uc5ec\ub294 \uba54\ub274\uc640 \uc0c8\ub85c \ucd9c\ub825\ud558\ub294 \uacb0\uacfc\ud45c\uc5d0 \uc801\uc6a9\ub429\ub2c8\ub2e4. \ud30c\uc77c \uc800\uc7a5 \uc704\uce58\ub294 \uc124\uce58 \uc571\uc758 \ub2e4\uc6b4\ub85c\ub4dc\uc5d0 \uc801\uc6a9\ub418\uba70, \ube44\uc6cc\ub450\uba74 \uc2dc\uc2a4\ud15c \uae30\ubcf8\uac12\uc744 \uc0ac\uc6a9\ud569\ub2c8\ub2e4."
@@ -1901,10 +1939,16 @@ statedu_translation_table <- local({
     for (language in names(overlays)) {
       translations <- overlays[[language]]
       if (!is.list(translations) || length(translations) == 0) next
-      for (key in names(translations)) {
-        value <- translations[[key]]
+      keys <- names(translations)
+      use_positions <- !is.object(translations) && !anyNA(keys) &&
+        all(nzchar(keys)) && !anyDuplicated(keys)
+      positions <- match(keys, names(cache))
+      for (key_index in seq_along(keys)) {
+        key <- keys[[key_index]]
+        position <- positions[[key_index]]
+        value <- if (use_positions) translations[[key_index]] else translations[[key]]
         if (is.null(value) || length(value) == 0) next
-        current <- cache[[key]]
+        current <- if (is.na(position)) cache[[key]] else cache[[position]]
         if (is.null(current) && grepl("^language[.][A-Za-z0-9_-]+$", key)) {
           code <- sub("^language[.]", "", key)
           spec <- statedu_language_registry()[[code]]
@@ -1917,11 +1961,17 @@ statedu_translation_table <- local({
         }
         current <- current %||% c(en = NA_character_, ko = NA_character_)
         current[[language]] <- as.character(value[[1]])
-        cache[[key]] <- current
+        # Existing rows retain their position. New keys keep named insertion
+        # semantics, including repeated new keys within the same overlay.
+        if (is.na(position)) cache[[key]] <- current else cache[[position]] <- current
       }
     }
     cache <<- cache
     cache
+  })
+  function() {
+    if (!is.null(cache)) return(cache)
+    eval(initialize)
   }
 })
 

@@ -1,7 +1,27 @@
 # ID-level aggregation command for the Data Editor menu.
 
 id_aggregate_text <- function(language, en, ko = en) {
-  if (identical(normalize_app_language(language), "ko")) ko else en
+  statedu_localized_text(language, en, ko)
+}
+
+id_aggregate_error_text <- function(message, language = statedu_initial_language()) {
+  exact <- c(
+    "Enter one condition expression."="one_condition",
+    "Condition must return one TRUE/FALSE value per row."="condition_length",
+    "Statistic must be one of sum, mean, median, sd, var, min, max, n, count."="statistic",
+    "The current data has no rows."="no_rows",
+    "Select a valid ID variable."="id_variable",
+    "Select a valid value variable."="value_variable",
+    "No valid ID values were found."="no_ids",
+    "Only direct function calls are allowed."="direct_calls",
+    "Unsupported expression element."="unsupported_element"
+  )
+  if (message %in% names(exact)) return(statedu_t(paste0("id_aggregate.error.",exact[[message]]),language))
+  prefixes <- c("Condition could not be parsed: "="parse", "Unknown variable or function: "="unknown_symbol", "Function is not available here: "="unavailable_function")
+  for (prefix in names(prefixes)) if (startsWith(message,prefix)) {
+    return(sprintf(statedu_t(paste0("id_aggregate.error.",prefixes[[prefix]]),language),substring(message,nchar(prefix)+1L)))
+  }
+  message
 }
 
 id_aggregate_clean_name <- function(value, fallback = "id_stat") {
@@ -113,7 +133,7 @@ data_editor_id_aggregate_panel <- function(language = statedu_initial_language()
     div(
       class = "app-heading",
       h1(id_aggregate_text(language, "ID aggregation", statedu_utf8("494420eca791eab384"))),
-      div(id_aggregate_text(language, "Create a new one-row-per-ID data set from conditional statistics."), class = "app-subtitle")
+      div(statedu_t("id_aggregate.subtitle", language), class = "app-subtitle")
     ),
     div(
       class = "workspace-panel frequencies-workspace-panel data-editor-workspace",
@@ -136,6 +156,17 @@ data_editor_id_aggregate_panel <- function(language = statedu_initial_language()
 register_id_aggregate_handlers <- function(input, output, session, dataset_fn, replace_dataset_fn, mark_settings_dirty, language_fn = NULL) {
   preview_data <- reactiveVal(NULL)
   last_message <- reactiveVal(NULL)
+  ui_values <- reactiveValues()
+  for (field in c("id","value","condition","stat","empty","output_name")) local({
+    field_name <- field
+    observeEvent(input[[paste0("id_aggregate_",field_name)]], {
+      ui_values[[field_name]] <- input[[paste0("id_aggregate_",field_name)]]
+    }, ignoreNULL=TRUE, priority=100)
+  })
+  ui_value <- function(field, default, choices=NULL) {
+    value <- ui_values[[field]] %||% default
+    if (!is.null(choices) && !value %in% choices) default else value
+  }
 
   output$id_aggregate_setup <- renderUI({
     language <- statedu_current_language(language_fn)
@@ -149,23 +180,23 @@ register_id_aggregate_handlers <- function(input, output, session, dataset_fn, r
         class = "analysis-options-panel id-aggregate-options",
         div(
           class = "id-aggregate-two-column",
-          selectInput("id_aggregate_id", id_aggregate_text(language, "ID variable", statedu_utf8("494420ebb380ec8898")), choices = stats::setNames(variables, variables), selected = if ("id" %in% variables) "id" else variables[[1]], selectize = FALSE, width = "100%"),
-          selectInput("id_aggregate_value", id_aggregate_text(language, "Value variable", statedu_utf8("eab09220ebb380ec8898")), choices = stats::setNames(variables, variables), selected = variables[[1]], selectize = FALSE, width = "100%")
+          selectInput("id_aggregate_id", id_aggregate_text(language, "ID variable", statedu_utf8("494420ebb380ec8898")), choices = stats::setNames(variables, variables), selected = ui_value("id",if ("id" %in% variables) "id" else variables[[1]],variables), selectize = FALSE, width = "100%"),
+          selectInput("id_aggregate_value", id_aggregate_text(language, "Value variable", statedu_utf8("eab09220ebb380ec8898")), choices = stats::setNames(variables, variables), selected = ui_value("value",variables[[1]],variables), selectize = FALSE, width = "100%")
         ),
-        textInput("id_aggregate_condition", id_aggregate_text(language, "Condition", statedu_utf8("eca1b0eab1b4")), value = "", placeholder = "food == 1 or in_values(food, 101, 102, 103)", width = "100%"),
+        textInput("id_aggregate_condition", id_aggregate_text(language, "Condition", statedu_utf8("eca1b0eab1b4")), value = ui_value("condition",""), placeholder = "food == 1 or in_values(food, 101, 102, 103)", width = "100%"),
         div(
           class = "id-aggregate-two-column",
           selectInput(
             "id_aggregate_stat",
             id_aggregate_text(language, "Statistic", statedu_utf8("ed86b5eab384eb9f89")),
-            choices = stats::setNames(c("sum", "mean", "median", "sd", "var", "min", "max", "n"), c("Sum", "Mean", "Median", "SD", "Variance", "Minimum", "Maximum", "Count")),
-            selected = "sum",
+            choices = stats::setNames(c("sum", "mean", "median", "sd", "var", "min", "max", "n"), vapply(c("sum", "mean", "median", "sd", "var", "min", "max", "n"), function(key) statedu_t(paste0("id_aggregate.stat.", key), language), character(1))),
+            selected = ui_value("stat","sum",c("sum","mean","median","sd","var","min","max","n")),
             selectize = FALSE,
             width = "100%"
           ),
-          textInput("id_aggregate_empty", id_aggregate_text(language, "No matching row value", statedu_utf8("ed95b4eb8bb9ed968920ec9786ec9d8420eb958c20eab092")), value = "NA", placeholder = "NA or 9", width = "100%")
+          textInput("id_aggregate_empty", id_aggregate_text(language, "No matching row value", statedu_utf8("ed95b4eb8bb9ed968920ec9786ec9d8420eb958c20eab092")), value = ui_value("empty","NA"), placeholder = "NA or 9", width = "100%")
         ),
-        textInput("id_aggregate_output_name", id_aggregate_text(language, "Output variable name"), value = "id_stat", width = "100%")
+        textInput("id_aggregate_output_name", statedu_t("id_aggregate.output_name", language), value = ui_value("output_name","id_stat"), width = "100%")
       )
     )
   })
@@ -186,29 +217,29 @@ register_id_aggregate_handlers <- function(input, output, session, dataset_fn, r
   observeEvent(input$preview_id_aggregate, {
     language <- statedu_current_language(language_fn)
     result <- tryCatch(build_result(), error = function(e) {
-      showNotification(conditionMessage(e), type = "warning", duration = 7)
+      showNotification(id_aggregate_error_text(conditionMessage(e),language), type = "warning", duration = 7)
       NULL
     })
     if (is.null(result)) return()
     preview_data(result)
-    last_message(sprintf(id_aggregate_text(language, "Preview created: %s ID row(s).", statedu_utf8("ebafb8eba6acebb3b4eab8b020ec839dec84b13a202573494420ed96892e")), nrow(result)))
+    last_message(list(key="id_aggregate.preview_created", values=list(nrow(result))))
   }, ignoreInit = TRUE)
 
   observeEvent(input$run_id_aggregate, {
     language <- statedu_current_language(language_fn)
     if (!is.function(replace_dataset_fn)) {
-      showNotification("Dataset replacement is not available.", type = "warning", duration = 5)
+      showNotification(statedu_t("id_aggregate.replacement_unavailable", language), type = "warning", duration = 5)
       return()
     }
     result <- tryCatch(build_result(), error = function(e) {
-      showNotification(conditionMessage(e), type = "warning", duration = 7)
+      showNotification(id_aggregate_error_text(conditionMessage(e),language), type = "warning", duration = 7)
       NULL
     })
     if (is.null(result)) return()
     ok <- replace_dataset_fn(result, name = "id_aggregate.csv", path = NULL, csv_header = TRUE)
     if (isTRUE(ok)) {
       preview_data(result)
-      last_message(sprintf(id_aggregate_text(language, "ID-level data loaded: %s row(s), %s variable(s).", statedu_utf8("4944ebb38420eb8db0ec9db4ed84b020ebb688eb9facec98a4eab8b020ec9984eba38c3a202573ed96892c202573eab09c20ebb380ec88982e")), nrow(result), ncol(result)))
+      last_message(list(key="id_aggregate.loaded", values=list(nrow(result),ncol(result))))
       if (is.function(mark_settings_dirty)) mark_settings_dirty()
     }
   }, ignoreInit = TRUE)
@@ -216,15 +247,18 @@ register_id_aggregate_handlers <- function(input, output, session, dataset_fn, r
   output$id_aggregate_message <- renderUI({
     message <- last_message()
     if (is.null(message)) return(NULL)
-    div(class = "recode-same-status", message)
+    div(class = "recode-same-status", do.call(sprintf,c(list(statedu_t(message$key,statedu_current_language(language_fn))),message$values)))
   })
 
   output$id_aggregate_preview <- DT::renderDT({
+    language <- statedu_current_language(language_fn)
+    options <- with_datatable_language(list(pageLength=10,lengthChange=FALSE,scrollX=TRUE),language)
     result <- preview_data()
     if (is.null(result)) {
-      return(DT::datatable(data.frame(Message = "Preview will appear here.", check.names = FALSE), rownames = FALSE, options = list(pageLength = 10, lengthChange = FALSE, scrollX = TRUE)))
+      placeholder <- setNames(data.frame(statedu_t("id_aggregate.preview_placeholder",language),check.names=FALSE),statedu_t("id_aggregate.message",language))
+      return(DT::datatable(placeholder, rownames = FALSE, options = options))
     }
-    DT::datatable(utils::head(result, 50), rownames = FALSE, options = list(pageLength = 10, lengthChange = FALSE, scrollX = TRUE))
+    DT::datatable(utils::head(result, 50), rownames = FALSE, options = options)
   })
 
   invisible(TRUE)

@@ -139,7 +139,7 @@ mixed_rm_p_value <- function(f_value, df1, df2) {
   stats::pf(f_value, df1, df2, lower.tail = FALSE)
 }
 
-mixed_rm_hf_epsilon <- function(gg_epsilon, n, k) {
+mixed_rm_hf_epsilon <- function(gg_epsilon, n, k, error_df = n - 1) {
   gg_epsilon <- as.numeric(gg_epsilon %||% NA_real_)
   n <- as.numeric(n %||% NA_real_)
   k <- as.numeric(k %||% NA_real_)
@@ -147,7 +147,7 @@ mixed_rm_hf_epsilon <- function(gg_epsilon, n, k) {
     return(NA_real_)
   }
   numerator <- n * (k - 1) * gg_epsilon - 2
-  denominator <- (k - 1) * (n - 1 - (k - 1) * gg_epsilon)
+  denominator <- (k - 1) * (error_df - (k - 1) * gg_epsilon)
   if (!is.finite(denominator) || denominator <= 0) return(NA_real_)
   max(1 / (k - 1), min(1, numerator / denominator))
 }
@@ -164,6 +164,7 @@ mixed_rm_sphericity_row <- function(effect_key, sphericity = NULL, p_adjust = NU
     out$w <- as.numeric(sphericity$w %||% NA_real_)
     out$p <- as.numeric(sphericity$p %||% NA_real_)
     out$gg <- as.numeric(sphericity$epsilon %||% NA_real_)
+    out$hf <- as.numeric(sphericity$hf %||% NA_real_)
   }
   if (is.data.frame(p_adjust) && effect_key %in% rownames(p_adjust)) {
     if ("GG eps" %in% colnames(p_adjust)) out$gg <- as.numeric(p_adjust[effect_key, "GG eps"])
@@ -258,12 +259,19 @@ mixed_rm_reference_grid <- function(group_level, group, covariate_data) {
   grid
 }
 
-mixed_rm_adjusted_cell <- function(response, group, covariate_data, group_level) {
+mixed_rm_adjusted_model <- function(response, group, covariate_data) {
   safe_covariates <- covariate_data
   names(safe_covariates) <- paste0(".cov", seq_len(ncol(safe_covariates)))
   model_data <- data.frame(.response = response, .group = group, safe_covariates, check.names = FALSE)
   predictors <- c(".group", names(safe_covariates))
-  fit <- stats::lm(stats::as.formula(paste(".response ~", paste(predictors, collapse = " + "))), data = model_data)
+  stats::lm(stats::as.formula(paste(".response ~", paste(predictors, collapse = " + "))), data = model_data)
+}
+
+mixed_rm_adjusted_cell <- function(response, group, covariate_data, group_level,
+                                   fit = mixed_rm_adjusted_model(response, group, covariate_data)) {
+  safe_covariates <- covariate_data
+  names(safe_covariates) <- paste0(".cov", seq_len(ncol(safe_covariates)))
+  force(fit)
   newdata <- mixed_rm_reference_grid(group_level, group, safe_covariates)
   terms_obj <- stats::delete.response(stats::terms(fit))
   design <- stats::model.matrix(terms_obj, newdata)
@@ -352,10 +360,30 @@ mixed_rm_ss_table <- function(y, group) {
   )
 }
 
+mixed_rm_group_sphericity <- function(y, group) {
+  y <- as.matrix(y)
+  k <- ncol(y)
+  if (k < 3L) return(list(w = NA_real_, p = NA_real_, epsilon = NA_real_))
+  # Sphericity concerns within-group errors, not differences in group profiles.
+  fit <- stats::lm(y ~ factor(group))
+  idata <- data.frame(time = factor(seq_len(k)))
+  mt <- tryCatch(stats::mauchly.test(fit, M = ~time, X = ~1, idata = idata),
+                 error = function(e) NULL)
+  residuals <- stats::residuals(fit)
+  center <- diag(k) - matrix(1 / k, k, k)
+  covariance <- center %*% crossprod(residuals) %*% center
+  epsilon <- sum(diag(covariance))^2 / ((k - 1) * sum(covariance^2))
+  epsilon <- max(1 / (k - 1), min(1, epsilon))
+  list(w = if (is.null(mt)) NA_real_ else unname(mt$statistic),
+       p = if (is.null(mt)) NA_real_ else mt$p.value, epsilon = epsilon,
+       satisfied = !is.null(mt) && is.finite(mt$p.value) && mt$p.value >= .05,
+       hf = mixed_rm_hf_epsilon(epsilon, nrow(y), k, error_df = stats::df.residual(fit)))
+}
+
 mixed_rm_formatted_anova <- function(y, group) {
   stats <- mixed_rm_ss_table(y, group)
   table <- stats$effects
-  sphericity <- if (ncol(y) >= 3L) paired_rm_sphericity(y) else list(epsilon = NA_real_, p = NA_real_)
+  sphericity <- mixed_rm_group_sphericity(y, group)
   corrections <- lapply(seq_len(nrow(table)), function(index) {
     mixed_rm_correction_cells(
       effect_key = table$Effect[[index]],
@@ -555,7 +583,8 @@ mixed_rm_reduced_covariates <- function(covariate_data) {
       return(nlevels(out[[name]]) >= 2L)
     }
     numeric_values <- suppressWarnings(as.numeric(values))
-    length(unique(numeric_values[is.finite(numeric_values)])) >= 2L
+    finite_values <- numeric_values[is.finite(numeric_values)]
+    length(finite_values) >= 2L && any(finite_values != finite_values[[1L]])
   }, logical(1))
   out[, keep, drop = FALSE]
 }
@@ -603,11 +632,43 @@ mixed_rm_adjusted_pair_test <- function(diff, covariate_data) {
   model_data <- data.frame(.diff = diff, safe_covariates, check.names = FALSE)
   fit <- tryCatch(stats::lm(stats::as.formula(paste(".diff ~", paste(names(safe_covariates), collapse = " + "))), data = model_data), error = function(e) NULL)
   if (is.null(fit)) return(list(statistic = NA_real_, df = NA_real_, p = NA_real_))
-  newdata <- mixed_rm_covariate_reference_grid(safe_covariates)
-  terms_obj <- stats::delete.response(stats::terms(fit))
-  design <- stats::model.matrix(terms_obj, newdata)
+  mixed_rm_adjusted_pair_fit_test(fit, safe_covariates)
+}
+
+mixed_rm_adjusted_time_estimates <- function(y, covariate_data) {
+  individual <- function() vapply(seq_len(ncol(y)), function(index) {
+    mixed_rm_adjusted_time_estimate(y[, index], covariate_data)
+  }, numeric(1))
+  if (!mixed_rm_batch_eligible(y, covariate_data, ncol(y))) return(individual())
+  safe_covariates <- mixed_rm_reduced_covariates(covariate_data)
+  if (ncol(safe_covariates) == 0L) return(individual())
+  names(safe_covariates) <- paste0(".cov", seq_len(ncol(safe_covariates)))
+  estimates <- tryCatch(withCallingHandlers({
+    model_data <- data.frame(.response = I(y), safe_covariates, check.names = FALSE)
+    fit <- stats::lm(stats::as.formula(paste(".response ~", paste(names(safe_covariates), collapse = " + "))), data = model_data)
+    newdata <- mixed_rm_covariate_reference_grid(safe_covariates)
+    if (nrow(newdata) == 0L) stop("Empty reference grid")
+    design <- stats::model.matrix(stats::delete.response(stats::terms(fit)), newdata)
+    beta <- stats::coef(fit)
+    common <- intersect(colnames(design), rownames(beta))
+    if (length(common) == 0L) stop("No matching coefficients")
+    linear <- colMeans(design[, common, drop = FALSE])
+    vapply(seq_len(ncol(y)), function(index) {
+      as.numeric(sum(linear * beta[common, index], na.rm = TRUE))
+    }, numeric(1))
+  }, warning = function(w) stop(w), message = function(m) stop(m)),
+  error = function(e) NULL, warning = function(w) NULL, message = function(m) NULL)
+  if (is.null(estimates)) individual() else estimates
+}
+
+mixed_rm_adjusted_pair_fit_test <- function(fit, safe_covariates, design = NULL, cov_beta = NULL) {
+  if (is.null(design)) {
+    newdata <- mixed_rm_covariate_reference_grid(safe_covariates)
+    terms_obj <- stats::delete.response(stats::terms(fit))
+    design <- stats::model.matrix(terms_obj, newdata)
+  }
   beta <- stats::coef(fit)
-  cov_beta <- stats::vcov(fit)
+  if (is.null(cov_beta)) cov_beta <- stats::vcov(fit)
   common <- intersect(colnames(design), names(beta))
   estimable <- common[is.finite(beta[common]) & is.finite(diag(cov_beta)[common])]
   if (length(estimable) == 0) return(list(statistic = NA_real_, df = NA_real_, p = NA_real_))
@@ -620,15 +681,80 @@ mixed_rm_adjusted_pair_test <- function(diff, covariate_data) {
   list(statistic = statistic, df = df, p = stats::pt(abs(statistic), df = df, lower.tail = FALSE) * 2)
 }
 
+mixed_rm_batch_eligible <- function(y, covariate_data, responses) {
+  # Batch ordinary finite numeric inputs and plain factors with standard contrasts.
+  # Otherwise preserve each contrast's observation set and original conditions.
+  if (!is.matrix(y) || !is.numeric(y) || any(!is.finite(y)) ||
+      !identical(class(covariate_data), "data.frame") || ncol(covariate_data) == 0L ||
+      nrow(covariate_data) != nrow(y) || responses < 2L ||
+      nrow(y) * responses > 1e6 ||
+      !identical(getOption("na.action"), "na.omit") ||
+      !all(vapply(covariate_data, function(x) {
+        if (identical(class(x), "factor")) {
+          return(!anyNA(x) && !anyNA(levels(x)) && is.null(attr(x, "contrasts")) &&
+            identical(unname(getOption("contrasts")), c("contr.treatment", "contr.poly")))
+        }
+        is.numeric(x) && !is.object(x) && is.null(dim(x)) && all(is.finite(x))
+      }, logical(1)))) return(FALSE)
+  TRUE
+}
+
+mixed_rm_adjusted_pair_tests <- function(y, covariate_data, time_pairs) {
+  individual <- function() lapply(time_pairs, function(pair) {
+    mixed_rm_adjusted_pair_test(y[, pair[[2]]] - y[, pair[[1]]], covariate_data)
+  })
+  if (!mixed_rm_batch_eligible(y, covariate_data, length(time_pairs))) return(individual())
+  safe_covariates <- mixed_rm_reduced_covariates(covariate_data)
+  if (ncol(safe_covariates) == 0L) return(individual())
+  names(safe_covariates) <- paste0(".cov", seq_len(ncol(safe_covariates)))
+  responses <- vapply(time_pairs, function(pair) {
+    y[, pair[[2]]] - y[, pair[[1]]]
+  }, numeric(nrow(y)))
+  if (any(!is.finite(responses))) return(individual())
+  tests <- tryCatch(withCallingHandlers({
+    model_data <- data.frame(.diff = I(responses), safe_covariates, check.names = FALSE)
+    fit <- stats::lm(stats::as.formula(paste(".diff ~", paste(names(safe_covariates), collapse = " + "))), data = model_data)
+    newdata <- mixed_rm_covariate_reference_grid(safe_covariates)
+    design <- stats::model.matrix(stats::delete.response(stats::terms(fit)), newdata)
+    covariance_template <- NULL
+    lapply(seq_along(time_pairs), function(index) {
+      single <- fit
+      for (field in c("coefficients", "residuals", "effects", "fitted.values")) {
+        single[[field]] <- fit[[field]][, index]
+      }
+      class(single) <- "lm"
+      if (is.null(covariance_template)) {
+        covariance_template <<- stats::summary.lm(single)
+        covariance <- stats::vcov(covariance_template)
+      } else {
+        # Preserve summary.lm's residual-variance arithmetic and warning path.
+        resvar <- sum(single$residuals^2) / single$df.residual
+        fitted <- single$fitted.values
+        if (!is.finite(resvar) || single$df.residual <= 0 ||
+            resvar < (mean(fitted)^2 + stats::var(c(fitted))) * 1e-30) {
+          covariance <- stats::vcov(single)
+        } else {
+          covariance_summary <- covariance_template
+          covariance_summary$sigma <- sqrt(resvar)
+          covariance_summary$aliased <- is.na(single$coefficients)
+          covariance <- stats::vcov(covariance_summary)
+        }
+      }
+      mixed_rm_adjusted_pair_fit_test(single, safe_covariates, design = design, cov_beta = covariance)
+    })
+  }, warning = function(w) stop(w), message = function(m) stop(m)),
+  error = function(e) NULL, warning = function(w) NULL, message = function(m) NULL)
+  if (is.null(tests)) individual() else tests
+}
+
 mixed_rm_adjusted_group_time_posthoc <- function(y, covariate_data, time_markers, adjustment = statedu_multiple_correction_default()) {
   if (!is.matrix(y) && !is.data.frame(y)) return("")
   y <- as.matrix(y)
   if (nrow(y) < 2 || ncol(y) < 3) return("")
   covariate_data <- mixed_rm_reduced_covariates(covariate_data)
   time_pairs <- utils::combn(seq_len(ncol(y)), 2, simplify = FALSE)
-  p_values <- vapply(time_pairs, function(pair) {
-    mixed_rm_adjusted_pair_p(y[, pair[[2]]] - y[, pair[[1]]], covariate_data)
-  }, numeric(1))
+  tests <- mixed_rm_adjusted_pair_tests(y, covariate_data, time_pairs)
+  p_values <- vapply(tests, function(test) test$p, numeric(1))
   adjusted <- stats::p.adjust(p_values, method = adjustment)
   rows <- data.frame(
     Contrast = vapply(time_pairs, function(pair) mixed_rm_pair_label(time_markers[[pair[[1]]]], time_markers[[pair[[2]]]]), character(1)),
@@ -636,7 +762,7 @@ mixed_rm_adjusted_group_time_posthoc <- function(y, covariate_data, time_markers
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
-  means <- stats::setNames(vapply(seq_len(ncol(y)), function(index) mixed_rm_adjusted_time_estimate(y[, index], covariate_data), numeric(1)), time_markers)
+  means <- stats::setNames(mixed_rm_adjusted_time_estimates(y, covariate_data), time_markers)
   mixed_rm_significant_order_notation(time_markers, means, rows)
 }
 
@@ -856,13 +982,30 @@ mixed_rm_descriptives <- function(
   adjustment <- as.character(adjustment %||% statedu_multiple_correction_default())
   if (!adjustment %in% c("holm", "bonferroni")) adjustment <- statedu_multiple_correction_default()
   time_markers <- mixed_rm_time_markers(ncol(y))
+  # The full-data model is identical across groups at each time point.
+  # Keep it only for this summary; conditions and RNG effects must still recur.
+  adjusted_models <- vector("list", ncol(y))
+  model_for <- function(index) {
+    if (!is.null(adjusted_models[[index]])) return(adjusted_models[[index]])
+    quiet <- TRUE
+    seed <- get0(".Random.seed", .GlobalEnv, inherits = FALSE)
+    fit <- withCallingHandlers(
+      mixed_rm_adjusted_model(y[, index], group, covariate_data),
+      warning = function(w) { quiet <<- FALSE },
+      message = function(m) { quiet <<- FALSE }
+    )
+    if (quiet && identical(seed, get0(".Random.seed", .GlobalEnv, inherits = FALSE), num.eq = FALSE)) {
+      adjusted_models[[index]] <<- fit
+    }
+    fit
+  }
   for (level in levels(group)) {
     subset <- y[group == level, , drop = FALSE]
     row <- data.frame(Group = level, N = nrow(subset), stringsAsFactors = FALSE, check.names = FALSE)
     for (index in seq_len(ncol(y))) {
       values <- subset[, index]
       row[[time_labels[[index]]]] <- if (isTRUE(adjusted)) {
-        tryCatch(mixed_rm_adjusted_cell(y[, index], group, covariate_data, level), error = function(e) "")
+        tryCatch(mixed_rm_adjusted_cell(y[, index], group, covariate_data, level, fit = model_for(index)), error = function(e) "")
       } else {
         paste0(format_decimal3(mean(values, na.rm = TRUE)), " \u00b1 ", format_decimal3(stats::sd(values, na.rm = TRUE)))
       }
@@ -1098,7 +1241,7 @@ mixed_rm_assumption_table <- function(y, group, options = list(), covariates = N
       )
       sphericity$satisfied <- is.finite(sphericity$p) && sphericity$p >= .05
     } else {
-      sphericity <- paired_rm_sphericity(y)
+      sphericity <- mixed_rm_group_sphericity(y, group)
     }
     rows <- c(rows, list(
       data.frame(Item = "Sphericity", Result = if (isTRUE(sphericity$satisfied)) "Satisfied" else "Not satisfied", Detail = paste0("W=", format_decimal3(sphericity$w), "; p=", format_p(sphericity$p)), stringsAsFactors = FALSE),
@@ -1251,17 +1394,15 @@ mixed_rm_within_group_posthoc_table <- function(y, group, time_labels, covariate
     keep <- group == level
     subset <- y[keep, , drop = FALSE]
     subset_covariates <- if (!is.null(covariate_data) && ncol(covariate_data) > 0) covariate_data[keep, , drop = FALSE] else data.frame()
-    tests <- lapply(time_pairs, function(pair) {
-      if (isTRUE(adjusted)) {
-        mixed_rm_adjusted_pair_test(subset[, pair[[2]]] - subset[, pair[[1]]], subset_covariates)
-      } else {
+    tests <- if (isTRUE(adjusted)) {
+      mixed_rm_adjusted_pair_tests(subset, subset_covariates, time_pairs)
+    } else lapply(time_pairs, function(pair) {
         test <- tryCatch(stats::t.test(subset[, pair[[1]]], subset[, pair[[2]]], paired = TRUE), error = function(e) NULL)
         list(
           statistic = if (!is.null(test)) unname(test$statistic) else NA_real_,
           df = if (!is.null(test)) unname(test$parameter) else NA_real_,
           p = if (!is.null(test)) test$p.value else NA_real_
         )
-      }
     })
     p_values <- vapply(tests, `[[`, numeric(1), "p")
     adjusted_p <- stats::p.adjust(p_values, method = adjustment)
@@ -1301,17 +1442,15 @@ mixed_rm_time_posthoc_table <- function(y, time_labels, covariate_data = NULL, a
   if (!adjustment %in% c("holm", "bonferroni")) adjustment <- statedu_multiple_correction_default()
   time_markers <- mixed_rm_time_markers(ncol(y))
   time_pairs <- utils::combn(seq_len(ncol(y)), 2, simplify = FALSE)
-  tests <- lapply(time_pairs, function(pair) {
-    if (isTRUE(adjusted)) {
-      mixed_rm_adjusted_pair_test(y[, pair[[2]]] - y[, pair[[1]]], covariate_data %||% data.frame())
-    } else {
+  tests <- if (isTRUE(adjusted)) {
+    mixed_rm_adjusted_pair_tests(y, covariate_data %||% data.frame(), time_pairs)
+  } else lapply(time_pairs, function(pair) {
       test <- tryCatch(stats::t.test(y[, pair[[1]]], y[, pair[[2]]], paired = TRUE), error = function(e) NULL)
       list(
         statistic = if (!is.null(test)) unname(test$statistic) else NA_real_,
         df = if (!is.null(test)) unname(test$parameter) else NA_real_,
         p = if (!is.null(test)) test$p.value else NA_real_
       )
-    }
   })
   p_values <- vapply(tests, `[[`, numeric(1), "p")
   adjusted_p <- stats::p.adjust(p_values, method = adjustment)
@@ -1392,6 +1531,7 @@ mixed_rm_significant_order_notation <- function(levels, means, rows, alpha = .05
       if (!is.finite(p_value) || p_value >= alpha) next
       first_mean <- means[[first]]
       second_mean <- means[[second]]
+      if (!is.finite(first_mean) || !is.finite(second_mean) || first_mean == second_mean) next
       higher <- if (is.finite(first_mean) && is.finite(second_mean) && first_mean < second_mean) second else first
       lower <- if (identical(higher, first)) second else first
       sig[higher, lower] <- TRUE
@@ -1400,67 +1540,10 @@ mixed_rm_significant_order_notation <- function(levels, means, rows, alpha = .05
   if (!any(sig)) return("n.s.")
   ordered <- levels[order(-means, levels)]
 
-  # Levels with the same significant relations to every other level are shown as one ordered tier.
-  relation_profiles <- vapply(levels, function(level) {
-    lower <- sort(levels[sig[level, levels]])
-    higher <- sort(levels[sig[levels, level]])
-    paste(paste(higher, collapse = ","), paste(lower, collapse = ","), sep = "|")
-  }, character(1))
-  profile_groups <- split(levels, relation_profiles)
-  profile_groups <- lapply(profile_groups, function(group_levels) {
-    group_levels[order(-means[group_levels], group_levels)]
-  })
-  group_order <- vapply(profile_groups, function(group_levels) {
-    min(match(group_levels, ordered))
-  }, numeric(1))
-  profile_groups <- profile_groups[order(group_order)]
-  node_labels <- vapply(profile_groups, paste, character(1), collapse = ",")
-  node_count <- length(profile_groups)
-  node_sig <- matrix(FALSE, nrow = node_count, ncol = node_count, dimnames = list(node_labels, node_labels))
-  if (node_count >= 2L) {
-    for (i in seq_len(node_count)) {
-      for (j in seq_len(node_count)) {
-        if (i == j) next
-        node_sig[i, j] <- all(sig[profile_groups[[i]], profile_groups[[j]], drop = FALSE])
-      }
-    }
-  }
-
-  covered <- matrix(FALSE, nrow = length(levels), ncol = length(levels), dimnames = list(levels, levels))
-  statements <- character(0)
-  for (start_index in seq_len(node_count)) {
-    chain <- start_index
-    current <- start_index
-    repeat {
-      lower_candidates <- which(seq_len(node_count) %in% setdiff(seq_len(node_count), chain) & node_sig[current, ])
-      lower_candidates <- lower_candidates[vapply(lower_candidates, function(candidate) {
-        higher_levels <- profile_groups[[current]]
-        lower_levels <- profile_groups[[candidate]]
-        any(sig[higher_levels, lower_levels, drop = FALSE] & !covered[higher_levels, lower_levels, drop = FALSE])
-      }, logical(1))]
-      if (length(lower_candidates) == 0) break
-      next_value <- lower_candidates[[1]]
-      chain <- c(chain, next_value)
-      current <- next_value
-    }
-    if (length(chain) <= 1L) next
-    statements <- c(statements, paste(node_labels[chain], collapse = ">"))
-    for (i in seq_along(chain)) {
-      if (i >= length(chain)) next
-      for (j in seq.int(i + 1L, length(chain))) {
-        higher_levels <- profile_groups[[chain[[i]]]]
-        lower_levels <- profile_groups[[chain[[j]]]]
-        covered[higher_levels, lower_levels] <- sig[higher_levels, lower_levels, drop = FALSE]
-      }
-    }
-  }
-  for (left in ordered) {
-    for (right in ordered) {
-      if (!isTRUE(sig[left, right]) || isTRUE(covered[left, right])) next
-      statements <- c(statements, sprintf("%s>%s", left, right))
-    }
-  }
-  paste(unique(statements), collapse = "; ")
+  pairs <- which(sig, arr.ind = TRUE)
+  significant_pairs <- data.frame(higher = rownames(sig)[pairs[, 1]],
+    lower = colnames(sig)[pairs[, 2]], stringsAsFactors = FALSE)
+  paste(ttest_ordered_marker_statements(ordered, significant_pairs), collapse = "; ")
 }
 
 mixed_rm_posthoc_p_label <- function(value) {
@@ -2164,6 +2247,7 @@ mixed_rm_recommendation_table <- function(anova, assumption, normality, group_la
 }
 
 prepare_mixed_rm_anova_results <- function(data, group_variable, repeated_variables, covariates = character(0), variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("group_variable", "repeated_variables", "covariates"))
   group_variable <- as.character(group_variable %||% character(0))
   repeated_variables <- as.character(repeated_variables %||% character(0))
   covariates <- as.character(covariates %||% character(0))
@@ -2412,6 +2496,7 @@ prepare_mixed_rm_anova_results <- function(data, group_variable, repeated_variab
     group_variable = group_variable,
     repeated_variables = repeated_variables,
     covariates = covariates,
+    covariate_labels = covariate_labels,
     options = options,
     analysis_population = analysis_population,
     overview = mixed_rm_overview_table(group_variable, repeated_variables, frame$y, frame$group, time_labels, variable_info, labels, category_table, covariates, analysis_population),

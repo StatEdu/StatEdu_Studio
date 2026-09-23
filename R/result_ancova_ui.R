@@ -1,5 +1,104 @@
 # ANCOVA result UI.
 
+ancova_main_table <- function(table) {
+  if (is.data.frame(table)) {
+    attr(table, "result_table_role") <- "main"
+    attr(table, "result_table_language") <- result_main_table_language()
+  }
+  table
+}
+
+ancova_appendix_text <- function(text, language = NULL) {
+  language <- result_appendix_table_language(language)
+  text <- as.character(text %||% "")
+  if (identical(language, "en") || !nzchar(text)) {
+    return(text)
+  }
+  if (!identical(language, "ko")) return(result_appendix_ui_text(text, language))
+  korean <- c(
+    "Model overview" = "\ubaa8\ud615 \uac1c\uc694",
+    "Original-scale descriptive estimates" = "\uc6d0\ucc99\ub3c4 \uae30\uc220\ud1b5\uacc4 \ucd94\uc815\uce58",
+    "Assumption summary" = "\uac00\uc815 \uc694\uc57d",
+    "Regression slope homogeneity" = "\ud68c\uadc0\uae30\uc6b8\uae30 \ub3d9\uc9c8\uc131",
+    "Normality diagnostics" = "\uc815\uaddc\uc131 \uc9c4\ub2e8",
+    "Covariate linearity check" = "\uacf5\ubcc0\ub7c9 \uc120\ud615\uc131 \uac80\ud1a0",
+    "Collinearity diagnostics" = "\ub2e4\uc911\uacf5\uc120\uc131 \uc9c4\ub2e8",
+    "Influence diagnostics" = "\uc601\ud5a5\uce58 \uc9c4\ub2e8",
+    "Influence sensitivity analysis" = "\uc601\ud5a5\uce58 \ubbfc\uac10\ub3c4 \ubd84\uc11d",
+    "Warnings / skipped models" = "\uacbd\uace0 / \uc81c\uc678\ub41c \ubaa8\ud615",
+    "ANCOVA plots" = "ANCOVA \uadf8\ub9bc",
+    "Descriptive only. Estimates come from a separate unranked linear model and do not determine ranked-model inference." =
+      "\uae30\uc220\ud1b5\uacc4 \uc6a9\ub3c4\uc785\ub2c8\ub2e4. \ucd94\uc815\uce58\ub294 \ubcc4\ub3c4\uc758 \ube44\uc21c\uc704 \uc120\ud615\ubaa8\ud615\uc5d0\uc11c \uacc4\uc0b0\ub418\uba70 \uc21c\uc704 \ubaa8\ud615\uc758 \ucd94\ub860\uc5d0 \uc0ac\uc6a9\ub418\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4."
+  )
+  if (text %in% names(korean)) unname(korean[[text]]) else result_appendix_ui_text(text, language)
+}
+
+ancova_appendix_table <- function(table, language = NULL) {
+  if (!is.data.frame(table)) return(table)
+  language <- result_appendix_table_language(language)
+  localized <- result_appendix_localize_table(table, language)
+  if (!identical(language, "ko")) return(localized)
+  header_map <- c(
+    "DV" = "\uc885\uc18d\ubcc0\uc218", "Group" = "\uc9d1\ub2e8", "Covariates" = "\uacf5\ubcc0\ub7c9",
+    "Raw N" = "\uc6d0\uc790\ub8cc N", "Complete N" = "\uc644\uc804\uc0ac\ub840 N", "Excluded N" = "\uc81c\uc678 N",
+    "Sum of squares" = "\uc81c\uacf1\ud569", "Decision mode" = "\ud310\uc815 \ubc29\uc2dd",
+    "Decision alpha" = "\ud310\uc815 \uc720\uc758\uc218\uc900", "Residual normality p" = "\uc794\ucc28 \uc815\uaddc\uc131 p",
+    "Homogeneity test" = "\ub4f1\ubd84\uc0b0\uc131 \uac80\uc815", "Homogeneity p" = "\ub4f1\ubd84\uc0b0\uc131 p",
+    "Slope p" = "\uae30\uc6b8\uae30 p", "Slope check" = "\uae30\uc6b8\uae30 \uac80\ud1a0",
+    "Linearity" = "\uc120\ud615\uc131", "Collinearity" = "\ub2e4\uc911\uacf5\uc120\uc131", "Influence" = "\uc601\ud5a5\uce58",
+    "Outcome method" = "\uacb0\uacfc\ubcc0\uc218 \ubc29\ubc95", "Outcome p" = "\uacb0\uacfc\ubcc0\uc218 p",
+    "Residual method" = "\uc794\ucc28 \ubc29\ubc95", "Residual p" = "\uc794\ucc28 p", "Note" = "\ube44\uace0",
+    "Covariate" = "\uacf5\ubcc0\ub7c9", "Quadratic p" = "\uc774\ucc28\ud56d p", "Status" = "\uc0c1\ud0dc",
+    "Case" = "\uc0ac\ub840", "Studentized residual" = "\uc2a4\ud29c\ub358\ud2b8\ud654 \uc794\ucc28",
+    "Leverage" = "\ub808\ubc84\ub9ac\uc9c0", "Cook's D" = "Cook's D", "Flag" = "\ud45c\uc2dc",
+    "Excluded flagged cases" = "\uc81c\uc678\ub41c \ud45c\uc2dc \uc0ac\ub840", "partial eta2" = "\ubd80\ubd84 eta2"
+  )
+  current_names <- names(localized)
+  english_names <- names(table)
+  mapped <- vapply(seq_along(current_names), function(index) {
+    key <- english_names[[index]]
+    if (key %in% names(header_map)) unname(header_map[[key]]) else current_names[[index]]
+  }, character(1))
+  names(localized) <- mapped
+  value_map <- c(
+    "Auto switch" = "\uc790\ub3d9 \uc804\ud658", "Warn only" = "\uacbd\uace0\ub9cc",
+    "Pass" = "\ud1b5\uacfc", "Review" = "\uac80\ud1a0", "Flag" = "\uc8fc\uc758",
+    "Type I SS" = "\uc81cI\ud615 \uc81c\uacf1\ud569", "Type II SS" = "\uc81cII\ud615 \uc81c\uacf1\ud569", "Type III SS" = "\uc81cIII\ud615 \uc81c\uacf1\ud569",
+    "No predictors" = "\uc608\uce21\ubcc0\uc218 \uc5c6\uc74c", "Rank deficient" = "\uc644\uc804\uc120\ud615\uc885\uc18d",
+    "Not testable" = "\uac80\ud1a0 \ubd88\uac00", "severe collinearity" = "\uc2ec\uac01\ud55c \ub2e4\uc911\uacf5\uc120\uc131",
+    "acceptable" = "\ud5c8\uc6a9 \ubc94\uc704", "possible nonlinearity" = "\ube44\uc120\ud615\uc131 \uac00\ub2a5\uc131",
+    "flagged" = "\ud45c\uc2dc\ub428",
+    "Outcome normality is descriptive; residual normality drives ANCOVA method selection." =
+      "\uacb0\uacfc\ubcc0\uc218\uc758 \uc815\uaddc\uc131\uc740 \uae30\uc220\uc801\uc73c\ub85c \uc81c\uc2dc\ud558\uba70 ANCOVA \ubc29\ubc95 \uc120\ud0dd\uc740 \uc794\ucc28 \uc815\uaddc\uc131\uc744 \uae30\uc900\uc73c\ub85c \ud569\ub2c8\ub2e4."
+  )
+  for (index in seq_along(localized)) {
+    values <- as.character(localized[[index]])
+    matched <- values %in% names(value_map)
+    values[matched] <- unname(value_map[values[matched]])
+    values <- vapply(values, ancova_method_ui_label, character(1), language = language)
+    values <- vapply(values, ancova_method_reason_ui_text, character(1), language = language)
+    values <- vapply(values, function(value) {
+      if (grepl("^High collinearity \\(max VIF=.+\\)$", value, perl = TRUE)) {
+        return(sub("^High collinearity \\(max VIF=(.+)\\)$", "높은 다중공선성(최대 VIF=\\1)", value, perl = TRUE))
+      }
+      if (grepl("^Moderate collinearity \\(max VIF=.+\\)$", value, perl = TRUE)) {
+        return(sub("^Moderate collinearity \\(max VIF=(.+)\\)$", "중간 수준 다중공선성(최대 VIF=\\1)", value, perl = TRUE))
+      }
+      if (grepl("^Acceptable \\(max VIF=.+\\)$", value, perl = TRUE)) {
+        return(sub("^Acceptable \\(max VIF=(.+)\\)$", "허용 범위(최대 VIF=\\1)", value, perl = TRUE))
+      }
+      if (grepl("^Flagged cases=[0-9]+; max Cook's D=.+$", value, perl = TRUE)) {
+        return(sub("^Flagged cases=([0-9]+); max Cook's D=(.+)$", "표시 사례=\\1; 최대 Cook's D=\\2", value, perl = TRUE))
+      }
+      value
+    }, character(1))
+    localized[[index]] <- values
+  }
+  attr(localized, "result_table_role") <- "appendix"
+  attr(localized, "result_table_language") <- language
+  result_appendix_preserve_data(localized, table)
+}
+
 ancova_model_overview_table <- function(result, variable_table = NULL, labels = character(0)) {
   rows <- lapply(result$results %||% list(), function(item) {
     data.frame(
@@ -82,7 +181,7 @@ ancova_slope_homogeneity_review_table <- function(result, variable_table = NULL,
     rows[[length(rows) + 1L]] <- data.frame(
       DV = display_variable_name_static(item$dependent, variable_table, labels, label_only = TRUE),
       Term = table$Term,
-      df = ancova_format_decimal3_vec(table$df),
+      df = result_format_df(ancova_format_decimal3_vec(table$df)),
       F = ancova_format_decimal3_vec(table$F),
       p = ancova_format_p_vec(table$p),
       Status = table$Status,
@@ -232,13 +331,20 @@ ancova_influence_sensitivity_review_table <- function(result, variable_table = N
   ttest_bind_result_rows(rows)
 }
 
+ancova_items_for_table_type <- function(items, table_type = "display") {
+  table_type <- as.character(table_type %||% "display")
+  is_ranked <- vapply(items, function(item) identical(item$method, "Ranked ANCOVA"), logical(1))
+  if (identical(table_type, "rank") || identical(table_type, "original_scale")) {
+    return(items[is_ranked])
+  }
+  items[!is_ranked]
+}
+
 ancova_combined_result_table <- function(result, variable_table = NULL, labels = character(0), table_type = "display") {
   items <- result$results %||% list()
   table_type <- as.character(table_type %||% "display")
-  if (identical(table_type, "rank")) {
-    items <- items[vapply(items, function(item) identical(item$method, "Ranked ANCOVA"), logical(1))]
-  }
-  note_spec <- ancova_combined_note_spec(result, variable_table, labels)
+  items <- ancova_items_for_table_type(items, table_type)
+  note_spec <- ancova_combined_note_spec(result, variable_table, labels, table_type = table_type)
   marker_rows <- list()
   row_offset <- 0L
   add_marker <- function(row, column, marker) {
@@ -255,6 +361,8 @@ ancova_combined_result_table <- function(result, variable_table = NULL, labels =
   rows <- lapply(items, function(item) {
     table <- if (identical(table_type, "rank")) {
       item$table
+    } else if (identical(table_type, "original_scale")) {
+      item$original_scale_table %||% data.frame()
     } else {
       item$display_table %||% item$table
     }
@@ -293,7 +401,7 @@ ancova_combined_result_table <- function(result, variable_table = NULL, labels =
       method_marker <- note_spec$method_markers[[item$method %||% ""]]
       item_markers <- c(item_markers, method_marker)
     }
-    add_marker(first_row, "p", paste(item_markers, collapse = ","))
+    if ("p" %in% names(table)) add_marker(first_row, "p", paste(item_markers, collapse = ","))
     row_offset <<- row_offset + nrow(table)
     table
   })
@@ -324,8 +432,8 @@ ancova_combined_result_table <- function(result, variable_table = NULL, labels =
   out
 }
 
-ancova_combined_note_spec <- function(result, variable_table = NULL, labels = character(0)) {
-  items <- result$results %||% list()
+ancova_combined_note_spec <- function(result, variable_table = NULL, labels = character(0), table_type = "display") {
+  items <- ancova_items_for_table_type(result$results %||% list(), table_type)
   if (length(items) == 0) {
     return(list(lines = character(0), markers = list()))
   }
@@ -489,10 +597,16 @@ ancova_posthoc_note_marker <- function(item, note_spec) {
   note_spec$posthoc_markers[[key]] %||% ""
 }
 
-ancova_combined_note <- function(result, variable_table = NULL, labels = character(0)) {
-  spec <- ancova_combined_note_spec(result, variable_table, labels)
+ancova_combined_note <- function(result, variable_table = NULL, labels = character(0), table_type = "display") {
+  spec <- ancova_combined_note_spec(result, variable_table, labels, table_type = table_type)
   lines <- spec$lines %||% character(0)
-  paste(lines, collapse = "\n")
+  pick <- function(pattern) lines[grepl(pattern, lines, ignore.case = TRUE, perl = TRUE)]
+  result_sci_note_text(
+    format = pick("^(?:[0-9]+\\.\\s*)?(?:M|Rank M).*SE"),
+    abbreviations = pick("ES = effect size"),
+    estimation = pick("Analysis method:|Robust ANCOVA|Ranked ANCOVA|Interaction ANCOVA|Sum of squares: Type|Type I{1,3} SS"),
+    multiplicity = pick("Post-hoc:")
+  )
 }
 
 ancova_result_has_plots <- function(item) {
@@ -533,7 +647,7 @@ draw_ancova_adjusted_mean_plot <- function(item) {
   colors <- ancova_plot_palette(nrow(adjusted))
   old_par <- graphics::par(no.readonly = TRUE)
   on.exit(graphics::par(old_par), add = TRUE)
-  graphics::par(mar = c(5, 4.2, 2, 1), cex.axis = .85)
+  graphics::par(mar = c(5, 4.2, 3.5, 1), cex.axis = .85)
   adjusted_label <- if (identical(item$method, "Ranked ANCOVA")) "Adjusted rank mean" else "Adjusted mean"
   graphics::plot(
     NA_real_,
@@ -572,7 +686,7 @@ draw_ancova_raw_overlay_plot <- function(item) {
   levels <- as.character(levels(factor_values))
   old_par <- graphics::par(no.readonly = TRUE)
   on.exit(graphics::par(old_par), add = TRUE)
-  graphics::par(mar = c(5, 4.2, 2, 1), cex.axis = .85)
+  graphics::par(mar = c(5, 4.2, 3.5, 1), cex.axis = .85)
   graphics::boxplot(
     y ~ factor_values,
     outline = FALSE,
@@ -585,7 +699,9 @@ draw_ancova_raw_overlay_plot <- function(item) {
   for (index in seq_along(levels)) {
     values <- y[as.character(factor_values) == levels[[index]]]
     graphics::points(
-      jitter(rep(index, length(values)), amount = .08),
+      # Fixed display-only offsets: repeated screen/export renders must agree
+      # without consuming the analysis random-number stream.
+      index + .16 * ((seq_along(values) * ((sqrt(5) - 1) / 2)) %% 1 - .5),
       values,
       pch = 16,
       cex = .45,
@@ -595,7 +711,7 @@ draw_ancova_raw_overlay_plot <- function(item) {
   match_index <- match(adjusted$Level, levels)
   graphics::points(match_index, adjusted$Estimate, pch = 18, cex = 1.35, col = "#b91c1c")
   graphics::lines(match_index, adjusted$Estimate, col = "#b91c1c", lwd = 1.1)
-  graphics::legend("topright", legend = if (identical(item$method, "Ranked ANCOVA")) "Adjusted rank mean" else "Adjusted mean", pch = 18, col = "#b91c1c", bty = "n", cex = .8)
+  graphics::legend("topright", inset = c(0, -.05), xpd = NA, legend = if (identical(item$method, "Ranked ANCOVA")) "Adjusted rank mean" else "Adjusted mean", pch = 18, col = "#b91c1c", bty = "n", cex = .8)
 }
 
 draw_ancova_regression_lines_plot <- function(item) {
@@ -695,17 +811,19 @@ draw_ancova_linearity_diagnostic_plot <- function(item) {
   graphics::legend("topright", legend = c(levels(group_values), "loess"), col = c(colors, "#b91c1c"), pch = c(rep(16, length(colors)), NA), lty = c(rep(NA, length(colors)), 1), lwd = c(rep(NA, length(colors)), 1.8), bty = "n", cex = .75)
 }
 
-ancova_plot_sections <- function(item) {
+ancova_plot_sections <- function(item, plot_renderer = plot_data_uri) {
   options <- item$options %||% list()
   sections <- list()
-  add_plot <- function(title, plot_function) {
+  add_plot <- function(title, plot_function, plot_item = item) {
     sections[[length(sections) + 1L]] <<- tags$div(
       class = "ancova-plot-card",
       tags$h4(title),
       tags$img(
         class = "analysis-plot-image",
         style = "display:block;width:100%;max-width:640px;height:auto;",
-        src = plot_data_uri(plot_function, item, width = 1700, height = 1250, res = 300),
+        src = plot_renderer(plot_function, plot_item, width = 1700, height = 1250, res = 300),
+        width = 1700,
+        height = 1250,
         alt = title
       )
     )
@@ -719,40 +837,48 @@ ancova_plot_sections <- function(item) {
     for (covariate in ancova_numeric_covariates(item)) {
       plot_item <- item
       plot_item$linearity_covariate <- covariate
-      plot_function <- local({
-        local_item <- plot_item
-        function(unused) draw_ancova_linearity_diagnostic_plot(local_item)
-      })
-      add_plot(sprintf("Linearity diagnostic: residuals vs %s", covariate), plot_function)
+      add_plot(sprintf("Linearity diagnostic: residuals vs %s", covariate),
+               draw_ancova_linearity_diagnostic_plot, plot_item)
     }
   }
   sections
 }
 
-ancova_model_overview_html_table <- function(table, extra_class = "ancova-model-overview-transposed") {
+ancova_model_overview_html_table <- function(
+  table,
+  extra_class = "ancova-model-overview-transposed",
+  table_role = "appendix",
+  table_language = NULL,
+  note_line = NULL
+) {
   if (!is.data.frame(table) || nrow(table) == 0) {
     return(NULL)
   }
-  display_table <- table
-  dependent_headers <- if ("DV" %in% names(display_table)) {
-    as.character(display_table$DV)
+  table_role <- result_table_role(table_role, table)
+  table_language <- result_table_language(table_role, table_language)
+  display_table <- if (identical(table_role, "appendix")) ancova_appendix_table(table, table_language) else ancova_main_table(table)
+  dv_index <- match("DV", names(table))
+  dependent_headers <- if (is.finite(dv_index)) {
+    as.character(display_table[[dv_index]])
   } else {
     paste0("Model ", seq_len(nrow(display_table)))
   }
   dependent_headers[!nzchar(dependent_headers)] <- paste0("Model ", which(!nzchar(dependent_headers)))
-  field_names <- setdiff(names(display_table), "DV")
+  field_indices <- if (is.finite(dv_index)) setdiff(seq_along(display_table), dv_index) else seq_along(display_table)
+  field_names <- names(display_table)[field_indices]
   transposed <- data.frame(
     Item = field_names,
     check.names = FALSE,
     stringsAsFactors = FALSE
   )
+  if (identical(table_role, "appendix")) names(transposed)[[1L]] <- result_appendix_ui_text("Item", table_language)
   for (row_index in seq_len(nrow(display_table))) {
     column_name <- dependent_headers[[row_index]]
     if (column_name %in% names(transposed)) {
       column_name <- paste0(column_name, " ", row_index)
     }
-    transposed[[column_name]] <- vapply(field_names, function(field) {
-      as.character(display_table[[field]][[row_index]] %||% "")
+    transposed[[column_name]] <- vapply(field_indices, function(field_index) {
+      as.character(display_table[[field_index]][[row_index]] %||% "")
     }, character(1))
   }
 
@@ -794,19 +920,33 @@ ancova_model_overview_html_table <- function(table, extra_class = "ancova-model-
       }))
     }))
   )
-  result_table_with_notes(table_tag)
+  contract <- result_table_contract(
+    transposed,
+    role = table_role,
+    language = table_language,
+    intrinsic_width = result_table_intrinsic_width(transposed, first_width = 132, default_width = 118, min_width = 480)
+  )
+  result_table_with_notes(
+    result_table_apply_contract(table_tag, contract),
+    result_note_tag(note_line)
+  )
 }
 
-ancova_normality_html_table <- function(table) {
+ancova_normality_html_table <- function(table, table_role = "appendix", table_language = NULL, note_line = NULL) {
   if (!is.data.frame(table) || nrow(table) == 0) {
     return(NULL)
   }
-  header_label <- function(name) {
+  table_role <- result_table_role(table_role, table)
+  table_language <- result_table_language(table_role, table_language)
+  display_table <- if (identical(table_role, "appendix")) ancova_appendix_table(table, table_language) else ancova_main_table(table)
+  original_names <- names(table)
+  display_names <- names(display_table)
+  header_label <- function(name, label) {
     switch(
       name,
-      `Outcome method` = HTML("Outcome<br>method"),
-      `Residual method` = HTML("Residual<br>method"),
-      name
+      `Outcome method` = HTML(gsub(" ", "<br>", label, fixed = TRUE)),
+      `Residual method` = HTML(gsub(" ", "<br>", label, fixed = TRUE)),
+      label
     )
   }
   column_width <- function(name) {
@@ -851,33 +991,56 @@ ancova_normality_html_table <- function(table) {
       "border-collapse:collapse;border-spacing:0;border-top:2px solid #1f2937;border-bottom:2px solid #1f2937;",
       "color:#2f3a46;font-size:12px;background:transparent;"
     ),
-    tags$colgroup(lapply(names(table), function(name) {
+    tags$colgroup(lapply(original_names, function(name) {
       tags$col(style = sprintf("width:%s;", column_width(name)))
     })),
-    tags$thead(tags$tr(lapply(names(table), function(name) {
-      tags$th(style = header_style(name), header_label(name))
+    tags$thead(tags$tr(lapply(seq_along(original_names), function(index) {
+      name <- original_names[[index]]
+      tags$th(style = header_style(name), header_label(name, display_names[[index]]))
     }))),
-    tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
-      values <- table[row_index, , drop = TRUE]
+    tags$tbody(lapply(seq_len(nrow(display_table)), function(row_index) {
+      values <- display_table[row_index, , drop = TRUE]
       tags$tr(lapply(seq_along(values), function(index) {
-        name <- names(values)[[index]]
-        tags$td(style = body_style(name, row_index == nrow(table)), body_content(name, values[[index]]))
+        name <- original_names[[index]]
+        tags$td(style = body_style(name, row_index == nrow(display_table)), body_content(name, values[[index]]))
       }))
     }))
   )
-  result_table_with_notes(table_tag)
+  explicit_widths <- vapply(original_names, function(name) {
+    value <- sub("px$", "", column_width(name))
+    suppressWarnings(as.numeric(value))
+  }, numeric(1))
+  intrinsic_width <- if (all(is.finite(explicit_widths))) sum(explicit_widths) else result_table_intrinsic_width(display_table, min_width = 480)
+  contract <- result_table_contract(display_table, role = table_role, language = table_language, intrinsic_width = max(480, intrinsic_width))
+  result_table_with_notes(result_table_apply_contract(table_tag, contract), result_note_tag(note_line))
 }
 
-ancova_diagnostics_html_table <- function(table, extra_class, widths, wrap_headers = list(), sortable = character(0), left_columns = character(0)) {
+ancova_diagnostics_html_table <- function(
+  table,
+  extra_class,
+  widths,
+  wrap_headers = list(),
+  sortable = character(0),
+  left_columns = character(0),
+  table_role = "appendix",
+  table_language = NULL,
+  note_line = NULL
+) {
   if (!is.data.frame(table) || nrow(table) == 0) {
     return(NULL)
   }
+  table_role <- result_table_role(table_role, table)
+  table_language <- result_table_language(table_role, table_language)
+  display_table <- if (identical(table_role, "appendix")) ancova_appendix_table(table, table_language) else ancova_main_table(table)
   names_table <- names(table)
-  header_label <- function(name) {
+  display_names <- names(display_table)
+  header_label <- function(name, label) {
     if (name %in% names(wrap_headers)) {
-      return(HTML(wrap_headers[[name]]))
+      english_label <- as.character(wrap_headers[[name]])
+      if (identical(table_language, "en")) return(HTML(english_label))
+      return(HTML(gsub(" ", "<br>", label, fixed = TRUE)))
     }
-    name
+    label
   }
   column_width <- function(name) {
     widths[[name]] %||% "auto"
@@ -936,7 +1099,7 @@ ancova_diagnostics_html_table <- function(table, extra_class, widths, wrap_heade
     })),
     tags$thead(tags$tr(lapply(seq_along(names_table), function(index) {
       name <- names_table[[index]]
-      label <- header_label(name)
+      label <- header_label(name, display_names[[index]])
       content <- if (name %in% sortable) {
         tags$button(
           type = "button",
@@ -952,69 +1115,140 @@ ancova_diagnostics_html_table <- function(table, extra_class, widths, wrap_heade
       }
       tags$th(style = header_style(name), content)
     }))),
-    tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
-      values <- table[row_index, , drop = TRUE]
+    tags$tbody(lapply(seq_len(nrow(display_table)), function(row_index) {
+      values <- display_table[row_index, , drop = TRUE]
       tags$tr(lapply(seq_along(values), function(index) {
-        name <- names(values)[[index]]
-        tags$td(style = body_style(name, row_index == nrow(table)), values[[index]])
+        name <- names_table[[index]]
+        tags$td(style = body_style(name, row_index == nrow(display_table)), values[[index]])
       }))
     }))
   )
-  result_table_with_notes(table_tag)
+  explicit_widths <- vapply(names_table, function(name) {
+    value <- sub("px$", "", column_width(name))
+    suppressWarnings(as.numeric(value))
+  }, numeric(1))
+  intrinsic_width <- if (all(is.finite(explicit_widths))) sum(explicit_widths) else result_table_intrinsic_width(display_table, min_width = 480)
+  contract <- result_table_contract(display_table, role = table_role, language = table_language, intrinsic_width = max(480, intrinsic_width))
+  result_table_with_notes(result_table_apply_contract(table_tag, contract), result_note_tag(note_line))
 }
 
-ancova_results_ui <- function(result, variable_table = NULL, labels = character(0)) {
+ancova_observed_descriptives <- function(result, variable_table = NULL, labels = character(0)) {
+  rows <- lapply(result$results %||% list(), function(item) {
+    data <- item$clean_data
+    if (!is.data.frame(data) || !nrow(data)) return(NULL)
+    groups <- split(data[[item$dependent]], data[[item$factor]], drop = TRUE)
+    data.frame(DV = display_variable_name_static(item$dependent, variable_table, labels, label_only = TRUE),
+      Variable = display_variable_name_static(item$factor, variable_table, labels, label_only = TRUE),
+      Group = names(groups), N = lengths(groups),
+      `M ± SD` = vapply(groups, function(x) paste(format_decimal3(mean(x)), "±", format_decimal3(stats::sd(x))), character(1)),
+      check.names = FALSE, stringsAsFactors = FALSE)
+  })
+  do.call(rbind, rows)
+}
+
+ancova_error_ui_text <- function(message, language = result_appendix_table_language()) {
+  labels <- c(`ANCOVA requires at least four complete cases.` = "ANCOVA에는 완전 사례가 최소 4개 필요합니다.",
+    `Grouping variable must have at least two observed levels.` = "집단변수에는 관측된 수준이 최소 2개 필요합니다.",
+    `Select at least one covariate.` = "공변량을 하나 이상 선택하세요.",
+    `No data frame is available for ANCOVA.` = "ANCOVA에 사용할 데이터가 없습니다.")
+  vapply(as.character(message), function(x) {
+    if (!is.na(x) && x %in% names(labels)) statedu_localized_text(language, x, unname(labels[[x]])) else x
+  }, character(1), USE.NAMES = FALSE)
+}
+
+ancova_results_ui <- function(result, variable_table = NULL, labels = character(0), plot_renderer = plot_data_uri) {
   if (is.null(result)) {
     return(NULL)
   }
   if (!is.null(result$error)) {
-    return(tags$div(class = "analysis-error", result$error))
+    return(tags$div(class = "analysis-error", ancova_error_ui_text(result$error)))
   }
+  appendix_language <- result_appendix_table_language()
   sections <- list(
     tags$div(
       class = "result-section regression-result-panel ancova-model-overview-panel",
-      tags$h3("Model overview"),
-      ancova_model_overview_html_table(ancova_model_overview_table(result, variable_table, labels))
+      tags$h3(ancova_appendix_text("Model overview", appendix_language)),
+      ancova_model_overview_html_table(
+        ancova_model_overview_table(result, variable_table, labels),
+        table_role = "appendix",
+        table_language = appendix_language
+      )
     )
   )
-  combined_table <- ancova_combined_result_table(result, variable_table, labels)
+  combined_table <- ancova_main_table(ancova_combined_result_table(result, variable_table, labels))
   if (is.data.frame(combined_table) && nrow(combined_table) > 0) {
     sections[[length(sections) + 1L]] <- tags$div(
       class = "result-section regression-result-panel ancova-result-panel",
       tags$h3("ANCOVA table"),
       coefficient_html_table(
         combined_table,
-        note_line = ancova_combined_note(result, variable_table, labels),
+        sheet_orientation = "portrait",
+        note_line = ancova_combined_note(result, variable_table, labels, table_type = "display"),
         compact = TRUE,
-        compact_font_size = 13,
-        compact_width = 82,
-        compact_first_width = 72,
-        compact_min_width = 720
+        compact_font_size = 12,
+        compact_width = 58,
+        compact_first_width = 92,
+        compact_min_width = 480,
+        table_role = "main"
       )
     )
   }
-  ranked_table <- ancova_combined_result_table(result, variable_table, labels, table_type = "rank")
+  ranked_table <- ancova_main_table(ancova_combined_result_table(result, variable_table, labels, table_type = "rank"))
   if (is.data.frame(ranked_table) && nrow(ranked_table) > 0) {
     sections[[length(sections) + 1L]] <- tags$div(
       class = "result-section regression-result-panel ancova-result-panel ancova-ranked-result-panel",
       tags$h3("Ranked ANCOVA table"),
       coefficient_html_table(
         ranked_table,
-        note_line = "Rank table: Rank M = adjusted rank mean; SE = standard error. Values are reported on the rank-transformed scale.",
+        sheet_orientation = "portrait",
+        note_line = ancova_combined_note(result, variable_table, labels, table_type = "rank"),
         compact = TRUE,
-        compact_font_size = 13,
-        compact_width = 82,
-        compact_first_width = 72,
-        compact_min_width = 720
+        compact_font_size = 12,
+        compact_width = 58,
+        compact_first_width = 92,
+        compact_min_width = 480,
+        table_role = "main"
       )
     )
   }
+  original_scale_table <- ancova_combined_result_table(result, variable_table, labels, table_type = "original_scale")
+  if (is.data.frame(original_scale_table) && nrow(original_scale_table) > 0) {
+    sections[[length(sections) + 1L]] <- tags$div(
+      class = "result-section regression-result-panel ancova-result-panel ancova-original-scale-descriptive-panel",
+      tags$h3(ancova_appendix_text("Original-scale descriptive estimates", appendix_language)),
+      coefficient_html_table(
+        ancova_appendix_table(original_scale_table, appendix_language),
+        note_line = ancova_appendix_text(
+          "Descriptive only. Estimates come from a separate unranked linear model and do not determine ranked-model inference.",
+          appendix_language
+        ),
+        compact = TRUE,
+        compact_font_size = 12,
+        compact_width = 58,
+        compact_first_width = 92,
+        compact_min_width = 480,
+        table_role = "appendix",
+        table_language = appendix_language
+      )
+    )
+  }
+  observed <- ancova_observed_descriptives(result, variable_table, labels)
+  if (is.data.frame(observed) && nrow(observed)) sections[[length(sections) + 1L]] <- tags$div(
+    class = "result-section regression-result-panel ancova-observed-descriptive-panel",
+    tags$h3(statedu_localized_text(appendix_language, "Appendix: observed descriptive statistics", "부록: 관측값 기술통계")),
+    coefficient_html_table(ancova_appendix_table(observed, appendix_language), table_role = "appendix", sheet_orientation = "portrait",
+      note_line = statedu_localized_text(appendix_language, "Unadjusted observed mean ± SD in the complete-case analysis sample.", "분석에 사용한 완전 사례의 보정 전 관측 평균 ± 표준편차입니다.")))
   assumption <- ancova_assumption_review_table(result, variable_table, labels)
   if (is.data.frame(assumption) && nrow(assumption) > 0) {
     sections[[length(sections) + 1L]] <- tags$div(
       class = "result-section regression-result-panel ancova-assumption-panel",
-      tags$h3("Assumption summary"),
-      ancova_model_overview_html_table(assumption, "ancova-assumption-summary-transposed")
+      tags$h3(ancova_appendix_text("Assumption summary", appendix_language)),
+      ancova_model_overview_html_table(
+        assumption,
+        "ancova-assumption-summary-transposed",
+        table_role = "appendix",
+        table_language = appendix_language
+      )
     )
   }
   interaction_terms <- ancova_interaction_terms_review_table(result, variable_table, labels)
@@ -1022,19 +1256,33 @@ ancova_results_ui <- function(result, variable_table = NULL, labels = character(
     sections[[length(sections) + 1L]] <- tags$div(
       class = "result-section regression-result-panel ancova-interaction-terms-panel",
       tags$h3("Interaction terms"),
-      model_overview_html_table(interaction_terms)
+      coefficient_html_table(
+        ancova_main_table(interaction_terms),
+        note_line = result_sci_note_text(
+          estimation = "Interaction terms are group-by-covariate effects",
+          multiplicity = "p values are two-sided"
+        ),
+        compact = TRUE,
+        compact_font_size = 12,
+        compact_width = 58,
+        compact_first_width = 92,
+        compact_min_width = 480,
+        table_role = "main"
+      )
     )
   }
   slope_homogeneity <- ancova_slope_homogeneity_review_table(result, variable_table, labels)
   if (is.data.frame(slope_homogeneity) && nrow(slope_homogeneity) > 0) {
     sections[[length(sections) + 1L]] <- tags$div(
       class = "result-section regression-result-panel ancova-slope-homogeneity-panel",
-      tags$h3("Regression slope homogeneity"),
+      tags$h3(ancova_appendix_text("Regression slope homogeneity", appendix_language)),
       ancova_diagnostics_html_table(
         slope_homogeneity,
         extra_class = "ancova-slope-homogeneity-table",
         widths = list(DV = "48px", Term = "110px", df = "56px", F = "66px", p = "58px", Status = "190px"),
-        left_columns = c("Term", "Status")
+        left_columns = c("Term", "Status"),
+        table_role = "appendix",
+        table_language = appendix_language
       )
     )
   }
@@ -1048,7 +1296,14 @@ ancova_results_ui <- function(result, variable_table = NULL, labels = character(
         extra_class = "ancova-simple-effects-table",
         widths = list(DV = "44px", Covariate = "76px", `Covariate value` = "78px", Value = "62px", Contrast = "64px", Estimate = "72px", SE = "54px", t = "62px", p = "62px"),
         wrap_headers = list(`Covariate value` = "Covariate<br>value"),
-        left_columns = c("Covariate", "Covariate value")
+        left_columns = c("Covariate", "Covariate value"),
+        table_role = "main",
+        table_language = "en",
+        note_line = result_sci_note_text(
+          abbreviations = "M = mean; SD = standard deviation; SE = standard error",
+          estimation = "Estimates are covariate-adjusted simple group contrasts",
+          multiplicity = "p values are two-sided"
+        )
       )
     )
   }
@@ -1056,20 +1311,22 @@ ancova_results_ui <- function(result, variable_table = NULL, labels = character(
   if (is.data.frame(normality) && nrow(normality) > 0) {
     sections[[length(sections) + 1L]] <- tags$div(
       class = "result-section regression-result-panel ancova-normality-panel",
-      tags$h3("Normality diagnostics"),
-      ancova_normality_html_table(normality)
+      tags$h3(ancova_appendix_text("Normality diagnostics", appendix_language)),
+      ancova_normality_html_table(normality, table_role = "appendix", table_language = appendix_language)
     )
   }
   linearity <- ancova_linearity_review_table(result, variable_table, labels)
   if (is.data.frame(linearity) && nrow(linearity) > 0) {
     sections[[length(sections) + 1L]] <- tags$div(
       class = "result-section regression-result-panel ancova-linearity-panel",
-      tags$h3("Covariate linearity check"),
+      tags$h3(ancova_appendix_text("Covariate linearity check", appendix_language)),
       ancova_diagnostics_html_table(
         linearity,
         extra_class = "ancova-linearity-table",
         widths = list(DV = "48px", Covariate = "96px", `Quadratic p` = "92px", Status = "170px"),
-        left_columns = c("Covariate", "Status")
+        left_columns = c("Covariate", "Status"),
+        table_role = "appendix",
+        table_language = appendix_language
       )
     )
   }
@@ -1077,22 +1334,24 @@ ancova_results_ui <- function(result, variable_table = NULL, labels = character(
   if (is.data.frame(collinearity) && nrow(collinearity) > 0) {
     sections[[length(sections) + 1L]] <- tags$div(
       class = "result-section regression-result-panel ancova-collinearity-panel",
-      tags$h3("Collinearity diagnostics"),
-      model_overview_html_table(collinearity)
+      tags$h3(ancova_appendix_text("Collinearity diagnostics", appendix_language)),
+      model_overview_html_table(ancova_appendix_table(collinearity, appendix_language))
     )
   }
   influence <- ancova_influence_review_table(result, variable_table, labels)
   if (is.data.frame(influence) && nrow(influence) > 0) {
     sections[[length(sections) + 1L]] <- tags$div(
       class = "result-section regression-result-panel ancova-influence-panel",
-      tags$h3("Influence diagnostics"),
+      tags$h3(ancova_appendix_text("Influence diagnostics", appendix_language)),
       ancova_diagnostics_html_table(
         influence,
         extra_class = "ancova-influence-table",
         widths = list(DV = "48px", Case = "64px", `Studentized residual` = "96px", Leverage = "76px", `Cook's D` = "82px", Flag = "142px"),
         wrap_headers = list(`Studentized residual` = "Studentized<br>residual"),
         sortable = c("Case", "Studentized residual", "Leverage", "Cook's D"),
-        left_columns = c("Flag")
+        left_columns = c("Flag"),
+        table_role = "appendix",
+        table_language = appendix_language
       )
     )
   }
@@ -1100,7 +1359,7 @@ ancova_results_ui <- function(result, variable_table = NULL, labels = character(
   if (is.data.frame(influence_sensitivity) && nrow(influence_sensitivity) > 0) {
     sections[[length(sections) + 1L]] <- tags$div(
       class = "result-section regression-result-panel ancova-influence-sensitivity-panel",
-      tags$h3("Influence sensitivity analysis"),
+      tags$h3(ancova_appendix_text("Influence sensitivity analysis", appendix_language)),
       ancova_diagnostics_html_table(
         influence_sensitivity,
         extra_class = "ancova-influence-sensitivity-table",
@@ -1120,21 +1379,25 @@ ancova_results_ui <- function(result, variable_table = NULL, labels = character(
           `Excluded flagged cases` = "Excluded<br>flagged<br>cases",
           `partial eta2` = "partial<br>eta2"
         ),
-        left_columns = c("Model", "Note")
+        left_columns = c("Model", "Note"),
+        table_role = "appendix",
+        table_language = appendix_language
       )
     )
   }
   for (item in result$results %||% list()) {
-    plot_sections <- ancova_plot_sections(item)
+    plot_sections <- ancova_plot_sections(item, plot_renderer)
     if (length(plot_sections) > 0) {
       sections[[length(sections) + 1L]] <- tags$div(
         class = "result-section regression-result-panel ancova-plots-panel",
-        tags$h3(sprintf("ANCOVA plots(%s)", display_variable_name_static(item$dependent, variable_table, labels, label_only = TRUE))),
+        tags$h3(sprintf("%s (%s)", ancova_appendix_text("ANCOVA plots", appendix_language), display_variable_name_static(item$dependent, variable_table, labels, label_only = TRUE))),
         do.call(tagList, plot_sections)
       )
     }
   }
-  diagnostics <- analysis_diagnostics_section(NULL, result$skipped, title = "Warnings / skipped models")
+  skipped <- result$skipped
+  if (is.data.frame(skipped) && "Message" %in% names(skipped)) skipped$Message <- ancova_error_ui_text(skipped$Message, appendix_language)
+  diagnostics <- analysis_diagnostics_section(NULL, skipped, title = ancova_appendix_text("Warnings / skipped models", appendix_language), messages_localized = TRUE)
   if (!is.null(diagnostics)) {
     sections[[length(sections) + 1L]] <- diagnostics
   }

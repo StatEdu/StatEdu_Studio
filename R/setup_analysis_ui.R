@@ -24,7 +24,9 @@ analysis_allowed_variables <- function(names, variable_table = NULL, allowed_mea
   names[names %in% names(measurements) & measurements[names] %in% allowed_measurements]
 }
 
-analysis_ui_text <- function(text, language = statedu_initial_language()) {
+analysis_ui_text <- local({
+  labels_cache <- NULL
+  function(text, language = statedu_initial_language()) {
   h <- statedu_utf8
   key <- tolower(trimws(as.character(text %||% "")))
   key <- gsub(h("c2b1"), "+/-", key, fixed = TRUE)
@@ -53,7 +55,8 @@ analysis_ui_text <- function(text, language = statedu_initial_language()) {
       return(translated)
     }
   }
-  labels <- c(
+  if (is.null(labels_cache)) {
+    labels_cache <<- c(
     "variables" = paste0("Variables|", h("ebb380ec8898")),
     "auto coding error check" = paste0("Auto coding error check|", h("ec9e90eb8f9920ecbd94eb94a920ec98a4eba59820ed9995ec9db8")),
     "auto missing value detection" = paste0("Auto missing value detection|", h("ec9e90eb8f9920eab2b0ecb8a1eab09220ecb298eba6ac")),
@@ -136,6 +139,7 @@ analysis_ui_text <- function(text, language = statedu_initial_language()) {
     "block 1" = paste0("Block 1|", h("ebb894eba19d2031")),
     "block 2: independent variables" = paste0("Block 2: Independent variables|", h("ebb894eba19d20323a20eb8f85eba6bdebb380ec8898")),
     "block 3: independent variables" = paste0("Block 3: Independent variables|", h("ebb894eba19d20333a20eb8f85eba6bdebb380ec8898")),
+    "block 4: independent variables" = paste0("Block 4: Independent variables|", h("ebb894eba19d20343a20eb8f85eba6bdebb380ec8898")),
     "previous block" = paste0("Previous block|", h("ec9db4eca08420ebb894eba19d")),
     "next block" = paste0("Next block|", h("eb8ba4ec9d8c20ebb894eba19d")),
     "bootstrap" = paste0("Bootstrap|", h("ebb680ed8ab8ec8aa4ed8ab8eb9ea9")),
@@ -381,12 +385,15 @@ analysis_ui_text <- function(text, language = statedu_initial_language()) {
     "run logistic" = paste0("Run logistic|", h("eba19ceca780ec8aa4ed8bb120ec8ba4ed9689")),
     "report b and se instead of or / ratio and 95% ci" = paste0("Report B and SE instead of OR / ratio and 95% CI|", h("ec84a0ed839ded959c20ebaaa8ed9895ec979020eb94b0eb9dbc2042ec9980205345eba5bc204f522febb984ec9ca820ebb08f2039352520434920eb8c80ec8ba020ebb3b4eab3a0")),
     "run glm" = paste0("Run GLM|", h("474c4d20ec8ba4ed9689"))
-  )
+    )
+  }
+  labels <- labels_cache
   value <- if (key %in% names(labels)) labels[[key]] else as.character(text)
   parts <- strsplit(value, "\\|", fixed = FALSE)[[1]]
   language <- normalize_app_language(language)
-  if (identical(language, "ko")) parts[[length(parts)]] else parts[[1]]
-}
+  statedu_localized_text(language, parts[[1]], parts[[length(parts)]])
+  }
+})
 
 analysis_ui_label <- function(label, language = statedu_initial_language()) {
   if (is.character(label) && length(label) == 1) {
@@ -431,6 +438,34 @@ analysis_reset_button <- function(
     disabled = if (!isTRUE(enabled)) "disabled" else NULL,
     label
   )
+}
+
+analysis_variable_move_label <- function(active_list, target_id, selected) {
+  if (identical(active_list,target_id) && length(selected %||% character()) > 0L) "<" else ">"
+}
+
+analysis_variable_move_button <- function(input_id, disabled=FALSE, label=">") {
+  actionButton(input_id,label,class="btn btn-default analysis-move-button",
+    disabled=if(isTRUE(disabled))"disabled"else NULL)
+}
+
+analysis_reorder_items <- function(current, payload) {
+  order <- as.character(payload$order %||% character())
+  valid <- length(order) == length(current) && !anyDuplicated(order) && setequal(order, current)
+  list(order = if (valid) order else current,
+       selected = intersect(as.character(payload$selected %||% character()), current),
+       changed = valid && !identical(order, current))
+}
+
+# Register drag ordering beside the corresponding button handlers so the same
+# model state, dirty flags and selection synchronization are used by both.
+register_analysis_reorder <- function(input, session, input_id, handler) {
+  session$onFlushed(function() {
+    session$sendCustomMessage("easyflow-enable-reorder", list(id = input_id))
+  }, once = TRUE)
+  observeEvent(input[[paste0(input_id, "_reorder")]], {
+    handler(input[[paste0(input_id, "_reorder")]])
+  }, ignoreInit = TRUE)
 }
 
 analysis_transfer_listbox_input <- function(
@@ -587,10 +622,10 @@ analysis_output_table_style_choices <- function(language = statedu_initial_langu
     )
   } else {
     c(
-      standard = "Standard",
-      wide = "Wide",
-      compact = "Short",
-      compact_xm = "Short(X,M)"
+      standard = analysis_ui_text("Standard", language),
+      wide = analysis_ui_text("Wide", language),
+      compact = analysis_ui_text("Short", language),
+      compact_xm = paste0(analysis_ui_text("Short", language), "(X,M)")
     )
   }
   stats::setNames(values, labels[values])
@@ -622,7 +657,7 @@ analysis_output_table_style_tabs <- function(input_id, selected = "standard", la
   if (!selected %in% unname(choices)) {
     selected <- "compact"
   }
-  title <- if (identical(language, "ko")) paste(intToUtf8(0xD45C), intToUtf8(c(0xC2A4, 0xD0C0, 0xC77C))) else "Table style"
+  title <- analysis_ui_text("Table style", language)
   options <- lapply(names(choices), function(label) {
     value <- unname(choices[[label]])
     tags$label(

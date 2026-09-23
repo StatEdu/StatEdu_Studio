@@ -1,0 +1,15 @@
+Sys.setlocale('LC_ALL','Korean_Korea.utf8')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules()
+dir.create('outputs/spss_phase16_20260906',showWarnings=FALSE)
+r<-readRDS('outputs/spss_phase13_20260906/reml_un.rds')
+e<-list(title='Longitudinal',html=saved_longitudinal_results_html(r),saved_at='2026-09-06')
+write_result_collection_docx(list(e),'outputs/spss_phase16_20260906/화면표_Word.docx')
+tables<-result_entry_tables(e)
+expected<-lapply(tables,function(t) lapply(t$screen$cells,function(c) t$screen$values[c$row,c$col]))
+jsonlite::write_json(expected,'outputs/spss_phase16_20260906/expected_cells.json',auto_unbox=TRUE)
+# Empty merged cells occupy grid positions too; displayed precision is not reformatted.
+fixture<-xml2::read_html('<table><thead><tr><th rowspan="2"></th><th colspan="2">A</th></tr><tr><th>B</th><th>C</th></tr></thead><tbody><tr><td>x</td><td>0.0000</td><td>&lt;.001</td></tr></tbody></table>')
+parsed<-result_html_table_cells(xml2::xml_find_first(fixture,'.//table'))
+stopifnot(ncol(parsed$values)==3L,identical(unname(parsed$values[2,]),c('','B','C')),
+  identical(unname(parsed$values[3,]),c('x','0.0000','<.001')))
+cat('Editable Word export completed\n')

@@ -289,10 +289,14 @@ generalized_missing_pattern_summary <- function(raw_prepared, complete_index, ou
   predictors <- intersect(as.character(predictors %||% character(0)), names(raw_prepared))
   exposure <- utils::head(intersect(as.character(exposure %||% character(0)), names(raw_prepared)), 1)
   missing_matrix <- is.na(raw_prepared)
-  pattern <- apply(missing_matrix, 1, function(row) {
-    missing_names <- names(raw_prepared)[row]
-    if (length(missing_names) == 0) "Complete" else paste(missing_names, collapse = ", ")
-  })
+  missing_rows <- rowSums(missing_matrix) > 0
+  pattern <- rep("Complete", nrow(raw_prepared))
+  if (any(missing_rows)) {
+    pattern[missing_rows] <- apply(missing_matrix[missing_rows, , drop = FALSE], 1, function(row) {
+      missing_names <- names(raw_prepared)[row]
+      if (length(missing_names) == 0) "Complete" else paste(missing_names, collapse = ", ")
+    })
+  }
   pattern_counts <- sort(table(pattern), decreasing = TRUE)
   most_common_pattern <- if (length(pattern_counts) > 0) {
     sprintf("%s (n=%s)", names(pattern_counts)[[1]], as.integer(pattern_counts[[1]]))
@@ -432,7 +436,42 @@ generalized_coef_table <- function(model, robust = TRUE, exponentiate = FALSE, s
   table
 }
 
-generalized_fit_model <- function(data, formula, family, link, robust, exponentiate, overdispersion_check, weights = NULL, se_type = NULL) {
+generalized_nb_implementation <- function(theta = MASS::theta.ml, nb = MASS::glm.nb,
+                                         version = as.character(utils::packageVersion("MASS"))) {
+  # Only transform the exact bundled implementations that were validated.
+  signature <- function(fn) digest::digest(list(deparse(formals(fn), width.cutoff = 500L), deparse(body(fn), width.cutoff = 500L)))
+  if (!identical(version, "7.3.65") || !requireNamespace("digest", quietly = TRUE) ||
+      !identical(signature(theta), "08b57328a8c27e5d1d63957dfe4bb88a") ||
+      !identical(signature(nb), "62f5327c38f4f08aec9898c044432306")) return(nb)
+  code <- paste(deparse(body(theta), width.cutoff = 500L), collapse = "\n")
+  code <- gsub("digamma\\(th \\+\\s*y\\)",
+    "(if (length(y_index) && is.finite(th) && th > 0) stats::setNames(digamma(th + distinct_y)[y_index], names(y)) else digamma(th + y))", code, perl = TRUE)
+  code <- gsub("trigamma\\(th \\+\\s*y\\)",
+    "(if (length(y_index) && is.finite(th) && th > 0) stats::setNames(trigamma(th + distinct_y)[y_index], names(y)) else trigamma(th + y))", code, perl = TRUE)
+  initialization <- paste0(
+    "y_index <- integer(0); distinct_y <- numeric(0)\n",
+    "if (is.numeric(y) && all(names(attributes(y)) %in% 'names') && length(y) >= 1000L && all(is.finite(y)) && all(y >= 0) && all(y == floor(y))) {\n",
+    " distinct_y <- unique(y)\n",
+    " if (length(distinct_y) <= length(y) / 2) y_index <- match(y, distinct_y)\n",
+    "}\n t0 <- n/")
+  code <- sub("t0 <- n/", initialization, code, fixed = TRUE)
+  body(theta) <- parse(text = code)[[1L]]
+  local_namespace <- new.env(parent = environment(nb))
+  local_namespace$theta.ml <- theta
+  environment(nb) <- local_namespace
+  nb
+}
+
+generalized_glm_nb <- function(...) {
+  nb <- generalized_nb_implementation()
+  call <- match.call(expand.dots = TRUE)
+  call[[1L]] <- quote(.statedu_nb)
+  fit <- eval(call, envir = list(.statedu_nb = nb), enclos = parent.frame())
+  if (inherits(fit, "negbin") && !is.null(fit$call)) fit$call[[1L]] <- quote(MASS::glm.nb)
+  fit
+}
+
+generalized_fit_model <- function(data, formula, family, link, robust, exponentiate, overdispersion_check, weights = NULL, se_type = NULL, count_family_lock = NULL) {
   fit_note <- character(0)
   requested_family <- family
   fitted_family <- family
@@ -446,6 +485,10 @@ generalized_fit_model <- function(data, formula, family, link, robust, exponenti
   }
 
   if (identical(family, "count")) {
+    count_family_lock <- as.character(count_family_lock %||% "")[[1]]
+    if (!count_family_lock %in% c("", "count", "negative_binomial")) {
+      stop("Count-family lock must be Poisson ('count') or negative binomial.", call. = FALSE)
+    }
     poisson <- if (is.null(weights)) {
       stats::glm(formula, data = data, family = generalized_family_object("count", link))
     } else {
@@ -457,9 +500,9 @@ generalized_fit_model <- function(data, formula, family, link, robust, exponenti
     nb <- if (requireNamespace("MASS", quietly = TRUE)) {
       tryCatch(
         if (is.null(weights)) {
-          MASS::glm.nb(formula, data = data, link = "log")
+          generalized_glm_nb(formula, data = data, link = "log")
         } else {
-          MASS::glm.nb(formula, data = data, weights = .statedu_glm_weights, link = "log")
+          generalized_glm_nb(formula, data = data, weights = .statedu_glm_weights, link = "log")
         },
         error = function(e) NULL
       )
@@ -476,7 +519,18 @@ generalized_fit_model <- function(data, formula, family, link, robust, exponenti
     } else {
       NA_real_
     }
-    if (isTRUE(overdispersion_check) && is.finite(dispersion) && dispersion > threshold) {
+    if (identical(count_family_lock, "negative_binomial")) {
+      if (is.null(nb)) {
+        stop("Negative-binomial family was locked for MI, but the model failed to fit in this imputed dataset.", call. = FALSE)
+      }
+      model <- nb
+      fitted_family <- "negative_binomial"
+      fit_note <- c(fit_note, "Negative-binomial family was prespecified and held fixed across all imputed datasets.")
+    } else if (identical(count_family_lock, "count")) {
+      model <- poisson
+      fitted_family <- "count"
+      fit_note <- c(fit_note, "Poisson family was prespecified and held fixed across all imputed datasets.")
+    } else if (isTRUE(overdispersion_check) && is.finite(dispersion) && dispersion > threshold) {
       if (!is.null(nb)) {
         model <- nb
         fitted_family <- "negative_binomial"
@@ -485,7 +539,11 @@ generalized_fit_model <- function(data, formula, family, link, robust, exponenti
         fit_note <- c(fit_note, "Poisson overdispersion exceeded the prespecified screening threshold of 1.5, but negative binomial GLM did not converge; Poisson GLM was retained.")
       }
     }
-    decision <- if (identical(fitted_family, "negative_binomial")) {
+    decision <- if (identical(count_family_lock, "negative_binomial")) {
+      "Negative binomial was locked before MI pooling using the across-imputation dispersion rule."
+    } else if (identical(count_family_lock, "count")) {
+      "Poisson was locked before MI pooling using the across-imputation dispersion rule."
+    } else if (identical(fitted_family, "negative_binomial")) {
       "Poisson dispersion exceeded the prespecified screening threshold and negative-binomial fit was available."
     } else if (!is.finite(dispersion)) {
       "Poisson dispersion could not be computed; Poisson GLM was retained."
@@ -573,45 +631,88 @@ generalized_fit_model <- function(data, formula, family, link, robust, exponenti
   )
 }
 
-generalized_pool_coef_tables <- function(tables, exponentiate = FALSE) {
-  tables <- tables[vapply(tables, function(table) is.data.frame(table) && nrow(table) > 0 && all(c("Term", "B", "SE") %in% names(table)), logical(1))]
-  if (length(tables) == 0) {
-    stop("No fitted imputed GLM coefficient tables were available for pooling.", call. = FALSE)
+generalized_rubin_pool_scalar <- function(estimates, variances, dfcom) {
+  estimates <- suppressWarnings(as.numeric(estimates))
+  variances <- suppressWarnings(as.numeric(variances))
+  dfcom <- suppressWarnings(as.numeric(dfcom)[[1]])
+  if (length(estimates) < 2L || length(estimates) != length(variances) || any(!is.finite(estimates)) || any(!is.finite(variances) | variances <= 0)) {
+    stop("Rubin pooling requires at least two finite estimates with finite positive within-imputation variances.", call. = FALSE)
   }
-  terms <- Reduce(intersect, lapply(tables, function(table) as.character(table$Term)))
-  if (length(terms) == 0) {
-    stop("No common coefficient terms were available for MI pooling.", call. = FALSE)
+  if (!is.finite(dfcom) || dfcom <= 0) {
+    stop("A finite positive complete-data residual df is required for Barnard-Rubin pooling.", call. = FALSE)
   }
-  rows <- lapply(terms, function(term) {
-    estimates <- vapply(tables, function(table) {
-      suppressWarnings(as.numeric(table$B[match(term, table$Term)]))
-    }, numeric(1))
-    variances <- vapply(tables, function(table) {
-      se <- suppressWarnings(as.numeric(table$SE[match(term, table$Term)]))
-      se^2
-    }, numeric(1))
-    ok <- is.finite(estimates) & is.finite(variances)
-    estimates <- estimates[ok]
-    variances <- variances[ok]
-    if (length(estimates) == 0) {
-      return(data.frame())
-    }
-    m <- length(estimates)
-    qbar <- mean(estimates)
-    ubar <- mean(variances)
-    bvar <- if (m > 1) stats::var(estimates) else 0
-    total <- ubar + (1 + 1 / max(m, 1)) * bvar
-    se <- sqrt(max(total, 0))
-    statistic <- if (is.finite(se) && se > 0) qbar / se else NA_real_
-    p <- if (is.finite(statistic)) 2 * stats::pnorm(abs(statistic), lower.tail = FALSE) else NA_real_
+  m <- length(estimates)
+  qbar <- mean(estimates)
+  ubar <- mean(variances)
+  bvar <- stats::var(estimates)
+  between_component <- (1 + 1 / m) * bvar
+  total <- ubar + between_component
+  riv <- if (ubar > 0) between_component / ubar else Inf
+  lambda <- if (total > 0) between_component / total else 0
+  old_df <- if (is.finite(riv) && riv > 0) (m - 1) * (1 + 1 / riv)^2 else Inf
+  observed_df <- ((dfcom + 1) / (dfcom + 3)) * dfcom * (1 - lambda)
+  df <- if (is.finite(old_df)) (old_df * observed_df) / (old_df + observed_df) else observed_df
+  if (!is.finite(df) || df <= 0) {
+    stop("Barnard-Rubin degrees of freedom could not be computed.", call. = FALSE)
+  }
+  fmi <- if (is.finite(riv)) (riv + 2 / (df + 3)) / (riv + 1) else 1
+  fmi <- min(1, max(0, fmi))
+  se <- sqrt(total)
+  statistic <- qbar / se
+  critical <- stats::qt(.975, df = df)
+  list(
+    m = m,
+    estimate = qbar,
+    within_variance = ubar,
+    between_variance = bvar,
+    total_variance = total,
+    se = se,
+    statistic = statistic,
+    df = df,
+    p = 2 * stats::pt(abs(statistic), df = df, lower.tail = FALSE),
+    llci = qbar - critical * se,
+    ulci = qbar + critical * se,
+    riv = riv,
+    lambda = lambda,
+    fmi = fmi
+  )
+}
+
+generalized_pool_coef_tables <- function(tables, exponentiate = FALSE, expected_terms = NULL, m_expected = length(tables), dfcom = NULL) {
+  valid <- vapply(tables, function(table) is.data.frame(table) && nrow(table) > 0 && all(c("Term", "B", "SE") %in% names(table)), logical(1))
+  if (length(tables) == 0L || !all(valid) || length(tables) != as.integer(m_expected)) {
+    stop(sprintf("MI pooling requires all %d fitted coefficient tables; partial pooling is not allowed.", as.integer(m_expected)), call. = FALSE)
+  }
+  term_lists <- lapply(tables, function(table) as.character(table$Term))
+  expected_terms <- as.character(expected_terms %||% term_lists[[1]])
+  mismatched <- which(!vapply(term_lists, identical, logical(1), expected_terms))
+  if (length(expected_terms) == 0L || length(mismatched) > 0L) {
+    details <- if (length(mismatched) > 0L) paste(mismatched, collapse = ", ") else "unknown"
+    stop(sprintf("Coefficient term signatures differed across imputed datasets (imputation(s): %s); intersection pooling is not allowed.", details), call. = FALSE)
+  }
+  requested <- unique(vapply(tables, function(table) attr(table, "se_type_requested") %||% "model", character(1)))
+  used <- unique(vapply(tables, function(table) attr(table, "se_type_used") %||% "model", character(1)))
+  if (length(requested) != 1L || length(used) != 1L) {
+    stop("Standard-error methods differed across imputed datasets; MI pooling was stopped.", call. = FALSE)
+  }
+  if (is.null(dfcom)) {
+    stop("Complete-data residual df was not supplied for MI pooling.", call. = FALSE)
+  }
+  rows <- list()
+  diagnostics <- list()
+  for (term in expected_terms) {
+    estimates <- vapply(tables, function(table) suppressWarnings(as.numeric(table$B[match(term, table$Term)])), numeric(1))
+    variances <- vapply(tables, function(table) suppressWarnings(as.numeric(table$SE[match(term, table$Term)]))^2, numeric(1))
+    pooled_term <- generalized_rubin_pool_scalar(estimates, variances, dfcom = dfcom)
     row <- data.frame(
       Term = term,
-      B = qbar,
-      SE = se,
-      Statistic = statistic,
-      p = p,
-      LLCI = qbar - 1.96 * se,
-      ULCI = qbar + 1.96 * se,
+      B = pooled_term$estimate,
+      SE = pooled_term$se,
+      Statistic = pooled_term$statistic,
+      df = pooled_term$df,
+      p = pooled_term$p,
+      LLCI = pooled_term$llci,
+      ULCI = pooled_term$ulci,
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -620,17 +721,25 @@ generalized_pool_coef_tables <- function(tables, exponentiate = FALSE) {
       row$`exp(LLCI)` <- exp(row$LLCI)
       row$`exp(ULCI)` <- exp(row$ULCI)
     }
-    row
-  })
-  pooled <- analysis_bind_rows(rows)
-  if (!is.data.frame(pooled) || nrow(pooled) == 0) {
-    stop("No finite coefficient estimates were available for MI pooling.", call. = FALSE)
+    rows[[length(rows) + 1L]] <- row
+    diagnostics[[length(diagnostics) + 1L]] <- data.frame(
+      Term = term,
+      m = pooled_term$m,
+      df = pooled_term$df,
+      RIV = pooled_term$riv,
+      FMI = pooled_term$fmi,
+      `Within variance` = pooled_term$within_variance,
+      `Between variance` = pooled_term$between_variance,
+      `Total variance` = pooled_term$total_variance,
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
   }
+  pooled <- analysis_bind_rows(rows)
   attr(pooled, "robust_used") <- all(vapply(tables, function(table) isTRUE(attr(table, "robust_used")), logical(1)))
-  requested <- unique(vapply(tables, function(table) attr(table, "se_type_requested") %||% "model", character(1)))
-  used <- unique(vapply(tables, function(table) attr(table, "se_type_used") %||% "model", character(1)))
-  attr(pooled, "se_type_requested") <- if (length(requested) == 1) requested else paste(requested, collapse = ", ")
-  attr(pooled, "se_type_used") <- if (length(used) == 1) used else paste(used, collapse = ", ")
+  attr(pooled, "se_type_requested") <- requested[[1]]
+  attr(pooled, "se_type_used") <- used[[1]]
+  attr(pooled, "mi_pooling_diagnostics") <- analysis_bind_rows(diagnostics)
   pooled
 }
 
@@ -676,14 +785,22 @@ generalized_fit_mi <- function(
     printFlag = FALSE,
     seed = seed
   )
-  tables <- list()
-  first_fit <- NULL
+  completed_sets <- vector("list", imputed$m)
   failures <- character(0)
   for (index in seq_len(imputed$m)) {
     completed <- tryCatch(mice::complete(imputed, action = index), error = function(e) e)
     if (inherits(completed, "error")) {
       failures <- c(failures, sprintf("imputation %s completion failed: %s", index, conditionMessage(completed)))
       next
+    }
+    for (name in intersect(names(raw_prepared), names(completed))) {
+      if (is.factor(raw_prepared[[name]])) {
+        completed[[name]] <- factor(
+          as.character(completed[[name]]),
+          levels = levels(raw_prepared[[name]]),
+          ordered = is.ordered(raw_prepared[[name]])
+        )
+      }
     }
     if (identical(family, "binomial")) {
       completed[[outcome]] <- pmin(1, pmax(0, round(suppressWarnings(as.numeric(completed[[outcome]])))))
@@ -708,25 +825,140 @@ generalized_fit_mi <- function(
       completed <- completed[observed_outcome, , drop = FALSE]
     }
     completed <- completed[stats::complete.cases(completed), , drop = FALSE]
+    if (nrow(completed) < 3L) {
+      failures <- c(failures, sprintf("imputation %s had fewer than three analyzable rows", index))
+      next
+    }
+    completed_sets[[index]] <- completed
+  }
+  if (length(failures) > 0L || any(vapply(completed_sets, is.null, logical(1)))) {
+    stop(sprintf("MI completion failed; partial pooling is not allowed. %s", paste(failures, collapse = "; ")), call. = FALSE)
+  }
+
+  count_family_lock <- NULL
+  poisson_dispersions <- rep(NA_real_, length(completed_sets))
+  if (identical(family, "count")) {
+    for (index in seq_along(completed_sets)) {
+      poisson <- tryCatch(
+        stats::glm(formula, data = completed_sets[[index]], family = generalized_family_object("count", link)),
+        error = function(e) e
+      )
+      if (inherits(poisson, "error") || !isTRUE(poisson$converged)) {
+        failures <- c(failures, sprintf("imputation %s Poisson screening fit failed", index))
+      } else {
+        poisson_dispersions[[index]] <- generalized_overdispersion_ratio(poisson)
+      }
+    }
+    if (length(failures) > 0L || any(!is.finite(poisson_dispersions))) {
+      stop(sprintf("Count-family selection failed before MI pooling. %s", paste(failures, collapse = "; ")), call. = FALSE)
+    }
+    count_family_lock <- if (isTRUE(overdispersion_check) && stats::median(poisson_dispersions) > 1.5) {
+      "negative_binomial"
+    } else {
+      "count"
+    }
+  }
+
+  fits <- vector("list", length(completed_sets))
+  tables <- vector("list", length(completed_sets))
+  for (index in seq_along(completed_sets)) {
+    completed <- completed_sets[[index]]
     fit <- tryCatch(
-      generalized_fit_model(completed, formula, family, link, robust, exponentiate, overdispersion_check, se_type = se_type),
+      generalized_fit_model(
+        completed,
+        formula,
+        family,
+        link,
+        robust,
+        exponentiate,
+        overdispersion_check,
+        se_type = se_type,
+        count_family_lock = count_family_lock
+      ),
       error = function(e) e
     )
     if (inherits(fit, "error")) {
       failures <- c(failures, sprintf("imputation %s fit failed: %s", index, conditionMessage(fit)))
       next
     }
-    if (is.null(first_fit)) first_fit <- fit
-    tables[[length(tables) + 1L]] <- fit$coef_table
+    if (!is.null(fit$model$converged) && !isTRUE(fit$model$converged)) {
+      failures <- c(failures, sprintf("imputation %s model did not converge", index))
+      next
+    }
+    model_coef <- stats::coef(fit$model)
+    if (length(model_coef) == 0L || any(!is.finite(model_coef))) {
+      failures <- c(failures, sprintf("imputation %s returned non-finite coefficients", index))
+      next
+    }
+    if (!is.data.frame(fit$coef_table) || nrow(fit$coef_table) == 0L || any(!is.finite(fit$coef_table$B)) || any(!is.finite(fit$coef_table$SE) | fit$coef_table$SE <= 0)) {
+      failures <- c(failures, sprintf("imputation %s returned an incomplete coefficient covariance table", index))
+      next
+    }
+    fits[[index]] <- fit
+    tables[[index]] <- fit$coef_table
   }
-  if (length(tables) == 0 || is.null(first_fit)) {
-    stop(paste(failures, collapse = "; "), call. = FALSE)
+  if (length(failures) > 0L || any(vapply(fits, is.null, logical(1)))) {
+    stop(sprintf("MI model fitting failed; partial pooling is not allowed. %s", paste(failures, collapse = "; ")), call. = FALSE)
   }
-  pooled <- generalized_pool_coef_tables(tables, exponentiate = exponentiate)
+
+  fitted_families <- vapply(fits, function(item) item$fitted_family, character(1))
+  fitted_links <- vapply(fits, function(item) item$model$family$link, character(1))
+  analyzed_n <- vapply(fits, function(item) stats::nobs(item$model), numeric(1))
+  residual_df <- vapply(fits, function(item) stats::df.residual(item$model), numeric(1))
+  model_terms <- lapply(fits, function(item) names(stats::coef(item$model)))
+  table_terms <- lapply(tables, function(table) as.character(table$Term))
+  se_methods <- vapply(fits, function(item) item$se_type_used %||% "model", character(1))
+  if (length(unique(fitted_families)) != 1L || length(unique(fitted_links)) != 1L) {
+    stop("Family or link differed across imputed datasets; MI pooling was stopped.", call. = FALSE)
+  }
+  if (length(unique(analyzed_n)) != 1L || length(unique(residual_df)) != 1L) {
+    stop("Analyzed N or residual df differed across imputed datasets; MI pooling was stopped.", call. = FALSE)
+  }
+  if (!all(vapply(model_terms, identical, logical(1), model_terms[[1]])) || !all(vapply(table_terms, identical, logical(1), table_terms[[1]]))) {
+    stop("Coefficient term signatures differed across imputed datasets; MI pooling was stopped.", call. = FALSE)
+  }
+  if (length(unique(se_methods)) != 1L) {
+    stop("Standard-error methods differed across imputed datasets; MI pooling was stopped.", call. = FALSE)
+  }
+
+  pooled <- generalized_pool_coef_tables(
+    tables,
+    exponentiate = exponentiate,
+    expected_terms = table_terms[[1]],
+    m_expected = imputed$m,
+    dfcom = residual_df[[1]]
+  )
+  first_fit <- fits[[1]]
   first_fit$coef_table <- pooled
   first_fit$robust_used <- isTRUE(attr(pooled, "robust_used"))
   first_fit$se_type_requested <- attr(pooled, "se_type_requested") %||% "model"
   first_fit$se_type_used <- attr(pooled, "se_type_used") %||% "model"
+  first_fit$mi_pooling_diagnostics <- attr(pooled, "mi_pooling_diagnostics") %||% data.frame()
+  first_fit$mi_fit_diagnostics <- data.frame(
+    Imputation = seq_along(fits),
+    Family = fitted_families,
+    Link = fitted_links,
+    N = as.integer(analyzed_n),
+    `Residual df` = residual_df,
+    Converged = vapply(fits, function(item) is.null(item$model$converged) || isTRUE(item$model$converged), logical(1)),
+    `Poisson dispersion` = if (identical(family, "count")) poisson_dispersions else vapply(fits, function(item) item$dispersion, numeric(1)),
+    `SE method` = se_methods,
+    `Term signature` = vapply(table_terms, paste, character(1), collapse = " | "),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  attr(first_fit$mi_fit_diagnostics, "result_user_columns") <- "Term signature"
+  first_fit$analysis_data <- completed_sets[[1]]
+  first_fit$mi_family_rule <- if (identical(family, "count")) {
+    sprintf(
+      "The count family was selected once before pooling: median Poisson dispersion across %d imputations = %s; threshold = 1.5; locked family = %s.",
+      length(poisson_dispersions),
+      format_decimal3(stats::median(poisson_dispersions)),
+      if (identical(count_family_lock, "negative_binomial")) "negative binomial" else "Poisson"
+    )
+  } else {
+    sprintf("The %s family with %s link was held fixed across all imputed datasets.", fitted_families[[1]], fitted_links[[1]])
+  }
   outcome_note <- if (identical(mi_outcome, "observed")) {
     "Rows with originally missing dependent-variable values were excluded from each fitted imputed GLM."
   } else {
@@ -734,8 +966,9 @@ generalized_fit_mi <- function(
   }
   first_fit$fit_note <- unique(c(
     first_fit$fit_note,
-    sprintf("Standard mice-based multiple imputation used %d fitted dataset(s); coefficients were pooled using Rubin-style total variance. %s", length(tables), outcome_note),
-    if (length(failures) > 0) sprintf("MI warnings: %s", paste(failures, collapse = "; ")) else character(0)
+    sprintf("Standard mice-based multiple imputation used %d fitted dataset(s); coefficients were pooled using Rubin total variance, Barnard-Rubin degrees of freedom, and t-based confidence intervals. %s", length(tables), outcome_note),
+    first_fit$mi_family_rule,
+    "Model-fit and assumption diagnostics use the first completed dataset as a transparent representative; coefficient inference uses all imputations."
   ))
   first_fit
 }
@@ -761,7 +994,7 @@ generalized_ipw_diagnostics <- function(probability, weights, clipped_probabilit
   } else {
     NA_integer_
   }
-  data.frame(
+  table <- data.frame(
     Item = c(
       "Observation model variables",
       "Predicted observation probability: min",
@@ -787,6 +1020,8 @@ generalized_ipw_diagnostics <- function(probability, weights, clipped_probabilit
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+  attr(table, "generalized_user_value_rows") <- if (length(model_terms)) 1L else integer(0)
+  table
 }
 
 generalized_ipw_weights <- function(raw_prepared, analyzed_data, variables, predictors, auxiliary = character(0)) {
@@ -818,7 +1053,8 @@ generalized_ipw_weights <- function(raw_prepared, analyzed_data, variables, pred
       note = "No fully observed predictors were available for the observation model; intercept-only IPW was used. Treat this as a weak IPW sensitivity analysis."
     ))
   }
-  formula <- stats::reformulate(candidate_terms, response = ".statedu_observed")
+  formula <- stats::reformulate(vapply(candidate_terms, function(name)
+    paste(deparse(as.name(name), backtick = TRUE), collapse = ""), character(1)), response = ".statedu_observed")
   fit <- tryCatch(stats::glm(formula, data = weight_data, family = stats::binomial()), error = function(e) e)
   if (inherits(fit, "error")) {
     probability <- mean(observed)
@@ -893,7 +1129,7 @@ generalized_influence_summary <- function(model) {
   )
 }
 
-generalized_assumption_checks <- function(model, family, dispersion, data, formula, predictors = character(0), variable_info = NULL, show_vif = FALSE) {
+generalized_assumption_checks <- function(model, family, dispersion, data, formula, predictors = character(0), variable_info = NULL, show_vif = FALSE, vif_provider = generalized_vif_table) {
   rows <- list()
   add <- function(check, result, statistic = NA_real_, p = NA_real_, interpretation = "", recommendation = "") {
     rows[[length(rows) + 1L]] <<- data.frame(
@@ -1009,7 +1245,7 @@ generalized_assumption_checks <- function(model, family, dispersion, data, formu
   )
 
   if (isTRUE(show_vif)) {
-    vifs <- generalized_vif_table(formula, data)
+    vifs <- vif_provider(formula, data)
     max_vif <- if (nrow(vifs) > 0) max(vifs$VIF, na.rm = TRUE) else NA_real_
     issue <- is.finite(max_vif) && max_vif > 5
     add(
@@ -1364,7 +1600,7 @@ generalized_publication_notes <- function(result) {
 generalized_reporting_checklist <- function(result) {
   assumption_count <- if (is.data.frame(result$assumption_checks)) nrow(result$assumption_checks) else 0L
   count_screening <- is.data.frame(result$count_details) && nrow(result$count_details) > 0
-  data.frame(
+  table <- data.frame(
     Item = c(
       "Model rationale",
       "Family and link reported",
@@ -1407,9 +1643,12 @@ generalized_reporting_checklist <- function(result) {
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+  attr(table, "generalized_checklist_rationale") <- attr(result$model_rationale, "generalized_rationale_parts", exact = TRUE)
+  table
 }
 
 generalized_manuscript_text <- function(result) {
+  terms <- character(0)
   non_intercept <- if (is.data.frame(result$coef_table) && "Term" %in% names(result$coef_table)) {
     result$coef_table[!grepl("^\\(Intercept\\)$", result$coef_table$Term), , drop = FALSE]
   } else {
@@ -1447,7 +1686,7 @@ generalized_manuscript_text <- function(result) {
   } else {
     "Software and package versions should be reported."
   }
-  data.frame(
+  table <- data.frame(
     Section = c("Methods", "Results", "Assumptions", "Software"),
     SuggestedText = c(
       sprintf(
@@ -1465,6 +1704,19 @@ generalized_manuscript_text <- function(result) {
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+  # Preserve sentence boundaries and raw terms for localization without parsing
+  # punctuation or English-looking words inside user labels.
+  attr(table, "generalized_manuscript_results") <- list(
+    source = table$SuggestedText[[2L]], terms = terms,
+    more_terms = nrow(non_intercept) > 3L,
+    extra = c(exp_sentence, count_sentence))
+  attr(table, "generalized_manuscript_methods") <- list(
+    source = table$SuggestedText[[1L]], rationale = result$model_rationale %||% "",
+    rationale_parts = attr(result$model_rationale, "generalized_rationale_parts", exact = TRUE),
+    missing = result$missing_method %||% "complete-case analysis",
+    n = result$n %||% "", raw_n = result$raw_n %||% "",
+    se = generalized_se_type_label(result$se_type_used %||% "model"))
+  table
 }
 
 prepare_generalized_analysis_result <- function(
@@ -1490,6 +1742,7 @@ prepare_generalized_analysis_result <- function(
   category_table = NULL,
   reference_values = character(0)
 ) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("outcome", "predictors", "exposure", "ipw_auxiliary"))
   outcome <- as.character(outcome %||% character(0))
   predictors <- as.character(predictors %||% character(0))
   exposure <- utils::head(as.character(exposure %||% character(0)), 1)
@@ -1602,7 +1855,10 @@ prepare_generalized_analysis_result <- function(
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
+    user_rows <- c(if (length(ipw_auxiliary)) 3L else integer(0),
+      nrow(missing_details) + (attr(ipw$diagnostics, "generalized_user_value_rows", exact = TRUE) %||% integer(0)))
     missing_details <- rbind(missing_details, ipw$diagnostics)
+    attr(missing_details, "generalized_user_value_rows") <- user_rows
   } else {
     fit <- generalized_fit_model(prepared, formula, detected_family, link, robust, exponentiate, overdispersion, se_type = se_type)
     if (identical(missing_strategy, "mi") && !anyNA(raw_prepared)) {
@@ -1617,19 +1873,35 @@ prepare_generalized_analysis_result <- function(
       check.names = FALSE
     )
   }
-  null_model <- tryCatch(stats::glm(null_formula, data = prepared, family = fit$model$family), error = function(e) NULL)
+  diagnostic_data <- fit$analysis_data %||% prepared
+  null_model <- tryCatch(stats::glm(null_formula, data = diagnostic_data, family = fit$model$family), error = function(e) NULL)
   analyzed_n <- stats::nobs(fit$model)
   excluded_n <- max(0L, as.integer(raw_n) - as.integer(analyzed_n))
+  # Both consumers use the same formula and diagnostic data in this analysis.
+  vif_ready <- FALSE
+  vif_value <- NULL
+  vif_provider <- function(formula, data) {
+    if (vif_ready) return(vif_value)
+    quiet <- TRUE
+    value <- withCallingHandlers(generalized_vif_table(formula, data),
+      warning = function(w) quiet <<- FALSE, message = function(m) quiet <<- FALSE)
+    if (quiet) {
+      vif_value <<- value
+      vif_ready <<- TRUE
+    }
+    value
+  }
   assumption_checks <- if (isTRUE(assumption_checks)) {
     generalized_assumption_checks(
       fit$model,
       fit$fitted_family,
       fit$dispersion,
-      prepared,
+      diagnostic_data,
       formula,
       predictors = predictors,
       variable_info = variable_info,
-      show_vif = show_vif
+      show_vif = show_vif,
+      vif_provider = vif_provider
     )
   } else {
     data.frame()
@@ -1654,6 +1926,10 @@ prepare_generalized_analysis_result <- function(
     generalized_family_labels()[[requested_family]] %||% requested_family,
     fit$fitted_family
   )
+  attr(rationale, "generalized_rationale_parts") <- list(
+    source = as.character(rationale), method = method, outcome = outcome_label,
+    predictors = predictor_labels, requested = generalized_family_labels()[[requested_family]] %||% requested_family,
+    fitted = generalized_family_label(fit$fitted_family))
   decision_summary <- generalized_decision_summary(
     method = method,
     requested_family = requested_family,
@@ -1705,11 +1981,13 @@ prepare_generalized_analysis_result <- function(
     missing_method = generalized_missing_strategy_label(missing_strategy),
     missing_strategy = missing_strategy,
     mi_outcome = mi_outcome,
+    mi_pooling_diagnostics = fit$mi_pooling_diagnostics %||% data.frame(),
+    mi_fit_diagnostics = fit$mi_fit_diagnostics %||% data.frame(),
     ipw_auxiliary = ipw_auxiliary,
     missing_details = missing_details,
     count_details = fit$count_details,
     assumption_checks = assumption_checks,
-    vif_table = if (isTRUE(show_vif)) generalized_vif_table(formula, prepared) else data.frame(),
+    vif_table = if (isTRUE(show_vif)) vif_provider(formula, diagnostic_data) else data.frame(),
     software_versions = generalized_software_versions(fit$fitted_family, fit$se_type_used %||% "model", missing_strategy),
     robust = isTRUE(fit$robust_used),
     se_type_requested = fit$se_type_requested %||% se_type,

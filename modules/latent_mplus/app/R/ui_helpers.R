@@ -215,6 +215,9 @@ placeholder_table <- function(id) {
 }
 
 app_ui <- function(version, request = NULL) {
+  if (!isTRUE(statedu_request_token_authorized(request))) {
+    return(statedu_token_rejection_response())
+  }
   language <- if (exists("statedu_initial_language", mode = "function", inherits = TRUE)) {
     statedu_initial_language(request)
   } else {

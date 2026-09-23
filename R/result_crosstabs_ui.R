@@ -139,7 +139,9 @@ crosstab_colgroup_tags <- function(level_count, split = FALSE, show_trend_p = FA
     tags$col(class = "crosstab-row-variable-col"),
     tags$col(class = "crosstab-row-label-col"),
     total_cols,
-    lapply(seq_len(value_cols), function(col_index) tags$col(class = "crosstab-count-col")),
+    lapply(seq_len(value_cols), function(col_index) tags$col(class = "crosstab-count-col",
+      style = if (level_count <= 3L && !isTRUE(split) && !isTRUE(show_trend_p))
+        sprintf("width:%.3f%% !important;", (if (isTRUE(show_total_n)) 30 else 41) / level_count) else NULL)),
     tags$col(class = "crosstab-stat-col"),
     tags$col(class = "crosstab-stat-col"),
     tags$col(class = "crosstab-stat-col"),
@@ -147,41 +149,55 @@ crosstab_colgroup_tags <- function(level_count, split = FALSE, show_trend_p = FA
   )
 }
 
-crosstab_primary_table_width <- function(result, show_trend_p = crosstab_show_trend_p(result)) {
-  level_count <- ncol(result$table)
+crosstab_primary_table_width <- function(
+  result,
+  show_trend_p = crosstab_show_trend_p(result),
+  level_count = ncol(result$table)
+) {
+  level_count <- max(0L, as.integer(level_count %||% ncol(result$table)))
   split <- crosstab_split_count_percent(result)
   show_total_n <- crosstab_show_total_n(result)
-  total_width <- if (!isTRUE(show_total_n)) 0 else if (isTRUE(split)) 100 else 86
-  value_width <- if (isTRUE(split)) 50 * (level_count * 2) else 86 * level_count
-  80 + 86 + total_width + value_width + (72 * 3) + if (isTRUE(show_trend_p)) 92 else 0
+  total_width <- if (!isTRUE(show_total_n)) 0 else if (isTRUE(split)) 88 else 64
+  value_width <- if (isTRUE(split)) 46 * (level_count * 2) else 68 * level_count
+  if (level_count <= 3L && !isTRUE(split) && !isTRUE(show_trend_p)) (590L - if (isTRUE(show_total_n)) 0L else 64L) else 70 + 76 + total_width + value_width + (56 * 3) + if (isTRUE(show_trend_p)) 76 else 0
 }
 
-crosstab_primary_table_column_count <- function(result, show_trend_p = crosstab_show_trend_p(result)) {
+crosstab_primary_table_column_count <- function(
+  result,
+  show_trend_p = crosstab_show_trend_p(result),
+  level_count = ncol(result$table)
+) {
   tab <- result$table
   split <- crosstab_split_count_percent(result)
   total_cols <- if (!isTRUE(crosstab_show_total_n(result))) 0L else if (isTRUE(split)) 2L else 1L
-  value_cols <- if (isTRUE(split)) ncol(tab) * 2L else ncol(tab)
+  level_count <- max(0L, as.integer(level_count %||% ncol(tab)))
+  value_cols <- if (isTRUE(split)) level_count * 2L else level_count
   2L + total_cols + value_cols + 3L + if (isTRUE(show_trend_p)) 1L else 0L
 }
 
-crosstab_primary_table_min_width <- function(result, show_trend_p = crosstab_show_trend_p(result)) {
-  base_width <- if (isTRUE(crosstab_show_total_n(result))) 760 else 680
-  max(base_width, crosstab_primary_table_width(result, show_trend_p))
+crosstab_primary_table_min_width <- function(
+  result,
+  show_trend_p = crosstab_show_trend_p(result),
+  level_count = ncol(result$table)
+) {
+  max(480L, crosstab_primary_table_width(result, show_trend_p, level_count = level_count))
 }
 
 crosstab_primary_table_landscape <- function(
   result,
-  threshold = 760,
+  threshold = result_table_portrait_capacity(),
   column_threshold = 5,
   display_column_threshold = 10,
-  show_trend_p = crosstab_show_trend_p(result)
+  show_trend_p = crosstab_show_trend_p(result),
+  level_count = ncol(result$table)
 ) {
-  crosstab_primary_table_width(result, show_trend_p) > threshold ||
-    ncol(result$table) >= column_threshold ||
-    crosstab_primary_table_column_count(result, show_trend_p) >= display_column_threshold
+  level_count <- max(0L, as.integer(level_count %||% ncol(result$table)))
+  crosstab_primary_table_width(result, show_trend_p, level_count = level_count) > threshold ||
+    level_count >= column_threshold ||
+    crosstab_primary_table_column_count(result, show_trend_p, level_count = level_count) >= display_column_threshold
 }
 
-crosstab_results_landscape <- function(result, threshold = 760) {
+crosstab_results_landscape <- function(result, threshold = result_table_portrait_capacity()) {
   results <- crosstab_result_list(result)
   any(vapply(crosstab_results_by_column(results), function(group) {
     crosstab_column_group_landscape(group, threshold = threshold)
@@ -237,33 +253,51 @@ crosstab_column_split_label <- function(index, total) {
   if (total <= 1L) "" else sprintf(" (%d/%d)", index, total)
 }
 
-crosstab_column_group_width <- function(results, show_trend_p = crosstab_show_trend_p(results)) {
+crosstab_column_group_width <- function(
+  results,
+  show_trend_p = crosstab_show_trend_p(results),
+  col_names = crosstab_column_group_colnames(results)
+) {
   first <- results[[1]]
-  level_count <- length(crosstab_column_group_colnames(results))
+  level_count <- length(col_names %||% character(0))
   split <- crosstab_split_count_percent(first)
-  total_width <- if (!isTRUE(crosstab_show_total_n(first))) 0 else if (isTRUE(split)) 100 else 86
-  value_width <- if (isTRUE(split)) 50 * (level_count * 2) else 86 * level_count
-  80 + 86 + total_width + value_width + (72 * 3) + if (isTRUE(show_trend_p)) 92 else 0
+  total_width <- if (!isTRUE(crosstab_show_total_n(first))) 0 else if (isTRUE(split)) 88 else 64
+  value_width <- if (isTRUE(split)) 46 * (level_count * 2) else 68 * level_count
+  if (level_count <= 3L && !isTRUE(split) && !isTRUE(show_trend_p)) (590L - if (isTRUE(crosstab_show_total_n(first))) 0L else 64L) else 70 + 76 + total_width + value_width + (56 * 3) + if (isTRUE(show_trend_p)) 76 else 0
 }
 
-crosstab_column_group_column_count <- function(results, show_trend_p = crosstab_show_trend_p(results)) {
+crosstab_column_group_column_count <- function(
+  results,
+  show_trend_p = crosstab_show_trend_p(results),
+  col_names = crosstab_column_group_colnames(results)
+) {
   first <- results[[1]]
   split <- crosstab_split_count_percent(first)
   total_cols <- if (!isTRUE(crosstab_show_total_n(first))) 0L else if (isTRUE(split)) 2L else 1L
-  value_cols <- if (isTRUE(split)) length(crosstab_column_group_colnames(results)) * 2L else length(crosstab_column_group_colnames(results))
+  level_count <- length(col_names %||% character(0))
+  value_cols <- if (isTRUE(split)) level_count * 2L else level_count
   2L + total_cols + value_cols + 3L + if (isTRUE(show_trend_p)) 1L else 0L
 }
 
-crosstab_column_group_min_width <- function(results, show_trend_p = crosstab_show_trend_p(results)) {
-  first <- results[[1]]
-  base_width <- if (isTRUE(crosstab_show_total_n(first))) 760 else 680
-  max(base_width, crosstab_column_group_width(results, show_trend_p))
+crosstab_column_group_min_width <- function(
+  results,
+  show_trend_p = crosstab_show_trend_p(results),
+  col_names = crosstab_column_group_colnames(results)
+) {
+  max(480L, crosstab_column_group_width(results, show_trend_p, col_names = col_names))
 }
 
-crosstab_column_group_landscape <- function(results, threshold = 760, column_threshold = 5, display_column_threshold = 10) {
-  crosstab_column_group_width(results) > threshold ||
-  length(crosstab_column_group_colnames(results)) >= column_threshold ||
-    crosstab_column_group_column_count(results) >= display_column_threshold
+crosstab_column_group_landscape <- function(
+  results,
+  threshold = result_table_portrait_capacity(),
+  column_threshold = 5,
+  display_column_threshold = 10,
+  col_names = crosstab_column_group_colnames(results)
+) {
+  level_count <- length(col_names %||% character(0))
+  crosstab_column_group_width(results, col_names = col_names) > threshold ||
+    level_count >= column_threshold ||
+    crosstab_column_group_column_count(results, col_names = col_names) >= display_column_threshold
 }
 
 crosstab_header_tags <- function(col_label, col_labels, split = FALSE, show_trend_p = FALSE, show_total_n = TRUE) {
@@ -456,15 +490,11 @@ crosstab_main_table_ui <- function(result, method_notes = crosstab_method_footno
   split <- crosstab_split_count_percent(result)
   show_trend_p <- crosstab_show_trend_p(result)
   show_total_n <- crosstab_show_total_n(result)
-  min_width <- if (is.null(col_names)) {
-    crosstab_primary_table_min_width(result, show_trend_p)
-  } else {
-    max(if (isTRUE(show_total_n)) 760 else 680, crosstab_primary_table_width(result, show_trend_p))
-  }
+  min_width <- crosstab_primary_table_min_width(result, show_trend_p, level_count = ncol(tab))
 
-  tags$table(
+  table_tag <- tags$table(
     class = "coefficient-table crosstab-main-table",
-    style = result_table_style(font_size = 15, min_width = min_width),
+    style = result_table_style(font_size = 12, min_width = min_width),
     tags$colgroup(crosstab_colgroup_tags(ncol(tab), split, show_trend_p, show_total_n)),
     crosstab_header_tags(result$col_label, col_labels, split, show_trend_p, show_total_n),
     tags$tbody(
@@ -488,6 +518,11 @@ crosstab_main_table_ui <- function(result, method_notes = crosstab_method_footno
       })
     )
   )
+  contract <- result_table_contract(role = "main", intrinsic_width = min_width)
+  result_table_with_notes(
+    result_table_apply_contract(table_tag, contract),
+    crosstab_column_group_notes_ui(list(result), method_notes)
+  )
 }
 
 crosstab_column_group_table_ui <- function(results, method_notes = crosstab_method_footnotes(results), col_names = NULL) {
@@ -497,11 +532,11 @@ crosstab_column_group_table_ui <- function(results, method_notes = crosstab_meth
   split <- crosstab_split_count_percent(first)
   show_trend_p <- crosstab_show_trend_p(results)
   show_total_n <- crosstab_show_total_n(first)
-  min_width <- crosstab_column_group_min_width(results, show_trend_p)
+  min_width <- crosstab_column_group_min_width(results, show_trend_p, col_names = col_names)
 
-  tags$table(
+  table_tag <- tags$table(
     class = "coefficient-table crosstab-main-table",
-    style = result_table_style(font_size = 15, min_width = min_width),
+    style = result_table_style(font_size = 12, min_width = min_width),
     tags$colgroup(crosstab_colgroup_tags(length(col_names), split, show_trend_p, show_total_n)),
     crosstab_header_tags(first$col_label, col_labels, split, show_trend_p, show_total_n),
     tags$tbody(
@@ -539,6 +574,11 @@ crosstab_column_group_table_ui <- function(results, method_notes = crosstab_meth
       })
     )
   )
+  contract <- result_table_contract(role = "main", intrinsic_width = min_width)
+  result_table_with_notes(
+    result_table_apply_contract(table_tag, contract),
+    crosstab_column_group_notes_ui(results, method_notes)
+  )
 }
 
 crosstab_column_group_notes_ui <- function(results, method_notes = crosstab_method_footnotes(results)) {
@@ -555,9 +595,9 @@ crosstab_column_group_notes_ui <- function(results, method_notes = crosstab_meth
     }
   }), use.names = FALSE))
   notes <- c(method_lines, trend_lines)
-  div(
-    class = "analysis-result-notes crosstab-notes",
-    lapply(notes, function(note) div(note))
+  result_note_tag(
+    result_sci_note_text(estimation = notes),
+    class = "analysis-result-notes crosstab-notes coefficient-note"
   )
 }
 
@@ -580,17 +620,16 @@ crosstab_column_group_ui <- function(results) {
   first <- results[[1]]
   method_notes <- crosstab_method_footnotes(results)
   col_chunks <- crosstab_column_group_split_colnames(results)
-  landscape_class <- if (isTRUE(crosstab_column_group_landscape(results))) {
-    " landscape-table-panel"
-  } else {
-    ""
-  }
   tagList(lapply(seq_along(col_chunks), function(chunk_index) {
+    landscape_class <- if (isTRUE(crosstab_column_group_landscape(results, col_names = col_chunks[[chunk_index]]))) {
+      " landscape-table-panel"
+    } else {
+      ""
+    }
     div(
       class = paste0("result-section crosstab-result-section regression-result-panel", landscape_class),
       h3(sprintf("Cross-tabulation: %s%s", first$col_label, crosstab_column_split_label(chunk_index, length(col_chunks)))),
-      div(class = "frequency-table-wrap crosstab-table-wrap", crosstab_column_group_table_ui(results, method_notes, col_chunks[[chunk_index]])),
-      crosstab_column_group_notes_ui(results, method_notes)
+      div(class = "frequency-table-wrap crosstab-table-wrap", crosstab_column_group_table_ui(results, method_notes, col_chunks[[chunk_index]]))
     )
   }))
 }
@@ -598,25 +637,36 @@ crosstab_column_group_ui <- function(results) {
 crosstab_single_result_ui <- function(result) {
   method_notes <- crosstab_method_footnotes(result)
   col_chunks <- crosstab_primary_split_colnames(result)
-  landscape_class <- if (isTRUE(crosstab_primary_table_landscape(result))) {
-    " landscape-table-panel"
-  } else {
-    ""
-  }
   tagList(
     lapply(seq_along(col_chunks), function(chunk_index) {
+      landscape_class <- if (isTRUE(crosstab_primary_table_landscape(result, level_count = length(col_chunks[[chunk_index]])))) {
+        " landscape-table-panel"
+      } else {
+        ""
+      }
       div(
         class = paste0("result-section crosstab-result-section regression-result-panel", landscape_class),
         h3(sprintf("Cross-tabulation: %s x %s%s", result$row_label, result$col_label, crosstab_column_split_label(chunk_index, length(col_chunks)))),
-        div(class = "frequency-table-wrap crosstab-table-wrap", crosstab_main_table_ui(result, method_notes, col_chunks[[chunk_index]])),
-        crosstab_column_group_notes_ui(list(result), method_notes)
+        div(class = "frequency-table-wrap crosstab-table-wrap", crosstab_main_table_ui(result, method_notes, col_chunks[[chunk_index]]))
       )
     }),
-    div(
-      class = "result-section crosstab-result-section regression-result-panel",
-      h3(sprintf("Expected counts: %s x %s", result$row_label, result$col_label)),
-      div(class = "frequency-table-wrap", coefficient_html_table(crosstab_expected_table(result)))
-    )
+    {
+      appendix_language <- result_appendix_table_language()
+      expected_table <- result_appendix_localize_table(crosstab_expected_table(result), appendix_language)
+      expected_title <- if (identical(appendix_language, "ko")) {
+        sprintf("기대도수: %s × %s", result$row_label, result$col_label)
+      } else {
+        sprintf("Expected counts: %s × %s", result$row_label, result$col_label)
+      }
+      div(
+        class = "result-section crosstab-result-section regression-result-panel crosstab-appendix-panel",
+        h3(expected_title),
+        div(
+          class = "frequency-table-wrap",
+          coefficient_html_table(expected_table, table_role = "appendix", table_language = appendix_language)
+        )
+      )
+    }
   )
 }
 

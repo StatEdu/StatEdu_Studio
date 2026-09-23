@@ -83,7 +83,13 @@ factor_analysis_measurements_for <- function(variables, variable_info = NULL) {
 
 factor_analysis_numeric_matrix <- function(data, variables) {
   frame <- data[, variables, drop = FALSE]
-  matrix <- as.data.frame(lapply(frame, function(values) suppressWarnings(as.numeric(as.character(values)))), check.names = FALSE)
+  matrix <- as.data.frame(lapply(frame, function(values) {
+    if (is.integer(values) && is.null(attributes(values))) {
+      as.numeric(values)
+    } else {
+      suppressWarnings(as.numeric(as.character(values)))
+    }
+  }), check.names = FALSE)
   names(matrix) <- variables
   matrix
 }
@@ -430,8 +436,35 @@ factor_analysis_variance_value <- function(accounted, row_name, factor) {
   if (length(value) == 0 || !is.finite(value)) "" else format_decimal3(value)
 }
 
+factor_analysis_reorder_variance_accounted <- function(accounted, factors = NULL) {
+  if (!is.matrix(accounted) && !is.data.frame(accounted)) {
+    return(accounted)
+  }
+  accounted <- as.data.frame(accounted, check.names = FALSE)
+  if (is.null(factors)) {
+    factors <- factor_analysis_order_factor_names(names(accounted))
+  } else {
+    factors <- as.character(factors %||% character(0))
+  }
+  factors <- factors[factors %in% names(accounted)]
+  accounted <- accounted[, factors, drop = FALSE]
+
+  cumulative_rows <- list(
+    c(source = "Proportion Var", cumulative = "Cumulative Var"),
+    c(source = "Proportion Explained", cumulative = "Cumulative Proportion")
+  )
+  for (rows in cumulative_rows) {
+    if (!all(unname(rows) %in% rownames(accounted))) next
+    proportions <- suppressWarnings(as.numeric(accounted[rows[["source"]], , drop = TRUE]))
+    if (length(proportions) == length(factors) && all(is.finite(proportions))) {
+      accounted[rows[["cumulative"]], ] <- cumsum(proportions)
+    }
+  }
+  accounted
+}
+
 factor_analysis_append_loading_summary_rows <- function(result, table, factors) {
-  accounted <- result$fit$Vaccounted
+  accounted <- factor_analysis_reorder_variance_accounted(result$fit$Vaccounted, factors)
   if ((!is.matrix(accounted) && !is.data.frame(accounted)) || length(factors) == 0) {
     return(table)
   }
@@ -701,9 +734,7 @@ factor_analysis_variance_table <- function(result) {
   if (is.null(accounted)) {
     return(NULL)
   }
-  table <- as.data.frame(accounted, check.names = FALSE)
-  factor_columns <- factor_analysis_order_factor_names(names(table))
-  table <- table[, factor_columns, drop = FALSE]
+  table <- factor_analysis_reorder_variance_accounted(accounted)
   table <- data.frame(Index = rownames(table), table, check.names = FALSE)
   for (column in setdiff(names(table), "Index")) {
     table[[column]] <- vapply(table[[column]], format_decimal3, character(1))
@@ -833,16 +864,24 @@ factor_analysis_subfactor_reliability <- function(result, cutoff = 0.30) {
   factors <- list()
   total_variables <- result$variables[result$variables %in% assignments$variable]
   total <- NULL
+  total_quiet <- TRUE
+  rng_state <- function() {
+    if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      get(".Random.seed", envir = .GlobalEnv)
+    } else NULL
+  }
+  total_rng <- rng_state()
   if (length(total_variables) >= 2) {
     total <- tryCatch(
-      prepare_reliability_results(
+      withCallingHandlers(prepare_reliability_results(
         data = result$matrix,
         variables = total_variables,
         variable_info = result$variable_info,
         labels = result$labels,
         category_table = result$category_table,
         options = reliability_options
-      ),
+      ), warning = function(w) total_quiet <<- FALSE,
+         message = function(m) total_quiet <<- FALSE),
       error = function(e) {
         skipped <<- c(skipped, list(data.frame(
           Subfactor = "Total",
@@ -865,6 +904,7 @@ factor_analysis_subfactor_reliability <- function(result, cutoff = 0.30) {
       check.names = FALSE
     )))
   }
+  total_reusable <- !is.null(total) && total_quiet && identical(total_rng, rng_state())
   for (subfactor in factor_names) {
     variables <- as.character(groups[[subfactor]] %||% character(0))
     issue_table <- factor_analysis_reliability_item_issues(result, subfactor, variables)
@@ -881,7 +921,7 @@ factor_analysis_subfactor_reliability <- function(result, cutoff = 0.30) {
       next
     }
     item <- tryCatch(
-      prepare_reliability_results(
+      if (total_reusable && identical(variables, total_variables)) total else prepare_reliability_results(
         data = result$matrix,
         variables = variables,
         variable_info = result$variable_info,
@@ -1062,6 +1102,7 @@ factor_analysis_saved_score_outputs <- function(
 }
 
 prepare_factor_analysis_results <- function(data, variables, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("variables"))
   variables <- intersect(as.character(variables %||% character(0)), names(data))
   shiny::validate(shiny::need(length(variables) >= 3, "Select at least three variables for factor analysis."))
 

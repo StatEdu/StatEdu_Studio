@@ -111,12 +111,12 @@ latent_module_label <- function(module_id, field = "menu", language = NULL) {
 }
 
 latent_save_feature_visible <- function(feature) {
-  edition <- tolower(Sys.getenv("STATEDU_EDITION", "development"))
-  if (identical(edition, "free") && feature %in% c("excel", "word", "pdf", "add_result", "result_history")) {
-    return(FALSE)
-  }
   if (exists("analysis_save_feature_visible", mode = "function", inherits = TRUE)) {
     return(isTRUE(analysis_save_feature_visible(feature)))
+  }
+  if (feature %in% c("pdf", "excel", "word")) {
+    public_release <- tolower(trimws(Sys.getenv("STATEDU_PUBLIC_RELEASE", ""))) %in% c("1", "true", "yes", "on")
+    return(!public_release && identical(latent_current_edition(), "development"))
   }
   TRUE
 }
@@ -136,26 +136,33 @@ latent_current_edition <- function() {
   edition
 }
 
+latent_public_release <- function() {
+  tolower(trimws(Sys.getenv("STATEDU_PUBLIC_RELEASE", ""))) %in% c("1", "true", "yes", "on")
+}
+
+latent_high_resolution_enabled <- function() {
+  edition <- latent_current_edition()
+  identical(edition, "pro") ||
+    (identical(edition, "development") && !latent_public_release())
+}
+
 latent_default_figure_res <- function() {
-  if (identical(latent_current_edition(), "free")) 300L else 600L
+  if (latent_high_resolution_enabled()) 600L else 300L
 }
 
 latent_figure_res_value <- function(value = NULL) {
-  if (identical(latent_current_edition(), "free")) {
+  if (!latent_high_resolution_enabled()) {
     return(300L)
   }
   value <- suppressWarnings(as.integer(value %||% latent_default_figure_res()))
-  if (is.na(value) || value <= 0L) {
+  if (is.na(value) || !value %in% c(300L, 600L)) {
     value <- latent_default_figure_res()
   }
   value
 }
 
 latent_figure_output_res <- function() {
-  if (identical(latent_current_edition(), "free")) {
-    return(300L)
-  }
-  c(300L, 600L)
+  if (latent_high_resolution_enabled()) c(300L, 600L) else 300L
 }
 
 latent_home_tab <- function(language = latent_current_language()) {
@@ -520,7 +527,14 @@ latent_setup_block <- function(module_id, spec, language = latent_current_langua
           latent_option_item(numericInput(paste0(module_id, "_percent_digits"), latent_text("Percent digits", latent_utf8("ebb0b1ebb684ec9ca820ec868cec8898eca090"), language), value = 1, min = 0, step = 1), "Common", language = language),
           latent_option_item(selectInput(paste0(module_id, "_sig_style"), latent_text("Significance style", latent_utf8("ec9ca0ec9d98ec84b120ed919cec8b9c"), language), choices = latent_choices(c("sig", "stars", "blank"), c("sig", "stars", "blank"), c("sig", latent_utf8("ebb384ed919c"), latent_utf8("ebb988ecb9b8")), language), selected = "sig", selectize = FALSE), "Common", language = language),
           latent_option_item(selectInput(paste0(module_id, "_journal_style"), latent_text("Journal style", latent_utf8("ed9599ec88a0eca78020ed9895ec8b9d"), language), choices = c("generic_sci", "elsevier", "springer", "apa"), selected = "generic_sci", selectize = FALSE), "Common", language = language),
-          latent_option_item(numericInput(paste0(module_id, "_figure_res"), latent_text("Figure resolution", latent_utf8("eab7b8eba6bc20ed95b4ec8381eb8f84"), language), value = latent_default_figure_res(), min = 72, step = 1), "Common", language = language)
+          latent_option_item(numericInput(
+            paste0(module_id, "_figure_res"),
+            latent_text("Figure resolution", latent_utf8("eab7b8eba6bc20ed95b4ec8381eb8f84"), language),
+            value = latent_default_figure_res(),
+            min = 300,
+            max = if (latent_high_resolution_enabled()) 600 else 300,
+            step = if (latent_high_resolution_enabled()) 300 else 1
+          ), "Common", language = language)
         )
       )
     )

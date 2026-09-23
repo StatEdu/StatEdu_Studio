@@ -30,6 +30,10 @@ log_err  <- function(...) log_txt("ERROR", ...)
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
+if (!exists("mixture_parse_run_quality")) {
+  stop("mixture_parse_run_quality() not found. Make sure 15_mixture_selection_core.R is sourced before 03c.", call. = FALSE)
+}
+
 safe_read_lines <- function(path) {
   if (is.null(path) || length(path) == 0 || is.na(path) || !file.exists(path)) {
     return(character(0))
@@ -111,9 +115,10 @@ extract_value_after_anchor <- function(anchor_pattern, value_pattern, txt, up, m
 # ------------------------------------------------------------
 # 1. parser
 # ------------------------------------------------------------
-parse_mplus_fit <- function(out_file, model_tag = NA_character_) {
+parse_mplus_fit <- function(out_file, model_tag = NA_character_, expected_k = NA_integer_) {
   txt <- safe_read_lines(out_file)
   up  <- toupper(txt)
+  quality <- mixture_parse_run_quality(txt, k = expected_k)
 
   if (length(txt) == 0) {
     return(data.frame(
@@ -134,6 +139,20 @@ parse_mplus_fit <- function(out_file, model_tag = NA_character_) {
       npar             = NA_real_,
       smallest_class_n = NA_real_,
       smallest_class_p = NA_real_,
+      class_count_complete = FALSE,
+      fit_metrics_complete = FALSE,
+      status = "failed",
+      output_present = FALSE,
+      terminated_normally = FALSE,
+      converged = FALSE,
+      best_ll_replicated = NA,
+      loglik_replicated = NA,
+      replication_ok = FALSE,
+      local_maxima_warning = FALSE,
+      admissible = FALSE,
+      run_quality_ok = FALSE,
+      failure_reasons = paste(quality$failure_reasons, collapse = ";"),
+      warning_text = NA_character_,
       stringsAsFactors = FALSE
     ))
   }
@@ -162,43 +181,12 @@ parse_mplus_fit <- function(out_file, model_tag = NA_character_) {
     NA_real_
   }
 
-  extract_smallest_class_prop_mplus <- function(txt, up) {
-    anchor_idx <- grep(
-      "BASED ON THEIR MOST LIKELY LATENT CLASS MEMBERSHIP",
-      up,
-      perl = TRUE
-    )
-
-    if (length(anchor_idx) == 0) {
-      return(list(
-        smallest_class_n = NA_real_,
-        smallest_class_p = NA_real_
-      ))
-    }
-
-    blk <- txt[seq.int(anchor_idx[1], min(length(txt), anchor_idx[1] + 25L))]
-
-    row_idx <- grep("^\\s*[0-9]+\\s+[0-9]+(?:\\.[0-9]+)?\\s+0?\\.\\d+\\s*$", blk, perl = TRUE)
-
-    if (length(row_idx) == 0) {
-      return(list(
-        smallest_class_n = NA_real_,
-        smallest_class_p = NA_real_
-      ))
-    }
-
-    rows <- trimws(blk[row_idx])
-    parts <- strsplit(rows, "\\s+")
-
-    ns <- suppressWarnings(as.numeric(vapply(parts, `[`, "", 2)))
-    ps <- suppressWarnings(as.numeric(vapply(parts, `[`, "", 3)))
-
-    ns <- ns[is.finite(ns)]
-    ps <- ps[is.finite(ps)]
-
+  extract_smallest_class_prop_mplus <- function(txt, up, expected_k = NA_integer_) {
+    parsed <- mixture_parse_class_count_block(txt, expected_k = expected_k)
     list(
-      smallest_class_n = if (length(ns) == 0) NA_real_ else min(ns, na.rm = TRUE),
-      smallest_class_p = if (length(ps) == 0) NA_real_ else min(ps, na.rm = TRUE)
+      smallest_class_n = parsed$smallest_class_n,
+      smallest_class_p = parsed$smallest_class_p,
+      class_count_complete = isTRUE(parsed$complete)
     )
   }
 
@@ -257,7 +245,7 @@ parse_mplus_fit <- function(out_file, model_tag = NA_character_) {
     txt, up, max_lookahead = 45L
   )
   npar_val         <- extract_npar_mplus(txt, up)
-  class_info       <- extract_smallest_class_prop_mplus(txt, up)
+  class_info       <- extract_smallest_class_prop_mplus(txt, up, expected_k = expected_k)
   smallest_class_n <- class_info$smallest_class_n
   smallest_class_p <- class_info$smallest_class_p
 
@@ -279,88 +267,38 @@ parse_mplus_fit <- function(out_file, model_tag = NA_character_) {
     npar             = npar_val,
     smallest_class_n = smallest_class_n,
     smallest_class_p = smallest_class_p,
+    class_count_complete = isTRUE(class_info$class_count_complete),
+    fit_metrics_complete = FALSE,
+    status = as.character(quality$status),
+    output_present = isTRUE(quality$output_present),
+    terminated_normally = isTRUE(quality$terminated_normally),
+    converged = isTRUE(quality$converged),
+    best_ll_replicated = quality$best_ll_replicated,
+    loglik_replicated = quality$loglik_replicated,
+    replication_ok = isTRUE(quality$replication_ok),
+    local_maxima_warning = isTRUE(quality$local_maxima_warning),
+    admissible = isTRUE(quality$admissible),
+    run_quality_ok = isTRUE(quality$run_quality_ok),
+    failure_reasons = paste(quality$failure_reasons, collapse = ";"),
+    warning_text = if (length(quality$warning_lines) > 0L) paste(quality$warning_lines, collapse = "\n") else NA_character_,
     stringsAsFactors = FALSE
   )
 
-  out$parse_ok <- !all(is.na(out[, c("ll", "aic", "bic", "sabic")]))
+  required_fit <- c("ll", "aic", "bic", "sabic", "npar")
+  out$fit_metrics_complete <- all(vapply(out[required_fit], function(x) is.finite(suppressWarnings(as.numeric(x[1]))), logical(1)))
+  out$parse_ok <- isTRUE(out$fit_metrics_complete)
   out
 }
 
 parse_lpa_indicator_profile <- function(out_file, indicators, model_tag = NA_character_) {
-  txt <- safe_read_lines(out_file)
-  if (length(txt) == 0 || length(indicators) == 0) return(data.frame())
-
-  lines <- trimws(txt)
-  out_list <- list()
-  idx <- 1L
-
-  in_model_results <- FALSE
-  in_means_block   <- FALSE
-  current_class    <- NA_integer_
-
-  indicators_up <- toupper(as.character(indicators))
-
-  for (ln in lines) {
-    if (!nzchar(ln)) next
-
-    # MODEL RESULTS 시작
-    if (grepl("MODEL RESULTS", toupper(ln))) {
-      in_model_results <- TRUE
-      in_means_block   <- FALSE
-      current_class    <- NA_integer_
-      next
-    }
-
-    if (!in_model_results) next
-
-    # Latent Class k
-    if (grepl("LATENT CLASS\\s+[0-9]+", toupper(ln))) {
-      current_class <- suppressWarnings(
-        as.integer(gsub(".*LATENT CLASS\\s+([0-9]+).*", "\\1", toupper(ln)))
-      )
-      in_means_block <- FALSE
-      next
-    }
-
-    # Means 블록 시작
-    if (grepl("^\\s*MEANS\\s*$", toupper(ln))) {
-      in_means_block <- TRUE
-      next
-    }
-
-    # Means 블록 종료 신호
-    if (grepl("^(VARIANCES|INTERCEPTS|THRESHOLDS|CATEGORICAL LATENT VARIABLES|LATENT CLASS|QUALITY OF NUMERICAL RESULTS)",
-              toupper(ln))) {
-      in_means_block <- FALSE
-    }
-
-    if (!in_means_block || is.na(current_class)) next
-
-    parts <- unlist(strsplit(ln, "\\s+"))
-    if (length(parts) < 3) next
-
-    var_i <- toupper(parts[1])
-    if (!(toupper(var_i) %in% indicators_up)) next
-
-    est_i <- suppressWarnings(as.numeric(parts[2]))
-    se_i  <- suppressWarnings(as.numeric(parts[3]))
-    if (is.na(est_i)) next
-
-    out_list[[idx]] <- data.frame(
-      model_tag = as.character(model_tag),
-      var_name  = tolower(var_i),
-      Class     = paste0("Class ", current_class),
-      Mean      = est_i,
-      SE        = se_i,
-      stringsAsFactors = FALSE
-    )
-    idx <- idx + 1L
-  }
-
-  if (length(out_list) == 0) return(data.frame())
-  out <- do.call(rbind, out_list)
-  rownames(out) <- NULL
-  out
+  parsed <- profile_parse_mplus_means(
+    path = out_file,
+    indicators = indicators,
+    model_tag = model_tag,
+    require_normal_termination = TRUE
+  )
+  if (!isTRUE(parsed$available)) return(data.frame())
+  parsed$data
 }
 
 build_best_lpa_indicator_profile <- function(best_row, dict = NULL) {
@@ -504,16 +442,10 @@ ESTIMATION_REGISTRY <- load_step_rds(
   required = TRUE
 )
 
-if (is.data.frame(ESTIMATION_REGISTRY)) {
-  registry_df <- ESTIMATION_REGISTRY
-} else if (is.list(ESTIMATION_REGISTRY)) {
-  registry_df <- tryCatch(
-    dplyr::bind_rows(ESTIMATION_REGISTRY),
-    error = function(e) NULL
-  )
-} else {
-  stop("ESTIMATION_REGISTRY must be a data.frame or list.", call. = FALSE)
-}
+registry_df <- tryCatch(
+  mixture_registry_to_row_df(ESTIMATION_REGISTRY),
+  error = function(e) NULL
+)
 
 if (is.null(registry_df) || !is.data.frame(registry_df) || nrow(registry_df) == 0) {
   stop("Failed to normalize ESTIMATION_REGISTRY.", call. = FALSE)
@@ -557,12 +489,13 @@ for (i in seq_len(nrow(run_results))) {
   k_i <- suppressWarnings(as.integer(rr$k[1] %||% extract_k_from_tag(model_tag)))
   model_structure_i <- as.character(rr$model_structure[1] %||% extract_model_structure_from_tag(model_tag))
 
-  out_candidates <- c(
-    as.character(rr$out_file %||% NA_character_),
-    file.path(DIR_MPLUS_OUT, paste0(model_tag, ".out")),
-    file.path(DIR_MPLUS_INP, paste0(model_tag, ".out"))
-  )
-  out_file <- find_existing_first(out_candidates)
+  # Only parse the exact output path certified by the execution registry.
+  # A conventional-name fallback can silently pick up a stale file.
+  out_candidates <- as.character(rr$out_file %||% NA_character_)
+  out_file <- if (
+    length(out_candidates) == 1L && !is.na(out_candidates) &&
+      nzchar(trimws(out_candidates)) && file.exists(out_candidates)
+  ) out_candidates else NA_character_
 
   if (is.na(out_file)) {
     log_warn("Output file not found: ", paste(out_candidates, collapse = " | "))
@@ -572,7 +505,7 @@ for (i in seq_len(nrow(run_results))) {
       model_structure  = model_structure_i,
       model_tag        = model_tag,
       out_file         = NA_character_,
-      status           = as.character(rr$status %||% "failed"),
+      status           = "failed",
       parse_ok         = FALSE,
       ll               = NA_real_,
       aic              = NA_real_,
@@ -582,13 +515,51 @@ for (i in seq_len(nrow(run_results))) {
       npar             = NA_real_,
       smallest_class_n = NA_real_,
       smallest_class_p = NA_real_,
+      class_count_complete = FALSE,
+      fit_metrics_complete = FALSE,
+      exec_ok          = isTRUE(rr$exec_ok %||% FALSE),
+      out_fresh        = isTRUE(rr$out_fresh %||% FALSE),
+      out_signature_ok = FALSE,
+      cprob_fresh      = isTRUE(rr$cprob_fresh %||% FALSE),
+      output_present   = FALSE,
+      terminated_normally = FALSE,
+      converged        = FALSE,
+      best_ll_replicated = NA,
+      loglik_replicated = NA,
+      replication_ok   = FALSE,
+      local_maxima_warning = FALSE,
+      admissible       = FALSE,
+      run_quality_ok   = FALSE,
+      failure_reasons  = "output_missing",
+      warning_text     = as.character(rr$warning_text %||% NA_character_),
       stringsAsFactors = FALSE
     )
     next
   }
 
-  fit_i <- parse_mplus_fit(out_file, model_tag = model_tag)
-  fit_i$status <- as.character(rr$status %||% ifelse(isTRUE(fit_i$parse_ok), "ok", "failed"))
+  out_signature_ok <- mixture_file_signature_matches(
+    out_file,
+    expected_size = rr$out_size,
+    expected_mtime = rr$out_mtime,
+    expected_md5 = rr$out_md5
+  )
+  fit_i <- parse_mplus_fit(out_file, model_tag = model_tag, expected_k = k_i)
+  fit_i$exec_ok <- isTRUE(rr$exec_ok %||% FALSE)
+  fit_i$out_signature_ok <- out_signature_ok
+  fit_i$out_fresh <- isTRUE(rr$out_fresh %||% FALSE) && out_signature_ok
+  fit_i$cprob_fresh <- isTRUE(rr$cprob_fresh %||% FALSE)
+  fit_i$run_quality_ok <- isTRUE(fit_i$run_quality_ok[1]) && fit_i$exec_ok[1] && fit_i$out_fresh[1]
+  fit_i$status <- if (isTRUE(fit_i$run_quality_ok[1])) "ok" else "failed"
+  combined_reasons <- unique(c(
+    if (!fit_i$exec_ok[1]) "execution_failed" else character(0),
+    if (!out_signature_ok) "output_signature_mismatch" else character(0),
+    if (!fit_i$out_fresh[1]) "output_not_fresh" else character(0),
+    unlist(strsplit(as.character(rr$failure_reasons %||% ""), ";", fixed = TRUE)),
+    unlist(strsplit(as.character(fit_i$failure_reasons[1] %||% ""), ";", fixed = TRUE))
+  ))
+  combined_reasons <- trimws(combined_reasons)
+  combined_reasons <- combined_reasons[!is.na(combined_reasons) & nzchar(combined_reasons)]
+  fit_i$failure_reasons <- paste(combined_reasons, collapse = ";")
   fit_i$k <- k_i
   fit_i$model_structure <- model_structure_i
 
@@ -616,6 +587,9 @@ best_row                 <- data.frame()
 cand <- fit_tbl[
   !is.na(fit_tbl$parse_ok) &
     fit_tbl$parse_ok &
+    !is.na(fit_tbl$status) & fit_tbl$status == "ok" &
+    !is.na(fit_tbl$run_quality_ok) & fit_tbl$run_quality_ok &
+    !is.na(fit_tbl$class_count_complete) & fit_tbl$class_count_complete &
     !is.na(fit_tbl$bic),
   ,
   drop = FALSE

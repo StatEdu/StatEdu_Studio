@@ -8,6 +8,30 @@ setwd(repo_root)
 
 source(file.path(repo_root, "R", "utils.R"))
 source(file.path(repo_root, "R", "data_io.R"))
+source(file.path(repo_root, "R", "data_ui_tables.R"))
+source(file.path(repo_root, "R", "server_data_state.R"))
+
+message("Checking manually managed variable-table controls...")
+measurement_html <- measurement_select_html("x", "continuous", 1L, "en")
+label_renderer <- paste(as.character(variable_label_input_renderer()), collapse = "\n")
+stopifnot(
+  grepl('class="measurement-select" data-name="x"', measurement_html, fixed = TRUE),
+  !grepl('id="measurement_input_', measurement_html, fixed = TRUE),
+  !grepl("var_label_input_", label_renderer, fixed = TRUE)
+)
+collector_input <- list(variable_table_state = list(
+  measurements = list(x = "ordered"),
+  var_labels = list(x = "X label")
+))
+collector_info <- function(reactive_labels = FALSE) data.frame(
+  name = "x", source_order = 1L, stringsAsFactors = FALSE
+)
+collectors <- create_table_input_collectors(collector_input, collector_info)
+stopifnot(
+  identical(unname(collectors$collect_measurement_inputs()[["x"]]), "ordered"),
+  identical(unname(collectors$collect_var_label_inputs()[["x"]]), "X label")
+)
+source(file.path(repo_root, "R", "settings_io.R"))
 
 ko_sex <- statedu_utf8("ec84b1ebb384")
 ko_grade <- statedu_utf8("ed9599eb8584")
@@ -35,6 +59,25 @@ writeLines(c("x,y", "1,2", "3,4"), csv_path, useBytes = TRUE)
 csv_data <- read_input_data(csv_path, "source.csv", csv_header = TRUE)
 stopifnot(nrow(csv_data) == 2)
 stopifnot(identical(names(csv_data), c("x", "y")))
+stopifnot(identical(csv_encoding_candidates(csv_path)[[1]], "UTF-8"))
+
+message("Checking restored CSV import options are fixed before the first read...")
+legacy_csv_file <- settings_apply_data_file_options(
+  list(path = csv_path, name = "source.csv", restored = TRUE),
+  list(data_file_options = list())
+)
+stopifnot(isTRUE(legacy_csv_file$csv_header))
+legacy_csv_data <- read_current_data_file(
+  legacy_csv_file,
+  list(header = FALSE, dat_delimiter = "whitespace", dat_has_names = FALSE)
+)
+stopifnot(nrow(legacy_csv_data) == 2)
+stopifnot(identical(names(legacy_csv_data), c("x", "y")))
+headerless_csv_file <- settings_apply_data_file_options(
+  list(path = csv_path, name = "source.csv", restored = TRUE),
+  list(data_file_options = list(csv_header = FALSE))
+)
+stopifnot(!isTRUE(headerless_csv_file$csv_header))
 
 message("Checking CP949 Korean CSV reads...")
 cp949_path <- tempfile(pattern = "statedu cp949 csv ", fileext = ".csv")
@@ -48,6 +91,7 @@ cp949_data <- read_input_data(cp949_path, "source.csv", csv_header = TRUE)
 stopifnot(nrow(cp949_data) == 2)
 stopifnot(identical(names(cp949_data), names(korean_data)))
 stopifnot(identical(as.character(cp949_data[[ko_sex]]), korean_data[[ko_sex]]))
+stopifnot(identical(csv_encoding_candidates(cp949_path)[[1]], "CP949"))
 
 message("Checking Korean XLSX reads...")
 xlsx_path <- tempfile(pattern = "statedu korean xlsx ", fileext = ".xlsx")

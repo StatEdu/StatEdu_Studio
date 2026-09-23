@@ -46,15 +46,14 @@ regression_reference_values_static <- function(category_table) {
   refs[nzchar(trimws(refs))]
 }
 
-compact_analysis_blocks <- function(block1, block2 = character(0), block3 = character(0)) {
-  blocks <- list(
-    unique(as.character(block1 %||% character(0))),
-    unique(as.character(block2 %||% character(0))),
-    unique(as.character(block3 %||% character(0)))
-  )
+compact_analysis_blocks <- function(block1, block2 = character(0), block3 = character(0), block4 = NULL) {
+  blocks <- list(block1, block2, block3)
+  if (!is.null(block4)) blocks <- c(blocks, list(block4))
+  count <- length(blocks)
+  blocks <- lapply(blocks, function(x) unique(as.character(x %||% character(0))))
   compacted <- Filter(function(block) length(block) > 0, blocks)
-  compacted <- c(compacted, rep(list(character(0)), 3L - length(compacted)))
-  list(block1 = compacted[[1]], block2 = compacted[[2]], block3 = compacted[[3]])
+  compacted <- c(compacted, rep(list(character(0)), count - length(compacted)))
+  stats::setNames(compacted, paste0("block", seq_len(count)))
 }
 
 normalize_regression_variable_info_static <- function(variable_info = NULL, variable_table = NULL) {
@@ -141,7 +140,12 @@ prepare_regression_model_data_static <- function(data, variables, variable_info 
   for (name in as.character(categorical_info$name)) {
     measurement <- as.character(categorical_info$measurement[match(name, categorical_info$name)] %||% "")
     values <- data[[name]]
-    data[[name]] <- factor(as.character(values), ordered = identical(measurement, "ordered"))
+    existing_levels <- if (is.factor(values)) levels(values) else NULL
+    data[[name]] <- if (length(existing_levels) > 0L) {
+      factor(as.character(values), levels = existing_levels, ordered = identical(measurement, "ordered"))
+    } else {
+      factor(as.character(values), ordered = identical(measurement, "ordered"))
+    }
     reference <- trimws(named_value(reference_values, name, ""))
     if (nzchar(reference) && reference %in% levels(data[[name]]) && !isTRUE(is.ordered(data[[name]]))) {
       data[[name]] <- stats::relevel(data[[name]], ref = reference)
@@ -184,6 +188,7 @@ regression_preflight <- function(data, dependent, predictors, formula, variable_
   if (inherits(frame, "error")) {
     return(list(ok = FALSE, skipped = regression_guard_row(dependent, predictors, conditionMessage(frame), NA_integer_, variable_info, labels)))
   }
+  frame <- droplevels(frame)
   n <- nrow(frame)
   if (n < 3) {
     return(list(ok = FALSE, skipped = regression_guard_row(dependent, predictors, "At least 3 complete cases are required.", n, variable_info, labels)))
@@ -219,19 +224,17 @@ regression_preflight <- function(data, dependent, predictors, formula, variable_
       labels
     )))
   }
-  warnings <- list()
   if (rank < ncol(model_matrix)) {
-    warnings[[length(warnings) + 1L]] <- regression_guard_row(
+    return(list(ok = FALSE, skipped = regression_guard_row(
       dependent,
       predictors,
-      "Model matrix is rank deficient; one or more coefficients may be aliased because of perfect multicollinearity.",
+      "Model matrix is rank deficient; coefficients are not uniquely estimable because of perfect multicollinearity.",
       n,
       variable_info,
-      labels,
-      type = "Warning"
-    )
+      labels
+    )))
   }
-  list(ok = TRUE, frame = frame, n = n, rank = rank, residual_df = residual_df, warnings = regression_bind_guard_rows(warnings))
+  list(ok = TRUE, frame = frame, n = n, rank = rank, residual_df = residual_df, warnings = data.frame())
 }
 
 coefficient_collinearity <- function(model_matrix) {
@@ -269,6 +272,27 @@ coefficient_collinearity <- function(model_matrix) {
   list(tolerance = tolerance, vif = vif)
 }
 
+regression_collinearity_cache <- function(compute = coefficient_collinearity) {
+  cached <- NULL
+  function(model_matrix) {
+    if (!is.matrix(model_matrix) || !is.numeric(model_matrix) || is.object(model_matrix) ||
+        length(model_matrix) > 1000000L) return(compute(model_matrix))
+    context <- options()[c("contrasts", "na.action")]
+    if (!is.null(cached) && identical(cached$matrix, model_matrix, num.eq = FALSE) &&
+        identical(cached$context, context)) return(cached$value)
+    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    seed <- if (had_seed) get(".Random.seed", envir = .GlobalEnv, inherits = FALSE) else NULL
+    quiet <- TRUE
+    value <- withCallingHandlers(compute(model_matrix),
+      warning = function(w) quiet <<- FALSE, message = function(m) quiet <<- FALSE)
+    has_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    same_seed <- identical(had_seed, has_seed) &&
+      (!has_seed || identical(seed, get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)))
+    if (quiet && same_seed) cached <<- list(matrix = model_matrix, context = context, value = value)
+    value
+  }
+}
+
 coefficient_effect_sizes <- function(model) {
   model_matrix <- stats::model.matrix(model)
   terms <- colnames(model_matrix)
@@ -291,7 +315,7 @@ coefficient_effect_sizes <- function(model) {
     if (length(keep) == 0) {
       next
     }
-    reduced_fit <- tryCatch(stats::lm.fit(model_matrix[, keep, drop = FALSE], outcome), error = function(e) NULL)
+    reduced_fit <- tryCatch(regression_bootstrap_lm_fit(model_matrix[, keep, drop = FALSE], outcome), error = function(e) NULL)
     if (is.null(reduced_fit)) {
       next
     }
@@ -304,7 +328,7 @@ coefficient_effect_sizes <- function(model) {
   list(sr2 = sr2, f2 = f2)
 }
 
-coeftest_table <- function(model, vcov_matrix = NULL) {
+coeftest_table <- function(model, vcov_matrix = NULL, collinearity_fn = coefficient_collinearity) {
   test <- if (is.null(vcov_matrix)) {
     lmtest::coeftest(model)
   } else {
@@ -312,7 +336,7 @@ coeftest_table <- function(model, vcov_matrix = NULL) {
   }
 
   model_matrix <- stats::model.matrix(model)
-  collinearity <- coefficient_collinearity(model_matrix)
+  collinearity <- collinearity_fn(model_matrix)
   effect_sizes <- coefficient_effect_sizes(model)
   outcome <- stats::model.response(stats::model.frame(model))
   outcome_sd <- stats::sd(outcome, na.rm = TRUE)
@@ -336,6 +360,62 @@ coeftest_table <- function(model, vcov_matrix = NULL) {
   )
 }
 
+regression_bootstrap_status <- function(valid, requested) {
+  valid <- as.integer(valid %||% 0L)
+  requested <- as.integer(requested %||% 0L)
+  ratio <- if (requested > 0L) valid / requested else 0
+  if (valid < max(20L, ceiling(.50 * requested))) return("Unreliable")
+  if (ratio < .80) return("Caution")
+  "Adequate"
+}
+
+regression_bootstrap_p <- function(values) {
+  values <- suppressWarnings(as.numeric(values %||% numeric(0)))
+  values <- values[is.finite(values)]
+  n <- length(values)
+  if (n == 0L) return(NA_real_)
+  lower <- (sum(values <= 0) + 1) / (n + 1)
+  upper <- (sum(values >= 0) + 1) / (n + 1)
+  min(1, 2 * min(lower, upper))
+}
+
+regression_bootstrap_term_summary <- function(point, values, requested, conf = .95, ci_method = "bias_corrected") {
+  values <- suppressWarnings(as.numeric(values %||% numeric(0)))
+  values <- values[is.finite(values)]
+  valid <- length(values)
+  status <- regression_bootstrap_status(valid, requested)
+  interval_available <- !identical(status, "Unreliable") && is.finite(point)
+  interval <- if (interval_available) {
+    bootstrap_ci(point, values, conf = conf, method = ci_method)
+  } else {
+    c(NA_real_, NA_real_)
+  }
+  c(
+    Boot_SE = if (valid > 1L) stats::sd(values) else NA_real_,
+    Boot_LLCI = interval[[1L]],
+    Boot_ULCI = interval[[2L]],
+    Boot_p = if (interval_available) regression_bootstrap_p(values) else NA_real_,
+    Requested = requested,
+    Valid = valid,
+    Valid_Pct = if (requested > 0L) 100 * valid / requested else NA_real_,
+    Status = status
+  )
+}
+
+# Bootstrap draws only need coefficients and residuals, not a complete lm object.
+# Keep lm.fit's QR tolerance, alias handling and original coefficient order.
+regression_bootstrap_lm_fit <- function(x, y) {
+  if (!is.matrix(x) || nrow(x) == 0L || ncol(x) == 0L || is.matrix(y)) {
+    return(stats::lm.fit(x, y))
+  }
+  fit <- stats::.lm.fit(x, y, tol = 1e-7)
+  coefficients <- fit$coefficients
+  if (fit$rank < ncol(x)) coefficients[seq.int(fit$rank + 1L, ncol(x))] <- NA_real_
+  if (isTRUE(fit$pivoted)) coefficients[fit$pivot] <- coefficients
+  names(coefficients) <- if (is.null(colnames(x))) paste0("x", seq_len(ncol(x))) else colnames(x)
+  list(coefficients = coefficients, residuals = fit$residuals)
+}
+
 bootstrap_coef_table <- function(data, formula, r = 2000, conf = .95, seed = 1234, ci_method = "bias_corrected") {
   complete_data <- model.frame(formula, data = data, na.action = na.omit)
   model_terms <- stats::terms(formula)
@@ -347,7 +427,7 @@ bootstrap_coef_table <- function(data, formula, r = 2000, conf = .95, seed = 123
   set.seed(seed)
   for (index in seq_len(r)) {
     rows <- sample.int(nrow(model_matrix), nrow(model_matrix), replace = TRUE)
-    fit <- tryCatch(stats::lm.fit(model_matrix[rows, , drop = FALSE], outcome[rows]), error = function(e) NULL)
+    fit <- tryCatch(regression_bootstrap_lm_fit(model_matrix[rows, , drop = FALSE], outcome[rows]), error = function(e) NULL)
     if (!is.null(fit)) {
       samples[index, ] <- as.numeric(fit$coefficients)
     }
@@ -355,23 +435,20 @@ bootstrap_coef_table <- function(data, formula, r = 2000, conf = .95, seed = 123
   original_fit <- stats::lm.fit(model_matrix, outcome)
   point_estimates <- as.numeric(original_fit$coefficients)
   names(point_estimates) <- terms
-  limits <- t(vapply(terms, function(term) {
-    bootstrap_ci(point_estimates[[term]], samples[, term], conf = conf, method = ci_method)
-  }, numeric(2)))
-
-  boot_p <- function(x) {
-    n <- sum(!is.na(x))
-    lower <- (sum(x <= 0, na.rm = TRUE) + 1) / (n + 1)
-    upper <- (sum(x >= 0, na.rm = TRUE) + 1) / (n + 1)
-    min(1, 2 * min(lower, upper))
-  }
+  summaries <- lapply(terms, function(term) {
+    regression_bootstrap_term_summary(point_estimates[[term]], samples[, term], nrow(samples), conf, ci_method)
+  })
 
   data.frame(
     Term = terms,
-    Boot_SE = apply(samples, 2, stats::sd, na.rm = TRUE),
-    Boot_LLCI = limits[, 1],
-    Boot_ULCI = limits[, 2],
-    Boot_p = apply(samples, 2, boot_p),
+    Boot_SE = vapply(summaries, function(item) as.numeric(item[["Boot_SE"]]), numeric(1)),
+    Boot_LLCI = vapply(summaries, function(item) as.numeric(item[["Boot_LLCI"]]), numeric(1)),
+    Boot_ULCI = vapply(summaries, function(item) as.numeric(item[["Boot_ULCI"]]), numeric(1)),
+    Boot_p = vapply(summaries, function(item) as.numeric(item[["Boot_p"]]), numeric(1)),
+    Requested = vapply(summaries, function(item) as.integer(item[["Requested"]]), integer(1)),
+    Valid = vapply(summaries, function(item) as.integer(item[["Valid"]]), integer(1)),
+    `Valid %` = vapply(summaries, function(item) as.numeric(item[["Valid_Pct"]]), numeric(1)),
+    Status = vapply(summaries, function(item) as.character(item[["Status"]]), character(1)),
     row.names = NULL,
     check.names = FALSE
   )
@@ -382,34 +459,104 @@ bootstrap_summary_table <- function(boot_samples, original_fit, conf = .95, ci_m
     return(NULL)
   }
   point_estimates <- stats::coef(original_fit)
-  limits <- t(vapply(colnames(boot_samples), function(term) {
-    bootstrap_ci(point_estimates[[term]], boot_samples[, term], conf = conf, method = ci_method)
-  }, numeric(2)))
-
-  boot_p <- function(x) {
-    n <- sum(!is.na(x))
-    if (n == 0) {
-      return(NA_real_)
-    }
-    lower <- (sum(x <= 0, na.rm = TRUE) + 1) / (n + 1)
-    upper <- (sum(x >= 0, na.rm = TRUE) + 1) / (n + 1)
-    min(1, 2 * min(lower, upper))
-  }
+  summaries <- lapply(colnames(boot_samples), function(term) {
+    regression_bootstrap_term_summary(point_estimates[[term]], boot_samples[, term], nrow(boot_samples), conf, ci_method)
+  })
 
   data.frame(
     Term = names(coef(original_fit)),
-    Boot_SE = apply(boot_samples, 2, stats::sd, na.rm = TRUE),
-    Boot_LLCI = limits[, 1],
-    Boot_ULCI = limits[, 2],
-    Boot_p = apply(boot_samples, 2, boot_p),
+    Boot_SE = vapply(summaries, function(item) as.numeric(item[["Boot_SE"]]), numeric(1)),
+    Boot_LLCI = vapply(summaries, function(item) as.numeric(item[["Boot_LLCI"]]), numeric(1)),
+    Boot_ULCI = vapply(summaries, function(item) as.numeric(item[["Boot_ULCI"]]), numeric(1)),
+    Boot_p = vapply(summaries, function(item) as.numeric(item[["Boot_p"]]), numeric(1)),
+    Requested = vapply(summaries, function(item) as.integer(item[["Requested"]]), integer(1)),
+    Valid = vapply(summaries, function(item) as.integer(item[["Valid"]]), integer(1)),
+    `Valid %` = vapply(summaries, function(item) as.numeric(item[["Valid_Pct"]]), numeric(1)),
+    Status = vapply(summaries, function(item) as.character(item[["Status"]]), character(1)),
     row.names = NULL,
     check.names = FALSE
   )
 }
 
+regression_model_test <- function(model, vcov_matrix = NULL) {
+  model_summary <- summary(model)
+  if (is.null(vcov_matrix)) {
+    f_stat <- unname(model_summary$fstatistic["value"])
+    f_df1 <- unname(model_summary$fstatistic["numdf"])
+    f_df2 <- unname(model_summary$fstatistic["dendf"])
+    return(list(
+      statistic = f_stat,
+      df1 = f_df1,
+      df2 = f_df2,
+      p = stats::pf(f_stat, f_df1, f_df2, lower.tail = FALSE),
+      label = "F"
+    ))
+  }
+  coefficients <- stats::coef(model)
+  terms <- setdiff(names(coefficients), "(Intercept)")
+  terms <- terms[is.finite(coefficients[terms]) & terms %in% rownames(vcov_matrix)]
+  if (length(terms) == 0L) {
+    return(list(statistic = NA_real_, df1 = NA_real_, df2 = stats::df.residual(model), p = NA_real_, label = "Robust Wald F"))
+  }
+  beta <- coefficients[terms]
+  covariance <- vcov_matrix[terms, terms, drop = FALSE]
+  inverse_covariance <- tryCatch(solve(covariance), error = function(e) NULL)
+  if (is.null(inverse_covariance)) {
+    return(list(statistic = NA_real_, df1 = length(beta), df2 = stats::df.residual(model), p = NA_real_, label = "Robust Wald F"))
+  }
+  df1 <- length(beta)
+  df2 <- stats::df.residual(model)
+  statistic <- as.numeric(t(beta) %*% inverse_covariance %*% beta / df1)
+  list(
+    statistic = statistic,
+    df1 = df1,
+    df2 = df2,
+    p = if (is.finite(statistic) && df1 > 0 && df2 > 0) stats::pf(statistic, df1, df2, lower.tail = FALSE) else NA_real_,
+    label = "Robust Wald F"
+  )
+}
+
+# Shared calculation helper for hierarchical interaction tests. Keep this in
+# the regression layer because mediation/moderation workers do not load result
+# rendering modules.
+hierarchical_robust_wald_f_p <- function(previous, current) {
+  if (is.null(previous$model) || is.null(current$model)) {
+    return(NA_real_)
+  }
+  current_terms <- setdiff(colnames(stats::model.matrix(current$model)), "(Intercept)")
+  previous_terms <- setdiff(colnames(stats::model.matrix(previous$model)), "(Intercept)")
+  added_terms <- setdiff(current_terms, previous_terms)
+  if (length(added_terms) == 0) {
+    return(NA_real_)
+  }
+  coefficients <- stats::coef(current$model)
+  term_index <- match(added_terms, names(coefficients))
+  term_index <- term_index[!is.na(term_index)]
+  if (length(term_index) == 0) {
+    return(NA_real_)
+  }
+  vcov_matrix <- tryCatch(sandwich::vcovHC(current$model, type = "HC3"), error = function(e) NULL)
+  if (is.null(vcov_matrix)) {
+    return(NA_real_)
+  }
+  beta <- coefficients[term_index]
+  covariance <- vcov_matrix[term_index, term_index, drop = FALSE]
+  inverse_covariance <- tryCatch(solve(covariance), error = function(e) NULL)
+  if (is.null(inverse_covariance)) {
+    return(NA_real_)
+  }
+  df1 <- length(beta)
+  df2 <- stats::df.residual(current$model)
+  statistic <- as.numeric(t(beta) %*% inverse_covariance %*% beta / df1)
+  if (!is.finite(statistic) || !is.finite(df1) || !is.finite(df2) || df1 <= 0 || df2 <= 0) {
+    return(NA_real_)
+  }
+  stats::pf(statistic, df1, df2, lower.tail = FALSE)
+}
+
 start_bootstrap_process <- function(job) {
   callr::r_bg(
-    function(job) {
+    function(job, fit_fn) {
       set.seed(job$seed)
       samples <- matrix(NA_real_, nrow = job$r, ncol = length(job$terms), dimnames = list(NULL, job$terms))
       saveRDS(list(done = 0L, r = job$r), job$progress_file)
@@ -429,7 +576,7 @@ start_bootstrap_process <- function(job) {
         next_done <- min(job$r, done + job$chunk)
         for (row_index in seq.int(done + 1L, next_done)) {
           indices <- sample.int(n, n, replace = TRUE)
-          fit <- tryCatch(stats::lm.fit(model_matrix[indices, , drop = FALSE], outcome[indices]), error = function(e) NULL)
+          fit <- tryCatch(fit_fn(model_matrix[indices, , drop = FALSE], outcome[indices]), error = function(e) NULL)
           if (!is.null(fit)) {
             values <- as.numeric(fit$coefficients)
             names(values) <- colnames(model_matrix)
@@ -446,7 +593,7 @@ start_bootstrap_process <- function(job) {
       saveRDS(list(samples = samples, r_squared = r_squared), job$result_file)
       TRUE
     },
-    args = list(job = job),
+    args = list(job = job, fit_fn = regression_bootstrap_lm_fit),
     supervise = TRUE
   )
 }
@@ -525,8 +672,10 @@ prepare_single_regression_result <- function(
   residual_diagnostics = TRUE,
   auto_method = TRUE,
   variable_table = NULL,
-  ci_method = "bias_corrected"
+  ci_method = "bias_corrected",
+  collinearity_fn = coefficient_collinearity
 ) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("dependent", "predictors"))
   ci_method <- as.character(ci_method %||% "bias_corrected")[[1]]
   if (!ci_method %in% c("bias_corrected", "percentile")) ci_method <- "bias_corrected"
   variable_info <- normalize_regression_variable_info_static(variable_info, variable_table)
@@ -593,15 +742,13 @@ prepare_single_regression_result <- function(
   }
 
   vcov_matrix <- if (use_hc3) sandwich::vcovHC(model, type = "HC3") else NULL
-  coef_table <- coeftest_table(model, vcov_matrix)
+  coef_table <- coeftest_table(model, vcov_matrix, collinearity_fn = collinearity_fn)
   if (isTRUE(use_hc3) && "SE" %in% names(coef_table)) {
     names(coef_table)[names(coef_table) == "SE"] <- "HC3 SE"
   }
 
   model_summary <- summary(model)
-  f_stat <- unname(model_summary$fstatistic["value"])
-  f_df1 <- unname(model_summary$fstatistic["numdf"])
-  f_df2 <- unname(model_summary$fstatistic["dendf"])
+  model_test <- regression_model_test(model, vcov_matrix)
 
   result <- list(
     model = model,
@@ -609,10 +756,11 @@ prepare_single_regression_result <- function(
     n = stats::nobs(model),
     r_squared = unname(model_summary$r.squared),
     adjusted_r_squared = unname(model_summary$adj.r.squared),
-    f_statistic = f_stat,
-    f_df1 = f_df1,
-    f_df2 = f_df2,
-    f_p = stats::pf(f_stat, f_df1, f_df2, lower.tail = FALSE),
+    f_statistic = model_test$statistic,
+    f_df1 = model_test$df1,
+    f_df2 = model_test$df2,
+    f_p = model_test$p,
+    model_test_label = model_test$label,
     dw_d = dw_d,
     dw_crit = dw_crit,
     normality_statistic = normality_statistic,
@@ -692,6 +840,7 @@ prepare_regression_analysis_results <- function(
   variable_table = NULL,
   ci_method = "bias_corrected"
 ) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("dependents", "predictors"))
   variable_info <- normalize_regression_variable_info_static(variable_info, variable_table)
   dependents <- intersect(as.character(dependents), names(data))
   predictors <- intersect(as.character(predictors), names(data))
@@ -699,6 +848,7 @@ prepare_regression_analysis_results <- function(
   shiny::validate(shiny::need(length(dependents) > 0, "Select at least one dependent variable."))
   shiny::validate(shiny::need(length(predictors) > 0, "Select at least one predictor."))
 
+  collinearity_fn <- if (length(dependents) > 1L) regression_collinearity_cache() else coefficient_collinearity
   prepared <- lapply(dependents, function(dependent) {
     tryCatch(
       prepare_single_regression_result(
@@ -711,7 +861,8 @@ prepare_regression_analysis_results <- function(
         seed = seed,
         residual_diagnostics = residual_diagnostics,
         auto_method = auto_method,
-        ci_method = ci_method
+        ci_method = ci_method,
+        collinearity_fn = collinearity_fn
       ),
       error = function(e) list(result = NULL, job = NULL, skipped = regression_guard_row(dependent, predictors, conditionMessage(e), NA_integer_, variable_info))
     )
@@ -752,25 +903,29 @@ prepare_hierarchical_analysis_results <- function(
   residual_diagnostics = TRUE,
   auto_method = TRUE,
   variable_table = NULL,
-  ci_method = "bias_corrected"
+  ci_method = "bias_corrected",
+  block4 = character(0)
 ) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("dependents", "block1", "block2", "block3", "block4"))
   variable_info <- normalize_regression_variable_info_static(variable_info, variable_table)
   data_names <- names(data)
   dependents <- intersect(unique(as.character(dependents %||% character(0))), data_names)
   block1 <- intersect(unique(as.character(block1 %||% character(0))), data_names)
   block2 <- intersect(unique(as.character(block2 %||% character(0))), data_names)
   block3 <- intersect(unique(as.character(block3 %||% character(0))), data_names)
-  compacted <- compact_analysis_blocks(block1, block2, block3)
+  block4 <- intersect(unique(as.character(block4 %||% character(0))), data_names)
+  compacted <- compact_analysis_blocks(block1, block2, block3, block4)
   block1 <- compacted$block1
   block2 <- compacted$block2
   block3 <- compacted$block3
+  block4 <- compacted$block4
 
   shiny::validate(shiny::need(length(dependents) > 0, "Select at least one dependent variable."))
   shiny::validate(shiny::need(length(block1) > 0, "Select at least one Block 1 variable."))
   if (length(block3) > 0) {
     shiny::validate(shiny::need(length(block2) > 0, "Block 3 requires Block 2 variables."))
   }
-  if (length(block2) == 0 && length(block3) == 0) {
+  if (length(block2) == 0 && length(block3) == 0 && length(block4) == 0) {
     return(prepare_regression_analysis_results(
       data = data,
       dependents = dependents,
@@ -799,11 +954,15 @@ prepare_hierarchical_analysis_results <- function(
     ))
   }
 
+  if (length(block4) > 0) {
+    steps <- c(steps, list(list(name = "Model 4", predictors = unique(c(block1, block2, block3, block4)), blocks = "Block 1 + Block 2 + Block 3 + Block 4")))
+  }
+
   results <- list()
   jobs <- list()
   hierarchical_note <- "Hierarchical models were fitted on the complete cases of the final model (listwise across all blocks); all steps share the same N."
   for (dependent in dependents) {
-    all_vars <- unique(c(dependent, block1, block2, block3))
+    all_vars <- unique(c(dependent, block1, block2, block3, block4))
     step_data <- data[stats::complete.cases(data[, all_vars, drop = FALSE]), , drop = FALSE]
     for (step_index in seq_along(steps)) {
       predictors <- setdiff(steps[[step_index]]$predictors, dependent)
@@ -841,6 +1000,7 @@ prepare_hierarchical_analysis_results <- function(
       result$block1 <- block1
       result$block2 <- block2
       result$block3 <- block3
+      result$block4 <- block4
       results[[length(results) + 1L]] <- result
       if (!is.null(prepared$job)) {
         prepared$job$result_index <- length(results)

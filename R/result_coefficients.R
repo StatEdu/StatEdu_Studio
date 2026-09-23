@@ -5,7 +5,7 @@ coefficient_panel_title_static <- function(result, variable_table = NULL, labels
   dependent_label <- display_variable_name_static(dependent, variable_table, labels, label_only = TRUE)
   title <- sprintf("%s(%s)", regression_method_label(result), dependent_label)
   if (!is.null(result$hierarchical_step) && nzchar(result$hierarchical_step)) {
-    title <- sprintf("%s: %s", result$hierarchical_step, title)
+    title <- sprintf("%s (%s): %s", result$hierarchical_step, regression_method_label(result), dependent_label)
   }
   title
 }
@@ -178,6 +178,7 @@ coefficient_fit_line <- function(result) {
   } else {
     "R\u00B2(adj. R\u00B2)"
   }
+  test_label <- as.character(result$model_test_label %||% "F")[[1L]]
   paste(
     sprintf(
       "%s = %s (%s)",
@@ -186,7 +187,8 @@ coefficient_fit_line <- function(result) {
       format_decimal3(result$adjusted_r_squared)
     ),
     sprintf(
-      "F(%s, %s) = %s, p %s",
+      "%s(%s, %s) = %s, p %s",
+      test_label,
       result$f_df1,
       result$f_df2,
       format_decimal3(result$f_statistic),
@@ -262,16 +264,22 @@ has_severe_vif <- function(results) {
 
 coefficient_note_line <- function(result, show_vif = FALSE, show_sr2 = FALSE, show_f2 = FALSE) {
   ci_label <- bootstrap_ci_method_label(result$bootstrap_ci_method %||% "bias_corrected")
-  paste(
-    if (isTRUE(show_vif)) "Tolerance = 1 - R\u00B2 for each predictor;" else NULL,
-    if (isTRUE(show_vif)) "VIF = Variance Inflation Factor;" else NULL,
-    if (isTRUE(result$use_hc3)) "HC3 SE = heteroskedasticity-consistent standard error type 3;" else NULL,
-    if (isTRUE(result$use_bootstrap)) sprintf("Boot SE is the bootstrap standard error; LLCI and ULCI are %s bootstrap confidence limits based on the selected bootstrap resamples and seed number;", ci_label) else NULL,
-    if (isTRUE(show_sr2)) "sr\u00B2 = squared semi-partial correlation, unique R\u00B2 contribution for each coefficient;" else NULL,
-    if (isTRUE(show_f2)) "f\u00B2 = sr\u00B2 / (1 - model R\u00B2);" else NULL,
-    if (isTRUE(result$use_hc3) || isTRUE(result$use_bootstrap)) "OLS R\u00B2 and adjusted R\u00B2 are ordinary least squares model fit indices;" else NULL,
-    if (isTRUE(result$residual_diagnostics)) "d(d\u1D64~4-d\u1D64) = Durbin-Watson statistic (upper critical value~4-upper critical value);" else "d = Durbin-Watson statistic;",
-    if (isTRUE(result$residual_diagnostics)) "z(p) = Lilliefors corrected Kolmogorov-Smirnov residual normality test statistic (p-value);" else NULL,
-    if (isTRUE(result$residual_diagnostics)) sprintf("%s = Breusch-Pagan residual homoscedasticity test statistic (p-value)", stat_chisq_label(with_p = TRUE)) else NULL
+  notes <- c(
+    if (isTRUE(result$use_hc3)) "HC3 SE = heteroskedasticity-consistent standard error type 3" else if (isTRUE(result$use_bootstrap)) "Boot SE = bootstrap standard error" else "SE = standard error",
+    if (isTRUE(result$use_bootstrap)) sprintf("LLCI = lower limit of the %s bootstrap confidence interval", ci_label),
+    if (isTRUE(result$use_bootstrap)) sprintf("ULCI = upper limit of the %s bootstrap confidence interval", ci_label),
+    if (isTRUE(show_vif)) "Tol = tolerance (1 - R² for each predictor)",
+    if (isTRUE(show_vif)) "VIF = variance inflation factor",
+    if (isTRUE(result$residual_diagnostics)) "d(dᵤ-4-dᵤ) = Durbin-Watson statistic (dᵤ and 4-dᵤ are the upper-bound reference limits)" else "d = Durbin-Watson statistic",
+    if (isTRUE(result$residual_diagnostics)) "z(p) = Lilliefors-corrected Kolmogorov-Smirnov residual normality test statistic (p-value)",
+    if (isTRUE(result$residual_diagnostics)) "χ²(p) = Breusch-Pagan residual homoscedasticity test statistic (p-value)",
+    if (isTRUE(show_f2)) {
+      if (isTRUE(show_sr2)) "f² = local effect size, sr² / (1 - model R²)" else "f² = Cohen's local effect size"
+    },
+    if (isTRUE(show_sr2)) "sr² = squared semipartial correlation (unique R² contribution)",
+    if (isTRUE(result$use_hc3)) "Robust Wald F is the HC3 covariance-based omnibus test of all non-intercept coefficients",
+    if (isTRUE(result$use_hc3) || isTRUE(result$use_bootstrap)) "R² and adjusted R² are ordinary least squares model fit indices",
+    if (isTRUE(result$use_bootstrap)) "Bootstrap status is Adequate with at least 80% valid resamples, Caution with 50% to less than 80%, and Unreliable below 50% or fewer than 20 valid resamples; unreliable intervals and p values are suppressed"
   )
+  paste0(paste(notes, collapse = "; "), ".")
 }

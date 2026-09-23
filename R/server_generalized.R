@@ -16,7 +16,7 @@ register_generalized_handlers <- function(
   generalized_exposure <- reactiveVal(character(0))
   generalized_predictors <- reactiveVal(character(0))
   active_generalized_list <- reactiveVal("generalized_available")
-  generalized_results <- reactiveVal(NULL)
+  generalized_results <- analysis_scope_result_val(NULL)
   generalized_setup_revision <- reactiveVal(0L)
 
   normalize_selected <- function(values) {
@@ -156,6 +156,12 @@ register_generalized_handlers <- function(
 
   refresh_generalized_setup <- function() {
     generalized_setup_revision(isolate(generalized_setup_revision()) + 1L)
+  }
+
+  session$userData$scope_localization_factories$generalized_results <- function(results) {
+    args <- list(results, variable_table = variable_table_fn(),
+      labels = labels_fn(), category_table = category_table_fn())
+    function() do.call(generalized_results_panel, args)
   }
 
   output$generalized_results <- renderUI({
@@ -314,6 +320,15 @@ register_generalized_handlers <- function(
     clear_transfer_selection(ids)
   }, ignoreInit = TRUE)
 
+  register_analysis_reorder(input, session, "generalized_predictors", function(payload) {
+    updated <- analysis_reorder_items(generalized_predictors(), payload)
+    if (updated$changed) {
+      generalized_predictors(updated$order)
+      generalized_results(NULL)
+      mark_settings_dirty()
+    }
+  })
+
   observeEvent(input$generalized_predictor_up, {
     updated <- move_order_item(generalized_predictors(), input$generalized_predictors, "up")
     if (updated$changed) {
@@ -404,7 +419,11 @@ register_generalized_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
-  observeEvent(input$run_generalized, {
+  register_analysis_command_handler(
+    "run_generalized", input, output, session,
+    states = list(generalized_outcome = generalized_outcome, generalized_exposure = generalized_exposure, generalized_predictors = generalized_predictors),
+    dataset_fn = dataset_fn, context_fn = function() list(selected = selected_names_fn(), variables = variable_table_fn(), labels = labels_fn(), categories = category_table_fn()),
+    run_fn = function() {
     tryCatch(
       {
         result <- prepare_generalized_analysis_result(
@@ -434,7 +453,8 @@ register_generalized_handlers <- function(
       },
       error = function(e) {
         generalized_results(NULL)
-        showNotification(paste(statedu_t("analysis.status.glm_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        language <- statedu_current_language(app_language_fn)
+        showNotification(paste(statedu_t("analysis.status.glm_failed", language), generalized_error_ui_text(conditionMessage(e), language)), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)

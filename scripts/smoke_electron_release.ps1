@@ -1,6 +1,8 @@
 param(
   [string]$RepoRoot = "",
   [string]$ElectronOutDir = "",
+  [string]$NodePath = "",
+  [switch]$Developer,
   [switch]$SkipUnpackedChecks
 )
 
@@ -16,7 +18,10 @@ if (-not $ElectronOutDir) {
   $ElectronOutDir = Join-Path $RepoRoot "dist\electron\win-unpacked"
 }
 
-$appResourceDir = Join-Path $ElectronOutDir "resources\app"
+$resourceRoot = Join-Path $ElectronOutDir "resources"
+$asarArchive = Join-Path $resourceRoot "app.asar"
+$asarUnpackedDir = Join-Path $resourceRoot "app.asar.unpacked"
+$appResourceDir = if (Test-Path -LiteralPath $asarUnpackedDir) { $asarUnpackedDir } else { Join-Path $resourceRoot "app" }
 $bundledAppDir = Join-Path $appResourceDir "app"
 $runtimeDir = Join-Path $appResourceDir "runtime\R-4.5.3"
 $rscript = Join-Path $runtimeDir "bin\x64\Rscript.exe"
@@ -33,11 +38,17 @@ function Assert-Path {
 }
 
 function Assert-JsonVersionPin {
-  $node = Get-Command "node.exe" -ErrorAction SilentlyContinue
-  if (-not $node) {
-    $node = Get-Command "node" -ErrorAction SilentlyContinue
+  $nodeExecutable = $NodePath
+  if (-not $nodeExecutable) {
+    $node = Get-Command "node.exe" -ErrorAction SilentlyContinue
+    if (-not $node) {
+      $node = Get-Command "node" -ErrorAction SilentlyContinue
+    }
+    if ($node) {
+      $nodeExecutable = $node.Source
+    }
   }
-  if (-not $node) {
+  if (-not $nodeExecutable -or -not (Test-Path -LiteralPath $nodeExecutable)) {
     throw "Node.js was not found; cannot validate Electron package pins."
   }
 
@@ -58,7 +69,7 @@ for (const name of ['electron', 'electron-builder']) {
 "@
   Push-Location $RepoRoot
   try {
-    & $node.Source -e $script
+    & $nodeExecutable -e $script
     if ($LASTEXITCODE -ne 0) {
       throw "Electron package pin validation failed."
     }
@@ -135,6 +146,7 @@ function Get-ProjectVersion {
     throw "VERSION file was not found: $versionPath"
   }
   $version = (Get-Content -LiteralPath $versionPath -TotalCount 1).Trim()
+  if ($Developer -and $version -match '^\d+\.\d+\.\d+$') { $version = "$version-dev" }
   if (-not $version) {
     throw "VERSION file is empty."
   }
@@ -228,9 +240,24 @@ function Assert-AppBootstrapModulesTracked {
   $modules = [regex]::Matches($bootstrapText, '"([^"]+\.R)"') |
     ForEach-Object { "R/" + $_.Groups[1].Value } |
     Sort-Object -Unique
-  $missing = @($modules | Where-Object { $_ -notin $tracked })
+  # The build includes non-ignored new R modules before they are committed.
+  $newModules = @(& $git.Source -C $RepoRoot ls-files --others --exclude-standard -- R)
+  if ($LASTEXITCODE -ne 0) { throw "git ls-files failed while validating new app modules." }
+  $moduleCandidates = @($tracked) + $newModules
+  $missing = @($modules | Where-Object { $_ -notin $moduleCandidates })
   if ($missing.Count -gt 0) {
-    throw "R module(s) referenced by app_bootstrap.R are not tracked by git and would be omitted from git ls-files based packaging: $($missing -join ', ')"
+    throw "R module(s) referenced by app_bootstrap.R are absent from packaging inputs: $($missing -join ', ')"
+  }
+  if (-not $SkipUnpackedChecks) {
+    foreach ($module in $modules) {
+      $sourceModule = Join-Path $RepoRoot $module
+      $bundledModule = Join-Path $bundledAppDir $module
+      if (-not (Test-Path -LiteralPath $bundledModule -PathType Leaf) -or
+          (Get-FileHash -LiteralPath $sourceModule -Algorithm SHA256).Hash -ne
+          (Get-FileHash -LiteralPath $bundledModule -Algorithm SHA256).Hash) {
+        throw "Packaged bootstrap module missing or different: $module"
+      }
+    }
   }
   $requiredResources = @(
     "i18n/languages.json",
@@ -241,11 +268,22 @@ function Assert-AppBootstrapModulesTracked {
     "i18n/de.json",
     "i18n/vi.json"
   )
+  $focusedPlsDriverRelative = "scripts/run_bundled_pls_focused_regressions.R"
+  $focusedPlsDriverPath = Join-Path $RepoRoot ($focusedPlsDriverRelative -replace "/", "\")
+  $focusedPlsDriverText = Get-Content -LiteralPath $focusedPlsDriverPath -Raw
+  $focusedPlsValidationFiles = [regex]::Matches(
+    $focusedPlsDriverText,
+    'script\s*=\s*"(scripts/[^"\r\n]+\.R)"'
+  ) | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+  $requiredResources += @(
+    $focusedPlsDriverRelative,
+    "scripts/bundled_validation_packages.expected.csv"
+  ) + @($focusedPlsValidationFiles)
   $missingResources = @($requiredResources | Where-Object { $_ -notin $tracked })
   if ($missingResources.Count -gt 0) {
     throw "Required app resource(s) are not tracked by git and would be omitted from git ls-files based packaging: $($missingResources -join ', ')"
   }
-  Write-Host "[ok] app_bootstrap R modules and i18n resources are tracked"
+  Write-Host "[ok] app_bootstrap modules are packaging inputs; i18n and release-validation files are tracked"
 }
 
 function Assert-NoTrackedGeneratedArtifacts {
@@ -308,16 +346,27 @@ Assert-Path (Join-Path $RepoRoot "scripts\generate_oss_notices.R") "OSS notice g
 Assert-Path (Join-Path $RepoRoot "scripts\prune_r_runtime.R") "R runtime prune script"
 Assert-Path (Join-Path $RepoRoot "LICENSE") "application license"
 Assert-Path (Join-Path $RepoRoot "SOURCE-OFFER.txt") "source offer"
-Assert-Path (Join-Path $RepoRoot "packaging\electron\build\studio-file.ico") "studio file association icon"
+Assert-Path (Join-Path $RepoRoot "packaging\electron\build\studio-data.ico") "studio file association icon"
 
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "STATEDU_TOKEN" "Electron token handoff"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "readAppLanguage\(\)" "Electron persisted language reader"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") 'readAppLanguage\(\) \|\| "ko"' "Electron startup uses persisted language"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\package.json") '"ext"\s*:\s*"studio"' ".studio file association extension"
-Assert-FileContains (Join-Path $RepoRoot "packaging\electron\package.json") '"icon"\s*:\s*"build/studio-file\.ico"' ".studio file association icon path"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\package.json") '"icon"\s*:\s*"build/studio-data\.ico"' ".studio file association icon path"
 Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "validate_stabilization\.ps1 -Full" "full stabilization validation in release checklist"
 Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "smoke_shiny_app\.ps1" "Shiny app smoke test in release checklist"
 Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "RELEASE_MANUAL_QA\.md" "manual QA protocol in release checklist"
 Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_MANUAL_QA.md") "Packaged Electron Workflow" "packaged Electron manual QA workflow"
-Assert-FileNotContains (Join-Path $RepoRoot "R\app_server.R") 'session\$close\(\)' "no Shiny startup session close"
+$directSessionClosePattern = '(?<![\w.])session\s*\$\s*close\s*\(\s*\)'
+if (
+  ('session$close()' -notmatch $directSessionClosePattern) -or
+  ('session $ close ( )' -notmatch $directSessionClosePattern) -or
+  ('previous_session$close()' -match $directSessionClosePattern)
+) {
+  throw "Direct Shiny session-close regex contract is invalid."
+}
+Write-Host "[ok] direct Shiny session-close regex contract"
+Assert-FileNotContains (Join-Path $RepoRoot "R\app_server.R") $directSessionClosePattern "no direct Shiny startup session close"
 Assert-FileContains (Join-Path $RepoRoot "R\app_misc_ui.R") 'statedu_ui_label\("source_license", language\)' "Source and License About menu label"
 Assert-FileContains (Join-Path $RepoRoot "R\app_misc_ui.R") '"about_source_license"' "Source and License About menu tab"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "contextIsolation:\s*true" "contextIsolation enabled"
@@ -340,6 +389,8 @@ if (-not $SkipUnpackedChecks) {
   $projectVersion = Get-ProjectVersion
   $releaseProfile = Get-ElectronReleaseProfile -Version $projectVersion
   Assert-Path $ElectronOutDir "unpacked Electron output"
+  Assert-Path $asarArchive "Electron ASAR archive"
+  Assert-Path $asarUnpackedDir "Electron unpacked runtime resources"
   $electronExe = Join-Path $ElectronOutDir $releaseProfile.ExeName
   Assert-Path $electronExe "Electron executable"
   Assert-ExeVersionInfo $electronExe $releaseProfile.ProductName "StatEdu"
@@ -355,6 +406,9 @@ if (-not $SkipUnpackedChecks) {
   Assert-Path (Join-Path $bundledAppDir "license_report.csv") "license report"
   Assert-Path (Join-Path $bundledAppDir "runtime_prune_report.csv") "runtime prune report"
   Assert-Path (Join-Path $bundledAppDir "runtime_content_prune_report.csv") "runtime content prune report"
+  Assert-Path (Join-Path $bundledAppDir "bundled_validation_packages.lock.csv") "bundled validation package lock report"
+  Assert-Path (Join-Path $bundledAppDir "scripts\bundled_validation_packages.expected.csv") "approved bundled validation package lock"
+  Assert-Path (Join-Path $bundledAppDir "scripts\run_bundled_pls_focused_regressions.R") "bundled PLS/PLSc focused regression driver"
   Assert-Path (Join-Path $bundledAppDir "LICENSES") "license text folder"
 
   $licenseCount = (Get-ChildItem -LiteralPath (Join-Path $bundledAppDir "LICENSES") -File | Measure-Object).Count
@@ -369,6 +423,83 @@ if (-not $SkipUnpackedChecks) {
     throw "Unexpected prune actions found: $($unexpected.Name -join ', ')"
   }
   Write-Host "[ok] runtime prune report contains only keep rows"
+
+  $expectedValidationLock = @(
+    Import-Csv -LiteralPath (Join-Path $bundledAppDir "scripts\bundled_validation_packages.expected.csv")
+  )
+  if ($expectedValidationLock.Count -ne 72) {
+    throw "Approved bundled validation package lock must contain exactly 72 non-base packages."
+  }
+  $validationLock = @(Import-Csv -LiteralPath (Join-Path $bundledAppDir "bundled_validation_packages.lock.csv"))
+  if ($validationLock.Count -ne $expectedValidationLock.Count) {
+    throw "Bundled validation package lock row count differs from the approved lock: expected $($expectedValidationLock.Count), found $($validationLock.Count)."
+  }
+  for ($index = 0; $index -lt $expectedValidationLock.Count; $index++) {
+    $expectedRecord = $expectedValidationLock[$index]
+    $actualRecord = $validationLock[$index]
+    if (
+      $actualRecord.Package -cne $expectedRecord.Package -or
+      $actualRecord.Version -cne $expectedRecord.Version
+    ) {
+      throw "Bundled validation package lock differs from the approved lock at row $($index + 1): expected $($expectedRecord.Package) $($expectedRecord.Version), found $($actualRecord.Package) $($actualRecord.Version)."
+    }
+  }
+  $csemLock = @($validationLock | Where-Object { $_.Package -eq "cSEM" })
+  if ($csemLock.Count -ne 1 -or $csemLock[0].Version -ne "0.6.1") {
+    throw "Bundled validation package lock must contain exactly cSEM 0.6.1."
+  }
+  $licenseReport = @(Import-Csv -LiteralPath (Join-Path $bundledAppDir "license_report.csv"))
+  $csemLicense = @($licenseReport | Where-Object { $_.Package -eq "cSEM" })
+  if ($csemLicense.Count -ne 1 -or $csemLicense[0].Version -ne "0.6.1" -or $csemLicense[0].Scope -ne "Bundled validation package") {
+    throw "License report must identify cSEM 0.6.1 as a bundled validation package."
+  }
+  Write-Host "[ok] approved 72-package validation lock and bundled cSEM 0.6.1 OSS scope"
+
+  $previousRLibs = $env:R_LIBS
+  $previousRLibsUser = $env:R_LIBS_USER
+  $previousRLibsSite = $env:R_LIBS_SITE
+  $previousCsemMode = $env:STATEDU_CSEM_VALIDATION_MODE
+  try {
+    $packagedRuntimeLibrary = Join-Path $runtimeDir "library"
+    $env:R_LIBS = $packagedRuntimeLibrary
+    $env:R_LIBS_USER = $packagedRuntimeLibrary
+    $env:R_LIBS_SITE = $packagedRuntimeLibrary
+    $env:STATEDU_CSEM_VALIDATION_MODE = "required"
+    Push-Location $bundledAppDir
+    try {
+      & $rscript --vanilla scripts\run_bundled_pls_focused_regressions.R `
+        "--repo-root=$bundledAppDir" `
+        "--runtime-root=$runtimeDir" `
+        "--timeout-seconds=900"
+      if ($LASTEXITCODE -ne 0) {
+        throw "Bundled-runtime-only focused PLS/PLSc regressions failed with exit code $LASTEXITCODE."
+      }
+    } finally {
+      Pop-Location
+    }
+  } finally {
+    if ($null -eq $previousRLibs) {
+      Remove-Item Env:\R_LIBS -ErrorAction SilentlyContinue
+    } else {
+      $env:R_LIBS = $previousRLibs
+    }
+    if ($null -eq $previousRLibsUser) {
+      Remove-Item Env:\R_LIBS_USER -ErrorAction SilentlyContinue
+    } else {
+      $env:R_LIBS_USER = $previousRLibsUser
+    }
+    if ($null -eq $previousRLibsSite) {
+      Remove-Item Env:\R_LIBS_SITE -ErrorAction SilentlyContinue
+    } else {
+      $env:R_LIBS_SITE = $previousRLibsSite
+    }
+    if ($null -eq $previousCsemMode) {
+      Remove-Item Env:\STATEDU_CSEM_VALIDATION_MODE -ErrorAction SilentlyContinue
+    } else {
+      $env:STATEDU_CSEM_VALIDATION_MODE = $previousCsemMode
+    }
+  }
+  Write-Host "[ok] packaged runtime-only focused PLS/PLSc regressions"
 
   $contentPruneRows = @(Import-Csv -LiteralPath (Join-Path $bundledAppDir "runtime_content_prune_report.csv"))
   $contentPruneBytes = 0
@@ -421,10 +552,21 @@ if (-not $SkipUnpackedChecks) {
   Write-Host "[ok] bundled R runtime has no documentation/test/example/source payload directories"
 
   $prevPref = $ErrorActionPreference
+  $previousLcAll = $env:LC_ALL
+  $previousLang = $env:LANG
   $ErrorActionPreference = "SilentlyContinue"
-  $moduleCheckOutput = & $rscript -e "source('R/app_bootstrap.R'); load_app_packages(); source_app_modules(); cat('bundled R modules ok\n')" 2>$null
-  $moduleExitCode = $LASTEXITCODE
-  $ErrorActionPreference = $prevPref
+  Push-Location $bundledAppDir
+  try {
+    $env:LC_ALL = "English_United States.utf8"
+    $env:LANG = "English_United States.utf8"
+    $moduleCheckOutput = & $rscript -e "source('R/app_bootstrap.R'); load_app_packages(); source_app_modules(); cat('bundled R modules ok\n')" 2>$null
+    $moduleExitCode = $LASTEXITCODE
+  } finally {
+    Pop-Location
+    $env:LC_ALL = $previousLcAll
+    $env:LANG = $previousLang
+    $ErrorActionPreference = $prevPref
+  }
   $moduleCheckOutput | ForEach-Object { Write-Host $_ }
   if ($moduleExitCode -ne 0) {
     throw "Bundled R module load check failed."

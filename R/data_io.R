@@ -2,13 +2,62 @@
 
 prepare_data <- function(data) {
   data <- as.data.frame(data, stringsAsFactors = FALSE, check.names = TRUE)
+  previous_values <- previous_factor <- NULL
   data[] <- lapply(data, function(x) {
     if (inherits(x, "haven_labelled_spss")) x <- haven::zap_missing(x)
     if (inherits(x, "haven_labelled")) x <- haven::zap_labels(x)
-    if (is.character(x)) return(factor(x))
+    if (is.character(x)) {
+      if (length(x) < 1024L || !is.null(attributes(x)) ||
+          length(unique(x[seq_len(128L)])) <= 16L) return(factor(x))
+      if (identical(x, previous_values, num.eq = FALSE) &&
+          identical(Encoding(x), Encoding(previous_values))) return(previous_factor)
+      quiet <- TRUE
+      result <- withCallingHandlers(factor(x),
+        warning = function(w) quiet <<- FALSE, message = function(m) quiet <<- FALSE)
+      if (quiet) {
+        previous_values <<- x
+        previous_factor <<- result
+      }
+      return(result)
+    }
     x
   })
   data
+}
+
+read_sav_legacy <- function(path) {
+  raw <- foreign::read.spss(path, use.value.labels = FALSE,
+                            to.data.frame = FALSE, use.missings = FALSE)
+  labels <- attr(raw, "variable.labels")
+  missing <- attr(raw, "missings")
+  columns <- lapply(names(raw), function(name) {
+    x <- raw[[name]]
+    values <- attr(x, "value.labels")
+    attr(x, "value.labels") <- NULL
+    if (is.numeric(x) && !is.null(values)) {
+      values <- stats::setNames(as.numeric(values), names(values))
+    }
+    if (is.character(x)) {
+      x <- sub(" +$", "", x)
+      if (!is.null(values)) values[] <- sub(" +$", "", values)
+    }
+    spec <- missing[[name]]
+    na_values <- na_range <- NULL
+    if (!is.null(spec) && !identical(spec$type, "none")) {
+      kind <- spec$type
+      z <- spec$value
+      if (kind %in% c("one", "two", "three")) na_values <- z
+      else if (kind %in% c("range", "range+1")) na_range <- z[1:2]
+      else if (kind %in% c("low", "low+1")) na_range <- c(-Inf, z[1])
+      else if (kind %in% c("high", "high+1")) na_range <- c(z[1], Inf)
+      else stop("Unsupported SPSS missing-value definition: ", kind)
+      if (grepl("+1", kind, fixed = TRUE)) na_values <- tail(z, 1)
+    }
+    haven::labelled_spss(x, labels = values, na_values = na_values,
+                         na_range = na_range, label = labels[[name]])
+  })
+  names(columns) <- names(raw)
+  tibble::as_tibble(columns, .name_repair = "check_unique")
 }
 
 read_sav_robust <- function(path, copy_to_ascii = TRUE) {
@@ -64,6 +113,19 @@ read_sav_robust <- function(path, copy_to_ascii = TRUE) {
     }
   }
 
+  # Older dictionaries rejected by ReadStat can still be decoded by foreign.
+  # Preserve labels and user-missing rules in the same haven representation.
+  if (requireNamespace("foreign", quietly = TRUE)) {
+    result <- tryCatch(read_sav_legacy(read_path), error = function(e) {
+      errors <<- c(errors, paste0("legacy: ", conditionMessage(e)))
+      NULL
+    })
+    if (!is.null(result)) {
+      warning("SAV recovered with the legacy reader. Variable/value labels and missing values are retained; SPSS date/time display formats are unavailable.", call. = FALSE)
+      return(result)
+    }
+  }
+
   stop(
     paste0(
       "Could not read the SPSS SAV file. Tried encodings: ",
@@ -94,11 +156,31 @@ copy_data_file_for_reading <- function(path, original_name = path) {
   tmp_path
 }
 
+csv_encoding_text_sample <- function(column) {
+  # Preserve the first 20 non-missing values without scanning a whole column
+  # when its prefix already provides the encoding sample. Expanded chunks do
+  # not revisit earlier values, and the retained sample never exceeds 20.
+  values <- as.character(column)
+  start <- 1L
+  end <- min(length(values), 20L)
+  sample <- character(0)
+  repeat {
+    chunk <- values[seq.int(start, length.out = end - start + 1L)]
+    chunk <- chunk[!is.na(chunk)]
+    sample <- c(sample, utils::head(chunk, 20L - length(sample)))
+    if (length(sample) >= 20L || end == length(values)) {
+      return(utils::head(sample, 20L))
+    }
+    start <- end + 1
+    end <- min(length(values), 2 * end)
+  }
+}
+
 csv_encoding_score <- function(data) {
   text <- names(data)
   character_columns <- vapply(data, is.character, logical(1))
   if (any(character_columns)) {
-    samples <- unlist(lapply(data[character_columns], function(column) utils::head(stats::na.omit(as.character(column)), 20)), use.names = FALSE)
+    samples <- unlist(lapply(data[character_columns], csv_encoding_text_sample), use.names = FALSE)
     text <- c(text, samples)
   }
   text <- text[nzchar(text)]
@@ -118,19 +200,39 @@ repair_text_encoding <- function(values) {
   }
   values <- as.character(values)
   repaired <- values
-  broken <- is.na(suppressWarnings(iconv(repaired, from = "", to = "UTF-8"))) |
-    suppressWarnings(grepl("\uFFFD", repaired, fixed = TRUE))
+  check_values <- values
+  check_index <- NULL
+  # Only reuse checks for byte-identical text with a uniform encoding mark.
+  if (length(values) >= 1024L && length(unique(values[seq_len(128L)])) <= 16L &&
+      length(unique(values[seq.int(1L, length(values), length.out = 128L)])) <= 64L) {
+    marks <- Encoding(values)
+    if (all(marks == marks[[1L]])) {
+      byte_values <- values
+      Encoding(byte_values) <- "bytes"
+      distinct <- unique(byte_values)
+      if (length(distinct) <= 64L) {
+        check_values <- values[match(distinct, byte_values)]
+        check_index <- match(byte_values, distinct)
+      }
+    }
+  }
+  broken <- is.na(suppressWarnings(iconv(check_values, from = "", to = "UTF-8"))) |
+    suppressWarnings(grepl("\uFFFD", check_values, fixed = TRUE))
+  # Missing values stay missing under every encoding; only repair actual text.
+  broken[is.na(check_values)] <- FALSE
   if (!any(broken, na.rm = TRUE)) {
     return(values)
   }
+  if (!is.null(check_index)) broken <- broken[check_index]
+  pending <- which(broken)
   for (encoding in c("CP949", "EUC-KR", "UTF-8", "latin1")) {
-    converted <- suppressWarnings(iconv(values[broken], from = encoding, to = "UTF-8"))
+    converted <- suppressWarnings(iconv(values[pending], from = encoding, to = "UTF-8"))
     usable <- !is.na(converted)
     if (any(usable)) {
-      repaired[which(broken)[usable]] <- converted[usable]
-      broken[which(broken)[usable]] <- FALSE
+      repaired[pending[usable]] <- converted[usable]
+      pending <- pending[!usable]
     }
-    if (!any(broken, na.rm = TRUE)) {
+    if (length(pending) == 0L) {
       break
     }
   }
@@ -151,24 +253,145 @@ normalize_text_encoding <- function(data) {
   data
 }
 
+csv_trim_sample_chunk <- function(bytes, trim_start = FALSE, trim_end = FALSE) {
+  if (length(bytes) == 0) {
+    return(bytes)
+  }
+  newline <- as.raw(0x0A)
+  if (isTRUE(trim_start)) {
+    first_newline <- which(bytes == newline)
+    if (length(first_newline) > 0 && first_newline[[1]] < length(bytes)) {
+      bytes <- bytes[(first_newline[[1]] + 1L):length(bytes)]
+    }
+  }
+  if (isTRUE(trim_end)) {
+    last_newline <- utils::tail(which(bytes == newline), 1)
+    if (length(last_newline) > 0 && last_newline[[1]] > 1L) {
+      bytes <- bytes[seq_len(last_newline[[1]])]
+    }
+  }
+  bytes
+}
+
+csv_encoding_candidates_from_bytes <- function(bytes, decoded_cache = NULL) {
+  default_encodings <- c("UTF-8", "CP949", "EUC-KR", "latin1")
+  if (length(bytes) == 0) {
+    return(default_encodings)
+  }
+  if (length(bytes) >= 3L && identical(bytes[1:3], as.raw(c(0xEF, 0xBB, 0xBF)))) {
+    return(default_encodings)
+  }
+  sample_text <- tryCatch(rawToChar(bytes), error = function(e) "")
+  if (!nzchar(sample_text)) {
+    return(default_encodings)
+  }
+  # Keep only the last scored text within this invocation; identical converted
+  # text has the same score regardless of the candidate encoding that produced it.
+  previous_text <- NULL
+  previous_score <- NULL
+  scores <- vapply(default_encodings, function(encoding) {
+    converted <- suppressWarnings(iconv(sample_text, from = encoding, to = "UTF-8"))
+    if (length(converted) == 0 || is.na(converted[[1]])) {
+      return(-Inf)
+    }
+    if (identical(converted, previous_text)) return(previous_score)
+    invalid_count <- sum(is.na(suppressWarnings(iconv(converted, from = "", to = "UTF-8"))))
+    replacement_count <- sum(suppressWarnings(grepl("\uFFFD", converted, fixed = TRUE)))
+    # Count the same Unicode ranges without allocating regex match positions.
+    codepoints <- utf8ToInt(converted)
+    latin1_supplement_count <- sum(codepoints >= 0xA0 & codepoints <= 0xFF)
+    cjk_count <- sum((codepoints >= 0x3130 & codepoints <= 0x318F) |
+                     (codepoints >= 0xAC00 & codepoints <= 0xD7AF))
+    score <- (cjk_count * 10) - (invalid_count * 1000) - (replacement_count * 100) - (latin1_supplement_count * 4)
+    if (is.environment(decoded_cache) &&
+        (is.null(decoded_cache$score) || score > decoded_cache$score)) {
+      decoded_cache$score <- score
+      decoded_cache$encoding <- encoding
+      decoded_cache$text <- converted
+    }
+    previous_text <<- converted
+    previous_score <<- score
+    score
+  }, numeric(1))
+  ranked <- names(scores)[order(-scores, seq_along(scores))]
+  ranked <- ranked[is.finite(scores[ranked])]
+  unique(c(ranked, default_encodings))
+}
+
+csv_encoding_candidates <- function(path) {
+  default_encodings <- c("UTF-8", "CP949", "EUC-KR", "latin1")
+  file_size <- suppressWarnings(file.info(path)$size)
+  if (!is.finite(file_size) || file_size <= 0) {
+    return(default_encodings)
+  }
+  chunk_size <- min(file_size, 256L * 1024L)
+  positions <- unique(pmax(0, c(
+    0,
+    floor(file_size / 2) - floor(chunk_size / 2),
+    file_size - chunk_size
+  )))
+  bytes <- tryCatch({
+    connection <- file(path, "rb")
+    on.exit(close(connection), add = TRUE)
+    chunks <- lapply(positions, function(position) {
+      seek(connection, where = position, origin = "start")
+      csv_trim_sample_chunk(
+        readBin(connection, what = "raw", n = chunk_size),
+        trim_start = position > 0,
+        trim_end = position + chunk_size < file_size
+      )
+    })
+    do.call(c, c(chunks, list(as.raw(0x0A))))
+  }, error = function(e) raw(0))
+  csv_encoding_candidates_from_bytes(bytes)
+}
+
 read_csv_robust <- function(path, csv_header = TRUE) {
-  encodings <- c("UTF-8", "UTF-8-BOM", "CP949", "EUC-KR", "latin1")
   best_result <- NULL
   best_score <- -Inf
   errors <- character(0)
+  file_size <- suppressWarnings(file.info(path)$size)
+  use_base_reader <- is.finite(file_size) && file_size <= 10L * 1024L * 1024L
+  small_csv_bytes <- if (isTRUE(use_base_reader)) {
+    tryCatch(readBin(path, what = "raw", n = file_size), error = function(e) raw(0))
+  } else {
+    raw(0)
+  }
+  small_csv_text <- tryCatch(rawToChar(small_csv_bytes), error = function(e) "")
+  use_base_reader <- isTRUE(use_base_reader) && nzchar(small_csv_text)
+  decoded_cache <- if (isTRUE(use_base_reader)) new.env(parent = emptyenv()) else NULL
+  encodings <- if (isTRUE(use_base_reader)) {
+    csv_encoding_candidates_from_bytes(small_csv_bytes, decoded_cache)
+  } else {
+    csv_encoding_candidates(path)
+  }
 
   for (encoding in encodings) {
     result <- tryCatch(
       suppressWarnings(
         {
-          read_encoding <- if (identical(encoding, "UTF-8-BOM")) "UTF-8" else encoding
-          readr::read_csv(
-            path,
-            col_names = csv_header,
-            locale = readr::locale(encoding = read_encoding),
-            show_col_types = FALSE,
-            progress = FALSE
-          )
+          if (isTRUE(use_base_reader)) {
+            converted <- if (identical(encoding, decoded_cache$encoding)) decoded_cache$text else
+              iconv(small_csv_text, from = encoding, to = "UTF-8")
+            if (length(converted) == 0 || is.na(converted[[1]])) {
+              stop(sprintf("could not convert %s text", encoding), call. = FALSE)
+            }
+            if (startsWith(converted, "\ufeff")) converted <- sub("^\ufeff", "", converted)
+            utils::read.csv(
+              text = converted,
+              header = csv_header,
+              stringsAsFactors = FALSE,
+              check.names = FALSE
+            )
+          } else {
+            readr::read_csv(
+              path,
+              col_names = csv_header,
+              locale = readr::locale(encoding = encoding),
+              show_col_types = FALSE,
+              progress = FALSE
+            )
+          }
         }
       ),
       error = function(e) {
@@ -184,6 +407,9 @@ read_csv_robust <- function(path, csv_header = TRUE) {
       best_score <- score
       best_result <- result
     }
+    if (score >= 0) {
+      return(normalize_text_encoding(result))
+    }
   }
 
   if (!is.null(best_result)) {
@@ -198,6 +424,38 @@ read_csv_robust <- function(path, csv_header = TRUE) {
       paste(utils::tail(errors, 3), collapse = " | ")
     ),
     call. = FALSE
+  )
+}
+
+read_data_direct_with_fallback <- function(path, original_name, reader) {
+  source_path <- normalizePath(path, winslash = "/", mustWork = TRUE)
+  direct_error <- NULL
+  direct_result <- tryCatch(
+    reader(source_path),
+    error = function(error) {
+      direct_error <<- error
+      NULL
+    }
+  )
+  if (!is.null(direct_result)) {
+    return(direct_result)
+  }
+
+  fallback_path <- copy_data_file_for_reading(source_path, original_name)
+  on.exit(unlink(fallback_path), add = TRUE)
+  tryCatch(
+    reader(fallback_path),
+    error = function(fallback_error) {
+      stop(
+        paste0(
+          "Could not read the data file directly or from a local temporary copy. Direct read: ",
+          conditionMessage(direct_error),
+          " | Local copy: ",
+          conditionMessage(fallback_error)
+        ),
+        call. = FALSE
+      )
+    }
   )
 }
 
@@ -309,15 +567,17 @@ read_input_data <- function(
   excel_col_names = TRUE
 ) {
   ext <- tolower(tools::file_ext(original_name))
-  read_path <- copy_data_file_for_reading(path, original_name)
-  on.exit(unlink(read_path), add = TRUE)
 
   if (identical(ext, "sav")) {
-    return(normalize_text_encoding(read_sav_robust(read_path, copy_to_ascii = FALSE)))
+    return(normalize_text_encoding(read_sav_robust(path, copy_to_ascii = TRUE)))
   }
 
   if (identical(ext, "csv")) {
-    return(read_csv_robust(read_path, csv_header = csv_header))
+    return(read_data_direct_with_fallback(
+      path,
+      original_name,
+      function(read_path) read_csv_robust(read_path, csv_header = csv_header)
+    ))
   }
 
   if (identical(ext, "xlsx") && (is.null(excel_sheet) || (!nzchar(excel_sheet))) && identical(normalize_excel_start_cell(excel_start_cell), "A1") && isTRUE(excel_col_names)) {
@@ -327,29 +587,39 @@ read_input_data <- function(
         call. = FALSE
       )
     }
-    return(normalize_text_encoding(openxlsx::read.xlsx(read_path, detectDates = TRUE)))
+    return(read_data_direct_with_fallback(
+      path,
+      original_name,
+      function(read_path) normalize_text_encoding(openxlsx::read.xlsx(read_path, detectDates = TRUE))
+    ))
   }
 
   if (ext %in% c("xlsx", "xls")) {
-    return(read_excel_configured(read_path, sheet = excel_sheet, start_cell = excel_start_cell, col_names = excel_col_names))
+    return(read_data_direct_with_fallback(
+      path,
+      original_name,
+      function(read_path) read_excel_configured(read_path, sheet = excel_sheet, start_cell = excel_start_cell, col_names = excel_col_names)
+    ))
   }
 
   if (ext %in% c("sas7bdat", "xpt")) {
-    return(read_sas_robust(read_path, ext = ext))
+    return(read_data_direct_with_fallback(path, original_name, function(read_path) read_sas_robust(read_path, ext = ext)))
   }
 
   if (identical(ext, "dta")) {
-    return(read_stata_robust(read_path))
+    return(read_data_direct_with_fallback(path, original_name, read_stata_robust))
   }
 
   if (identical(ext, "dat")) {
-    if (identical(dat_delimiter, "comma")) {
-      return(readr::read_delim(read_path, delim = ",", col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
-    }
-    if (identical(dat_delimiter, "tab")) {
-      return(readr::read_tsv(read_path, col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
-    }
-    return(readr::read_table(read_path, col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
+    return(read_data_direct_with_fallback(path, original_name, function(read_path) {
+      if (identical(dat_delimiter, "comma")) {
+        return(readr::read_delim(read_path, delim = ",", col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
+      }
+      if (identical(dat_delimiter, "tab")) {
+        return(readr::read_tsv(read_path, col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
+      }
+      readr::read_table(read_path, col_names = dat_has_names, show_col_types = FALSE, progress = FALSE)
+    }))
   }
 
   stop("Unsupported file type: .", ext, call. = FALSE)
@@ -357,6 +627,16 @@ read_input_data <- function(
 
 supported_data_file_extension <- function(name) {
   tolower(tools::file_ext(as.character(name %||% ""))) %in% c("sav", "sas7bdat", "xpt", "dta", "csv", "dat", "xlsx", "xls")
+}
+
+data_path_is_session_temporary <- function(path) {
+  path <- gsub("\\\\", "/", as.character(path %||% ""))
+  current_temp <- normalizePath(tempdir(), winslash = "/", mustWork = FALSE)
+  # Saved sessions can still refer to another R process's upload directory.
+  # Checking only this process's tempdir() does not exclude those copies.
+  grepl("(^|/)Rtmp[^/]+(/|$)", path, ignore.case = TRUE) ||
+    identical(tolower(path), tolower(current_temp)) ||
+    startsWith(tolower(path), paste0(tolower(current_temp), "/"))
 }
 
 valid_data_file_path <- function(path) {
@@ -405,13 +685,28 @@ read_current_data_file <- function(file, input) {
   if (!valid_data_file_value(file)) {
     stop("No supported data file is available. Use a SAV, SAS, Stata, Excel, CSV, or DAT file.", call. = FALSE)
   }
-  csv_header <- if (!is.null(file$csv_header)) isTRUE(file$csv_header) else isTRUE(input$header)
+  extension <- tolower(tools::file_ext(as.character(file$name %||% file$path %||% "")))
+  csv_header <- if (identical(extension, "csv")) {
+    if (!is.null(file$csv_header)) isTRUE(file$csv_header) else isTRUE(input$header)
+  } else {
+    TRUE
+  }
+  dat_delimiter <- if (identical(extension, "dat")) {
+    if (!is.null(file$dat_delimiter)) as.character(file$dat_delimiter) else input$dat_delimiter %||% "whitespace"
+  } else {
+    "whitespace"
+  }
+  dat_has_names <- if (identical(extension, "dat")) {
+    if (!is.null(file$dat_has_names)) isTRUE(file$dat_has_names) else isTRUE(input$dat_has_names)
+  } else {
+    FALSE
+  }
   read_input_data(
     file$path,
     file$name,
     csv_header = csv_header,
-    dat_delimiter = input$dat_delimiter %||% "whitespace",
-    dat_has_names = isTRUE(input$dat_has_names),
+    dat_delimiter = dat_delimiter,
+    dat_has_names = dat_has_names,
     excel_sheet = file$excel_sheet %||% NULL,
     excel_start_cell = file$excel_start_cell %||% "A1",
     excel_col_names = isTRUE(file$excel_col_names %||% TRUE)
@@ -423,27 +718,34 @@ numeric_integer_like <- function(values, tolerance = sqrt(.Machine$double.eps)) 
   length(values) > 0 && all(abs(values - round(values)) < tolerance)
 }
 
-infer_measurement <- function(x) {
-  values <- stats::na.omit(as.vector(x))
-  unique_n <- length(unique(values))
+infer_measurement <- function(x, prepared_values = NULL, prepared_unique_n = NULL, prepared_unique_values = NULL) {
+  # Standard logical/factor types determine the scale without inspecting rows.
+  # Keep subclasses on the original conversion path.
+  if (is.logical(x) && !is.object(x)) return("binary")
+  if (identical(class(x), c("ordered", "factor"))) return("ordered")
+  if (identical(class(x), "factor")) return(if (nlevels(x) <= 2) "binary" else "category")
+  values <- prepared_values %||% stats::na.omit(as.vector(x))
+  unique_n <- prepared_unique_n %||% length(unique(values))
 
   if (is.logical(x)) return("binary")
   if (is.ordered(x)) return("ordered")
   if (is.factor(x)) return(if (nlevels(x) <= 2) "binary" else "category")
   if (is.character(x)) return(if (unique_n <= 2) "binary" else "category")
   if ((is.numeric(x) || is.integer(x)) && unique_n <= 2) return("binary")
-  if ((is.numeric(x) || is.integer(x)) && unique_n <= 12 && numeric_integer_like(values)) return("category")
+  # Repeated values cannot change the all-values integer-like predicate.
+  if ((is.numeric(x) || is.integer(x)) && unique_n <= 12 &&
+      numeric_integer_like(prepared_unique_values %||% values)) return("category")
   "continuous"
 }
 
-variable_min <- function(x) {
-  values <- stats::na.omit(as.vector(x))
+variable_min <- function(x, prepared_values = NULL) {
+  values <- prepared_values %||% stats::na.omit(as.vector(x))
   if (length(values) == 0 || !(is.numeric(values) || is.integer(values))) return("")
   as.character(min(values))
 }
 
-variable_max <- function(x) {
-  values <- stats::na.omit(as.vector(x))
+variable_max <- function(x, prepared_values = NULL) {
+  values <- prepared_values %||% stats::na.omit(as.vector(x))
   if (length(values) == 0 || !(is.numeric(values) || is.integer(values))) return("")
   as.character(max(values))
 }
@@ -454,7 +756,13 @@ variable_label <- function(x) {
   as.character(label[[1]])
 }
 
-value_label_pairs <- function(x, prepared_x = x, max_pairs = 6, measurement = NULL) {
+value_label_pairs <- function(
+  x,
+  prepared_x = x,
+  max_pairs = statedu_category_label_max_pairs(),
+  measurement = NULL,
+  prepared_unique_values = NULL
+) {
   labelled_values <- attr(x, "labels", exact = TRUE)
   if (!is.null(labelled_values) && length(labelled_values) > 0) {
     values <- as.character(unname(labelled_values))
@@ -463,7 +771,7 @@ value_label_pairs <- function(x, prepared_x = x, max_pairs = 6, measurement = NU
     values <- character(0)
     labels <- character(0)
   } else {
-    values <- sort(unique(stats::na.omit(as.vector(prepared_x))))
+    values <- sort(prepared_unique_values %||% unique(stats::na.omit(as.vector(prepared_x))))
     values <- as.character(utils::head(values, max_pairs))
     labels <- rep("", length(values))
   }
@@ -486,8 +794,15 @@ variable_summary_table <- function(data, input, raw_data = data) {
       values <- data[[i]]
       raw_values <- if (name %in% names(raw_data)) raw_data[[name]] else raw_data[[i]]
       present <- stats::na.omit(as.vector(values))
-      measurement <- infer_measurement(values)
-      value_labels <- value_label_pairs(raw_values, values, measurement = measurement)
+      # Reuse only plain-vector preparation; classed inputs retain their
+      # conversion methods and any diagnostics on the original path.
+      range_values <- if (!is.object(values)) present else NULL
+      unique_values <- if (!is.object(values)) unique(present) else NULL
+      unique_n <- if (!is.object(values)) length(unique_values) else NULL
+      measurement <- infer_measurement(values, prepared_values = range_values, prepared_unique_n = unique_n,
+                                       prepared_unique_values = unique_values)
+      value_labels <- value_label_pairs(raw_values, values, measurement = measurement,
+                                       prepared_unique_values = unique_values)
       as.data.frame(
         c(
           list(
@@ -496,10 +811,10 @@ variable_summary_table <- function(data, input, raw_data = data) {
             var_label = variable_label(raw_values),
             measurement = measurement,
             storage_type = class(values)[1],
-            n_unique = length(unique(present)),
+            n_unique = unique_n %||% length(unique(present)),
             n_missing = sum(is.na(values)),
-            min_value = variable_min(values),
-            max_value = variable_max(values)
+            min_value = variable_min(values, prepared_values = range_values),
+            max_value = variable_max(values, prepared_values = range_values)
           ),
           as.list(value_labels)
         ),
@@ -756,7 +1071,7 @@ measurement_select_html <- function(name, value, source_order, language = stated
     paste0(
       '<span class="measurement-control">',
       '<span class="measurement-symbol measurement-%s" title="%s" aria-label="%s"></span>',
-      '<select id="measurement_input_%s" class="measurement-select" data-name="%s" ',
+      '<select class="measurement-select" data-name="%s" ',
       'onchange="if(window.Shiny){Shiny.setInputValue(&quot;variable_measurement_update&quot;,',
       '{name:this.getAttribute(&quot;data-name&quot;),value:this.value,nonce:Date.now()+Math.random()},',
       '{priority:&quot;event&quot;});} if(window.easyflowUpdateMeasurementControl){window.easyflowUpdateMeasurementControl(this);}">%s</select>',
@@ -765,7 +1080,6 @@ measurement_select_html <- function(name, value, source_order, language = stated
     htmltools::htmlEscape(value),
     htmltools::htmlEscape(title),
     htmltools::htmlEscape(title),
-    htmltools::htmlEscape(source_order),
     htmltools::htmlEscape(name),
     paste(
       sprintf(
@@ -777,6 +1091,26 @@ measurement_select_html <- function(name, value, source_order, language = stated
       collapse = ""
     )
   )
+}
+
+measurement_select_renderer <- function(language) {
+  # Reuse markup only within one table render; escape each variable name separately.
+  templates <- list()
+  function(name, value, source_order) {
+    if (!is.character(name) || is.object(name) || length(name) != 1L || !is.null(dim(name)) ||
+        !is.character(value) || is.object(value) || length(value) != 1L || !is.null(dim(value)) || is.na(value) ||
+        !value %in% c("binary", "category", "ordered", "continuous", "ordinal", "nominal")) {
+      return(measurement_select_html(name, value, source_order, language))
+    }
+    pieces <- templates[[value]]
+    if (is.null(pieces)) {
+      html <- measurement_select_html("", value, source_order, language)
+      pieces <- strsplit(html, 'data-name=""', fixed = TRUE)[[1L]]
+      if (length(pieces) != 2L) return(measurement_select_html(name, value, source_order, language))
+      templates[[value]] <<- pieces
+    }
+    paste0(pieces[[1L]], 'data-name="', htmltools::htmlEscape(name), '"', pieces[[2L]])
+  }
 }
 
 variable_table_display_data <- function(
@@ -797,14 +1131,7 @@ variable_table_display_data <- function(
     visible_names <- setdiff(as.character(selected_names), as.character(assigned_elsewhere))
     table_data <- table_data[table_data$name %in% unique(c(checked_names, visible_names)), , drop = FALSE]
   }
-  table_data$role <- vapply(
-    table_data$name,
-    role_for_variable,
-    character(1),
-    dependent = dependent,
-    independent = independent,
-    controls = controls
-  )
+  table_data$role <- roles_for_variables(table_data$name, dependent, independent, controls)
   table_data <- table_data[, c("source_order", "name", "var_label", "role", "measurement", "storage_type", "n_unique", "n_missing", "min_value", "max_value"), drop = FALSE]
   disabled_names <- if (isTRUE(selection_applied) && identical(active_role, "dependent")) {
     setdiff(table_data$name[table_data$measurement != "continuous"], checked_names)
@@ -812,11 +1139,10 @@ variable_table_display_data <- function(
     character(0)
   }
   table_data$measurement <- mapply(
-    measurement_select_html,
+    measurement_select_renderer(language),
     table_data$name,
     table_data$measurement,
     table_data$source_order,
-    MoreArgs = list(language = language),
     USE.NAMES = FALSE
   )
   cbind(

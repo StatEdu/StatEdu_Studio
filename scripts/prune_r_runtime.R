@@ -28,9 +28,14 @@ if (!dir.exists(runtime_library)) {
 
 source(file.path(repo_root, "R", "app_bootstrap.R"), local = TRUE)
 
+bundled_runtime_packages <- unique(c(
+  required_packages,
+  names(bundled_validation_packages)
+))
+
 db <- installed.packages(lib.loc = runtime_library)
 dependency_map <- tools::package_dependencies(
-  required_packages,
+  bundled_runtime_packages,
   db = db,
   which = c("Depends", "Imports", "LinkingTo"),
   recursive = TRUE
@@ -39,7 +44,7 @@ dependency_map <- tools::package_dependencies(
 priority_packages <- rownames(db)[db[, "Priority"] %in% c("base", "recommended")]
 protected_packages <- c("translations")
 keep_packages <- sort(unique(c(
-  required_packages,
+  bundled_runtime_packages,
   unlist(dependency_map, use.names = FALSE),
   priority_packages,
   protected_packages

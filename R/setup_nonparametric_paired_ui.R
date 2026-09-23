@@ -8,7 +8,8 @@ nonparametric_paired_setup_state <- function(
   selected_available = NULL,
   selected_repeated = NULL,
   effect_size = TRUE,
-  median_iqr = FALSE,
+  median_iqr = TRUE,
+  add_mean_sd = FALSE,
   adjustment = statedu_multiple_correction_default(),
   time_labels = NULL,
   language = statedu_initial_language()
@@ -37,6 +38,7 @@ nonparametric_paired_setup_state <- function(
     repeated_selected = selected_order_items(selected_repeated, group_values),
     effect_size = isTRUE(effect_size),
     median_iqr = isTRUE(median_iqr),
+    add_mean_sd = isTRUE(add_mean_sd),
     adjustment = if (identical(adjustment, "bonferroni")) "bonferroni" else "holm",
     time_labels = time_labels,
     has_three_plus = any(lengths(repeated_groups) >= 3L),
@@ -104,7 +106,8 @@ nonparametric_paired_setup_panel <- function(state) {
           "Options",
           list(
             list(id = "nonparametric_paired_effect_size", label = "Effect size", value = state$effect_size),
-            list(id = "nonparametric_paired_median_iqr", label = "Median(Q1~Q3)", value = state$median_iqr)
+            list(id = "nonparametric_paired_median_iqr", label = "Median(Q1~Q3)", value = state$median_iqr),
+            list(id = "nonparametric_paired_add_mean_sd", label = "M ± SD", value = state$add_mean_sd)
           ),
           language = language
         )

@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "public_text_hash_normalization": "CRLF and CR normalized to LF before SHA-256",
+  "status": "supplementary",
+  "software": "SmartPLS",
+  "version": "4.1.1.8",
+  "run_date": "2026-08-21",
+  "license_edition": "Student",
+  "license_description": "Student license (free limited, non-Professional)",
+  "profile": "SmartPLS built-in TAM example, retained first 100 rows",
+  "rows": 100,
+  "indicators": 22,
+  "constructs": 5,
+  "structural_paths": 7,
+  "fit_target": "saturated",
+  "output_provenance": "manual displayed transcription; source/path evidence not retained; optional check",
+  "reported_decimal_places": 3,
+  "source_artifacts_included": false,
+  "source_artifacts_note": "The built-in SmartPLS example data, model, settings, and path evidence were not retained and are not represented as authoritative hashes.",
+  "optional_local_data": {
+    "file_basename": "Data.txt",
+    "bytes": 33214,
+    "sha256": "b4bc51ba365f388a3c7e115850c0a0a69da9f011f160977ef200cbed92baefee"
+  },
+  "retained_evidence": {
+    "reference_file": "external_reference.csv",
+    "reference_sha256": "0f1bcef58e486f29a31738a998e9b0a07f37af51ab36ceef56794d6a1293139d",
+    "pls_model_fit_file": "pls_model_fit.png",
+    "pls_model_fit_bytes": 413545,
+    "pls_model_fit_sha256": "0dc3a3b9be9cc25f528d4f898ac87b0203564da67868bf6a26dc7fc00301502b",
+    "plsc_model_fit_file": "plsc_model_fit.png",
+    "plsc_model_fit_bytes": 412020,
+    "plsc_model_fit_sha256": "df68647c7fd742feca52d6214e53982d94450b35ca5846eca35c4a168bf271ea"
+  },
+  "software_citation": "Ringle, C. M., Wende, S., and Becker, J.-M. (2024). SmartPLS 4. Bönningstedt: SmartPLS GmbH. https://www.smartpls.com .",
+  "citation_basis": "SmartPLS Terms §8.1",
+  "private_artifact_publication_basis": "SmartPLS Terms §3.4: private screenshots are excluded from the public repository.",
+  "claim_limit": "Manual displayed transcription; source/path evidence not retained; optional TAM-100 check only. It does not replace either Holzinger-Swineford external benchmark profile."
+}

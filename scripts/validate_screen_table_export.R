@@ -1,0 +1,16 @@
+Sys.setlocale('LC_ALL','Korean_Korea.utf8')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules()
+for(mode in c('reml_un','reml_ar1')) {
+ r<-readRDS(paste0('outputs/spss_phase13_20260906/',mode,'.rds'))
+ screen<-xml2::read_html(saved_longitudinal_results_html(r))
+ output<-xml2::read_html(saved_longitudinal_results_html(r,report_mode=TRUE))
+ original<-vapply(xml2::xml_find_all(screen,'.//table'),as.character,character(1))
+ exported<-vapply(xml2::xml_find_all(output,'.//table'),as.character,character(1))
+ stopifnot(identical(gsub('>\\s+<','><',original,perl=TRUE),gsub('>\\s+<','><',exported,perl=TRUE)))
+ pages<-xml2::xml_find_all(output,".//section[@data-orientation][.//table]")
+ stopifnot(length(pages)==length(original))
+ directions<-xml2::xml_attr(xml2::xml_find_all(screen,".//*[@data-result-table-sheet='true']"),'data-result-table-orientation')
+ stopifnot(identical(directions,xml2::xml_attr(pages,'data-orientation')))
+ stopifnot(length(xml2::xml_find_all(output,".//*[contains(@class,'report-cover')]")) == 0L)
+ cat(mode,':',length(original),'unchanged tables; same page orientations; no extra cover: passed\n')
+}

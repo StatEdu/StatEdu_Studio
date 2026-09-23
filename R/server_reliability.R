@@ -263,6 +263,17 @@ register_reliability_handlers <- function(
     }
   )
 
+  register_analysis_reorder(input, session, "reliability_selected", function(payload) {
+    blocks <- current_reliability_blocks()
+    factor_index <- min(max(1L, as.integer(active_reliability_factor() %||% 1L)), length(blocks))
+    updated <- analysis_reorder_items(blocks[[factor_index]], payload)
+    if (isTRUE(updated$changed)) {
+      blocks[[factor_index]] <- updated$order
+      set_reliability_blocks(blocks)
+      active_reliability_list("reliability_selected")
+    }
+  })
+
   observeEvent(input$reliability_move_up, {
     blocks <- current_reliability_blocks()
     factor_index <- min(max(1L, as.integer(active_reliability_factor() %||% 1L)), length(blocks))
@@ -285,9 +296,13 @@ register_reliability_handlers <- function(
     }
   })
 
-  reliability_result <- reactiveVal(NULL)
+  reliability_result <- analysis_scope_result_val(NULL)
 
-  observeEvent(input$run_reliability, {
+  register_analysis_command_handler(
+    "run_reliability", input, output, session,
+    states = list(reliability_variables = reliability_variables, reliability_factor_blocks = reliability_factor_blocks),
+    dataset_fn = dataset_fn, context_fn = function() list(selected = selected_names_fn(), variables = variable_table_fn(), labels = labels_fn(), categories = category_table_fn()),
+    run_fn = function() {
     valid_blocks <- if (isTRUE(input$reliability_subfactor_enabled)) {
       Filter(function(block) length(block) >= 2, current_reliability_blocks())
     } else {
@@ -401,7 +416,7 @@ register_reliability_handlers <- function(
         showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -423,7 +438,7 @@ register_reliability_handlers <- function(
         showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -445,7 +460,7 @@ register_reliability_handlers <- function(
         showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })

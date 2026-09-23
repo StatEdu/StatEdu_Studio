@@ -9,7 +9,7 @@ message_table_datatable <- function(
   DT::datatable(
     data.frame(Message = as.character(message %||% ""), check.names = FALSE),
     rownames = FALSE,
-    colnames = data_table_colnames("Message", language),
+    colnames = unname(statedu_t("data.table_message", normalize_app_language(language))),
     escape = escape,
     selection = "none",
     options = options
@@ -57,9 +57,11 @@ data_table_header_labels <- function(language = statedu_initial_language()) {
     "reference" = statedu_t("data.table_reference", language),
     "reference_label" = statedu_t("data.table_reference_label", language)
   )
+  value_header <- statedu_t("data.table_value", language)
+  label_header <- statedu_t("data.table_value_label", language)
   for (index in seq_len(11)) {
-    labels[[paste0("value_", index)]] <- paste(statedu_t("data.table_value", language), index)
-    labels[[paste0("label_", index)]] <- paste(statedu_t("data.table_value_label", language), index)
+    labels[[paste0("value_", index)]] <- paste(value_header, index)
+    labels[[paste0("label_", index)]] <- paste(label_header, index)
   }
   labels
 }
@@ -74,7 +76,12 @@ data_table_colnames <- function(columns, language = statedu_initial_language()) 
 datatable_language_options <- function(language = statedu_initial_language()) {
   language <- normalize_app_language(language)
   if (!identical(language, "ko")) {
-    return(NULL)
+    text <- function(value) statedu_localized_text(language, value)
+    return(list(search=text("Search:"), lengthMenu=text("Show _MENU_ entries"),
+      zeroRecords=text("No matching records found"), emptyTable=text("No data available"),
+      info=text("Showing _START_ to _END_ of _TOTAL_ entries"),
+      infoEmpty=text("Showing 0 entries"), infoFiltered=text("(filtered from _MAX_ total entries)"),
+      paginate=list(previous=text("Previous"), `next`=text("Next"))))
   }
   list(
     search = statedu_utf8("eab280ec83893a"),
@@ -104,7 +111,7 @@ data_preview_table_options <- function() {
     deferRender = TRUE,
     searchDelay = 250,
     scrollX = TRUE,
-    autoWidth = TRUE
+    autoWidth = FALSE
   )
 }
 
@@ -118,6 +125,7 @@ data_preview_datatable <- function(data, n = 20) {
 }
 
 category_label_input_renderer <- function(field_name, unique_index, name_index, source_order_index) {
+  max_pairs <- statedu_category_label_max_pairs()
   DT::JS(
     "function(data, type, row, meta) {",
     "  if (type !== 'display') return data;",
@@ -133,7 +141,7 @@ category_label_input_renderer <- function(field_name, unique_index, name_index, 
     "  var cls = fieldName === 'var_label' ? 'var-label-input' : (pairMatch ? 'category-label-input value-label-input' : 'category-label-input category-meta-input');",
     "  var pairNumber = pairMatch ? parseInt(pairMatch[2], 10) : null;",
     "  var nUnique = uniqueIndex >= 0 ? parseInt(row[uniqueIndex], 10) : NaN;",
-    "  var disabled = pairNumber !== null && isFinite(nUnique) && pairNumber > Math.max(1, Math.min(6, nUnique));",
+    sprintf("  var disabled = pairNumber !== null && isFinite(nUnique) && pairNumber > Math.max(1, Math.min(%s, nUnique));", max_pairs),
     "  var disabledAttr = disabled ? ' disabled' : '';",
     "  var tabAttr = pairMatch && !disabled ? '' : ' tabindex=\"-1\"';",
     "  var name = nameIndex >= 0 ? row[nameIndex] : '';",
@@ -154,7 +162,7 @@ category_label_input_renderer <- function(field_name, unique_index, name_index, 
     "    var listId = 'reference_values_' + esc(sourceOrder);",
     "    listAttr = ' list=\"' + listId + '\"';",
     "    dataList = '<datalist id=\"' + listId + '\">';",
-    "    for (var optionIndex = 1; optionIndex <= 6; optionIndex++) {",
+    sprintf("    for (var optionIndex = 1; optionIndex <= %s; optionIndex++) {", max_pairs),
     "      var valueColumn = 'value_' + optionIndex;",
     "      var columnIndex = meta.settings.aoColumns.findIndex(function(column) { return column.sTitle === valueColumn; });",
     "      if (columnIndex < 0) continue;",
@@ -296,6 +304,7 @@ category_label_table_options <- function(column_defs, language = statedu_initial
 
 category_label_table_callback <- function(language = statedu_initial_language()) {
   header_labels <- jsonlite::toJSON(as.list(data_table_header_labels(language)), auto_unbox = TRUE)
+  max_pairs <- statedu_category_label_max_pairs()
   DT::JS(
     "var wrapper = $(table.table().container());",
     sprintf("var easyflowHeaderLabels = %s;", header_labels),
@@ -334,7 +343,7 @@ category_label_table_callback <- function(language = statedu_initial_language())
     "function referenceLabelFor(row, referenceValue) {",
     "  var referenceText = String(referenceValue || '').trim();",
     "  if (!referenceText) return '';",
-    "  for (var i = 1; i <= 6; i++) {",
+    sprintf("  for (var i = 1; i <= %s; i++) {", max_pairs),
     "    if (String(rowInput(row, 'value_' + i).val() || '').trim() === referenceText) return rowInput(row, 'label_' + i).val() || '';",
     "  }",
     "  return '';",
@@ -435,33 +444,45 @@ variable_label_input_renderer <- function() {
     "    return String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');",
     "  }",
     "  var name = row[2];",
-    "  var inputId = 'var_label_input_' + row[1];",
     "  var value = data;",
     "  window.easyflowVarLabels = window.easyflowVarLabels || {};",
     "  var hasClientValue = Object.prototype.hasOwnProperty.call(window.easyflowVarLabels, name);",
     "  if (data !== null && data !== undefined && String(data).length > 0 && (!hasClientValue || String(window.easyflowVarLabels[name]).length === 0)) window.easyflowVarLabels[name] = data;",
     "  if (Object.prototype.hasOwnProperty.call(window.easyflowVarLabels, name)) value = window.easyflowVarLabels[name];",
-    "  return '<input type=\"text\" id=\"' + esc(inputId) + '\" class=\"form-control input-sm var-label-input\" data-name=\"' + esc(name) + '\" value=\"' + esc(value) + '\" oninput=\"window.easyflowStoreVarLabel && window.easyflowStoreVarLabel(this)\" onchange=\"window.easyflowCommitVarLabel && window.easyflowCommitVarLabel(this)\">';",
+    "  return '<input type=\"text\" class=\"form-control input-sm var-label-input\" data-name=\"' + esc(name) + '\" value=\"' + esc(value) + '\" oninput=\"window.easyflowStoreVarLabel && window.easyflowStoreVarLabel(this)\" onchange=\"window.easyflowCommitVarLabel && window.easyflowCommitVarLabel(this)\">';",
     "}"
   )
 }
 
-variable_table_options <- function(language = statedu_initial_language()) {
-  with_datatable_language(list(
-    dom = '<"variable-table-top"lfp>rt<"variable-table-bottom"ip>',
-    pageLength = 20,
-    lengthMenu = c(10, 20, 50, 100),
+variable_table_options <- function(language = statedu_initial_language(), compact = FALSE) {
+  controls <- if (isTRUE(compact)) {
+    list(
+      dom = "t",
+      paging = FALSE,
+      lengthChange = FALSE,
+      searching = FALSE,
+      info = FALSE
+    )
+  } else {
+    list(
+      dom = '<"variable-table-top"lfp>rt<"variable-table-bottom"ip>',
+      pageLength = 20,
+      lengthMenu = c(10, 20, 50, 100)
+    )
+  }
+  base_options <- list(
     deferRender = TRUE,
     searchDelay = 250,
     scrollX = TRUE,
-    autoWidth = TRUE,
+    autoWidth = FALSE,
     order = list(list(1, "asc")),
     columnDefs = list(
       list(orderable = FALSE, targets = 0),
       list(visible = FALSE, targets = 1),
       list(targets = 3, render = variable_label_input_renderer(), orderable = FALSE)
     )
-  ), language)
+  )
+  with_datatable_language(utils::modifyList(base_options, controls), language)
 }
 
 variable_table_callback <- function(
@@ -496,6 +517,7 @@ variable_table_callback_script <- function(language = statedu_initial_language()
   asc_label <- statedu_t("data.table_asc", language)
   desc_label <- statedu_t("data.table_desc", language)
   script <- "
+        var easyflowCallbackStart = window.performance ? window.performance.now() : Date.now();
         var selected = __SELECTED_NAMES__;
         var dependentOnly = __DEPENDENT_ONLY__;
         var singleSelectRole = __SINGLE_SELECT_ROLE__;
@@ -526,7 +548,8 @@ variable_table_callback_script <- function(language = statedu_initial_language()
         }
 
         function rememberVariableTablePage() {
-          if (window.easyflowVariableTableRestorePending) return;
+          // A page change supersedes the position saved by a checkbox edit.
+          // Keep a pending restore aimed at the latest page, including page 0.
           try {
             window.easyflowVariableTablePage = table.page.info().page || 0;
           } catch (e) {}
@@ -547,7 +570,10 @@ variable_table_callback_script <- function(language = statedu_initial_language()
         function restoreVariableTablePage() {
           if (!window.easyflowVariableTableRestorePending) return;
           var page = parseInt(window.easyflowVariableTablePage || 0, 10);
-          if (!isFinite(page) || page <= 0) return;
+          if (!isFinite(page) || page < 0) {
+            window.easyflowVariableTableRestorePending = false;
+            return;
+          }
           try {
             var info = table.page.info();
             var maxPage = Math.max(0, (info.pages || 1) - 1);
@@ -941,6 +967,27 @@ variable_table_callback_script <- function(language = statedu_initial_language()
         refreshVariableChecks();
         scheduleVariableTablePageRestore();
         syncVariableSelection();
+        if (window.Shiny) {
+          var reportVariableTableTiming = function() {
+            var now = window.performance ? window.performance.now() : Date.now();
+            var rowCount = 0;
+            var visibleCount = 0;
+            try { rowCount = table.rows().count(); } catch (e) {}
+            try { visibleCount = table.rows({page: 'current'}).count(); } catch (e) {}
+            Shiny.setInputValue('variable_table_client_timing', {
+              elapsed_ms: Math.max(0, now - easyflowCallbackStart),
+              rows: rowCount,
+              visible_rows: visibleCount,
+              compact: !table.page.info || !table.page.info().pages || table.page.info().pages <= 1,
+              nonce: Date.now() + Math.random()
+            }, {priority: 'event'});
+          };
+          if (window.requestAnimationFrame) {
+            window.requestAnimationFrame(function() { window.setTimeout(reportVariableTableTiming, 0); });
+          } else {
+            window.setTimeout(reportVariableTableTiming, 0);
+          }
+        }
         "
   script <- gsub("__HEADER_LABELS__", header_labels, script, fixed = TRUE)
   script <- gsub("__SELECTED_LABEL__", jsonlite::toJSON(selected_label, auto_unbox = TRUE), script, fixed = TRUE)

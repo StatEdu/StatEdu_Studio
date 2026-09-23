@@ -1,0 +1,25 @@
+Sys.setlocale('LC_ALL','Korean_Korea.utf8')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules();options(statedu.app_language='ko')
+out<-'outputs/spss_phase28_20260906';dir.create(out,showWarnings=FALSE)
+set.seed(20260914);n<-120;subject<-rnorm(n,50,4)
+d<-data.frame(group=factor(rep(c('대조군','처치군'),each=60)),sex=factor(rep(c('여','남'),60)),age=rnorm(n,40,8))
+for(i in 1:8)d[[paste0('t',i)]]<-subject+i*ifelse(d$group=='처치군',1.5,.2)+rnorm(n)
+info<-data.frame(name=names(d),measurement=c('category','binary',rep('continuous',9)))
+make<-function(data=d,k=3,groups='group',cov=character(0),extra=list())prepare_mixed_rm_anova_results(data,group_variable=groups,repeated_variables=paste0('t',1:k),covariates=cov,variable_info=info,options=modifyList(list(assumption_check=TRUE,posthoc=TRUE,posthoc_adjustment='holm',within_group_comparison=TRUE,between_time_group_comparison=TRUE,time_labels=paste('시점',1:k)),extra))
+m<-d;m$t1[1:7]<-NA;m$t3[8:11]<-NA
+z<-d;z$t1[seq(1,n,2)]<-NA;z$t2[seq(2,n,2)]<-NA
+cases<-list(standard=make(),covariate=make(cov='age'),factorial=make(groups=c('group','sex')),two_times=make(k=2,extra=list(assumption_check=FALSE,posthoc=FALSE)),missing_pp=make(m),missing_itt=make(m,cov='age',extra=list(analysis_population='itt')),no_complete_itt=make(z,cov='age',extra=list(analysis_population='itt')),eight_times=make(k=8,extra=list(posthoc_adjustment='bonferroni')))
+stopifnot(nrow(cases$missing_itt$mixed_model_coefficients)>0,nrow(cases$no_complete_itt$mixed_model_coefficients)>0)
+for(name in names(cases)) {
+ r<-cases[[name]];folder<-file.path(out,name);dir.create(folder,showWarnings=FALSE)
+ write_mixed_rm_anova_results_html(r,file.path(folder,'result.html'))
+ html<-paste(readLines(file.path(folder,'result.html'),encoding='UTF-8'),collapse='\n')
+ a<-xml2::read_html(as.character(htmltools::renderTags(mixed_rm_anova_results_ui(r))$html));b<-xml2::read_html(html)
+ cells<-function(doc)vapply(xml2::xml_find_all(doc,'.//table//th|.//table//td'),result_html_text,character(1));stopifnot(identical(cells(a),cells(b)))
+ e<-list(title='Mixed repeated measures',html=html,saved_at='2026-09-06')
+ write_mixed_rm_anova_results_pdf(r,file.path(folder,'result.pdf'));save_mixed_rm_anova_excel_file(r,file.path(folder,'result.xlsx'));write_result_collection_docx(list(e),file.path(folder,'result.docx'))
+ tables<-result_entry_tables(e)
+ expected<-list(tables=lapply(tables,function(t)list(title=t$title,orientation=t$orientation,notes=t$notes,cells=lapply(t$screen$cells,function(c)c(c,list(value=t$screen$values[c$row,c$col]))))),images=as.list(xml2::xml_attr(xml2::xml_find_all(b,'.//img'),'alt')))
+ jsonlite::write_json(expected,file.path(folder,'expected.json'),auto_unbox=TRUE);saveRDS(r,file.path(folder,'analysis.rds'))
+ cat(name,length(tables),'tables; screen/HTML matched\n')
+}

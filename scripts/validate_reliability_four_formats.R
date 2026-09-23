@@ -1,0 +1,42 @@
+Sys.setlocale('LC_ALL','Korean_Korea.utf8')
+source('R/app_bootstrap.R',encoding='UTF-8')
+load_app_packages(check=FALSE); source_app_modules()
+options(statedu.app_language='ko')
+out <- 'outputs/spss_phase20_20260906'; dir.create(out,showWarnings=FALSE)
+set.seed(20260906)
+latent <- rnorm(180)
+d <- as.data.frame(sapply(1:6,function(i) latent+rnorm(180,sd=.5+i/12)))
+names(d)<-paste0('item',1:6)
+full<-list(omega=TRUE,normality=TRUE,reliability_if_deleted=TRUE,item_total_correlation=TRUE)
+make<-function(data,measurement='continuous',opts=full,vars=names(data)) {
+ info<-data.frame(name=names(data),measurement=measurement,var_label=paste('문항',seq_along(data)))
+ prepare_reliability_results(data,vars,variable_info=info,options=opts)
+}
+cases<-list(basic=make(d,opts=list(omega=FALSE)),full=make(d))
+b<-as.data.frame(lapply(d,function(x)as.numeric(x>0)));cases$binary<-make(b,'binary')
+o<-as.data.frame(lapply(d,function(x)as.integer(cut(x,breaks=c(-Inf,-.8,-.2,.4,1,Inf)))))
+cases$ordinal<-make(o,'ordered')
+m<-d;m[1:4,1]<-NA;m[5:7,3]<-NA;cases$missing<-make(m)
+f1<-make(d,vars=names(d)[1:3]);f1$subfactor<-'Subfactor 1'
+f2<-make(d,vars=names(d)[4:6]);f2$subfactor<-'Subfactor 2'
+total<-make(d);total$subfactor<-'Total'
+cases$subfactors<-list(type='reliability_factors',factors=list(f1,f2),total=total,options=full)
+long<-as.data.frame(sapply(1:45,function(i)latent+rnorm(180,sd=.8)))
+names(long)<-paste0('item',1:45)
+cases$long_items<-make(long,opts=list(omega=FALSE,normality=TRUE,item_total_correlation=TRUE))
+for(name in names(cases)) {
+ r<-cases[[name]]; folder<-file.path(out,name);dir.create(folder,showWarnings=FALSE)
+ write_reliability_results_html(r,file.path(folder,'result.html'))
+ html<-paste(readLines(file.path(folder,'result.html'),encoding='UTF-8'),collapse='\n')
+ a<-xml2::read_html(as.character(htmltools::renderTags(reliability_results_ui(r))$html));b<-xml2::read_html(html)
+ cells<-function(doc)vapply(xml2::xml_find_all(doc,'.//table//th|.//table//td'),result_html_text,character(1))
+ stopifnot(identical(cells(a),cells(b)))
+ e<-list(title='Reliability',html=html,saved_at='2026-09-06')
+ write_reliability_results_pdf(r,file.path(folder,'result.pdf'))
+ save_reliability_excel_file(r,file.path(folder,'result.xlsx'))
+ write_result_collection_docx(list(e),file.path(folder,'result.docx'))
+ tables<-result_entry_tables(e)
+ expected<-list(tables=lapply(tables,function(t)list(title=t$title,orientation=t$orientation,notes=t$notes,cells=lapply(t$screen$cells,function(c)c(c,list(value=t$screen$values[c$row,c$col]))))),images=as.list(xml2::xml_attr(xml2::xml_find_all(b,'.//img'),'alt')))
+ jsonlite::write_json(expected,file.path(folder,'expected.json'),auto_unbox=TRUE)
+ cat(name,length(tables),'tables: four formats generated; HTML matches screen\n')
+}

@@ -1,16 +1,39 @@
-# StatEdu Studio Method Notes
+# Method Notes — StatEdu Studio 1.3.0
 
-These notes explain the method-selection rules, assumption checks, warnings, and interpretation cautions used in **StatEdu Studio 1.2.0**.
+Estimation principles, assumptions, formulas, diagnostics and interpretation, expanded from the original Method Notes.
 
-Public 1.2 scope note: these notes describe workflows exposed in the public 1.2 interface. Mplus/latent add-ons, Excel/Word result export, license activation, and paid-edition gating are not public 1.2 features. Sample-size calculator entries for GEE, LMM, GLMM, survival, cluster, or SEM/CFA are planning calculators only.
+## Contents
 
-## Public 1.2 Added Analysis Notes
+- [1. Measurement Level](#method-1)
+- [2. Descriptives and Frequencies](#method-2)
+- [3. Cross-tabulation](#method-3)
+- [4. t-test / ANOVA](#method-4)
+- [5. Nonparametric Tests](#method-5)
+- [6. Paired Tests](#method-6)
+- [7. Correlation](#method-7)
+- [8. Reliability Analysis](#method-8)
+- [9. Factor Analysis](#method-9)
+- [10. Principal Components](#method-10)
+- [11. Linear Regression](#method-11)
+- [12. Hierarchical Regression](#method-12)
+- [13. Mediation / Moderation Method Notes](#method-13)
+- [14. Logistic Regression](#method-14)
+- [15. Generalized Linear Model (GLM)](#method-15)
+- [16. Regularized Regression (Ridge, LASSO and Elastic Net)](#method-16)
+- [17. Longitudinal / Panel and Correlated Data](#method-17)
+- [18. Complex Samples Method Notes](#method-18)
+- [19. Threshold Summary](#method-19)
+- [20. Warnings and Skipped Results](#method-20)
+- [21. Interpreting Saved Results](#method-21)
+- [22. Citation Placement](#method-22)
+- [23. References](#method-23)
+- [24. Sample Size, Power, and Effect Size Method Notes](#method-24)
+- [25. CFA, CB-SEM, Latent Moderation, and PLS-SEM](#method-25)
+- [26. Survival estimands and interpretation](#method-26)
+- [27. Interpreting external validation](#method-27)
+- [28. Importance–performance analysis (IPA)](#method-28)
 
-Public 1.2 adds method notes for the following released Analysis workflows:
-
-- Mixed Repeated-Measures ANOVA: see section 6.1.
-- Inter-rater Agreement: see section 8.1.
-- Mediation / Moderation Custom Model: see section 13.5.
+<a id="method-1"></a>
 
 ## 1. Measurement Level
 
@@ -23,11 +46,15 @@ Several analyses depend on the selected measurement level:
 
 Measurement level affects automatic method choice, effect-size selection, correlation method, GLM family screening, and whether a variable is eligible for a particular input box.
 
+<a id="method-2"></a>
+
 ## 2. Descriptives and Frequencies
 
 Categorical descriptives report frequency and percent summaries. Continuous descriptives report location, spread, missing count, skewness, and kurtosis.
 
 Skewness and kurtosis are descriptive screening values, not definitive proof of normality. They should be interpreted together with sample size, plots, and the planned statistical method.
+
+<a id="method-3"></a>
 
 ## 3. Cross-tabulation
 
@@ -45,6 +72,8 @@ Effect-size interpretation:
 - Trend odds ratio and Goodman-Kruskal gamma may be reported for trend or ordered association.
 
 Large or sparse tables can produce warnings. A low-count warning should be reported because it affects the trustworthiness of the asymptotic chi-square approximation.
+
+<a id="method-4"></a>
 
 ## 4. t-test / ANOVA
 
@@ -93,6 +122,8 @@ Example:
 
 If two higher groups are both significantly higher than a lower group but not significantly different from each other, the display can combine them, such as `c,b>a`.
 
+<a id="method-5"></a>
+
 ## 5. Nonparametric Tests
 
 Nonparametric tests use ranks and are selected when normality assumptions are not supported or when the user selects a nonparametric workflow directly.
@@ -106,6 +137,8 @@ Main tests:
 - Cochran's Q test.
 
 Rank-based tests do not compare means in the same way as parametric tests. Interpret them as distributional or rank-location comparisons, depending on the design and assumptions.
+
+<a id="method-6"></a>
 
 ## 6. Paired Tests
 
@@ -146,6 +179,8 @@ Key interpretation points:
 
 The PP path uses rows complete for the selected repeated outcomes and model variables. The available-case ITT-oriented mixed-model alternative uses available repeated rows when selected and estimable, but it does not remove the need to report the missing-data pattern and sensitivity-analysis assumptions.
 
+<a id="method-7"></a>
+
 ## 7. Correlation
 
 Automatic correlation selection follows variable type:
@@ -166,6 +201,8 @@ Advanced latent-response correlation options can estimate:
 Correlation is not causation. High correlation can reflect confounding, shared measurement method, range restriction, or coding structure.
 
 Complex-sample correlation uses the survey design to estimate weighted covariance. Pearson correlation is computed from the design-based covariance matrix; ordered variables are converted to ordinal scores before covariance estimation. Spearman correlation rank-transforms each numeric or ordinal score first and then applies the same design-based covariance approach. Standard errors and confidence intervals use a delta-method approximation, and multiple displayed variable-pair p values can be adjusted with Holm-Bonferroni, Bonferroni, or Benjamini-Hochberg FDR correction.
+
+<a id="method-8"></a>
 
 ## 8. Reliability Analysis
 
@@ -194,6 +231,8 @@ Method choice depends on the measurement level and number of raters:
 
 Report the recommended index first, then mention supporting indices when they change the substantive interpretation. For ordinal character labels, verify the Step 3 category order because weighted statistics depend on that order. Missing ratings should be described, especially when raters did not evaluate all cases.
 
+<a id="method-9"></a>
+
 ## 9. Factor Analysis
 
 Exploratory factor analysis is used for latent structure exploration.
@@ -208,6 +247,8 @@ Core diagnostics:
 
 Factor retention should not rely only on eigenvalue >= 1. Theory, interpretability, scree pattern, and cross-loadings must be reviewed.
 
+<a id="method-10"></a>
+
 ## 10. Principal Components
 
 PCA is a component-reduction method. It forms weighted combinations of observed variables and is not the same as a latent-factor model.
@@ -215,6 +256,8 @@ PCA is a component-reduction method. It forms weighted combinations of observed 
 Use PCA when the goal is data reduction or component scoring. Use factor analysis when the goal is latent construct interpretation.
 
 Component retention can use eigenvalues, cumulative variance, scree plot, and substantive interpretability.
+
+<a id="method-11"></a>
 
 ## 11. Linear Regression
 
@@ -243,7 +286,22 @@ Inference selection:
 
 Bootstrap inference helps with non-normal residuals but does not fix omitted-variable bias, model misspecification, nonlinearity, non-independent observations, or measurement error.
 
+When HC3 is active, the joint test of all non-intercept coefficients is also based on the HC3 covariance matrix and is labelled `Robust Wald F`. R2 and adjusted R2 remain ordinary OLS fit indices. Rank-deficient model matrices are blocked because perfect multicollinearity prevents unique coefficient identification.
+
+Selection from Lilliefors and Breusch-Pagan p values is a diagnostic workflow heuristic, not proof that one estimator is true. Normality tests may detect trivial departures in large samples and miss important departures in small samples. For SCI reporting, select OLS, HC3, or bootstrap from design and a prespecified analysis plan, then use the automatic recommendation, residual plots, and sensitivity results as supporting evidence.
+
+Bootstrap coefficient and Delta R2 output reports requested and valid resamples. At least 80% valid is `Adequate`, 50% to less than 80% is `Caution`, and below 50% or fewer than 20 valid is `Unreliable`; unreliable intervals and bootstrap p values are suppressed. BC is the default and percentile is available for sensitivity analysis, without claiming universal superiority of BC.
+
+<a id="method-12"></a>
+
 ## 12. Hierarchical Regression
+
+Hierarchical regression supports up to four blocks. Each step retains the variables from earlier blocks and adds the next block.
+
+- Model 1: Block 1.
+- Model 2: Block 1 + Block 2.
+- Model 3: Block 1 + Block 2 + Block 3.
+- Model 4: Block 1 + Block 2 + Block 3 + Block 4.
 
 Hierarchical regression adds predictors in blocks. Each block should reflect a prespecified conceptual order rather than data-driven selection.
 
@@ -254,9 +312,13 @@ Outputs include:
 - Delta R2.
 - Nested model comparison p value.
 - Coefficient tables.
+
+All steps use complete cases for the final block. OLS models use the classical F-change test, HC3 models use a Robust Wald F test for the added block, and bootstrap models use the same resampled case indices across steps to form a paired Delta R2 interval. Block order should be theory-driven or prespecified rather than selected from the observed results.
 - Diagnostics and VIF.
 
 Delta R2 should be interpreted in relation to the research question and the variables already entered in previous blocks.
+
+<a id="method-13"></a>
 
 ## 13. Mediation / Moderation Method Notes
 
@@ -265,6 +327,8 @@ Mediation/moderation analysis is a regression-based path-model workflow. X, M, W
 ### 13.1 Mediation Effects
 
 An indirect effect is usually computed as `a * b`, where `a` is the X -> M path and `b` is the M -> Y path. The sampling distribution of an indirect effect is often asymmetric, so bootstrap confidence intervals should be interpreted before normal-theory p-values. If the bootstrap CI excludes 0, the indirect effect can be reported as statistically supported.
+
+The default interval is bias-corrected (BC), with percentile available for sensitivity analysis. BC adjusts for observed bootstrap bias but does not include the acceleration correction of BCa and is not claimed to dominate percentile intervals in every sample or distribution. The displayed bootstrap p value is a two-sided sign-count value with a plus-one correction. A result is marked `Adequate` with at least 80% valid resamples and `Caution` with 50% to less than 80%; intervals and p values are suppressed below 50% valid or fewer than 20 valid resamples. Reports should state requested and valid counts and their ratio.
 
 A total effect does not have to be significant for an indirect effect to be present. When this happens, inspect the effect directions, the signs of the direct and indirect effects, possible suppression, and the substantive theory.
 
@@ -280,20 +344,23 @@ Moderated mediation evaluates whether the indirect effect changes across W. Firs
 
 ### 13.4 Reporting
 
-- Report the model number and variable roles.
+- Report the variable roles, drawn paths, interactions and equations receiving covariates. A model number is neither an input requirement nor a required reporting item.
 - Report bootstrap resamples, CI method, and whether mean-centering was used.
+- Report requested/valid bootstrap counts and their ratio, identify BC or percentile, and check sensitivity when status is Caution.
 - If covariates were included, state which equations included them.
 - For indirect and conditional indirect effects, report the estimate, CI, and W reference values.
 - For moderation, do not report only the interaction coefficient; add simple-slope or Johnson-Neyman output when requested.
-- When multiple independent variables are selected, state that each focal X was analyzed with the other independent variables included as covariates.
+- With multiple predictors, report the predictors and covariates actually included in each equation.
 
-### 13.5 Mediation / Moderation Custom Model
+### 13.5 Canvas paths and analysis specification
 
-The Mediation / Moderation Custom Model canvas is an input and model-recognition workflow for the same mediation/moderation engine. It does not define a separate estimator. Report the recognized model number, variable roles, bootstrap settings, and any unsupported or skipped paths just as you would for the standard Mediation / Moderation menu.
+Mediation / Moderation Effects estimates regression equations specified by the roles and paths drawn on the canvas. It is not a numbered-model selection workflow. The drawn structure defines the model; unsupported structures are identified before execution, and omitted paths or changed specifications must be considered in interpretation.
+
+<a id="method-14"></a>
 
 ## 14. Logistic Regression
 
-Logistic regression supports binary, ordinal, and multinomial outcomes.
+Logistic regression supports binary, ordinal, and multinomial outcomes. Two observed outcome levels are fitted with a binary logit regardless of nominal/ordinal metadata. Ordinal outcomes use `ordinal::clm`; a nested nominal-effects likelihood-ratio test evaluates proportional odds. In hierarchical analyses the test is based on the final model and its decision is applied to every step so that likelihood-ratio changes compare the same model family on the same complete-case sample.
 
 Diagnostics and warnings:
 
@@ -302,8 +369,17 @@ Diagnostics and warnings:
 - Large standard errors.
 - Very wide confidence intervals.
 - High VIF.
+- Nonconvergence and rank deficiency, which block inferential output.
+- Approximate smallest-class observations per predictor parameter; this is a screening diagnostic, not a universal sample-size rule.
+- Continuous-predictor functional form and multinomial IIA limitations.
+
+Binary models report apparent AUC, Brier score, Tjur R-squared, and log loss. Ordinal and multinomial models report apparent accuracy and probability-score diagnostics. All are computed on the estimation sample and are descriptive only; cross-validation, bootstrap optimism correction, temporal validation, or external validation is required for predictive-performance claims.
+
+Odds-ratio confidence intervals are large-sample Wald intervals. Sparse data and separation can invalidate maximum-likelihood Wald inference even when the fitting routine returns estimates. Firth/bias-reduced estimation, exact methods, partial proportional-odds models, nonlinear functional-form modeling, influence diagnostics, and formal predictive validation are not automated in this menu and should be handled as prespecified sensitivity analyses when relevant.
 
 Odds ratios are not risk ratios. When the outcome is common, odds ratios can appear much larger than risk ratios. Interpret odds ratios carefully and report the modeling scale when needed.
+
+<a id="method-15"></a>
 
 ## 15. Generalized Linear Model (GLM)
 
@@ -336,49 +412,9 @@ Robust standard errors:
 
 GLM assumes independent observations. Correlated repeated or clustered data require a design-appropriate model. Use the dedicated longitudinal/panel analysis workflows when repeated-measure or panel dependence is part of the research design; use ordinary GLM or regression output only when the independent-observation assumption is defensible.
 
-## 16. Longitudinal / Panel and Correlated Data
+<a id="method-16"></a>
 
-Longitudinal / panel and mixed repeated-measures workflows are exposed in public 1.2. Repeated-measures, clustered, and panel data can violate the independent-observation assumption, so ordinary GLM or regression output should be interpreted only when that assumption is defensible.
-
-GEE, LMM, GLMM, panel fixed-effects, and panel random-effects analysis workflows should be interpreted within the documented public 1.2 analysis scope. GEE/LMM/GLMM entries in the Sample Size and Effect Size menus remain planning or conversion calculators unless selected from a released Analysis workflow.
-
-## 17. Complex Samples Method Notes
-
-Complex-sample analysis accounts for the sampling design when estimating point estimates, standard errors, test statistics, and degrees of freedom. If stratification, clusters/PSUs, unequal selection probabilities, or post-stratification weights are ignored, standard errors and p-values can be biased upward or downward.
-
-### 17.1 Design Variables
-
-- Strata identify the sampling strata.
-- Cluster/PSU variables identify primary sampling units.
-- Weights represent population weighting, unequal selection probabilities, or calibration adjustments.
-- FPC adjusts variance when the sampling fraction is large in a finite population.
-- Replicate weights support BRR, Fay, jackknife, bootstrap, or other replicate-based variance estimators.
-
-Check missingness in design variables as well as analysis variables. Rows with missing design variables can be excluded when the survey design object is built.
-
-### 17.2 Variance Estimation
-
-Taylor linearization is the usual default for complex-sample means, proportions, and regression coefficients. Public-use datasets that provide replicate weights should be analyzed with the replicate method and scaling rules recommended by the data provider. The app's Auto option selects from the available design information, but the final report should confirm that the choice matches the data documentation.
-
-Single-PSU strata can make variance estimation unstable. Choices such as `adjust`, `average`, `certainty`, or `remove` can change standard errors and should be reported.
-
-### 17.3 Subpopulation Analysis
-
-For complex samples, subgroups are usually handled as domain/subpopulation analyses rather than by deleting all rows outside the subgroup first. Cases outside the subgroup can still contribute to design information. When using subpopulation conditions, distinguish the analysis N from the full design N.
-
-### 17.4 Interpreting Results
-
-Weighted N can represent a population total or weighted sum; it is not the number of observed cases. Standard errors, confidence intervals, and p-values depend on design degrees of freedom and the variance estimator. For regression, inspect coefficient direction and magnitude together with design-based Wald/F tests, wide intervals, extreme weights, and sparse categories.
-
-### 17.5 Reporting
-
-- Report strata, PSU, weights, FPC, and whether replicate weights were used.
-- Report the variance method and single-PSU strata handling.
-- Distinguish unweighted N from weighted N.
-- Present design df, standard errors, and confidence intervals with p-values.
-- For public-use data, confirm that the app settings match the data provider's analysis guide.
-
-## 18. Penalized Regression Helper
+## 16. Regularized Regression (Ridge, LASSO and Elastic Net)
 
 Ridge, LASSO, and Elastic Net are available as helper outputs for prediction-oriented or multicollinearity-sensitive regression review.
 
@@ -389,6 +425,54 @@ Interpretation cautions:
 - Ridge retains all predictors but shrinks coefficients.
 - Cross-validated lambda is selected for predictive performance, not for conventional p-value inference.
 - Conventional p values are not reported for penalized coefficients.
+
+<a id="method-17"></a>
+
+## 17. Longitudinal / Panel and Correlated Data
+
+Longitudinal / panel and mixed repeated-measures workflows are exposed in public 1.3.0. Repeated-measures, clustered, and panel data can violate the independent-observation assumption, so ordinary GLM or regression output should be interpreted only when that assumption is defensible.
+
+GEE, LMM, GLMM, panel fixed-effects, and panel random-effects analysis workflows should be interpreted within the documented public 1.2 analysis scope. GEE/LMM/GLMM entries in the Sample Size and Effect Size menus remain planning or conversion calculators unless selected from a released Analysis workflow.
+
+<a id="method-18"></a>
+
+## 18. Complex Samples Method Notes
+
+Complex-sample analysis accounts for the sampling design when estimating point estimates, standard errors, test statistics, and degrees of freedom. If stratification, clusters/PSUs, unequal selection probabilities, or post-stratification weights are ignored, standard errors and p-values can be biased upward or downward.
+
+### 18.1 Design Variables
+
+- Strata identify the sampling strata.
+- Cluster/PSU variables identify primary sampling units.
+- Weights represent population weighting, unequal selection probabilities, or calibration adjustments.
+- FPC adjusts variance when the sampling fraction is large in a finite population.
+- Replicate weights support BRR, Fay, jackknife, bootstrap, or other replicate-based variance estimators.
+
+Check missingness in design variables as well as analysis variables. Rows with missing design variables can be excluded when the survey design object is built.
+
+### 18.2 Variance Estimation
+
+Taylor linearization is the usual default for complex-sample means, proportions, and regression coefficients. Public-use datasets that provide replicate weights should be analyzed with the replicate method and scaling rules recommended by the data provider. The app's Auto option selects from the available design information, but the final report should confirm that the choice matches the data documentation.
+
+Single-PSU strata can make variance estimation unstable. Choices such as `adjust`, `average`, `certainty`, or `remove` can change standard errors and should be reported.
+
+### 18.3 Subpopulation Analysis
+
+For complex samples, subgroups are usually handled as domain/subpopulation analyses rather than by deleting all rows outside the subgroup first. Cases outside the subgroup can still contribute to design information. When using subpopulation conditions, distinguish the analysis N from the full design N.
+
+### 18.4 Interpreting Results
+
+Weighted N can represent a population total or weighted sum; it is not the number of observed cases. Standard errors, confidence intervals, and p-values depend on design degrees of freedom and the variance estimator. For regression, inspect coefficient direction and magnitude together with design-based Wald/F tests, wide intervals, extreme weights, and sparse categories.
+
+### 18.5 Reporting
+
+- Report strata, PSU, weights, FPC, and whether replicate weights were used.
+- Report the variance method and single-PSU strata handling.
+- Distinguish unweighted N from weighted N.
+- Present design df, standard errors, and confidence intervals with p-values.
+- For public-use data, confirm that the app settings match the data provider's analysis guide.
+
+<a id="method-19"></a>
 
 ## 19. Threshold Summary
 
@@ -421,6 +505,8 @@ Common screening thresholds used in the app include:
 
 Thresholds are screening aids. They should not replace statistical judgment, design knowledge, or substantive interpretation.
 
+<a id="method-20"></a>
+
 ## 20. Warnings and Skipped Results
 
 Warnings tell the user that a result requires caution. Skipped results mean a requested statistic, comparison, model, or output could not be computed safely.
@@ -438,9 +524,11 @@ Common reasons:
 
 Skipped results should be reported when they affect the analysis plan.
 
+<a id="method-21"></a>
+
 ## 21. Interpreting Saved Results
 
-Saved HTML and PDF outputs preserve the main result tables, method notes, warnings, skipped-result messages, and footnotes. Before using saved output in a report:
+Saved HTML output preserves the main result tables, method notes, warnings, skipped-result messages, and footnotes. Public 1.3.0 provides HTML, PDF, Excel and Word exports sharing displayed tables and notes. Adding Mediation/Moderation, CFA, SEM or PLS-SEM results also preserves the current model figure. Before using saved output in a report:
 
 1. Confirm the selected method.
 2. Check assumption diagnostics.
@@ -449,13 +537,19 @@ Saved HTML and PDF outputs preserve the main result tables, method notes, warnin
 5. Interpret effect sizes and confidence intervals, not only p values.
 6. Describe the analysis method in the manuscript or report.
 
+<a id="method-22"></a>
+
 ## 22. Citation Placement
 
 When reporting analyses generated by StatEdu Studio, cite the software in the methods or statistical analysis section. If the DOI citation is used, use the DOI URL shown in the About page.
 
+<a id="method-23"></a>
+
 ## 23. References
 
 The references used for method selection, diagnostics, and interpretation are listed in the relevant method notes and calculator sections. Use them as methodological background, not as automatic justification for applying a method when the study design is unsuitable.
+
+<a id="method-24"></a>
 
 ## 24. Sample Size, Power, and Effect Size Method Notes
 
@@ -1024,7 +1118,7 @@ ICC precision uses Fisher-z-style approximations. Cohen's kappa precision uses a
 
 ### 24.21 SEM / CFA
 
-SEM/CFA planning can use RMSEA close-fit or not-close-fit logic, parameter Monte Carlo, or complexity heuristics. These calculations are sensitive to degrees of freedom, standardized parameter size, and model complexity.
+SEM/CFA planning can use RMSEA close-fit or not-close-fit logic, an approximate parameter-power simulation, or complexity heuristics. The parameter simulation uses a large-sample standard-error approximation rather than full model data generation and refitting; a model-specific Monte Carlo study remains preferable for complex designs. These calculations are sensitive to degrees of freedom, standardized parameter size, and model complexity.
 
 RMSEA noncentrality parameter:
 
@@ -1113,3 +1207,335 @@ The implementation and method notes are aligned with standard references and pac
 - Tabachnick, B. G., & Fidell, L. S. (2019). *Using Multivariate Statistics*.
 - West, S. G., Finch, J. F., & Curran, P. J. (1995). Structural equation models with nonnormal variables.
 - Wilcox, R. R. (2017). *Introduction to Robust Estimation and Hypothesis Testing*.
+
+<a id="method-25"></a>
+
+## 25. CFA, CB-SEM, Latent Moderation, and PLS-SEM
+
+### 25.1 Purpose and Estimand
+
+The same canvas diagram can represent different statistical objects. Specify
+the construct and purpose before choosing an engine.
+
+- A CFA/CB-SEM **common factor** explains shared indicator variance while
+  separating measurement error.
+- A standard-PLS **composite** is a weighted indicator combination. A
+  reflective Mode A block in standard PLS remains a composite proxy.
+- **PLSc** consistently corrects eligible reflective-block relationships; it
+  does not automatically turn every PLS model into the CB-SEM estimand.
+- A **formative composite** is formed by its indicators. Internal consistency
+  is not a required property, so alpha, CR, and AVE are not acceptance tests.
+
+Use CB-SEM when theory testing and measurement-error separation are primary and
+constructs are reflective common factors. Consider PLS when scores, prediction,
+or composites are the target. Do not choose PLS automatically because a sample
+is small or a normality test is significant, and do not choose CB-SEM only
+because its fit indices appear favorable.
+
+### 25.2 Data-Structure Gate
+
+The CFA, SEM/CB-SEM, and PLS-SEM menus in 1.3.0 support independent
+cross-sectional observations only. These routes therefore fix the execution
+contract to `independent_cross_sectional` and do not display a sampling-design
+selector. This fixed route is not a diagnosis inferred from the data; analysts
+must verify that the actual data-collection design satisfies independence.
+
+- Survey weights, strata, and PSUs require survey-aware SEM.
+- Clustered data require cluster-robust or multilevel SEM.
+- Longitudinal and repeated observations require within-person dependence and
+  longitudinal measurement structure.
+- Multilevel/clustered SEM, complex-survey SEM, and longitudinal/repeated SEM
+  are reserved for future dedicated analysis menus rather than options inside
+  the current structural-equation menus.
+
+Blocking these designs is a support boundary that prevents ordinary-SEM
+standard errors from being reported for dependent observations.
+
+### 25.3 CFA Specification and Identification
+
+Specify factor-indicator relations, cross-loadings, residual covariances,
+factor scaling, and group structure from theory before fitting. Identification
+requires more than optimizer convergence; inspect the free-parameter count,
+indicators, scaling, covariance structure, and constraints.
+
+Single-indicator factors require fixed loading and measurement-error
+assumptions. Two-indicator factors and near-unit latent correlations may be
+weakly identified. Negative residual variances, non-positive-definite
+covariance matrices, near-boundary latent correlations, and unstable parameter
+vcov matrices are inadmissibility signals.
+
+### 25.4 CFA and CB-SEM Estimators
+
+Continuous common-factor models use ML or MLR. ML fits a continuous normal-
+theory likelihood; MLR supplies robust standard errors and a scaled test. MLR
+is an estimator choice within CB-SEM, not a rule for switching to PLS.
+
+Ordered common-factor indicators use WLSMV/DWLS with theta parameterization.
+Report the ordered variables, estimator, parameterization, and missing-data
+handling. Do not interpret ordinal estimates as though they were continuous-ML
+estimates on the same numerical scale.
+
+Continuous ML defaults to the Normal-likelihood convention with N-denominator
+covariances and an N-scaled objective. Select Wishart ML only when matching an
+N-1 convention such as AMOS, and refit the complete model. Do not rescale only
+the final chi-square. Wishart switching is unavailable for MLR and WLSMV.
+
+### 25.5 Global Fit, Local Fit, and Admissibility
+
+Chi-square, CFI, TLI, RMSEA with its interval, and SRMR summarize different
+aspects of model-data discrepancy. They depend on sample size, degrees of
+freedom, estimator, distribution, and model complexity.
+
+- A conventional range is a reference, not automatic model acceptance.
+- A large discrepancy prompts residual, local-dependence, and competing-model
+  review.
+- A modification index ranks data-driven candidates; repeatedly freeing the
+  largest value without theory capitalizes on chance.
+- Standardized residuals, residual correlations, indicator R-squared, and
+  unexpected cross-relations complement global indices.
+
+StatEdu also checks negative variances, positive definiteness of observed,
+latent, and parameter-vcov matrices, boundary solutions, latent correlations,
+and degrees of freedom. Optimization completion alone is insufficient.
+
+### 25.6 Reliability, Convergent Validity, and Discriminant Validity
+
+For reflective common factors, interpret loadings and uncertainty, omega,
+composite reliability, AVE, HTMT, latent correlations, and competing
+measurement models together. Alpha, omega, and CR have different assumptions
+and are not interchangeable pass/fail scores.
+
+Loading .70, CR .70, AVE .50, and HTMT .85/.90 are conventional references.
+Do not automatically delete items below a threshold; consider content validity,
+wording, residual dependence, uncertainty, and replication. Report HTMT with a
+bootstrap interval and valid-draw count. Fornell-Larcker is supplementary and
+does not establish discriminant validity by itself.
+
+CFA reliability/AVE percentile intervals use R quantile type 7; their BC/BCa
+intervals use type 6. Structural-effect and HTMT percentile/BC/BCa intervals
+use type 6. Results and audit metadata record the selected method and type.
+
+### 25.7 Higher-Order CFA and Measurement Invariance
+
+Interpret both first-order indicator relations and first-order-factor loadings
+on the higher-order factor. Parceling is not a default replacement for item-
+level CFA; the current feature provides eligibility checks and assignment
+preview only.
+
+Multigroup CFA proceeds through configural, metric, scalar, and strict stages.
+Delta CFI, RMSEA, and SRMR are sensitivity references informed by Chen (2007),
+not universal cutoffs. The app does not automatically release constraints and
+refit partial-invariance models. Score tests and standardized EPC values are
+exploratory candidates.
+
+Structural-path group comparison requires the metric-invariance gate. For a
+CB-SEM latent-product model, source indicators are centered and products are
+regenerated within group; the joint model constrains original and interaction-
+factor loadings before group-specific interactions or moderated-mediation
+indices are compared. PLS group comparisons instead require pair-specific
+partial measurement invariance under MICOM.
+
+### 25.8 CB-SEM Structural and Indirect Effects
+
+A direct effect is a structural regression coefficient. An indirect effect is
+the product of its specified component paths, and a total effect combines the
+direct and relevant indirect effects. Bootstrap intervals are primary because
+indirect-effect distributions may be asymmetric; component-path significance
+alone does not decide the indirect effect.
+
+Structural bootstrap provides BC or percentile 95% intervals and two-sided
+sign-based p values. The default is 5,000 draws. Report requested and valid
+draws, valid ratio, interval method, and seed. BC corrects observed bias but
+does not include BCa acceleration and is not universally superior to percentile.
+Ratios below 80% are flagged for caution. Below 50%, or when an effect fails
+its minimum valid-draw requirement, its bootstrap interval and p value are
+suppressed as unreliable.
+
+### 25.9 Latent Product-Indicator Moderation
+
+StatEdu CB-SEM latent moderation is an unconstrained product-indicator method,
+not LMS.
+
+- `all_pairs_dmc` forms every indicator pair and double-mean-centers products.
+- `matched_pair_dmc` uses a theoretically or prospectively fixed pairing order
+  and double-mean-centers the products.
+- `all_pairs_mean_centered` is a compatibility method that centers only the
+  original indicators.
+
+Every bootstrap sample recomputes indicator means, products, and product means.
+This differs from resampling product columns precomputed on the full data.
+
+Interaction coefficients depend on factor and product scaling. Prefer the
+unstandardized coefficient and interval. Do not manufacture a standardized
+moderated-mediation index when no unique latent-product standardization exists.
+Johnson-Neyman results describe regions on an applicable continuous moderator
+scale and require caution about extrapolation and multiplicity.
+
+### 25.10 Bootstrap Execution and lavaan Authority
+
+StatEdu fixes case-resampling indices from the seed before scheduling workers.
+For latent moderation, each worker regenerates DMC products within the sample.
+An accelerated first pass may reject clearly inadmissible draws, but every
+reported raw/standardized estimate, standard error, and final admissibility
+decision comes from a public full-SE lavaan fit.
+
+Worker errors, version-fingerprint mismatches, contract violations, and
+ambiguous boundary cases are recomputed through the prior lavaan path rather
+than counted as scientific failures. Worker count and chunk size must not
+change draw order, the validity mask, or the final summary.
+
+### 25.11 PLS-SEM and PLSc Measurement Models
+
+Reflective Mode A weights use indicator-composite relations; formative Mode B
+weights use multiple regression. Evaluate formative blocks through weight
+sign/size and intervals, auxiliary loadings, item VIF, content coverage, and an
+external redundancy criterion.
+
+PLSc is conditional on reflective common-factor specification and eligible
+correction. It does not label a partially corrected formative or ineligible
+mixed model as PLSc. Standard PLS remains available as a separate method, with
+the explicit limitation that common factors are represented by composite proxies.
+
+### 25.12 PLS Structural Model, Quality Diagnostics, and Prediction
+
+PLS paths, R-squared, and f-squared summarize composite-score relations. High
+R-squared does not establish causality or external prediction; .02/.15/.35
+f-squared values are conventional landmarks. Low inner VIF does not establish
+discriminant or causal validity.
+
+Approximate PLS SRMR, d_G, d_ULS, and NFI are descriptive saturated
+measurement-model diagnostics. They are not estimated-structural-model global
+fit statistics and receive no automatic acceptance cutoff.
+
+PLSpredict refits measurement and structural models in every training fold and
+compares indicator RMSE/MAE with a linear-model benchmark. Ten repeated k-fold
+splits are the default. Report mean differences, split variability, the share
+of repetitions favoring PLS, and the application loss function. Internal
+cross-validation does not replace external validation.
+
+### 25.13 PLS/PLSc Bootstrap Validity
+
+PLS/PLSc bootstrap defaults to 5,000 resamples, with 1,000, 5,000, 10,000,
+20,000, and 50,000 as the menu choices. The rule-based PLS/PLSc recommendation is accepted by default for
+a new analysis, while an explicitly saved choice is retained. In the current implementation,
+L'Ecuyer-CMRG streams are assigned
+by draw position, making samples invariant to worker count and completion order.
+This stream differs from the earlier seminr `seed + repetition` sequence, so
+same-seed bitwise agreement across versions is not promised.
+
+A whole draw is valid only when all required paths, loadings, weights, HTMT,
+and requested effects are finite. With fewer than 80% valid draws, StatEdu
+suppresses bootstrap SEs, CIs, t and p values, and significance styling. Start
+failure, run failure, cancellation, and empty results retain requested draws,
+zero valid draws, status, and failure types in results and the audit manifest.
+
+PLS latent moderation defaults to two-stage construct-score estimation;
+product-indicator and orthogonalized procedures are explicit alternatives.
+Strong hierarchy retains both main effects. Every bootstrap replicate refits
+the measurement model, scores, interaction, and structural model. StatEdu
+reports the unstandardized interaction, simple slopes at the score mean and
+mean plus/minus one standard deviation, conditional indirect effects, and
+unstandardized indices of moderated mediation. Interaction, index, and
+conditional-indirect p values use separate BH families. Under PLSc, the
+generated interaction is not consistency-corrected and remains a PLS score-
+scale estimand.
+
+PLS multi-group moderation and moderated-mediation contrasts are admitted only
+for group pairs that pass MICOM and have at least 80% common valid bootstrap
+positions. Pair differences are group 1 minus group 2 and include raw, BH, and
+Holm p values within each effect family. PLSc common-factor MGA and an omnibus
+moderation test for three or more groups are not provided.
+
+### 25.14 Causal Interpretation and Common-Method Bias
+
+A canvas arrow is a theory-directed regression relation. The app does not
+verify temporal order, treatment assignment, absence of unmeasured confounding,
+or mediation identification assumptions. Report paths and indirect effects as
+a statistical decomposition of the assumed association structure unless the
+study design separately justifies causal language.
+
+Harman single-factor variance and full-collinearity VIF do not test the
+presence or absence of common-method bias. Combine procedural design controls,
+source and timing information, defensible marker or method-factor models, and
+sensitivity analysis. Current marker input is record-only and does not mean a
+marker-adjusted analysis was fitted.
+
+### 25.15 Minimum Reporting Checklist
+
+Report at least:
+
+1. Analysis purpose and common-factor/composite/formative specification.
+2. Sampling design, analysis N, missing-data handling, and ordered indicators.
+3. Engine, estimator, Normal/Wishart convention, and parameterization.
+4. Identification, loadings, paths, covariances, and residual-covariance rules.
+5. Convergence, admissibility, global/local fit, and competing-model review.
+6. Reliability/AVE/HTMT formulas, interval method, and valid draws.
+7. Direct/indirect/total effects and latent-product construction method.
+8. Bootstrap requested/valid draws, seed, interval method, and quantile type.
+9. PLS/PLSc rationale, modes, weights/loadings/VIF, and prediction results.
+10. Data-driven changes, sensitivity analyses, and causal limitations.
+
+The audit manifest supports reproducibility but does not replace raw-data
+governance, research-design validity, or analyst judgment.
+
+### 25.16 Cross-Software Comparison
+
+Matching a diagram or seed is insufficient. Align indicator order, marker and
+factor scaling, free/fixed covariances, mean structure, missing-data handling,
+Normal/Wishart convention, product centering, bootstrap indices, and CI method.
+
+lavaan remains the final numerical authority for StatEdu CB-SEM. The AMOS
+same-index per-sample-DMC controller, cSEM fixed-matrix functions, and SmartPLS
+displayed-value comparisons are implementation evidence, not a promise that
+all models agree across software. A fast native bootstrap that resamples fixed
+products is a different estimand and is not a matched speed comparison.
+
+### 25.17 Selected References
+
+- Brown, T. A. (2015). *Confirmatory Factor Analysis for Applied Research*
+  (2nd ed.). Guilford Press.
+- Chen, F. F. (2007). Sensitivity of goodness of fit indexes to lack of
+  measurement invariance. *Structural Equation Modeling*, 14(3), 464-504.
+- Dijkstra, T. K., & Henseler, J. (2015). Consistent partial least squares path
+  modeling. *MIS Quarterly*, 39(2), 297-316.
+- Efron, B., & Tibshirani, R. J. (1993). *An Introduction to the Bootstrap*.
+  Chapman & Hall/CRC.
+- Henseler, J., Ringle, C. M., & Sarstedt, M. (2015). A new criterion for
+  assessing discriminant validity in variance-based structural equation
+  modeling. *Journal of the Academy of Marketing Science*, 43, 115-135.
+- Kline, R. B. (2023). *Principles and Practice of Structural Equation Modeling*
+  (5th ed.). Guilford Press.
+- Little, T. D., Rhemtulla, M., Gibson, K., & Schoemann, A. M. (2013). Why the
+  items versus parcels controversy needn't be one. *Psychological Methods*,
+  18(3), 285-300.
+- Marsh, H. W., Hau, K.-T., & Wen, Z. (2004). In search of golden rules:
+  Comment on hypothesis-testing approaches to setting cutoff values for fit
+  indexes. *Structural Equation Modeling*, 11(3), 320-341.
+- Preacher, K. J., Rucker, D. D., & Hayes, A. F. (2007). Addressing moderated
+  mediation hypotheses. *Multivariate Behavioral Research*, 42(1), 185-227.
+- Schumacker, R. E., & Marcoulides, G. A. (Eds.). (1998). *Interaction and
+  Nonlinear Effects in Structural Equation Modeling*. Lawrence Erlbaum.
+
+<a id="method-26"></a>
+
+## 26. Survival estimands and interpretation
+
+Kaplan–Meier S(t) estimates the probability of remaining event-free through t. Censoring records incomplete follow-up, not an event. Examine noninformative censoring and report time origin, units and follow-up.
+
+RMST is the area `∫₀^τ S(t) dt` up to a prespecified common restriction time τ within the supported follow-up. In the Cox model `h(t|X)=h₀(t) exp(Xβ)`, `exp(β)` is a hazard ratio, not a survival-probability ratio. Examine proportional hazards and consider time-varying effects or alternatives when inappropriate.
+
+With competing events, distinguish cause-specific cumulative incidence (CIF) from ordinary KM 1−S(t). Cause-specific HR and subdistribution SHR target different quantities; select and interpret them according to the research question.
+
+<a id="method-27"></a>
+
+## 27. Interpreting external validation
+
+SPSS, AMOS and SmartPLS comparisons use matched data and corresponding estimation/display settings. Cases, compared cells and remaining differences on the 1.3.0 Validation page are different units and must not be pooled into one pass rate. Validation performed during development was incorporated into 1.3.0; this does not mean every comparison was newly rerun on the final installer. Methodological formulas and references are user-facing; personal source data, original outputs and internal execution logs are not public.
+
+Review current results and use Add to Results to collect them. HTML, PDF, Word and Excel saving is supported. HWPX is available only in the accumulated Results screen with Korean UI and is written directly, without Word or Hancom conversion. Word/HWPX offer main tables, appendix tables, explanations and figures; main tables are selected by default. Saving uses captured displayed results without rerunning analyses. Free figures use 300 dpi and developer figures use 600 dpi. HTML includes a cover and linked table list.
+
+<a id="method-28"></a>
+
+## 28. Importance–performance analysis (IPA)
+
+Derived importance is a Pearson partial correlation controlling the other performance attributes. Revised IPA log transformation requires positive inputs and retains negative partial-correlation signs. Use common complete cases within groups or a common matched sample across times. Mean differences use Welch or paired t tests and are second minus first. Holm correction covers finite displayed direct-score p values; 95% intervals remain pointwise. Derived importance and differences use percentile bootstrap, requiring at least 80% and 50 valid replicates to display intervals. No t-test p value is attached to partial-correlation differences. The common reference is a respondent-weighted mean of coordinates, not a pooled-sample partial correlation. Split file runs separate analyses; specify groups inside IPA for comparisons.

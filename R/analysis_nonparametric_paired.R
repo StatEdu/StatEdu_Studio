@@ -47,7 +47,7 @@ nonparametric_paired_analyze_pair <- function(data, first, second, measurement, 
       skipped <- paired_skipped_item(pair_label, level, "Wilcoxon signed-rank test", pair$n, guard)
       return(list(result = skipped, scale = NULL, count = NULL, check = NULL, skipped = skipped))
     }
-    test <- tryCatch(suppressWarnings(stats::wilcox.test(pair$y, pair$x, paired = TRUE, exact = FALSE)), error = function(e) NULL)
+    test <- tryCatch(suppressWarnings(paired_rm_wilcox_engine()(pair$y, pair$x, paired = TRUE, exact = FALSE)), error = function(e) NULL)
     statistic <- if (is.null(test)) NA_real_ else unname(as.numeric(test$statistic))
     p <- if (is.null(test)) NA_real_ else as.numeric(test$p.value)
     pre_summary <- nonparametric_paired_summary_values(pair$x, median_iqr = isTRUE(options$median_iqr))
@@ -124,6 +124,7 @@ nonparametric_paired_analyze_pair <- function(data, first, second, measurement, 
 }
 
 prepare_nonparametric_paired_results <- function(data, first, second, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("first", "second"))
   first <- as.character(first %||% character(0))
   second <- as.character(second %||% character(0))
   shiny::validate(shiny::need(length(first) > 0 && length(second) > 0, "Select paired variables for both repeated measurements."))
@@ -193,6 +194,7 @@ prepare_nonparametric_paired_results <- function(data, first, second, variable_i
 }
 
 prepare_nonparametric_paired_rm_single_result <- function(data, variables, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("variables"))
   variables <- as.character(variables %||% character(0))
   if (length(variables) < 3) {
     stop("Select three or more repeated-measures variables.", call. = FALSE)
@@ -221,7 +223,7 @@ prepare_nonparametric_paired_rm_single_result <- function(data, variables, varia
 
   if (measurement %in% c("continuous", "ordered")) {
     y <- as.matrix(values)
-    test <- stats::friedman.test(y)
+    test <- paired_rm_friedman_test(y)
     main <- data.frame(Method = "Friedman test", N = nrow(y), Statistic = stat_chisq_label(FALSE), Value = format_decimal3(unname(as.numeric(test$statistic))), df1 = format_decimal3(unname(as.numeric(test$parameter))), df2 = "", p = format_p(test$p.value), stringsAsFactors = FALSE, check.names = FALSE)
     main[["Effect size"]] <- "Kendall's W"
     main[["ES"]] <- paired_effect_value(paired_rm_kendalls_w(unname(as.numeric(test$statistic)), nrow(y), ncol(y)))
@@ -241,6 +243,7 @@ prepare_nonparametric_paired_rm_single_result <- function(data, variables, varia
 }
 
 prepare_nonparametric_paired_rm_results <- function(data, variable_groups, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("variable_groups"))
   groups <- lapply(variable_groups %||% list(), as.character)
   groups <- groups[lengths(groups) >= 3L]
   shiny::validate(shiny::need(length(groups) > 0, "Select one or more repeated-measures rows."))
@@ -272,7 +275,7 @@ prepare_nonparametric_paired_rm_results <- function(data, variable_groups, varia
   )
 }
 
-prepare_nonparametric_paired_unified_results <- function(data, variable_groups, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+prepare_nonparametric_paired_unified_results_core <- function(data, variable_groups, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
   groups <- lapply(variable_groups %||% list(), as.character)
   groups <- groups[lengths(groups) >= 2L]
   shiny::validate(shiny::need(length(groups) > 0, "Select one or more repeated-measures rows."))
@@ -290,4 +293,15 @@ prepare_nonparametric_paired_unified_results <- function(data, variable_groups, 
     return(list(type = "nonparametric_paired_combined", paired = paired_result, paired_rm = paired_rm_result, options = options))
   }
   paired_result %||% paired_rm_result
+}
+
+prepare_nonparametric_paired_unified_results <- function(data, variable_groups, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("variable_groups"))
+  options$median_iqr <- options$median_iqr %||% TRUE
+  out <- prepare_nonparametric_paired_unified_results_core(data, variable_groups, variable_info, labels, category_table, options)
+  if (isTRUE(options$add_mean_sd) && isTRUE(options$median_iqr)) {
+    extra_options <- modifyList(options, list(median_iqr = FALSE, add_mean_sd = FALSE))
+    out$mean_sd_extra <- prepare_nonparametric_paired_unified_results_core(data, variable_groups, variable_info, labels, category_table, extra_options)
+  }
+  out
 }

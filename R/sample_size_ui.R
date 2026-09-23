@@ -9,7 +9,7 @@ sample_size_choice <- function(value, default) {
 
 sample_size_text <- function(language, en, ko = en) {
   language <- normalize_app_language(language)
-  if (identical(language, "ko")) ko else en
+  statedu_localized_text(language, en, ko)
 }
 
 sample_size_ui_text <- function(language = statedu_initial_language(), key) {
@@ -296,7 +296,7 @@ sample_size_label <- function(language = statedu_initial_language(), label) {
     "Stepped-wedge cluster trial" = sample_size_text(language, "Stepped-wedge cluster trial", h("eab384eb8ba8ed989520eab5b0eca79120ec8b9ced9798")),
     "Close fit test (detect poor fit)" = sample_size_text(language, "Close fit test (detect poor fit)", h("ebb080eca09120eca081ed95a920eab280eca095")),
     "Not-close-fit test (support close fit)" = sample_size_text(language, "Not-close-fit test (support close fit)", h("ebb984ebb080eca09120eca081ed95a920eab280eca095")),
-    "Parameter-level Monte Carlo" = sample_size_text(language, "Parameter-level Monte Carlo", h("ebaaa8ec889820ec8898eca480204d6f6e7465204361726c6f")),
+    "Approximate parameter power simulation" = sample_size_text(language, "Approximate parameter power simulation", h("eab7bcec82ac20ebaaa8ec889820eab280eca095eba0a520ec8b9cebaeaceba088ec9db4ec8598")),
     "Model complexity heuristic" = sample_size_text(language, "Model complexity heuristic", h("ebaaa8ed989520ebb3b5ec9ea1eb8f8420ed9cb4eba6acec8aa4ed8bb1")),
     "Standardized loading" = sample_size_text(language, "Standardized loading", h("ed919ceca480ed999420ec9a94ec9db8ebb680ed9598")),
     "Standardized path" = sample_size_text(language, "Standardized path", h("ed919ceca480ed999420eab2bdeba19c")),
@@ -404,7 +404,7 @@ sample_size_effect_size_tooltip <- function(language = statedu_initial_language(
   )
   values <- refs[[effect_type]] %||% refs$d
   sprintf(
-    "small : %s\nmiddle : %s\nlarge : %s",
+    statedu_t("sample_size.setup.effect_size_tooltip", language, "small : %s\nmiddle : %s\nlarge : %s"),
     values[["small"]],
     values[["middle"]],
     values[["large"]]
@@ -478,7 +478,17 @@ effect_size_tab_panel <- function(language = statedu_initial_language()) {
   do.call(navbarMenu, c(list(statedu_ui_label("effect_size", language)), lapply(names(methods), item)))
 }
 
-effect_size_analysis_panel <- function(method, language = statedu_initial_language()) {
+sample_size_saved_radio_input <- function(input) {
+  function(inputId, label, choices, selected = NULL, ...) {
+    saved <- isolate(input[[inputId]])
+    allowed <- unname(unlist(choices, use.names = FALSE))
+    if (length(saved) == 1L && !is.na(saved) && saved %in% allowed) selected <- saved
+    shiny::radioButtons(inputId, label, choices, selected = selected, ...)
+  }
+}
+
+effect_size_analysis_panel <- function(method, language = statedu_initial_language(), input = list()) {
+  radioButtons <- sample_size_saved_radio_input(input)
   if (!method %in% c("ttest", "proportion", "chisquare", "correlation", "anova", "ancova", "nonparametric", "mcnemar", "regression", "gee", "glmm", "lmm", "survival", "equivalence", "diagnostic", "rates", "cluster", "precision", "reliability", "sem")) {
     labels <- effect_size_method_labels(language)
     title <- labels[[method]] %||% "Effect Size"
@@ -1450,10 +1460,17 @@ effect_size_analysis_panel <- function(method, language = statedu_initial_langua
       )
     ))
   }
-  sample_size_analysis_panel("effectsize")
+  sample_size_analysis_panel("effectsize", language, input)
+}
+
+sample_size_saved_text_input <- function(input) {
+  function(inputId, label, value = "", ...) {
+    shiny::textInput(inputId, label, value = isolate(input[[inputId]]) %||% value, ...)
+  }
 }
 
 effect_size_ttest_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_ttest_design, "independent_means")
   if (identical(design, "independent_t_n")) {
@@ -1508,6 +1525,7 @@ effect_size_ttest_inputs_ui <- function(input, language = statedu_initial_langua
 }
 
 effect_size_proportion_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_proportion_design, "cohens_h")
   if (identical(design, "odds_ratio_table")) {
@@ -1525,6 +1543,7 @@ effect_size_proportion_inputs_ui <- function(input, language = statedu_initial_l
 }
 
 effect_size_correlation_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_correlation_design, "r_from_t")
   if (identical(design, "point_biserial")) {
@@ -1555,6 +1574,7 @@ effect_size_correlation_inputs_ui <- function(input, language = statedu_initial_
 }
 
 effect_size_anova_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_anova_design, "partial_eta_from_f")
   if (identical(design, "f_from_eta2")) {
@@ -1571,6 +1591,7 @@ effect_size_anova_inputs_ui <- function(input, language = statedu_initial_langua
 }
 
 effect_size_ancova_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_ancova_design, "ancova_partial_eta_from_f")
   if (identical(design, "ancova_adjusted_f")) {
@@ -1600,6 +1621,7 @@ effect_size_ancova_inputs_ui <- function(input, language = statedu_initial_langu
 }
 
 effect_size_nonparametric_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_nonparametric_design, "rank_biserial_from_u")
   if (identical(design, "rank_biserial_from_u")) {
@@ -1630,6 +1652,7 @@ effect_size_nonparametric_inputs_ui <- function(input, language = statedu_initia
 }
 
 effect_size_mcnemar_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_mcnemar_design, "matched_or_probs")
   if (identical(design, "matched_or_counts")) {
@@ -1645,6 +1668,7 @@ effect_size_mcnemar_inputs_ui <- function(input, language = statedu_initial_lang
 }
 
 effect_size_regression_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_regression_design, "f2_from_r2")
   if (identical(design, "hierarchical_f2")) {
@@ -1663,6 +1687,7 @@ effect_size_regression_inputs_ui <- function(input, language = statedu_initial_l
 }
 
 effect_size_gee_sd_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   mode <- sample_size_choice(input$effect_size_gee_sd_mode, "direct")
   tagList(
@@ -1689,6 +1714,7 @@ effect_size_gee_sd_inputs_ui <- function(input, language = statedu_initial_langu
 }
 
 effect_size_gee_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_gee_design, "continuous_followup_means")
   tagList(
@@ -1723,6 +1749,7 @@ effect_size_gee_inputs_ui <- function(input, language = statedu_initial_language
 }
 
 effect_size_glmm_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_glmm_design, "binary_logit")
   if (identical(design, "binary_logit")) {
@@ -1776,16 +1803,17 @@ effect_size_glmm_inputs_ui <- function(input, language = statedu_initial_languag
 }
 
 effect_size_lmm_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_lmm_design, "simple_fixed")
   lmm_design <- sample_size_choice(input$effect_size_lmm_lmm_design, "two_group_repeated")
   if (identical(design, "spss_output")) {
     return(tagList(
-      h4("Omnibus fixed effect"),
+      h4(statedu_t("sample_size.setup.omnibus_fixed_effect", language, "Omnibus fixed effect")),
       textInput("effect_size_lmm_f_statistic", lbl("F statistic"), value = "28.061"),
       textInput("effect_size_lmm_df_effect", lbl("Numerator df"), value = "3"),
       textInput("effect_size_lmm_df_error", lbl("Denominator df"), value = "23.057"),
-      h4("Optional pairwise comparison"),
+      h4(statedu_t("sample_size.setup.optional_pairwise", language, "Optional pairwise comparison")),
       textInput("effect_size_lmm_mean_difference", lbl("Mean difference (I - J)"), value = "0.824"),
       textInput("effect_size_lmm_variance_i", lbl("Variance at time I"), value = "0.326"),
       textInput("effect_size_lmm_variance_j", lbl("Variance at time J"), value = "0.199"),
@@ -1832,6 +1860,7 @@ effect_size_lmm_inputs_ui <- function(input, language = statedu_initial_language
 }
 
 effect_size_survival_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   tagList(
     textInput("effect_size_survival_hr", lbl("Hazard ratio"), value = "0.70")
@@ -1839,6 +1868,7 @@ effect_size_survival_inputs_ui <- function(input, language = statedu_initial_lan
 }
 
 effect_size_equivalence_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   outcome <- sample_size_choice(input$effect_size_equivalence_outcome, "mean")
   tagList(
@@ -1864,6 +1894,7 @@ effect_size_equivalence_inputs_ui <- function(input, language = statedu_initial_
 }
 
 effect_size_diagnostic_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   tagList(
     textInput("effect_size_diagnostic_auc", lbl("Expected AUC"), value = "0.75"),
@@ -1872,6 +1903,7 @@ effect_size_diagnostic_inputs_ui <- function(input, language = statedu_initial_l
 }
 
 effect_size_rates_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   input_scale <- sample_size_choice(input$effect_size_rates_input_scale, "ratio")
   tagList(
@@ -1890,6 +1922,7 @@ effect_size_rates_inputs_ui <- function(input, language = statedu_initial_langua
 }
 
 effect_size_cluster_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_cluster_design, "parallel_continuous")
   tagList(
@@ -1910,6 +1943,7 @@ effect_size_cluster_inputs_ui <- function(input, language = statedu_initial_lang
 }
 
 effect_size_precision_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   parameter <- sample_size_choice(input$effect_size_precision_parameter, "mean")
   tagList(
@@ -1928,6 +1962,7 @@ effect_size_precision_inputs_ui <- function(input, language = statedu_initial_la
 }
 
 effect_size_reliability_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   tagList(
     textInput("effect_size_reliability_value", lbl("Cohen's kappa"), value = "0.80"),
@@ -1936,6 +1971,7 @@ effect_size_reliability_inputs_ui <- function(input, language = statedu_initial_
 }
 
 effect_size_sem_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   tagList(
     selectInput(
@@ -1953,6 +1989,7 @@ effect_size_sem_inputs_ui <- function(input, language = statedu_initial_language
 }
 
 effect_size_chisquare_inputs_ui <- function(input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_chisquare_design, "cohens_w")
   if (identical(design, "cohens_w_from_probs")) {
@@ -1978,7 +2015,8 @@ effect_size_chisquare_inputs_ui <- function(input, language = statedu_initial_la
   )
 }
 
-sample_size_analysis_panel <- function(method, language = statedu_initial_language()) {
+sample_size_analysis_panel <- function(method, language = statedu_initial_language(), input = list()) {
+  radioButtons <- sample_size_saved_radio_input(input)
   labels <- c(
     sample_size_method_labels(language),
     effectsize = sample_size_text(language, "Effect Size Calculator", statedu_utf8("ed9aa8eab3bced81aceab8b020eab384ec82b0eab8b0"))
@@ -2071,35 +2109,37 @@ sample_size_analysis_panel <- function(method, language = statedu_initial_langua
   )
 }
 
-sample_size_common_inputs <- function(method, target, show_ratio = FALSE, show_tail = TRUE, n_label = "Sample size", power_value = "0.95", language = statedu_initial_language()) {
+sample_size_common_inputs <- function(method, target, show_ratio = FALSE, show_tail = TRUE, n_label = "Sample size", power_value = "0.95", language = statedu_initial_language(), input = list()) {
   lbl <- function(label) sample_size_label(language, label)
+  saved <- function(suffix, default) isolate(input[[paste0("sample_size_", method, "_", suffix)]]) %||% default
   tagList(
-    textInput(paste0("sample_size_", method, "_alpha"), lbl("Alpha"), value = "0.05"),
+    textInput(paste0("sample_size_", method, "_alpha"), lbl("Alpha"), value = saved("alpha", "0.05")),
     if (identical(target, "sample_size")) {
-      textInput(paste0("sample_size_", method, "_power"), lbl("Power"), value = power_value)
+      textInput(paste0("sample_size_", method, "_power"), lbl("Power"), value = saved("power", power_value))
     } else {
-      textInput(paste0("sample_size_", method, "_n"), lbl(n_label), value = "100")
+      textInput(paste0("sample_size_", method, "_n"), lbl(n_label), value = saved("n", "100"))
     },
     if (isTRUE(show_ratio)) {
-      textInput(paste0("sample_size_", method, "_ratio"), lbl("Allocation ratio (Group 2 / Group 1)"), value = "1")
+      textInput(paste0("sample_size_", method, "_ratio"), lbl("Allocation ratio (Group 2 / Group 1)"), value = saved("ratio", "1"))
     },
     if (isTRUE(show_tail)) {
       selectInput(
         paste0("sample_size_", method, "_alternative"),
         lbl("Alternative"),
         choices = stats::setNames(c("two.sided", "one.sided"), c(lbl("Two-sided"), lbl("One-sided"))),
-        selected = "two.sided"
+        selected = saved("alternative", "two.sided")
       )
     },
     if (identical(target, "sample_size")) {
-      textInput(paste0("sample_size_", method, "_dropout"), lbl("Dropout rate (%)"), value = "0")
+      textInput(paste0("sample_size_", method, "_dropout"), lbl("Dropout rate (%)"), value = saved("dropout", "0"))
     }
   )
 }
 
 sample_size_inputs_ui <- function(method, input, language = statedu_initial_language()) {
+  textInput <- sample_size_saved_text_input(input)
   lbl <- function(label) sample_size_label(language, label)
-  common_inputs <- function(...) sample_size_common_inputs(..., language = language)
+  common_inputs <- function(...) sample_size_common_inputs(..., language = language, input = input)
   target <- input[[paste0("sample_size_", method, "_target")]] %||% "sample_size"
   effectsize_design <- input$sample_size_effectsize_design %||% "independent_means"
   ttest_design <- input$sample_size_ttest_design %||% "two_sample"
@@ -2182,7 +2222,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
           textInput("sample_size_effectsize_n1", lbl("Group 1 n"), value = "50"),
           textInput("sample_size_effectsize_n2", lbl("Group 2 n"), value = "50"),
           if (identical(effectsize_design, "hedges_g")) {
-            div(class = "sample-size-method-note", "Primary result will be Hedges' g; Cohen's d is also shown for reference.")
+            div(class = "sample-size-method-note", statedu_t("sample_size.setup.hedges_note", language, "Primary result will be Hedges' g; Cohen's d is also shown for reference."))
           }
         )
       }
@@ -2194,7 +2234,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
         choices = sample_size_choice_labels(language, c("Two independent groups" = "two_sample", "One sample" = "one_sample", "Paired" = "paired")),
         selected = ttest_design
       ),
-      textInput("sample_size_ttest_effect", ttest_effect_label, value = "0.50"),
+      textInput("sample_size_ttest_effect", ttest_effect_label, value = isolate(input$sample_size_ttest_effect) %||% "0.50"),
       common_inputs("ttest", target, show_ratio = identical(ttest_design, "two_sample"), n_label = ttest_n_label)
     ),
     nonparametric = tagList(
@@ -2386,7 +2426,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
               ),
               selectInput(
                 "sample_size_regression_fritz_test",
-                "Fritz & MacKinnon test",
+                statedu_t("sample_size.setup.fritz_test", language, "Fritz & MacKinnon test"),
                 choices = sample_size_choice_labels(language, c(
                   "Bias-corrected bootstrap" = "bias_corrected_bootstrap",
                   "Percentile bootstrap" = "percentile_bootstrap",
@@ -2400,7 +2440,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
                 )),
                 selected = input$sample_size_regression_fritz_test %||% "bias_corrected_bootstrap"
               ),
-              div(class = "sample-size-method-note", "This empirical table is fixed at power = .80; set Power to 0.80.")
+              div(class = "sample-size-method-note", statedu_t("sample_size.setup.empirical_power_note", language, "This empirical table is fixed at power = .80; set Power to 0.80."))
             )
           } else {
             tagList(
@@ -2706,7 +2746,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
         choices = sample_size_choice_labels(language, c(
           "Close fit test (detect poor fit)" = "close_fit",
           "Not-close-fit test (support close fit)" = "not_close_fit",
-          "Parameter-level Monte Carlo" = "parameter",
+          "Approximate parameter power simulation" = "parameter",
           "Model complexity heuristic" = "complexity"
         )),
         selected = sem_test
@@ -2777,10 +2817,31 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
 }
 
 sample_size_result_table <- function(result, language = statedu_initial_language()) {
-  language <- normalize_app_language(language)
+  # Sample-size and effect-size outputs are journal-facing main tables. Keep
+  # their table vocabulary in English even when the surrounding UI is localized.
+  language <- normalize_app_language("en")
   lbl <- function(label) sample_size_label(language, label)
   rows <- list()
+  width_labels <- character(0)
+  width_values <- character(0)
+  finish_table <- function() {
+    table_tag <- tags$table(class = "sample-size-result-table", tags$tbody(rows))
+    width_table <- data.frame(
+      Metric = width_labels,
+      Value = width_values,
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+    contract <- result_table_contract(
+      role = "main",
+      language = language,
+      intrinsic_width = result_table_intrinsic_width(width_table, min_width = 480L)
+    )
+    result_table_apply_contract(table_tag, contract)
+  }
   add_row <- function(label, value, primary = FALSE) {
+    width_labels <<- c(width_labels, as.character(label %||% ""))
+    width_values <<- c(width_values, as.character(value %||% ""))
     rows[[length(rows) + 1L]] <<- tags$tr(
       class = if (isTRUE(primary)) "sample-size-primary-effect" else NULL,
       tags$th(label),
@@ -2793,6 +2854,8 @@ sample_size_result_table <- function(result, language = statedu_initial_language
     sprintf("n (%s)", label)
   }
   add_section <- function(label) {
+    width_labels <<- c(width_labels, as.character(label %||% ""))
+    width_values <<- c(width_values, "")
     rows[[length(rows) + 1L]] <<- tags$tr(
       class = "sample-size-result-section",
       tags$th(colspan = 2, label)
@@ -2939,7 +3002,7 @@ sample_size_result_table <- function(result, language = statedu_initial_language
     if (!is.null(result$expected_path)) add_row("Expected path", sprintf("%.3f", result$expected_path))
     if (!is.null(result$loading_fisher_z)) add_row("Loading Fisher z", sprintf("%.3f", result$loading_fisher_z))
     if (!is.null(result$path_fisher_z)) add_row("Path Fisher z", sprintf("%.3f", result$path_fisher_z))
-    return(tags$table(class = "sample-size-result-table", tags$tbody(rows)))
+    return(finish_table())
   }
   if (!is.null(result$power)) {
     add_row("Power", sprintf("%.3f", result$power))
@@ -2959,7 +3022,7 @@ sample_size_result_table <- function(result, language = statedu_initial_language
     if (!is.null(result$allocation_ratio)) add_row("Allocation ratio", sprintf("%.3f", result$allocation_ratio))
     if (!is.null(result$information_fraction)) add_row("Information fraction", sprintf("%.3f", result$information_fraction))
     if (!is.null(result$schoenfeld_signal)) add_row("Schoenfeld planning signal", sprintf("%.3f", result$schoenfeld_signal))
-    return(tags$table(class = "sample-size-result-table", tags$tbody(rows)))
+    return(finish_table())
   }
 
   if (!is.null(result$independent_total)) {
@@ -3021,7 +3084,7 @@ sample_size_result_table <- function(result, language = statedu_initial_language
     if (!is.null(result$adjusted_total_observations)) add_row("Total observations with dropout", result$adjusted_total_observations)
   }
 
-  tags$table(class = "sample-size-result-table", tags$tbody(rows))
+  finish_table()
 }
 
 sample_size_method_details <- function(method, result) {
@@ -3580,8 +3643,8 @@ sample_size_method_details <- function(method, result) {
     sem = list(
       formula = if (has_design("complexity heuristic", ignore.case = TRUE)) {
         "Uses a model-complexity planning estimate: cases-per-free-parameter, observed/latent variable and structural path burden, and approximate detectability of expected standardized loading/path coefficients. The recommended N is the maximum of the component rules."
-      } else if (has_design("parameter-level", ignore.case = TRUE)) {
-        "Uses approximate Monte Carlo draws from a standardized SEM/CFA parameter estimate distribution. The standard error is based on a Fisher-z-style large-sample approximation with a model-complexity effective sample size adjustment."
+      } else if (has_design("parameter-power simulation", ignore.case = TRUE)) {
+        "Uses approximate draws from a standardized SEM/CFA parameter estimate distribution. The standard error is based on a Fisher-z-style large-sample approximation with a model-complexity effective sample size adjustment; this is not full model data generation and refitting."
       } else {
         "Uses RMSEA-based SEM/CFA model-level power with noncentrality parameter lambda = (N - 1) df RMSEA^2 and the noncentral chi-square distribution."
       },
@@ -3592,7 +3655,7 @@ sample_size_method_details <- function(method, result) {
           "Wolf, E. J., Harrington, K. M., Clark, S. L., & Miller, M. W. (2013). Sample size requirements for structural equation models: An evaluation of power, bias, and solution propriety. Educational and Psychological Measurement, 73(6), 913-934.",
           "Westland, J. C. (2010). Lower bounds on sample size in structural equation modeling. Electronic Commerce Research and Applications, 9(6), 476-487."
         )
-      } else if (has_design("parameter-level", ignore.case = TRUE)) {
+      } else if (has_design("parameter-power simulation", ignore.case = TRUE)) {
         c(
           "Muthen, L. K., & Muthen, B. O. (2002). How to use a Monte Carlo study to decide on sample size and determine power. Structural Equation Modeling, 9(4), 599-620.",
           "Wolf, E. J., Harrington, K. M., Clark, S. L., & Miller, M. W. (2013). Sample size requirements for structural equation models: An evaluation of power, bias, and solution propriety. Educational and Psychological Measurement, 73(6), 913-934.",
@@ -3610,6 +3673,147 @@ sample_size_method_details <- function(method, result) {
   )
 }
 
+sample_size_progress_text <- function(text, language = statedu_initial_language()) {
+  if (is.null(text)) text <- "Calculating..."
+  exact <- c("Calculating..." = "calculating", "Starting" = "starting", "Starting... 1%" = "starting_percent", "Calculation stopped." = "stopped")
+  if (length(text) != 1L || is.na(text)) return(text)
+  if (text %in% names(exact)) return(statedu_t(paste0("sample_size.progress.", exact[[text]]), language, text))
+  patterns <- c(
+    mediation_mc = "^Running mediation Monte Carlo ([0-9]+)/([0-9]+)(.*)$",
+    mediation_bootstrap = "^Running mediation bootstrap ([0-9]+)/([0-9]+)(.*)$",
+    lmm = "^Running LMM simulations ([0-9]+)/([0-9]+)(.*)$",
+    glimmpse = "^Running GLIMMPSE-style simulations ([0-9]+)/([0-9]+)(.*)$",
+    stepped_wedge = "^Running stepped-wedge simulations ([0-9]+)/([0-9]+)(.*)$",
+    sem = "^Approximate SEM parameter-power simulation\\.\\.\\. ([0-9]+)%$"
+  )
+  for (key in names(patterns)) {
+    parts <- regmatches(text, regexec(patterns[[key]], text))[[1]]
+    if (!length(parts)) next
+    template <- statedu_t(paste0("sample_size.progress.", key), language, fallback = "")
+    if (!nzchar(template)) return(text)
+    if (key == "sem") return(sprintf(template, parts[[2]]))
+    return(paste0(sprintf(template, parts[[2]], parts[[3]]), parts[[4]]))
+  }
+  text
+}
+
+sample_size_count_note_text <- function(text, language) {
+  fritz <- regmatches(text, regexec("^Fritz & MacKinnon \\(2007\\) empirical Table 3 estimate for \\.80 power using (small|halfway|medium|large) and (small|halfway|medium|large) path effects with the (.+) test\\.$", text, perl = TRUE))[[1]]
+  if (length(fritz)) {
+    test <- fritz[[4]]
+    causal <- regmatches(test, regexec("^Baron & Kenny causal steps \\(c' = (0|\\.14|\\.39|\\.59)\\)$", test, perl = TRUE))[[1]]
+    known_tests <- c("Joint significance", "Sobel / first-order delta", "PRODCLIN / distribution of the product", "Percentile bootstrap", "Bias-corrected bootstrap")
+    if (!length(causal) && !test %in% known_tests) return(text)
+    test <- if (length(causal)) sprintf(statedu_t("sample_size.result.note_fritz_causal", language), causal[[2]]) else sample_size_label(language, test)
+    effects <- vapply(fritz[2:3], function(value) statedu_t(paste0("sample_size.result.note_fritz_", value), language), character(1))
+    return(sprintf(statedu_t("sample_size.result.note_fritz_table", language), effects[[1]], effects[[2]], test))
+  }
+  patterns <- c(
+    error_gee_pair_count = "^Unstructured working correlations must include ([0-9]+) pairwise correlations for ([0-9]+) time points\\.$",
+    error_lmm_pair_count = "^Unstructured correlations must include ([0-9]+) pairwise correlations for ([0-9]+) time points\\.$",
+    note_gee_design_structure = "^Approximate GEE sample size using independent-sample calculation multiplied by design effect ([0-9]+\\.[0-9]{3}) \\((Exchangeable|AR\\(1\\)|Unstructured) working correlation\\)\\.$",
+    note_sem_complexity_count = "^Complexity-based planning estimate using ([0-9]+) cases per free parameter, observed/latent variable burden, and approximate power for loading/path detectability\\.$",
+    note_reliability_alpha_items = "^Bonett-style log\\(1 - alpha\\) normal approximation for coefficient alpha precision with ([0-9]+) items; final n is not allowed below items \\+ 1\\.$",
+    note_reliability_icc_items = "^Approximate Fisher z precision method for intraclass correlation with ([0-9]+) raters/measurements\\.$",
+    note_cluster_design_effect = "^Parallel cluster randomized trial using individual-randomized sample size multiplied by design effect ([0-9]+\\.[0-9]{3}) = 1 \\+ \\(m - 1\\) ICC\\.$",
+    note_cluster_simulations = "^Simulation-based stepped-wedge cluster trial power using a Hussey-Hughes style mixed model with fixed period effects and random cluster intercepts \\(([0-9]+) simulations\\)\\.$",
+    note_buderer_sensitivity_precision = "^Buderer precision-based diagnostic accuracy sample size for sensitivity\\. Achieved half-width is approximately ([0-9]+\\.[0-9]{3})\\.$",
+    note_buderer_specificity_precision = "^Buderer precision-based diagnostic accuracy sample size for specificity\\. Achieved half-width is approximately ([0-9]+\\.[0-9]{3})\\.$",
+    note_bootstrap_counts = "^Bootstrap indirect effect CI simulation \\(([0-9]+) simulations x ([0-9]+) bootstrap samples\\)\\. This is slow and approximate\\.$",
+    note_lmm_counts = "^Simulation-based LMM power using nlme::lme with random intercepts \\(([0-9]+) simulations\\)\\. Results depend on variance assumptions, ICC, time points, and model structure\\.$",
+    note_gls_structure_counts = "^GLIMMPSE-style mean/covariance simulation using nlme::gls with (Exchangeable|AR\\(1\\)|Unstructured) repeated-measures correlation \\(([0-9]+) simulations\\)\\.$",
+    note_sem_parameter_counts = "^Approximate power simulation for a (standardized path|standardized loading|latent correlation) of (-?[0-9]+\\.[0-9]{2}) using a large-sample standard-error approximation, a (simple|moderate|complex) complexity adjustment, and ([0-9]+) draws per evaluated sample size\\. This is not a full SEM data-generation and model-refitting Monte Carlo study\\.$"
+  )
+  for (key in names(patterns)) {
+    parts <- regmatches(text, regexec(patterns[[key]], text, perl = TRUE))[[1]]
+    if (!length(parts)) next
+    template <- statedu_t(paste0("sample_size.result.", key), language, fallback = "")
+    if (!nzchar(template)) return(text)
+    slots <- parts[-1]
+    labels <- c("Exchangeable" = "exchangeable", "AR(1)" = "ar1", "Unstructured" = "unstructured", "standardized path" = "path", "standardized loading" = "loading", "latent correlation" = "correlation", "simple" = "simple", "moderate" = "moderate", "complex" = "complex")
+    categorical <- if (key == "note_gls_structure_counts") 1L else if (key == "note_gee_design_structure") 2L else if (key == "note_sem_parameter_counts") c(1L, 3L) else integer()
+    for (i in categorical) slots[[i]] <- statedu_t(paste0("sample_size.result.note_value_", labels[[slots[[i]]]]), language, fallback = slots[[i]])
+    return(do.call(sprintf, c(list(fmt = template), as.list(slots))))
+  }
+  text
+}
+
+sample_size_result_text <- function(text, language = statedu_initial_language()) {
+  if (is.null(text)) return(NULL)
+  keys <- paste0("sample_size.result.", c("paired_formula", "one_sample_formula", "independent_formula", "group_n_error", "groups_error", "total_n_error", "risk_difference", "risk_ratio", "odds_ratio", "point_biserial", "correlation_f", "correlation_r2"))
+  keys <- c(keys, paste0("sample_size.result.", c("anova_eta", "anova_omega", "anova_f", "ancova_adjusted", "manova_pillai", "manova_wilks", "ancova_eta")))
+  keys <- c(keys, paste0("sample_size.result.", c("rank_biserial", "paired_rank", "epsilon", "kendall", "matched_counts", "matched_g", "matched_probs", "incremental_f2", "logistic_d", "interaction_f2")))
+  keys <- c(keys, paste0("sample_size.result.", c("gee_binary", "gee_supplied", "gee_change", "gee_parameter", "gee_means", "glmm_binary", "glmm_count", "glmm_gaussian", "lmm_spss", "lmm_glimmpse", "lmm_simple")))
+  keys <- c(keys, paste0("sample_size.result.", c("survival_hr", "equivalence_distance", "noninferiority_distance", "diagnostic_auc", "gamma_ratio", "count_ratio")))
+  keys <- c(keys, paste0("sample_size.result.", c("cluster_binary", "cluster_stepped", "cluster_continuous", "precision_mean", "precision_proportion", "precision_correlation", "reliability_alpha", "reliability_icc", "reliability_kappa", "reliability_agreement", "sem_rmsea", "sem_parameter", "sem_complexity")))
+  keys <- c(keys, paste0("sample_size.result.", c("planning_t", "planning_rank_omnibus", "planning_rank_pair", "planning_proportion", "planning_chisquare", "planning_correlation")))
+  keys <- c(keys, paste0("sample_size.result.", c("planning_anova_rank", "planning_anova_f", "planning_manova", "planning_rank_ancova", "planning_ancova", "planning_logistic", "planning_regression_f2")))
+  keys <- c(keys, paste0("sample_size.result.", c("planning_mediation_fritz", "planning_mediation_mc", "planning_mediation_bootstrap", "planning_mediation_sobel", "planning_mediation_fallback")))
+  keys <- c(keys, paste0("sample_size.result.", c("planning_gee", "planning_lmm_gls", "planning_lmm_longpower", "planning_lmm_lme")))
+  keys <- c(keys, paste0("sample_size.result.", c("planning_survival", "planning_tost_exact", "planning_equivalence_normal", "planning_auc", "planning_diagnostic_precision")))
+  keys <- c(keys, paste0("sample_size.result.", c("planning_precision_r", "planning_precision_p", "planning_precision_mean", "planning_mcnemar", "planning_rates_nb", "planning_rates_single", "planning_rates_poisson")))
+  keys <- c(keys, paste0("sample_size.result.", c("planning_cluster_stepped", "planning_cluster_webpower", "planning_cluster_de", "planning_reliability_ba", "planning_reliability_alpha", "planning_reliability_icc", "planning_reliability_kappa", "planning_sem_complexity", "planning_sem_parameter", "planning_sem_rmsea")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_mediation_sobel", "note_mediation_mc")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_t_independent", "note_t_equal", "note_t_one", "note_t_paired", "note_t_r", "note_t_pooled")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_proportion_transform", "note_w_categories", "note_phi", "note_w_planning", "note_point_biserial", "note_pearson", "note_cohens_q", "note_r_squared", "note_r_f")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_omega_f", "note_anova_df", "note_pillai", "note_wilks", "note_ancova_df", "note_logistic_d", "note_moderation_f2")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_rank_orientation", "note_epsilon_bound", "note_matched_correction", "note_matched_probabilities")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_gee_supplied", "note_glmm_logit", "note_glmm_probs", "note_glmm_log", "note_glmm_rates", "note_glmm_identity", "note_lmm_vectors")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_lmm_spss_omnibus", "note_lmm_spss_pairwise", "note_lmm_spss_combined")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_equivalence_inside", "note_noninferiority_above")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_cluster_binary", "note_cluster_stepped")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_agreement_approx", "note_sem_parameter", "note_sem_rmsea")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_plan_t_two", "note_plan_t_paired", "note_plan_t_one", "note_plan_t_unequal_n", "note_plan_t_unequal_power", "note_plan_rank_are")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_power_t_two", "note_power_t_paired", "note_power_t_one", "note_power_rank", "note_prop_two_n", "note_prop_two_power", "note_prop_one_n", "note_prop_one_power", "note_correlation_z", "note_chisquare_ncp")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_plan_kw", "note_plan_friedman", "note_plan_repeated", "note_plan_mixed", "note_plan_two_way", "note_plan_one_way")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_plan_manova", "note_plan_rank_ancova", "note_plan_ancova", "note_plan_logistic", "note_plan_multiple", "note_plan_hierarchical", "note_plan_moderation")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_plan_survival", "note_plan_tost_exact", "note_plan_tost_normal", "note_plan_ni_normal", "note_plan_auc")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_buderer_sensitivity", "note_buderer_specificity")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_precision_mean", "note_precision_proportion", "note_precision_correlation", "note_mcnemar_normal", "note_rate_single", "note_rate_nb", "note_rate_poisson")))
+  keys <- c(keys, "sample_size.result.note_longpower")
+  keys <- c(keys, "sample_size.result.note_cluster_webpower")
+  keys <- c(keys, paste0("sample_size.result.", c("note_reliability_ba", "note_reliability_kappa")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_sem_rmsea_structure", "note_sem_rmsea_manual")))
+  keys <- c(keys, paste0("sample_size.result.", c("note_loglink_irr", "note_loglink_mean_ratio")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_rate_ratio_neutral", "error_rate_log_ratio", "error_rates_equal", "error_rate_dispersion")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_auc_null", "error_expected_auc_null", "error_diagnostic_precision")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_time_points_min", "error_unstructured_range", "error_unstructured_pd", "error_exchangeable_pd")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_vector_group1", "error_vector_group2", "error_vector_unstructured", "error_vector_working")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_lmm_two_times", "error_lmm_equal_lengths", "error_lmm_group1_times", "error_lmm_group2_times")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_gee_unstructured_range", "error_gee_rho_range")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_simulations_min", "error_simulations_numeric")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_sem_parameter_numeric", "error_sem_parameter_range")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_sem_df", "error_sem_estimated_df", "error_rmsea_close", "error_rmsea_not_close")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_sem_latent_count", "error_sem_measured_count", "error_sem_path_count", "error_sem_free_count")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_reliability_items", "error_reliability_raters", "error_reliability_categories")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_equivalence_boundary", "error_noninferiority_boundary")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_survival_hr", "error_survival_event_probability")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_expected_r_finite", "error_expected_r_nonzero", "error_correlation_half_width")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_correlation_single", "error_correlation_pair")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_chisquare_lengths", "error_chisquare_proportions", "error_chisquare_dimensions")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_mcnemar_b", "error_mcnemar_c", "error_mcnemar_no_pairs", "error_mcnemar_probability_sum")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_mann_whitney_limit", "error_friedman_measurements")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_r2_range", "error_full_r2_range", "error_delta_r2_range", "error_reduced_r2_order")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_logistic_or", "error_logistic_covariate_r2")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_ancova_covariate_r2", "error_manova_dependents", "error_pillai_range", "error_wilks_range")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_ancova_covariates", "error_manova_outcomes", "error_manova_planning_pillai")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_gee_means_numeric", "error_gee_change_numeric", "error_gee_parameter_numeric")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_glmm_logit_numeric", "error_glmm_log_numeric", "error_glmm_gaussian_numeric")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_expected_difference_numeric", "error_expected_mean_numeric")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_correlation_t_finite", "error_point_biserial_range")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_2x2_counts", "error_mcnemar_p01_range", "error_mcnemar_p10_range")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_anova_epsilon", "error_anova_repeated_correlation", "error_anova_measurements")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_anova_factor_levels", "error_friedman_measurement_count", "error_friedman_w_range")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_regression_predictors", "error_regression_tested", "error_regression_total_predictors")))
+  keys <- c(keys, paste0("sample_size.result.", c("error_cluster_size_positive", "error_cluster_icc_range", "error_cluster_effect_periods")))
+  english <- vapply(keys, function(key) statedu_t(key, "en", fallback = ""), character(1))
+  vapply(text, function(value) {
+    if (is.na(value) || !nzchar(value)) return(value)
+    index <- match(value, english)
+    if (is.na(index)) sample_size_count_note_text(value, language) else statedu_t(keys[[index]], language, value)
+  }, character(1), USE.NAMES = FALSE)
+}
+
 sample_size_results_ui <- function(result, language = statedu_initial_language()) {
   language <- normalize_app_language(language)
   if (is.null(result)) {
@@ -3619,7 +3823,7 @@ sample_size_results_ui <- function(result, language = statedu_initial_language()
     return(div(
       class = "sample-size-progress",
       id = result$id,
-      div(class = "sample-size-progress-text", result$text %||% paste0(sample_size_ui_text(language, "calculating"), " 0%")),
+      div(class = "sample-size-progress-text", if (is.null(result$text)) paste0(sample_size_progress_text(NULL, language), " 0%") else sample_size_progress_text(result$text, language)),
       div(
         class = "sample-size-progress-track",
         div(
@@ -3637,20 +3841,25 @@ sample_size_results_ui <- function(result, language = statedu_initial_language()
     ))
   }
   if (!is.null(result$error)) {
-    return(div(class = "analysis-warning", result$error))
+    return(div(class = "analysis-warning", if (identical(result$error, "Calculation stopped.")) sample_size_progress_text(result$error, language) else sample_size_result_text(result$error, language)))
   }
+  note_text <- result_sci_note_text(
+    estimation = sample_size_result_text(c(result$method_note, result$formula_note), language)
+  )
+  references <- result_sci_note_values(result$references)
   div(
     class = "sample-size-result-panel",
-    sample_size_result_table(result, language),
-    if (!is.null(result$method_note)) div(class = "sample-size-method-note", result$method_note),
-    if (!is.null(result$formula_note)) div(class = "sample-size-method-note", strong(sample_size_ui_text(language, "formula_approximation")), result$formula_note),
-    if (length(result$references %||% character(0)) > 0) {
-      div(
-        class = "sample-size-references",
-        strong(sample_size_ui_text(language, "references")),
-        tags$ul(lapply(result$references, tags$li))
-      )
-    }
+    result_table_with_notes(
+      sample_size_result_table(result, language),
+      result_note_tag(note_text),
+      if (length(references) > 0L) {
+        div(
+          class = "sample-size-references coefficient-note",
+          strong(sample_size_ui_text(language, "references")),
+          tags$ul(lapply(references, tags$li))
+        )
+      }
+    )
   )
 }
 
@@ -4346,7 +4555,7 @@ effect_size_sem_calculate <- function(input) {
 sample_size_input_snapshot <- function(method, input) {
   target_name <- paste0("sample_size_", method, "_target")
   target <- input[[target_name]] %||% "sample_size"
-  switch(
+  design <- switch(
     method,
     effectsize = list(
       sample_size_effectsize_design = input$sample_size_effectsize_design %||% "independent_means"
@@ -4429,6 +4638,9 @@ sample_size_input_snapshot <- function(method, input) {
     ),
     stats::setNames(list(target), target_name)
   )
+  saved <- isolate(if (inherits(input, "reactivevalues")) reactiveValuesToList(input) else as.list(input))
+  saved <- saved[startsWith(names(saved), paste0("sample_size_", method, "_"))]
+  utils::modifyList(saved, design)
 }
 
 sample_size_progress_message <- function(path) {
@@ -4567,7 +4779,7 @@ register_sample_size_server <- function(input, output, session, app_language_fn 
           list(
             id = job$progress_id,
             value = progress_message$value %||% 0,
-            text = progress_message$text %||% "Calculating..."
+            text = sample_size_progress_text(progress_message$text, sample_size_language())
           )
         )
       }
@@ -4602,8 +4814,8 @@ register_sample_size_server <- function(input, output, session, app_language_fn 
   for (effect_method in names(effect_size_method_labels())) {
     local({
       effect_method_local <- effect_method
-      output[[paste0("lazy_effect_size_", effect_method_local)]] <- renderUI({
-        tab_panel_content(effect_size_analysis_panel(effect_method_local, sample_size_language()))
+      register_visible_ui_output(output, session, paste0("lazy_effect_size_", effect_method_local), function() {
+        tab_panel_content(effect_size_analysis_panel(effect_method_local, sample_size_language(), input))
       })
     })
   }
@@ -4717,8 +4929,8 @@ register_sample_size_server <- function(input, output, session, app_language_fn 
   for (method in methods) {
     local({
       method_local <- method
-      output[[paste0("lazy_sample_size_", method_local)]] <- renderUI({
-        tab_panel_content(sample_size_analysis_panel(method_local, sample_size_language()))
+      register_visible_ui_output(output, session, paste0("lazy_sample_size_", method_local), function() {
+        tab_panel_content(sample_size_analysis_panel(method_local, sample_size_language(), input))
       })
       output[[paste0("sample_size_", method_local, "_inputs")]] <- renderUI(sample_size_inputs_ui(method_local, sample_size_input_snapshot(method_local, input), sample_size_language()))
       output[[paste0("sample_size_", method_local, "_results")]] <- renderUI(sample_size_results_ui(results[[method_local]](), sample_size_language()))
@@ -4765,7 +4977,7 @@ register_sample_size_server <- function(input, output, session, app_language_fn 
         sample_size_jobs(jobs)
         session$sendCustomMessage(
           "sample-size-progress",
-          list(id = progress_id, value = 0.01, text = "Starting")
+          list(id = progress_id, value = 0.01, text = sample_size_progress_text("Starting", sample_size_language()))
         )
       })
       if (identical(method_local, "lmm")) {

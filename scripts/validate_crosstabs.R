@@ -95,6 +95,8 @@ expect_true(grepl("1\\(\u00A05.0\\)", crosstab_cell_text(1, 5), fixed = FALSE), 
 expect_true(!grepl("OR=", display_html), "Expected ES cell to omit effect size type")
 expect_true(grepl("2.12", display_html), "Expected ES cell to include numeric estimate")
 expect_true(grepl("ES = effect size (odds ratio)", display_notes, fixed = TRUE), "Expected ES type note")
+expect_true(grepl('data-result-table-orientation="portrait"', display_html, fixed = TRUE), "Expected rendered compact 2 x 2 crosstab to use B5 portrait")
+expect_true(!grepl('result-table-sheet--landscape', display_html, fixed = TRUE), "Expected compact 2 x 2 crosstab not to be forced to landscape by a minimum width")
 
 no_total_n_result <- display_result
 no_total_n_result$options$total_n <- FALSE
@@ -142,7 +144,7 @@ expect_true(isTRUE(crosstab_primary_table_landscape(wide_crosstab_result)), "Exp
 expect_true(grepl("landscape-table-panel", wide_crosstab_html, fixed = TRUE), "Expected wide crosstab primary table section to carry landscape class")
 expect_true(identical(length(gregexpr("landscape-table-panel", wide_crosstab_html, fixed = TRUE)[[1]]), 1L), "Expected only the wide primary crosstab table, not its expected-counts table, to be landscape")
 wide_saved_html <- saved_crosstab_results_html(wide_crosstab_result, report_mode = TRUE)
-expect_true(grepl('class="print-mixed-landscape"', wide_saved_html, fixed = TRUE), "Expected crosstab PDF HTML to enable mixed portrait/landscape output when any primary table is wide")
+expect_true(grepl('data-result-table-orientation="landscape"', wide_saved_html, fixed = TRUE), "Expected wide crosstab PDF tables to carry the landscape export contract")
 
 message("Checking grouped crosstab column alignment...")
 uneven_col_data <- data.frame(
@@ -174,7 +176,7 @@ uneven_group <- list(uneven_result_1, uneven_result_2)
 expect_true(identical(crosstab_column_group_colnames(uneven_group), c("1", "2", "3")), "Expected grouped crosstab to use the union of column levels")
 uneven_group_html <- renderTags(crosstab_column_group_table_ui(uneven_group))$html
 expect_true(identical(length(gregexpr('class="crosstab-count-col"', uneven_group_html, fixed = TRUE)[[1]]), 3L), "Expected grouped crosstab colgroup to include all unioned column levels")
-expect_true(grepl("<th class=\"crosstab-level-head\">3</th>", uneven_group_html, fixed = TRUE), "Expected grouped crosstab header to include later-only column level")
+expect_true(grepl('<th class="crosstab-level-head"[^>]*>3</th>', uneven_group_html), "Expected grouped crosstab header to include later-only column level")
 uneven_export <- crosstab_excel_group_table(uneven_group)
 expect_true("3" %in% names(uneven_export), "Expected grouped crosstab Excel export to include later-only column level")
 
@@ -208,7 +210,7 @@ split_group <- list(split_result_1, split_result_2)
 split_group_html <- renderTags(crosstab_column_group_ui(split_group))$html
 expect_true(grepl("Cross-tabulation: col_group (1/2)", split_group_html, fixed = TRUE), "Expected wide grouped crosstab to render the first split panel")
 expect_true(grepl("Cross-tabulation: col_group (2/2)", split_group_html, fixed = TRUE), "Expected wide grouped crosstab to render the second split panel")
-expect_true(grepl("<th class=\"crosstab-level-head\">9</th>", split_group_html, fixed = TRUE), "Expected the final split panel to include the last column level")
+expect_true(grepl('<th class="crosstab-level-head"[^>]*>9</th>', split_group_html), "Expected the final split panel to include the last column level")
 
 trend_display_html <- renderTags(crosstab_main_table_ui(trend_2xk))$html
 trend_note_html <- renderTags(crosstab_single_result_ui(trend_2xk))$html
@@ -231,6 +233,15 @@ expect_true(grepl(sprintf('class="crosstab-footnote-marker">%s</sup>', cramer_ma
 single_result_html <- renderTags(crosstab_single_result_ui(display_result))$html
 expect_true(!grepl("Tests:", single_result_html, fixed = TRUE), "Expected single result to omit the separate tests table")
 expect_true(!grepl("<h3>Effect size</h3>", single_result_html, fixed = TRUE), "Expected single result to omit the separate effect size table")
+style_source <- paste(readLines(file.path(repo_root, "www", "style.css"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+expect_true(grepl(".crosstab-main-table {\n  min-width: 0;", style_source, fixed = TRUE), "Expected compact crosstab tables to avoid the legacy 760px minimum")
+expect_true(grepl(".crosstab-main-table th,\n.crosstab-main-table td {\n  padding: 7px 4px;", style_source, fixed = TRUE), "Expected compact B5 crosstab cell padding")
+expect_true(grepl(".result-table-sheet > table.result-table-contract-table.crosstab-main-table {\n  table-layout: fixed !important;", style_source, fixed = TRUE), "Expected the B5 contract to preserve the crosstab colgroup layout")
+expect_true(grepl(
+  ".landscape-table-panel .crosstab-main-table {\n  width: 100% !important;\n  min-width: 0 !important;\n  max-width: 100% !important;\n  table-layout: fixed !important;\n  font-size: 12px !important;",
+  style_source,
+  fixed = TRUE
+), "Expected landscape crosstab body text to remain 12px")
 
 message("Checking setup listbox height...")
 setup_state <- crosstab_setup_state(
@@ -332,6 +343,73 @@ label_preview <- analysis_data_viewer_labeled_data(
   use_labels = TRUE
 )
 expect_true(identical(as.character(label_preview$group), c("Control", "Treatment", "3")), "Expected viewer to apply available value labels")
+
+message("Checking imported category labels beyond the sixth pair...")
+value_pair_renderer <- paste(
+  as.character(category_label_input_renderer("value_8", 1L, 2L, 0L)),
+  collapse = "\n"
+)
+reference_renderer <- paste(
+  as.character(category_label_input_renderer("reference", 1L, 2L, 0L)),
+  collapse = "\n"
+)
+category_callback <- paste(as.character(category_label_table_callback("en")), collapse = "\n")
+expect_true(
+  grepl("Math.min(11, nUnique)", value_pair_renderer, fixed = TRUE),
+  "Expected the category editor to enable value-label pairs through the shared maximum"
+)
+expect_true(
+  grepl("optionIndex <= 11", reference_renderer, fixed = TRUE),
+  "Expected reference choices to include value-label pairs beyond the sixth pair"
+)
+expect_true(
+  grepl("i <= 11", category_callback, fixed = TRUE),
+  "Expected reference label lookup to include value-label pairs beyond the sixth pair"
+)
+diagnosis_codes <- rep(seq_len(8), each = 2)
+diagnosis_labels <- paste("Diagnosis", seq_len(8))
+attr(diagnosis_codes, "labels") <- stats::setNames(seq_len(8), diagnosis_labels)
+diagnosis_pairs <- value_label_pairs(
+  diagnosis_codes,
+  diagnosis_codes,
+  measurement = "category"
+)
+expect_true(
+  identical(diagnosis_pairs[["value_8"]], "8") && identical(diagnosis_pairs[["label_8"]], "Diagnosis 8"),
+  "Expected file import to retain the eighth category value and label"
+)
+diagnosis_category_table <- as.data.frame(
+  c(list(name = "diagnosis"), as.list(diagnosis_pairs)),
+  stringsAsFactors = FALSE,
+  check.names = FALSE
+)
+expect_true(
+  identical(frequency_category_value_order("diagnosis", diagnosis_category_table), as.character(seq_len(8))),
+  "Expected category ordering to include labels beyond the sixth pair"
+)
+diagnosis_result <- prepare_crosstab_results(
+  data.frame(
+    group = rep(c("Control", "Treatment"), times = 8),
+    diagnosis = rep(seq_len(8), each = 2),
+    stringsAsFactors = FALSE
+  ),
+  row_var = "group",
+  col_var = "diagnosis",
+  variable_info = data.frame(
+    name = c("group", "diagnosis"),
+    measurement = c("binary", "category"),
+    stringsAsFactors = FALSE
+  ),
+  category_table = diagnosis_category_table,
+  options = list(row_percent = TRUE, column_percent = FALSE, total_percent = FALSE, trend = FALSE)
+)
+expect_true(
+  identical(
+    unname(crosstab_value_labels("diagnosis", colnames(diagnosis_result$table), diagnosis_category_table)),
+    diagnosis_labels
+  ),
+  "Expected cross-tabulation output to display every imported category label"
+)
 top_preview <- analysis_data_viewer_labeled_data(data.frame(group = seq_len(25), check.names = FALSE), "group")
 expect_true(nrow(top_preview) == 15, "Expected selected data viewer preview to stop at 15 rows")
 

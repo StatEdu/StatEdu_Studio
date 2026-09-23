@@ -1,14 +1,14 @@
 # Data helpers for categorical value label editing.
 
-category_label_value_columns <- function(max_pairs = 11) {
+category_label_value_columns <- function(max_pairs = statedu_category_label_max_pairs()) {
   as.vector(rbind(paste0("value_", seq_len(max_pairs)), paste0("label_", seq_len(max_pairs))))
 }
 
-category_label_edit_columns <- function(max_pairs = 11) {
+category_label_edit_columns <- function(max_pairs = statedu_category_label_max_pairs()) {
   c("var_label", "reference", "reference_label", category_label_value_columns(max_pairs))
 }
 
-category_label_save_columns <- function(max_pairs = 11) {
+category_label_save_columns <- function(max_pairs = statedu_category_label_max_pairs()) {
   c("reference", "reference_label", category_label_value_columns(max_pairs))
 }
 
@@ -20,7 +20,7 @@ category_label_display_data <- function(
   controls = character(0),
   saved_values = NULL,
   measurement_overrides = character(0),
-  max_pairs = 11
+  max_pairs = statedu_category_label_max_pairs()
 ) {
   if (is.null(info) || nrow(info) == 0) {
     return(NULL)
@@ -32,14 +32,7 @@ category_label_display_data <- function(
     return(data.frame(Message = "No categorical variables are selected.", check.names = FALSE))
   }
   info$selected <- TRUE
-  info$role <- vapply(
-    info$name,
-    role_for_variable,
-    character(1),
-    dependent = dependent,
-    independent = independent,
-    controls = controls
-  )
+  info$role <- roles_for_variables(info$name, dependent, independent, controls)
   info <- info[info$measurement %in% c("binary", "category", "ordered"), , drop = FALSE]
   if (nrow(info) == 0) {
     return(data.frame(Message = "No categorical variables are selected.", check.names = FALSE))
@@ -54,11 +47,25 @@ category_label_display_data <- function(
   }
 
   if (is.data.frame(saved_values) && "name" %in% names(saved_values)) {
-    for (row_index in seq_len(nrow(info))) {
-      saved_index <- match(info$name[[row_index]], saved_values$name)
-      if (!is.na(saved_index)) {
-        for (column in edit_columns) {
-          if (column %in% names(saved_values)) {
+    saved_columns <- edit_columns[edit_columns %in% names(saved_values)]
+    saved_matches <- if (is.character(info$name) && !is.object(info$name) &&
+      is.character(saved_values$name) && !is.object(saved_values$name)) match(info$name, saved_values$name) else NULL
+    # Batch ordinary text only; preserve scalar coercion and diagnostic order for other columns.
+    plain_character <- function(x) is.character(x) && is.null(attributes(x))
+    batch_saved <- !is.null(saved_matches) && identical(class(info), "data.frame") &&
+      identical(class(saved_values), "data.frame") && all(vapply(saved_columns, function(column) {
+        plain_character(info[[column]]) && plain_character(saved_values[[column]])
+      }, logical(1)))
+    if (batch_saved) {
+      saved_rows <- which(!is.na(saved_matches))
+      for (column in saved_columns) {
+        info[[column]][saved_rows] <- saved_values[[column]][saved_matches[saved_rows]]
+      }
+    } else {
+      for (row_index in seq_len(nrow(info))) {
+        saved_index <- if (is.null(saved_matches)) match(info$name[[row_index]], saved_values$name) else saved_matches[[row_index]]
+        if (!is.na(saved_index)) {
+          for (column in saved_columns) {
             info[[column]][[row_index]] <- as.character(saved_values[[column]][[saved_index]] %||% "")
           }
         }
@@ -111,7 +118,7 @@ selected_variable_summary_data <- function(
   output
 }
 
-category_label_seed_table <- function(base, max_pairs = 11) {
+category_label_seed_table <- function(base, max_pairs = statedu_category_label_max_pairs()) {
   edit_columns <- category_label_edit_columns(max_pairs)
   if (is.null(base) || !"name" %in% names(base)) {
     return(NULL)
@@ -149,7 +156,7 @@ new_category_label_row <- function(name, columns) {
   )
 }
 
-update_category_label_table <- function(table, base, name, field, value, max_pairs = 11) {
+update_category_label_table <- function(table, base, name, field, value, max_pairs = statedu_category_label_max_pairs()) {
   edit_columns <- category_label_edit_columns(max_pairs)
   if (!nzchar(name) || !field %in% edit_columns) {
     return(list(table = table, changed = FALSE, var_label_update = NULL, ok = FALSE))
@@ -188,7 +195,12 @@ update_category_label_table <- function(table, base, name, field, value, max_pai
   list(table = table, changed = changed, var_label_update = var_label_update, ok = TRUE)
 }
 
-merge_category_label_save_request <- function(current, incoming, base = NULL, max_pairs = 11) {
+merge_category_label_save_request <- function(
+  current,
+  incoming,
+  base = NULL,
+  max_pairs = statedu_category_label_max_pairs()
+) {
   value_columns <- category_label_save_columns(max_pairs)
   if (is.null(incoming)) {
     return(current)
@@ -212,7 +224,12 @@ merge_category_label_save_request <- function(current, incoming, base = NULL, ma
   current
 }
 
-apply_category_label_snapshot <- function(current, incoming, base = NULL, max_pairs = 11) {
+apply_category_label_snapshot <- function(
+  current,
+  incoming,
+  base = NULL,
+  max_pairs = statedu_category_label_max_pairs()
+) {
   edit_columns <- category_label_edit_columns(max_pairs)
   if (is.null(incoming)) {
     return(list(table = current, changed = FALSE, var_label_updates = character(0)))
@@ -245,27 +262,77 @@ apply_category_label_snapshot <- function(current, incoming, base = NULL, max_pa
     }
   }
 
-  for (row_index in seq_len(nrow(current))) {
-    reference <- trimws(as.character(current$reference[[row_index]] %||% ""))
-    reference_label <- ""
-    if (nzchar(reference)) {
-      for (i in seq_len(max_pairs)) {
-        if (identical(trimws(as.character(current[[paste0("value_", i)]][[row_index]] %||% "")), reference)) {
-          reference_label <- as.character(current[[paste0("label_", i)]][[row_index]] %||% "")
-          break
+  # Preserve scalar coercion and diagnostics for special columns or nonstandard pair counts.
+  plain_text <- function(x) is.character(x) && is.null(attributes(x)) && !anyNA(x)
+  batch_reference <- identical(class(current), "data.frame") &&
+    is.numeric(max_pairs) && !is.object(max_pairs) && length(max_pairs) == 1L &&
+    is.finite(max_pairs) && max_pairs >= 1 && max_pairs == floor(max_pairs) &&
+    all(vapply(c("reference", "reference_label", category_label_value_columns(max_pairs)),
+      function(column) plain_text(current[[column]]), logical(1)))
+  if (batch_reference) {
+    references <- trimws(current$reference)
+    labels <- rep("", nrow(current))
+    pending <- which(nzchar(references))
+    for (i in seq_len(max_pairs)) {
+      if (!length(pending)) break
+      matched <- trimws(current[[paste0("value_", i)]][pending]) == references[pending]
+      rows <- pending[matched]
+      labels[rows] <- current[[paste0("label_", i)]][rows]
+      pending <- pending[!matched]
+    }
+    updated <- which(current$reference_label != labels)
+    if (length(updated)) {
+      current$reference_label[updated] <- labels[updated]
+      changed <- TRUE
+    }
+  } else {
+    for (row_index in seq_len(nrow(current))) {
+      reference <- trimws(as.character(current$reference[[row_index]] %||% ""))
+      reference_label <- ""
+      if (nzchar(reference)) {
+        for (i in seq_len(max_pairs)) {
+          if (identical(trimws(as.character(current[[paste0("value_", i)]][[row_index]] %||% "")), reference)) {
+            reference_label <- as.character(current[[paste0("label_", i)]][[row_index]] %||% "")
+            break
+          }
         }
       }
-    }
-    if (!identical(as.character(current$reference_label[[row_index]] %||% ""), reference_label)) {
-      current$reference_label[[row_index]] <- reference_label
-      changed <- TRUE
+      if (!identical(as.character(current$reference_label[[row_index]] %||% ""), reference_label)) {
+        current$reference_label[[row_index]] <- reference_label
+        changed <- TRUE
+      }
     }
   }
 
   list(table = current, changed = changed, var_label_updates = var_label_updates)
 }
 
-collect_category_label_inputs_from_table <- function(table_data, input, max_pairs = 11) {
+collect_category_label_event_inputs <- function(table_data, input, max_pairs = statedu_category_label_max_pairs()) {
+  # Event handlers already isolate reads. Bound each context's dependency list without
+  # changing the general collector's reactive dependency contract.
+  plain_column <- function(x) is.atomic(x) && is.null(attributes(x)) && !anyNA(x)
+  if (!identical(class(table_data), "data.frame") ||
+      !all(c("source_order", "name") %in% names(table_data)) ||
+      !shiny::is.reactivevalues(input) || nrow(table_data) <= 64L ||
+      !identical(max_pairs, statedu_category_label_max_pairs()) ||
+      !is.character(table_data$name) || !plain_column(table_data$name) ||
+      !plain_column(table_data$source_order)) {
+    return(collect_category_label_inputs_from_table(table_data, input, max_pairs))
+  }
+  collected <- list()
+  for (start in seq.int(1L, nrow(table_data), by = 64L)) {
+    rows <- seq.int(start, min(start + 63L, nrow(table_data)))
+    batch <- shiny::isolate(collect_category_label_inputs_from_table(table_data[rows, , drop = FALSE], input, max_pairs))
+    for (name in names(batch)) collected[[name]] <- batch[[name]]
+  }
+  collected
+}
+
+collect_category_label_inputs_from_table <- function(
+  table_data,
+  input,
+  max_pairs = statedu_category_label_max_pairs()
+) {
   if (is.null(table_data) || !is.data.frame(table_data) || !all(c("source_order", "name") %in% names(table_data))) {
     return(NULL)
   }

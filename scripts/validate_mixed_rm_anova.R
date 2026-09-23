@@ -1,5 +1,9 @@
 Sys.setenv(STATEDU_NO_PACKAGE_INSTALL = "true")
 
+if (.Platform$OS.type == "windows") {
+  invisible(try(Sys.setlocale("LC_CTYPE", "English_United States.utf8"), silent = TRUE))
+}
+
 source(file.path("R", "app_bootstrap.R"))
 load_app_packages(check = FALSE)
 source_app_modules()
@@ -83,7 +87,7 @@ stopifnot(any(grepl("Group x Time", result$overview$Value, fixed = TRUE)))
 chain_rows <- data.frame(Contrast = c("c-d", "c-b", "d-b"), `p adjusted` = c("<.001", "<.001", "<.001"), stringsAsFactors = FALSE, check.names = FALSE)
 stopifnot(identical(mixed_rm_significant_order_notation(c("b", "c", "d"), c(b = 1, c = 3, d = 2), chain_rows), "c>d>b"))
 tier_rows <- data.frame(Contrast = c("c-b", "c-a", "b-a", "d-b", "d-a"), `p adjusted` = c("<.001", "<.001", "<.001", "<.001", "<.001"), stringsAsFactors = FALSE, check.names = FALSE)
-stopifnot(identical(mixed_rm_significant_order_notation(c("a", "b", "c", "d"), c(a = 1, b = 2, c = 4, d = 3.9), tier_rows), "c,d>b>a"))
+stopifnot(identical(mixed_rm_significant_order_notation(c("a", "b", "c", "d"), c(a = 1, b = 2, c = 4, d = 3.9), tier_rows), "c>b,a; d>b>a"))
 
 set.seed(100)
 hetero_data <- data.frame(
@@ -478,6 +482,8 @@ stopifnot(grepl("simple mean differences", estimated_between$observed_descriptiv
 stopifnot(grepl("estimated marginal mean differences", estimated_between$adjusted_descriptives_note, fixed = TRUE))
 stopifnot(grepl("estimated marginal mean differences", estimated_between$descriptives_note, fixed = TRUE))
 
+previous_ui_language <- getOption("statedu.app_language", NULL)
+options(statedu.app_language = "ko")
 ui <- mixed_rm_anova_results_ui(result)
 html <- paste(htmltools::renderTags(ui)$html, collapse = "\n")
 stopifnot(grepl("Repeated-measures ANOVA", html, fixed = TRUE))
@@ -488,9 +494,68 @@ stopifnot(regexpr("Group x time summary", html, fixed = TRUE)[[1]] < regexpr("Re
 stopifnot(grepl("Post-hoc comparisons", html, fixed = TRUE))
 stopifnot(regexpr("Repeated-measures ANOVA", html, fixed = TRUE)[[1]] < regexpr("Post-hoc comparisons", html, fixed = TRUE)[[1]])
 stopifnot(grepl("coefficient-header-break", html, fixed = TRUE))
-stopifnot(grepl("<span>epsilon</span>", html, fixed = TRUE), grepl("<span>(GG)</span>", html, fixed = TRUE), grepl("<span>(HF)</span>", html, fixed = TRUE))
+publication <- mixed_rm_publication_tables(result)
+stopifnot(all(c("epsilon(GG)", "epsilon(HF)", "Correction") %in% names(publication$diagnostics)))
+stopifnot(!any(c("df1", "df2", "Mauchly W", "Correction") %in% names(publication$main)))
+stopifnot("F(df1,df2)" %in% names(publication$main))
 stopifnot(grepl("vertical-align:super;\">a</sup>", html, fixed = TRUE), grepl("vertical-align:super;\">b</sup>", html, fixed = TRUE), grepl("vertical-align:super;\">c</sup>", html, fixed = TRUE))
 stopifnot(grepl("coefficient-footnote-marker", html, fixed = TRUE), grepl("partial \u03b7\u00b2", html, fixed = TRUE))
+stopifnot(grepl("정규성 검정 방법: Shapiro-Wilk 검정.", html, fixed = TRUE))
+stopifnot(!grepl("Normality method: Shapiro-Wilk.", html, fixed = TRUE))
+stopifnot(grepl("분산분석표에 제시된 보정 결정을 따릅니다.", html, fixed = TRUE))
+stopifnot(grepl("셀 수준 Shapiro-Wilk 검정에서 p &lt; .05가 나타나지 않았습니다.", html, fixed = TRUE))
+stopifnot(grepl("반복 결과를 연속형 가우시안 변수로 처리하며, 혼합모형은 불균형 반복측정 기록을 다룹니다.", html, fixed = TRUE))
+# Group-adjusted residual covariance satisfies sphericity for this fixture.
+stopifnot(grepl("구형성: 충족", html, fixed = TRUE))
+stopifnot(grepl("p 열: Sphericity assumed", html, fixed = TRUE))
+stopifnot(grepl("Levene: 충족", html, fixed = TRUE))
+stopifnot(!grepl("Use the correction decision shown in the ANOVA table.", html, fixed = TRUE))
+stopifnot(!grepl("Cell-level Shapiro-Wilk checks did not flag p &lt; .05.", html, fixed = TRUE))
+stopifnot(!grepl("The repeated outcome is treated as continuous Gaussian", html, fixed = TRUE))
+stopifnot(!grepl("구형성: Not satisfied", html, fixed = TRUE))
+stopifnot(identical(
+  mixed_rm_appendix_korean_text("Sphericity: Not satisfied (W=.98, p=.028). p column: Huynh-Feldt. Levene: satisfied (raw values by group.)"),
+  "구형성: 불충족 (W=.98, p=.028). p 열: Huynh-Feldt. Levene: 충족 (집단별 원자료 값.)"
+))
+
+flagged_data <- data
+flagged_data$post <- c(rep(0, 11), 50, rep(0, 11), 100)
+flagged_result <- prepare_mixed_rm_anova_results(
+  flagged_data,
+  group_variable = "group",
+  repeated_variables = c("pre", "post", "post2"),
+  variable_info = variable_info,
+  options = list(assumption_check = TRUE, posthoc = FALSE, time_labels = c("Pre", "Post", "Post 2"))
+)
+flagged_html_ko <- paste(htmltools::renderTags(mixed_rm_anova_results_ui(flagged_result))$html, collapse = "\n")
+stopifnot(grepl("정규성 문제가 표시되었습니다. 분포 불일치가 실질적이면 LMM 또는 강건 민감도 분석을 검토합니다.", flagged_html_ko, fixed = TRUE))
+stopifnot(grepl("하나 이상의 Shapiro-Wilk p값이 .05 미만이므로 민감도 분석 필요성을 검토합니다.", flagged_html_ko, fixed = TRUE))
+stopifnot(grepl("민감도 분석으로 강건·부트스트랩 추론을 적용한 LMM을 검토합니다.", flagged_html_ko, fixed = TRUE))
+stopifnot(grepl("반복 결과를 연속형 가우시안 변수로 처리하며, 혼합모형은 불균형 반복측정 기록을 다룹니다.", flagged_html_ko, fixed = TRUE))
+stopifnot(!grepl("Normality flagged; review LMM/robust sensitivity", flagged_html_ko, fixed = TRUE))
+stopifnot(!grepl("At least one Shapiro-Wilk p &lt; .05", flagged_html_ko, fixed = TRUE))
+stopifnot(!grepl("Consider LMM with robust/bootstrap inference", flagged_html_ko, fixed = TRUE))
+stopifnot(!grepl("The repeated outcome is treated as continuous Gaussian", flagged_html_ko, fixed = TRUE))
+stopifnot(
+  identical(mixed_rm_appendix_normality_method("Shapiro-Wilk by group", "ko"), "집단별 Shapiro-Wilk 검정"),
+  identical(mixed_rm_appendix_normality_method("Lilliefors (K-S)", "ko"), "Lilliefors(K-S) 검정"),
+  identical(mixed_rm_appendix_normality_method("Kolmogorov-Smirnov", "ko"), "Kolmogorov-Smirnov 검정"),
+  identical(mixed_rm_appendix_normality_method("Skewness/kurtosis", "ko"), "왜도·첨도 검토")
+)
+
+options(statedu.app_language = "en")
+html_en <- paste(htmltools::renderTags(mixed_rm_anova_results_ui(result))$html, collapse = "\n")
+stopifnot(grepl("Normality method: Shapiro-Wilk.", html_en, fixed = TRUE))
+flagged_html_en <- paste(htmltools::renderTags(mixed_rm_anova_results_ui(flagged_result))$html, collapse = "\n")
+stopifnot(grepl("Normality flagged; review LMM/robust sensitivity", flagged_html_en, fixed = TRUE))
+stopifnot(grepl("At least one Shapiro-Wilk p &lt; .05", flagged_html_en, fixed = TRUE))
+stopifnot(grepl("Consider LMM with robust/bootstrap inference", flagged_html_en, fixed = TRUE))
+stopifnot(grepl("The repeated outcome is treated as continuous Gaussian", flagged_html_en, fixed = TRUE))
+if (is.null(previous_ui_language)) {
+  options(statedu.app_language = NULL)
+} else {
+  options(statedu.app_language = previous_ui_language)
+}
 
 tmp <- tempfile(fileext = ".xlsx")
 save_mixed_rm_anova_excel_file(result, tmp)

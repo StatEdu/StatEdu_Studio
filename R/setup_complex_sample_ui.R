@@ -14,6 +14,7 @@ complex_sample_ui_text <- function(key, language = statedu_initial_language()) {
     correlation = c(en = "Complex Samples Correlation", ko = "\uBCF5\uD569\uD45C\uBCF8 \uC0C1\uAD00\uBD84\uC11D"),
     regression = c(en = "Complex Samples Regression", ko = "\uBCF5\uD569\uD45C\uBCF8 \uD68C\uADC0\uBD84\uC11D"),
     logistic = c(en = "Complex Samples Logistic Regression", ko = "\uBCF5\uD569\uD45C\uBCF8 \uB85C\uC9C0\uC2A4\uD2F1 \uD68C\uADC0\uBD84\uC11D"),
+    custom_model = c(en = "Complex Samples Mediation / Moderation", ko = "\uBCF5\uD569\uD45C\uBCF8 \uB9E4\uAC1C\u00B7\uC870\uC808\uD6A8\uACFC"),
     design_menu = c(en = "Complex Samples Design Variables", ko = "\uBCF5\uD569\uD45C\uBCF8 \uC124\uACC4\uBCC0\uC218"),
     design_subtitle = c(en = "Set the complex-sample design once and reuse it automatically in every complex-sample analysis.", ko = "\uBCF5\uD569\uD45C\uBCF8 \uC124\uACC4\uBCC0\uC218\uB97C \uD55C \uBC88 \uC124\uC815\uD558\uACE0 \uBAA8\uB4E0 \uBCF5\uD569\uD45C\uBCF8 \uBD84\uC11D\uC5D0 \uC790\uB3D9\uC73C\uB85C \uC801\uC6A9\uD569\uB2C8\uB2E4."),
     design_input_block = c(en = "Design variables", ko = "\uC124\uACC4\uBCC0\uC218 \uC785\uB825"),
@@ -99,11 +100,22 @@ complex_sample_ui_text <- function(key, language = statedu_initial_language()) {
 
 complex_sample_text_pair <- function(language, en, ko) {
   language <- normalize_app_language(language)
-  if (identical(language, "ko")) ko else en
+  statedu_localized_text(language, en, ko)
 }
 
 complex_sample_yes_no <- function(value, language = statedu_initial_language()) {
   complex_sample_text_pair(language, if (isTRUE(value)) "Yes" else "No", if (isTRUE(value)) "\uC608" else "\uC544\uB2C8\uC624")
+}
+
+complex_sample_method_choices <- function(kind, language) {
+  values <- switch(kind,
+    variance = c(auto = "Auto", taylor = "Taylor linearization", brr = "BRR", fay = "Fay BRR", jk1 = "JK1", jkn = "JKn", jk2 = "JK2", bootstrap = "Bootstrap"),
+    replicate = c(auto = "Auto", brr = "BRR", fay = "Fay BRR", jk1 = "JK1", jkn = "JKn", jk2 = "JK2", bootstrap = "Bootstrap"),
+    lonely = c(adjust = "Adjust", average = "Average", certainty = "Certainty", remove = "Remove", fail = "Fail"))
+  display <- vapply(names(values), function(value) statedu_t(
+    paste0("complex_sample.option_", if (kind == "lonely") "lonely_" else "method_", value),
+    language, values[[value]]), character(1))
+  stats::setNames(names(values), display)
 }
 
 complex_sample_choice_values <- function(names, variable_table = NULL, labels = character(0), allowed_measurements = character(0), language = statedu_initial_language()) {
@@ -161,6 +173,65 @@ complex_sample_candidate_variable <- function(selected_names, variable_table = N
   ""
 }
 
+complex_sample_design_role_spec <- function(role) {
+  switch(
+    as.character(role %||% ""),
+    strata = list(
+      patterns = c("strata|stratum|stratification|kstrata|층화|層化|分层|estrato|strate|schicht|tầng"),
+      allowed_measurements = analysis_allowed_measurements_all(),
+      exclude_patterns = character(0)
+    ),
+    cluster = list(
+      patterns = c("cluster|psu|primary sampling unit|집락|クラスター|聚类|群集|conglomerado|grappe|cụm"),
+      allowed_measurements = analysis_allowed_measurements_all(),
+      exclude_patterns = character(0)
+    ),
+    weight = list(
+      patterns = c("weight|\\bwt\\b|^wt[_\\. -]?|[_\\. -]wt[_\\. -]?|wgt|가중|重み|权重|權重|peso|poids|gewicht|trọng số"),
+      allowed_measurements = "continuous",
+      exclude_patterns = c("replicate|rep[_ -]?weight|repwt|brr|fay|jackknife|jk|bootstrap")
+    ),
+    NULL
+  )
+}
+
+complex_sample_design_candidate_variables <- function(role, names, variable_table = NULL, labels = character(0)) {
+  spec <- complex_sample_design_role_spec(role)
+  if (is.null(spec)) {
+    return(character(0))
+  }
+  candidates <- analysis_allowed_variables(names, variable_table, spec$allowed_measurements)
+  matched <- vapply(candidates, function(name) {
+    text <- complex_sample_candidate_text(name, variable_table, labels)
+    excluded <- length(spec$exclude_patterns) > 0 && any(vapply(
+      spec$exclude_patterns,
+      grepl,
+      logical(1),
+      x = text,
+      ignore.case = TRUE,
+      perl = TRUE
+    ))
+    !excluded && any(vapply(spec$patterns, grepl, logical(1), x = text, ignore.case = TRUE, perl = TRUE))
+  }, logical(1))
+  candidates[matched]
+}
+
+complex_sample_design_role_choices <- function(role, selected_names, all_names = selected_names, variable_table = NULL, labels = character(0), language = statedu_initial_language()) {
+  spec <- complex_sample_design_role_spec(role)
+  if (is.null(spec)) {
+    return(complex_sample_design_choices(selected_names, all_names, variable_table, labels, language = language))
+  }
+  selected_names <- as.character(selected_names %||% character(0))
+  all_names <- as.character(all_names %||% selected_names)
+  selected <- analysis_allowed_variables(intersect(selected_names, all_names), variable_table, spec$allowed_measurements)
+  other <- analysis_allowed_variables(setdiff(all_names, selected), variable_table, spec$allowed_measurements)
+  variables <- unique(c(selected, other))
+  candidates <- complex_sample_design_candidate_variables(role, variables, variable_table, labels)
+  ordered <- unique(c(candidates, variables))
+  choices <- stats::setNames(ordered, vapply(ordered, display_variable_name_static, character(1), table = variable_table, labels = labels))
+  c(stats::setNames("", complex_sample_ui_text("no_variable", language)), choices)
+}
+
 complex_sample_candidate_replicates <- function(selected_names, variable_table = NULL, labels = character(0)) {
   candidates <- analysis_allowed_variables(selected_names, variable_table, "continuous")
   if (length(candidates) == 0) {
@@ -195,9 +266,9 @@ complex_sample_filter_candidate <- function(selected_names, all_names = selected
 complex_sample_design_defaults <- function(prefix, selected_names, variable_table = NULL, labels = character(0)) {
   stats::setNames(
     list(
-      complex_sample_candidate_variable(selected_names, variable_table, labels, c("strata|stratum|kstrata|\uCE35\uD654")),
-      complex_sample_candidate_variable(selected_names, variable_table, labels, c("cluster|psu|primary sampling unit|\uC9D1\uB77D")),
-      complex_sample_candidate_variable(selected_names, variable_table, labels, c("weight|\\bwt\\b|^wt[_\\. -]?|[_\\. -]wt[_\\. -]?|wgt|\uAC00\uC911"), "continuous", exclude_patterns = c("replicate|rep[_ -]?weight|repwt|brr|fay|jackknife|jk|bootstrap")),
+      c(complex_sample_design_candidate_variables("strata", selected_names, variable_table, labels), "")[[1]],
+      c(complex_sample_design_candidate_variables("cluster", selected_names, variable_table, labels), "")[[1]],
+      c(complex_sample_design_candidate_variables("weight", selected_names, variable_table, labels), "")[[1]],
       complex_sample_candidate_replicates(selected_names, variable_table, labels),
       complex_sample_filter_candidate(selected_names, selected_names, variable_table, labels),
       "equals",
@@ -376,7 +447,7 @@ complex_sample_option_defaults <- function() {
     show_wald = TRUE,
     post_hoc = FALSE,
     post_hoc_correction = statedu_multiple_correction_default(),
-    ordered_significance = FALSE,
+    ordered_significance = TRUE,
     mean_sd = FALSE,
     crosstab_percent_basis = "row",
     crosstab_test_method = "F",
@@ -464,7 +535,7 @@ complex_sample_options_are_default <- function(input, prefix, analysis_type = NU
   }, logical(1)))
 }
 
-complex_sample_design_panel <- function(prefix, selected_names, all_names = selected_names, variable_table = NULL, labels = character(0), language = statedu_initial_language(), selected = list(), analysis_type = NULL) {
+complex_sample_design_panel <- function(prefix, selected_names, all_names = selected_names, variable_table = NULL, labels = character(0), language = statedu_initial_language(), selected = list(), analysis_type = NULL, include_analysis_options = TRUE) {
   selected_names <- as.character(selected_names %||% character(0))
   all_names <- as.character(all_names %||% selected_names)
   defaults <- complex_sample_design_defaults(prefix, selected_names, variable_table, labels)
@@ -489,6 +560,11 @@ complex_sample_design_panel <- function(prefix, selected_names, all_names = sele
   design_tab_label <- complex_sample_ui_text("design_tab", language)
   weight_tab_label <- complex_sample_ui_text("weight_tab", language)
   options_tab_label <- complex_sample_ui_text("options_tab", language)
+  design_tab_choices <- c(
+    design_tab_label,
+    weight_tab_label,
+    if (isTRUE(include_analysis_options)) options_tab_label else character(0)
+  )
   div(
     class = "analysis-options-column ttest-anova-options-column complex-sample-design-column",
     analysis_options_tabs_panel(
@@ -497,7 +573,7 @@ complex_sample_design_panel <- function(prefix, selected_names, all_names = sele
         selected,
         paste0(prefix, "_design_options_tab"),
         design_tab_label,
-        c(design_tab_label, weight_tab_label, options_tab_label)
+        design_tab_choices
       ),
       class = "ttest-anova-options regression-options complex-sample-design-panel",
       tabPanel(
@@ -508,37 +584,28 @@ complex_sample_design_panel <- function(prefix, selected_names, all_names = sele
           selectInput(
             strata_id,
             complex_sample_ui_text("strata", language),
-            choices = complex_sample_design_choices(selected_names, all_names, variable_table, labels, analysis_allowed_measurements_all(), language),
+            choices = complex_sample_design_role_choices("strata", selected_names, all_names, variable_table, labels, language),
             selected = complex_sample_selected_value(selected, strata_id, defaults[[strata_id]] %||% ""),
             selectize = FALSE
           ),
           selectInput(
             cluster_id,
             complex_sample_ui_text("cluster", language),
-            choices = complex_sample_design_choices(selected_names, all_names, variable_table, labels, analysis_allowed_measurements_all(), language),
+            choices = complex_sample_design_role_choices("cluster", selected_names, all_names, variable_table, labels, language),
             selected = complex_sample_selected_value(selected, cluster_id, defaults[[cluster_id]] %||% ""),
             selectize = FALSE
           ),
           selectInput(
             weight_id,
             complex_sample_ui_text("weight", language),
-            choices = complex_sample_design_choices(selected_names, all_names, variable_table, labels, "continuous", language),
+            choices = complex_sample_design_role_choices("weight", selected_names, all_names, variable_table, labels, language),
             selected = complex_sample_selected_value(selected, weight_id, defaults[[weight_id]] %||% ""),
             selectize = FALSE
           ),
           selectInput(
             variance_method_id,
             complex_sample_ui_text("variance_method", language),
-            choices = c(
-              "Auto" = "auto",
-              "Taylor linearization" = "taylor",
-              "BRR" = "brr",
-              "Fay BRR" = "fay",
-              "JK1" = "jk1",
-              "JKn" = "jkn",
-              "JK2" = "jk2",
-              "Bootstrap" = "bootstrap"
-            ),
+            choices = complex_sample_method_choices("variance", language),
             selected = selected[[variance_method_id]] %||% "auto",
             selectize = FALSE
           ),
@@ -607,13 +674,7 @@ complex_sample_design_panel <- function(prefix, selected_names, all_names = sele
           selectInput(
             lonely_psu_id,
             complex_sample_ui_text("lonely_psu", language),
-            choices = c(
-              "Adjust" = "adjust",
-              "Average" = "average",
-              "Certainty" = "certainty",
-              "Remove" = "remove",
-              "Fail" = "fail"
-            ),
+            choices = complex_sample_method_choices("lonely", language),
             selected = selected[[lonely_psu_id]] %||% "adjust",
             selectize = FALSE
           ),
@@ -636,15 +697,7 @@ complex_sample_design_panel <- function(prefix, selected_names, all_names = sele
             selectInput(
               replicate_type_id,
               complex_sample_ui_text("replicate_type", language),
-              choices = c(
-                "Auto" = "auto",
-                "BRR" = "brr",
-                "Fay BRR" = "fay",
-                "JK1" = "jk1",
-                "JKn" = "jkn",
-                "JK2" = "jk2",
-                "Bootstrap" = "bootstrap"
-              ),
+              choices = complex_sample_method_choices("replicate", language),
               selected = selected[[replicate_type_id]] %||% "auto",
               selectize = FALSE
             ),
@@ -656,11 +709,13 @@ complex_sample_design_panel <- function(prefix, selected_names, all_names = sele
           )
         )
       ),
-      tabPanel(
-        options_tab_label,
-        value = options_tab_label,
-        complex_sample_options_tab_content(prefix, analysis_type, selected, language)
-      )
+      if (isTRUE(include_analysis_options)) {
+        tabPanel(
+          options_tab_label,
+          value = options_tab_label,
+          complex_sample_options_tab_content(prefix, analysis_type, selected, language)
+        )
+      }
     )
   )
 }
@@ -687,21 +742,21 @@ complex_sample_design_core_panel <- function(prefix, selected_names, all_names =
         selectInput(
           paste0(prefix, "_strata"),
           complex_sample_ui_text("strata", language),
-          choices = complex_sample_design_choices(selected_names, all_names, variable_table, labels, analysis_allowed_measurements_all(), language),
+          choices = complex_sample_design_role_choices("strata", selected_names, all_names, variable_table, labels, language),
           selected = complex_sample_selected_value(selected, paste0(prefix, "_strata"), defaults[[paste0(prefix, "_strata")]] %||% ""),
           selectize = FALSE
         ),
         selectInput(
           paste0(prefix, "_cluster"),
           complex_sample_ui_text("cluster", language),
-          choices = complex_sample_design_choices(selected_names, all_names, variable_table, labels, analysis_allowed_measurements_all(), language),
+          choices = complex_sample_design_role_choices("cluster", selected_names, all_names, variable_table, labels, language),
           selected = complex_sample_selected_value(selected, paste0(prefix, "_cluster"), defaults[[paste0(prefix, "_cluster")]] %||% ""),
           selectize = FALSE
         ),
         selectInput(
           paste0(prefix, "_weight"),
           complex_sample_ui_text("weight", language),
-          choices = complex_sample_design_choices(selected_names, all_names, variable_table, labels, "continuous", language),
+          choices = complex_sample_design_role_choices("weight", selected_names, all_names, variable_table, labels, language),
           selected = complex_sample_selected_value(selected, paste0(prefix, "_weight"), defaults[[paste0(prefix, "_weight")]] %||% ""),
           selectize = FALSE
         ),
@@ -772,16 +827,7 @@ complex_sample_design_options_panel <- function(prefix, selected_names, all_name
         selectInput(
           paste0(prefix, "_variance_method"),
           complex_sample_ui_text("variance_method", language),
-          choices = c(
-            "Auto" = "auto",
-            "Taylor linearization" = "taylor",
-            "BRR" = "brr",
-            "Fay BRR" = "fay",
-            "JK1" = "jk1",
-            "JKn" = "jkn",
-            "JK2" = "jk2",
-            "Bootstrap" = "bootstrap"
-          ),
+          choices = complex_sample_method_choices("variance", language),
           selected = selected[[paste0(prefix, "_variance_method")]] %||% "auto",
           selectize = FALSE
         ),
@@ -795,7 +841,7 @@ complex_sample_design_options_panel <- function(prefix, selected_names, all_name
         selectInput(
           paste0(prefix, "_lonely_psu"),
           complex_sample_ui_text("lonely_psu", language),
-          choices = c("Adjust" = "adjust", "Average" = "average", "Certainty" = "certainty", "Remove" = "remove", "Fail" = "fail"),
+          choices = complex_sample_method_choices("lonely", language),
           selected = selected[[paste0(prefix, "_lonely_psu")]] %||% "adjust",
           selectize = FALSE
         ),
@@ -818,7 +864,7 @@ complex_sample_design_options_panel <- function(prefix, selected_names, all_name
           selectInput(
             paste0(prefix, "_replicate_type"),
             complex_sample_ui_text("replicate_type", language),
-            choices = c("Auto" = "auto", "BRR" = "brr", "Fay BRR" = "fay", "JK1" = "jk1", "JKn" = "jkn", "JK2" = "jk2", "Bootstrap" = "bootstrap"),
+            choices = complex_sample_method_choices("replicate", language),
             selected = selected[[paste0(prefix, "_replicate_type")]] %||% "auto",
             selectize = FALSE
           ),
@@ -1012,14 +1058,11 @@ complex_sample_setup_panel <- function(prefix, selected_names, all_names = selec
     if (isTRUE(show_design_tabs)) {
       complex_sample_design_panel(prefix, selected_names, all_names, variable_table, labels, language, selected, analysis_type)
     } else {
-      tagList(
-        div(
-          class = "complex-sample-hidden-design-inputs",
-          style = "display:none;",
-          complex_sample_design_panel(prefix, selected_names, all_names, variable_table, labels, language, selected, analysis_type)
-        ),
-        complex_sample_analysis_options_panel(prefix, analysis_type, selected, language)
-      )
+      # Survey-design controls live in the dedicated shared design menu. The
+      # analysis screen consumes that reactive state directly at run time, so
+      # rebuilding a second invisible set of large select inputs only delays
+      # first paint and creates redundant client/server synchronization.
+      complex_sample_analysis_options_panel(prefix, analysis_type, selected, language)
     }
   )
 }
@@ -1643,6 +1686,21 @@ complex_sample_read_design_inputs <- function(input, prefix) {
   ))
 }
 
+complex_sample_analysis_input_snapshot <- function(input, prefix, analysis_type = NULL, design = NULL) {
+  ids <- unique(c(
+    paste0(prefix, "_run"),
+    paste0(prefix, "_", complex_sample_option_keys(analysis_type))
+  ))
+  snapshot <- stats::setNames(vector("list", length(ids)), ids)
+  for (id in ids) snapshot[id] <- list(input[[id]])
+  normalized_design <- complex_sample_normalize_design_state(design)
+  design_ids <- complex_sample_design_input_ids(prefix)
+  for (field in names(design_ids)) {
+    snapshot[design_ids[[field]]] <- list(normalized_design[[field]])
+  }
+  snapshot
+}
+
 complex_sample_update_design_inputs <- function(session, prefix, values) {
   values <- complex_sample_normalize_design_state(values)
   updateSelectInput(session, paste0(prefix, "_strata"), selected = values$strata)
@@ -1901,7 +1959,10 @@ complex_sample_subpopulation_missing_mask <- function(data, variable) {
   is.na(data[[variable]])
 }
 
-complex_sample_design_note <- function(built) {
+complex_sample_design_note <- function(built, role = "main", language = NULL) {
+  role <- result_table_role(role)
+  note_language <- if (identical(role, "main")) "en" else result_appendix_table_language(language)
+  korean <- identical(note_language, "ko")
   meta <- built$meta %||% list()
   notes <- character(0)
   original_n <- suppressWarnings(as.integer(meta$original_n %||% NA_integer_))
@@ -1919,50 +1980,96 @@ complex_sample_design_note <- function(built) {
   fpc_used <- isTRUE(meta$fpc_used %||% FALSE)
 
   if (is.finite(original_n) && is.finite(analysis_n)) {
-    notes <- c(notes, sprintf("Survey design was constructed from %s rows; final design N after exclusions/subpopulation was %s.", original_n, analysis_n))
+    notes <- c(notes, if (isTRUE(korean)) {
+      sprintf("조사설계는 %s개 행으로 구성되었으며, 제외 및 부-모집단 적용 후 최종 설계 N은 %s입니다.", original_n, analysis_n)
+    } else {
+      sprintf(statedu_localized_text(note_language, "Survey design was constructed from %s rows; final design N after exclusions/subpopulation was %s."), original_n, analysis_n)
+    })
   }
   if (identical(design_type, "replicate")) {
-    notes <- c(notes, sprintf(
-      "Variance estimation used replicate weights (%s; %s replicate variables; combined.weights=%s).",
-      complex_sample_variance_method_label(variance_method),
-      replicate_count,
-      if (isTRUE(replicate_combined)) "TRUE" else "FALSE"
-    ))
+    notes <- c(notes, if (isTRUE(korean)) {
+      sprintf(
+        "분산 추정에는 복제 가중치를 사용했습니다(%s; 복제 변수 %s개; combined.weights=%s).",
+        complex_sample_variance_method_label(variance_method),
+        replicate_count,
+        if (isTRUE(replicate_combined)) "TRUE" else "FALSE"
+      )
+    } else {
+      sprintf(
+        "Variance estimation used replicate weights (%s; %s replicate variables; combined.weights=%s).",
+        complex_sample_variance_method_label(variance_method),
+        replicate_count,
+        if (isTRUE(replicate_combined)) "TRUE" else "FALSE"
+      )
+    })
   } else if (identical(design_type, "converted_replicate")) {
-    notes <- c(notes, sprintf("Variance estimation used %s replicate weights converted from the Taylor design.", complex_sample_variance_method_label(variance_method)))
+    notes <- c(notes, if (isTRUE(korean)) {
+      sprintf("Taylor 설계에서 변환한 %s 복제 가중치로 분산을 추정했습니다.", complex_sample_variance_method_label(variance_method))
+    } else {
+      sprintf("Variance estimation used %s replicate weights converted from the Taylor design.", complex_sample_variance_method_label(variance_method))
+    })
   } else {
-    notes <- c(notes, "Variance estimation used Taylor linearization.")
+    notes <- c(notes, if (isTRUE(korean)) "분산 추정에는 Taylor 선형화 방법을 사용했습니다." else statedu_localized_text(note_language, "Variance estimation used Taylor linearization."))
   }
   if (isTRUE(fpc_used)) {
-    notes <- c(notes, "Finite population correction (FPC) was applied to the Taylor design.")
+    notes <- c(notes, if (isTRUE(korean)) "Taylor 설계에 유한모집단보정(FPC)을 적용했습니다." else "Finite population correction (FPC) was applied to the Taylor design.")
   } else if (isTRUE(fpc_selected) && identical(design_type, "replicate")) {
-    notes <- c(notes, "Finite population correction (FPC) was not applied because explicit replicate weights were used.")
+    notes <- c(notes, if (isTRUE(korean)) "명시적 복제 가중치를 사용했으므로 유한모집단보정(FPC)은 적용하지 않았습니다." else "Finite population correction (FPC) was not applied because explicit replicate weights were used.")
   }
-  notes <- c(notes, sprintf("Single-PSU strata were handled using survey.lonely.psu = '%s'.", complex_sample_lonely_psu_label(lonely_psu)))
+  notes <- c(notes, if (isTRUE(korean)) {
+    sprintf("단일 PSU 층은 survey.lonely.psu = '%s' 방식으로 처리했습니다.", complex_sample_lonely_psu_label(lonely_psu))
+  } else {
+    sprintf(statedu_localized_text(note_language, "Single-PSU strata were handled using survey.lonely.psu = '%s'."), complex_sample_lonely_psu_label(lonely_psu))
+  })
   if (is.finite(design_excluded_n) && design_excluded_n > 0) {
-    notes <- c(notes, sprintf("Rows with missing strata/cluster/FPC variables, missing weights, non-positive weights, invalid FPC values, or invalid replicate weights were excluded before constructing the survey design (n=%s).", design_excluded_n))
+    notes <- c(notes, if (isTRUE(korean)) {
+      sprintf("조사설계 구성 전에 층화·집락·FPC 변수 또는 가중치가 결측이거나, 가중치가 양수가 아니거나, FPC 또는 복제 가중치가 유효하지 않은 행을 제외했습니다(n=%s).", design_excluded_n)
+    } else {
+      sprintf("Rows with missing strata/cluster/FPC variables, missing weights, non-positive weights, invalid FPC values, or invalid replicate weights were excluded before constructing the survey design (n=%s).", design_excluded_n)
+    })
   }
   if (is.finite(subpopulation_excluded_n) && subpopulation_excluded_n > 0) {
-    notes <- c(notes, sprintf("Subpopulation analyses used the survey design subset method; rows outside the subpopulation were excluded from the analytic subset (n=%s).", subpopulation_excluded_n))
+    notes <- c(notes, if (isTRUE(korean)) {
+      sprintf("부-모집단 분석에는 조사설계 부분집합 방식을 사용했으며, 부-모집단 밖의 행은 분석 부분집합에서 제외했습니다(n=%s).", subpopulation_excluded_n)
+    } else {
+      sprintf("Subpopulation analyses used the survey design subset method; rows outside the subpopulation were excluded from the analytic subset (n=%s).", subpopulation_excluded_n)
+    })
   }
   if (is.finite(subpopulation_missing_n) && subpopulation_missing_n > 0) {
-    notes <- c(notes, sprintf("Rows with missing subpopulation variable values were not included in the subpopulation condition (n=%s).", subpopulation_missing_n))
+    notes <- c(notes, if (isTRUE(korean)) {
+      sprintf("부-모집단 변수값이 결측인 행은 부-모집단 조건에 포함하지 않았습니다(n=%s).", subpopulation_missing_n)
+    } else {
+      sprintf("Rows with missing subpopulation variable values were not included in the subpopulation condition (n=%s).", subpopulation_missing_n)
+    })
   }
   paste(notes[nzchar(notes)], collapse = " ")
 }
 
-complex_sample_build_design <- function(data, input, prefix, variables = character(0)) {
+complex_sample_build_design_from_spec <- function(data, design, variables = character(0), strict = FALSE) {
   shiny::validate(shiny::need(requireNamespace("survey", quietly = TRUE), "Install the survey package to run complex-sample analyses."))
-  design <- complex_sample_design_inputs(input, prefix)
-  variables <- unique(c(
-    as.character(variables %||% character(0)),
+  design <- complex_sample_normalize_design_state(design)
+  analysis_variables <- unique(as.character(variables %||% character(0)))
+  design_variables <- unique(c(
     design$strata,
     design$cluster,
     design$weight,
-    design$fpc,
-    design$replicate_weights,
+    if (!isTRUE(design$use_replicate_weights)) design$fpc else "",
+    if (isTRUE(design$use_replicate_weights)) design$replicate_weights else character(0),
     design$subpopulation
   ))
+  requested_variables <- unique(c(analysis_variables, design_variables))
+  requested_variables <- requested_variables[nzchar(requested_variables)]
+  if (isTRUE(strict)) {
+    missing_variables <- setdiff(requested_variables, names(data))
+    shiny::validate(shiny::need(
+      length(missing_variables) == 0L,
+      paste("Variables saved in the model or complex-sample design are missing from the current data:", paste(missing_variables, collapse = ", "))
+    ))
+    if (isTRUE(design$use_replicate_weights)) {
+      shiny::validate(shiny::need(length(design$replicate_weights) > 0L, "Select at least one replicate-weight variable."))
+    }
+  }
+  variables <- requested_variables
   variables <- intersect(variables[nzchar(variables)], names(data))
   shiny::validate(shiny::need(length(variables) > 0, "No usable variables were selected."))
   frame <- as.data.frame(data[, variables, drop = FALSE], stringsAsFactors = FALSE, check.names = FALSE)
@@ -2045,6 +2152,15 @@ complex_sample_build_design <- function(data, input, prefix, variables = charact
     data = as.data.frame(sample_design$variables, stringsAsFactors = FALSE, check.names = FALSE),
     spec = design,
     meta = meta
+  )
+}
+
+complex_sample_build_design <- function(data, input, prefix, variables = character(0)) {
+  complex_sample_build_design_from_spec(
+    data = data,
+    design = complex_sample_design_inputs(input, prefix),
+    variables = variables,
+    strict = FALSE
   )
 }
 
@@ -2206,7 +2322,114 @@ complex_sample_frequency_display_table <- function(variables, categorical_tables
   table[, columns, drop = FALSE]
 }
 
-complex_sample_frequency_result <- function(data, variables, input, prefix, variable_info = NULL, labels = character(0), category_table = NULL) {
+complex_sample_table_data <- function(table, role = "main", language = NULL) {
+  role <- result_table_role(role, table = table)
+  if (identical(role, "appendix")) {
+    table <- result_appendix_localize_table(table, language)
+  }
+  attr(table, "result_table_role") <- role
+  attr(table, "result_table_language") <- result_table_language(role, language)
+  table
+}
+
+complex_sample_custom_table_sheet <- function(
+  table_tag,
+  table,
+  role = "main",
+  language = NULL,
+  intrinsic_width = NULL,
+  orientation = "auto",
+  note_line = NULL
+) {
+  if (is.null(table_tag)) return(NULL)
+  table <- complex_sample_table_data(table, role, language)
+  if (is.null(intrinsic_width) || !is.finite(as.numeric(intrinsic_width))) {
+    intrinsic_width <- result_table_intrinsic_width(table)
+  }
+  contract <- result_table_contract(
+    table,
+    role = role,
+    language = language,
+    orientation = orientation,
+    intrinsic_width = intrinsic_width
+  )
+  result_table_with_notes(
+    result_table_apply_contract(table_tag, contract),
+    result_note_tag(note_line)
+  )
+}
+
+complex_sample_main_note <- function(
+  format = NULL,
+  abbreviations = NULL,
+  estimation = NULL,
+  reference = NULL,
+  multiplicity = NULL,
+  symbol = NULL
+) {
+  result_sci_note_text(
+    format = format,
+    abbreviations = abbreviations,
+    estimation = estimation,
+    reference = reference,
+    multiplicity = multiplicity,
+    symbol = symbol
+  )
+}
+
+complex_sample_appendix_title <- function(language = NULL, en, ko) {
+  complex_sample_text_pair(result_appendix_table_language(language), en, ko)
+}
+
+complex_sample_appendix_diagnostics_section <- function(
+  items,
+  details,
+  language = NULL,
+  title_en = "Analysis diagnostics",
+  title_ko = "분석 진단",
+  class = "result-section regression-result-panel complex-sample-diagnostics-section",
+  preserve_details = FALSE,
+  title_is_user_data = FALSE
+) {
+  items <- as.character(items %||% character(0))
+  details <- as.character(details %||% character(0))
+  length_out <- min(length(items), length(details))
+  if (length_out == 0L) return(NULL)
+  items <- items[seq_len(length_out)]
+  details <- details[seq_len(length_out)]
+  keep <- nzchar(trimws(details))
+  if (!any(keep)) return(NULL)
+  ui_language <- result_appendix_table_language(language)
+  if (identical(ui_language, "ko")) {
+    complex_labels <- c(
+      "Survey design" = "조사설계",
+      "Missing data" = "결측 자료",
+      "Skipped analyses" = "제외된 분석",
+      "Status" = "상태",
+      "Error" = "오류"
+    )
+    matched <- match(items, names(complex_labels))
+    replace <- !is.na(matched)
+    items[replace] <- unname(complex_labels[matched[replace]])
+  }
+  table <- data.frame(
+    Item = items[keep],
+    Details = details[keep],
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  if (isTRUE(preserve_details)) attr(table, "result_user_columns") <- "Details"
+  table <- result_appendix_localize_table(table, ui_language)
+  analysis_result_table_section(
+    if (isTRUE(title_is_user_data)) title_en else complex_sample_appendix_title(ui_language, title_en, title_ko),
+    table,
+    class = class,
+    table_fn = model_overview_html_table
+  )
+}
+
+complex_sample_frequency_result <- function(data, variables, input, prefix, variable_info = NULL, labels = character(0), category_table = NULL, language = NULL) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("variables"))
   built <- complex_sample_build_design(data, input, prefix, variables)
   options <- complex_sample_analysis_options(input, prefix, "frequencies")
   measurements <- ttest_measurement_lookup(variable_info)
@@ -2233,17 +2456,22 @@ complex_sample_frequency_result <- function(data, variables, input, prefix, vari
   skipped_variables <- variables[!variables %in% displayed_variables]
   table <- complex_sample_frequency_display_table(variables, categorical_tables, descriptive_table, categorical_displayed, continuous_displayed, options)
   shiny::validate(shiny::need(is.data.frame(table) && nrow(table) > 0, "No non-missing values are available for the selected frequency/descriptive variables."))
-  design_note <- complex_sample_design_note(built)
+  ui_language <- result_appendix_table_language(language)
+  design_note <- complex_sample_design_note(built, role = "appendix", language = ui_language)
   missing_note <- if (isTRUE(options$show_missing)) {
-    "Missing N is the unweighted number of rows with missing values for the displayed variable after survey design and subpopulation filtering."
+    complex_sample_text_pair(
+      ui_language,
+      "Missing N is the unweighted number of rows with missing values for the displayed variable after survey design and subpopulation filtering.",
+      "결측 N은 조사설계 및 부-모집단 필터링 후 표시 변수에 결측값이 있는 행의 비가중 사례 수입니다."
+    )
   } else {
     ""
   }
   skipped_note <- if (length(skipped_variables) > 0) {
-    sprintf(
+    sprintf(complex_sample_text_pair(ui_language,
       "Variables with no usable non-missing values after survey design/subpopulation filtering were not displayed: %s.",
-      paste(vapply(skipped_variables, frequency_variable_display_name, character(1), variable_info = variable_info, labels = labels, category_table = category_table), collapse = ", ")
-    )
+      "조사설계 및 부-모집단 필터링 후 사용할 수 있는 비결측값이 없는 변수는 표시하지 않았습니다: %s."),
+      paste(vapply(skipped_variables, frequency_variable_display_name, character(1), variable_info = variable_info, labels = labels, category_table = category_table), collapse = ", "))
   } else {
     ""
   }
@@ -2252,16 +2480,26 @@ complex_sample_frequency_result <- function(data, variables, input, prefix, vari
     shiny::h3("Complex-sample frequencies / descriptives"),
     shiny::div(
       class = "frequency-table-wrap",
-      coefficient_html_table(table, compact = TRUE, compact_font_size = 13, compact_width = 58, compact_first_width = 130, compact_min_width = 480)
-    ),
-    if (nzchar(paste(c(missing_note, skipped_note, design_note), collapse = ""))) {
-      shiny::div(
-        class = "analysis-result-notes",
-        if (nzchar(missing_note)) shiny::tags$p(missing_note),
-        if (nzchar(skipped_note)) shiny::tags$p(skipped_note),
-        if (nzchar(design_note)) shiny::tags$p(design_note)
+      coefficient_html_table(
+        complex_sample_table_data(table, "main", "en"),
+        compact = TRUE,
+        compact_font_size = 12,
+        compact_width = 58,
+        compact_first_width = 130,
+        compact_min_width = 480,
+        table_role = "main",
+        table_language = "en",
+        note_line = complex_sample_main_note(
+          abbreviations = "CI = confidence interval; CV = coefficient of variation; Deff = design effect",
+          estimation = "Estimates and standard errors account for the specified survey design"
+        )
       )
-    }
+    ),
+    complex_sample_appendix_diagnostics_section(
+      items = c("Missing data", "Skipped analyses", "Survey design"),
+      details = c(missing_note, skipped_note, design_note),
+      language = ui_language
+    )
   )
 }
 
@@ -2476,8 +2714,9 @@ complex_sample_crosstab_panel_class <- function(min_width, col_levels = characte
   )
 }
 
-complex_sample_crosstab_group_display <- function(items, col_var, variable_info = NULL, labels = character(0), category_table = NULL, options = list(), skipped_notes = character(0)) {
+complex_sample_crosstab_group_display <- function(items, col_var, variable_info = NULL, labels = character(0), category_table = NULL, options = list(), skipped_notes = character(0), language = NULL) {
   items <- Filter(Negate(is.null), items)
+  ui_language <- result_appendix_table_language(language)
   skipped_notes <- unique(as.character(skipped_notes %||% character(0)))
   skipped_notes <- skipped_notes[nzchar(skipped_notes)]
   col_label <- frequency_variable_display_name(col_var, variable_info, labels, category_table)
@@ -2485,21 +2724,24 @@ complex_sample_crosstab_group_display <- function(items, col_var, variable_info 
     if (length(skipped_notes) == 0) {
       return(NULL)
     }
-    return(shiny::div(
-      class = "result-section regression-result-panel crosstab-result-section",
-      shiny::h3("Complex-sample cross-tabulation"),
-      shiny::div(
-        class = "analysis-result-notes crosstab-notes",
-        shiny::tags$p(sprintf("No cross-tabulation table was computed for %s.", col_label)),
-        lapply(skipped_notes, function(note) shiny::tags$p(note))
-      )
+    no_result_note <- sprintf(complex_sample_text_pair(ui_language,
+      "No cross-tabulation table was computed for %s.",
+      "%s에 대한 교차분석 표를 계산하지 못했습니다."), col_label)
+    return(complex_sample_appendix_diagnostics_section(
+      items = c("Status", rep("Skipped analyses", length(skipped_notes))),
+      details = c(no_result_note, skipped_notes),
+      language = ui_language,
+      title_en = "Complex-sample cross-tabulation diagnostics",
+      title_ko = "복합표본 교차분석 진단",
+      class = "result-section regression-result-panel crosstab-result-section complex-sample-diagnostics-section",
+      preserve_details = TRUE
     ))
   }
   col_measure <- crosstab_measurement(col_var, variable_info)
   col_levels <- crosstab_order_values(unique(unlist(lapply(items, function(item) colnames(item$weighted_tab)), use.names = FALSE)), col_measure)
   col_labels <- frequency_value_display_labels(col_var, col_levels, category_table)
   show_trend <- isTRUE(options$trend_analysis) && any(vapply(items, function(item) !is.null(item$trend), logical(1)))
-  min_width <- max(640, 180 + length(col_levels) * 118 + 150 + if (isTRUE(show_trend)) 92 else 0)
+  min_width <- 180 + length(col_levels) * 118 + 150 + if (isTRUE(show_trend)) 92 else 0
 
   body_rows <- unlist(lapply(items, function(item) {
     weighted_tab <- complex_sample_crosstab_align_matrix(item$weighted_tab, col_levels)
@@ -2547,14 +2789,38 @@ complex_sample_crosstab_group_display <- function(items, col_var, variable_info 
     })
   }), recursive = FALSE)
 
+  contract_columns <- c("Row variable", "Level", col_labels, complex_sample_crosstab_stat_header(options), "p")
+  if (isTRUE(show_trend)) contract_columns <- c(contract_columns, "p for trend")
+  contract_table <- as.data.frame(
+    stats::setNames(as.list(rep("", length(contract_columns))), make.unique(contract_columns)),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  main_note <- complex_sample_main_note(
+    format = if (isTRUE(options$show_weighted_n)) "Cells report unweighted n, weighted percentages, and weighted N" else "Cells report unweighted n and weighted percentages",
+    estimation = paste0(complex_sample_crosstab_test_label(options$crosstab_test_method), " accounts for the specified survey design"),
+    multiplicity = if (isTRUE(show_trend)) "Trend tests are reported only for ordered variables" else NULL
+  )
+
+  missing_notes <- unique(vapply(items, function(item) as.character(item$missing_note %||% ""), character(1)))
+  missing_notes <- missing_notes[nzchar(missing_notes)]
+  design_notes <- unique(vapply(items, function(item) as.character(item$design_note %||% ""), character(1)))
+  design_notes <- design_notes[nzchar(design_notes)]
+  diagnostic_items <- c(
+    rep("Missing data", length(missing_notes)),
+    rep("Skipped analyses", length(skipped_notes)),
+    rep("Survey design", length(design_notes))
+  )
+  diagnostic_details <- c(missing_notes, skipped_notes, design_notes)
+
   shiny::div(
     class = complex_sample_crosstab_panel_class(min_width, col_levels, show_trend),
     shiny::h3("Complex-sample cross-tabulation"),
     shiny::div(
       class = "frequency-table-wrap crosstab-table-wrap",
-      shiny::tags$table(
+      complex_sample_custom_table_sheet(shiny::tags$table(
         class = "coefficient-table crosstab-main-table",
-        style = result_table_style(font_size = 13, min_width = min_width),
+        style = result_table_style(font_size = 12, min_width = min_width),
         shiny::tags$colgroup(
           shiny::tags$col(class = "crosstab-row-variable-col"),
           shiny::tags$col(class = "crosstab-row-label-col"),
@@ -2577,23 +2843,20 @@ complex_sample_crosstab_group_display <- function(items, col_var, variable_info 
           )
         ),
         shiny::tags$tbody(body_rows)
-      )
+      ), contract_table, role = "main", language = "en", intrinsic_width = min_width, note_line = main_note)
     ),
-    shiny::div(
-      class = "analysis-result-notes crosstab-notes",
-      shiny::tags$p(complex_sample_crosstab_note(options)),
-      lapply(unique(vapply(items, function(item) as.character(item$missing_note %||% ""), character(1))), function(note) {
-        if (nzchar(note)) shiny::tags$p(note)
-      }),
-      lapply(skipped_notes, function(note) shiny::tags$p(note)),
-      lapply(unique(vapply(items, function(item) as.character(item$design_note %||% ""), character(1))), function(note) {
-        if (nzchar(note)) shiny::tags$p(note)
-      })
+    complex_sample_appendix_diagnostics_section(
+      diagnostic_items,
+      diagnostic_details,
+      language = ui_language,
+      title_en = "Complex-sample cross-tabulation diagnostics",
+      title_ko = "복합표본 교차분석 진단",
+      preserve_details = TRUE
     )
   )
 }
 
-complex_sample_crosstab_display <- function(weighted_tab, unweighted_tab, row_var, col_var, test, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+complex_sample_crosstab_display <- function(weighted_tab, unweighted_tab, row_var, col_var, test, variable_info = NULL, labels = character(0), category_table = NULL, options = list(), language = NULL) {
   weighted_tab <- as.matrix(weighted_tab)
   unweighted_tab <- as.matrix(unweighted_tab)
   row_levels <- rownames(weighted_tab)
@@ -2608,16 +2871,22 @@ complex_sample_crosstab_display <- function(weighted_tab, unweighted_tab, row_va
   statistic <- if (is.null(test)) "" else complex_sample_num(unname(test$statistic), 3)
   df_text <- if (isTRUE(options$show_df)) complex_sample_test_df_compact_text(test) else ""
   p_value <- if (is.null(test)) "" else complex_sample_p_value(test$p.value)
-  min_width <- max(640, 180 + length(col_levels) * 100 + 150)
+  min_width <- 180 + length(col_levels) * 100 + 150
+  contract_columns <- c("Row variable", "Level", col_labels, complex_sample_crosstab_stat_header(options), "p")
+  contract_table <- as.data.frame(
+    stats::setNames(as.list(rep("", length(contract_columns))), make.unique(contract_columns)),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
 
   shiny::div(
     class = complex_sample_crosstab_panel_class(min_width, col_levels, FALSE),
     shiny::h3("Complex-sample cross-tabulation"),
     shiny::div(
       class = "frequency-table-wrap crosstab-table-wrap",
-      shiny::tags$table(
+      complex_sample_custom_table_sheet(shiny::tags$table(
         class = "coefficient-table crosstab-main-table",
-        style = result_table_style(font_size = 13, min_width = min_width),
+        style = result_table_style(font_size = 12, min_width = min_width),
         shiny::tags$colgroup(
           shiny::tags$col(class = "crosstab-row-variable-col"),
           shiny::tags$col(class = "crosstab-row-label-col"),
@@ -2661,16 +2930,17 @@ complex_sample_crosstab_display <- function(weighted_tab, unweighted_tab, row_va
             )
           })
         )
-      )
-    ),
-    shiny::div(
-      class = "analysis-result-notes crosstab-notes",
-      shiny::tags$p(complex_sample_crosstab_note(options))
+      ), contract_table, role = "main", language = "en", intrinsic_width = min_width,
+      note_line = complex_sample_main_note(
+        format = if (isTRUE(options$show_weighted_n)) "Cells report unweighted n, weighted percentages, and weighted N" else "Cells report unweighted n and weighted percentages",
+        estimation = paste0(complex_sample_crosstab_test_label(options$crosstab_test_method), " accounts for the specified survey design")
+      ))
     )
   )
 }
 
-complex_sample_crosstab_result <- function(data, row_var, col_var, input, prefix, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+complex_sample_crosstab_result <- function(data, row_var, col_var, input, prefix, variable_info = NULL, labels = character(0), category_table = NULL, options = list(), language = NULL) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("row_var", "col_var"))
   built <- complex_sample_build_design(data, input, prefix, c(row_var, col_var))
   design_data <- as.data.frame(built$design$variables, stringsAsFactors = FALSE, check.names = FALSE)
   row_values <- as.character(design_data[[row_var]])
@@ -2711,13 +2981,12 @@ complex_sample_crosstab_result <- function(data, row_var, col_var, input, prefix
   }
   row_label <- frequency_variable_display_name(row_var, variable_info, labels, category_table)
   col_label <- frequency_variable_display_name(col_var, variable_info, labels, category_table)
+  ui_language <- result_appendix_table_language(language)
   missing_note <- if (complete_excluded_n > 0) {
-    sprintf(
+    sprintf(complex_sample_text_pair(ui_language,
       "%s by %s excluded %s row(s) with missing row or column values after survey design/subpopulation filtering.",
-      row_label,
-      col_label,
-      complete_excluded_n
-    )
+      "%s × %s 분석에서 조사설계 및 부-모집단 필터링 후 행 또는 열 값이 결측인 %s개 행을 제외했습니다."),
+      row_label, col_label, complete_excluded_n)
   } else {
     ""
   }
@@ -2730,11 +2999,12 @@ complex_sample_crosstab_result <- function(data, row_var, col_var, input, prefix
     percent_ci = percent_ci,
     trend = trend,
     missing_note = missing_note,
-    design_note = complex_sample_design_note(built)
+    design_note = complex_sample_design_note(built, role = "appendix", language = ui_language)
   )
 }
 
-complex_sample_crosstab_results <- function(data, row_vars, col_vars, input, prefix, variable_info = NULL, labels = character(0), category_table = NULL) {
+complex_sample_crosstab_results <- function(data, row_vars, col_vars, input, prefix, variable_info = NULL, labels = character(0), category_table = NULL, language = NULL) {
+  if (length(attr(data,"statedu_scope_excluded"))) analysis_scope_prepare_variables(data,environment(),c("row_vars","col_vars"))
   row_vars <- as.character(row_vars %||% character(0))
   col_vars <- as.character(col_vars %||% character(0))
   sections <- list()
@@ -2744,25 +3014,26 @@ complex_sample_crosstab_results <- function(data, row_vars, col_vars, input, pre
     skipped_notes <- character(0)
     for (row_var in row_vars) {
       item <- tryCatch(
-        complex_sample_crosstab_result(data, row_var, col_var, input, prefix, variable_info, labels, category_table, options),
+        complex_sample_crosstab_result(data, row_var, col_var, input, prefix, variable_info, labels, category_table, options, language),
         error = function(error) {
           message <- conditionMessage(error)
           if (!nzchar(message)) {
             message <- as.character(error)
           }
           message <- sub("^Error:\\s*", "", message)
-          skipped_notes <<- c(skipped_notes, sprintf(
-            "%s by %s was not computed: %s",
-            frequency_variable_display_name(row_var, variable_info, labels, category_table),
-            frequency_variable_display_name(col_var, variable_info, labels, category_table),
-            message
-          ))
+          row_label <- frequency_variable_display_name(row_var, variable_info, labels, category_table)
+          col_label <- frequency_variable_display_name(col_var, variable_info, labels, category_table)
+          ui_language <- result_appendix_table_language(language)
+          skipped_notes <<- c(skipped_notes, sprintf(complex_sample_text_pair(ui_language,
+            "%s by %s was not computed: %s", "%s × %s 분석을 계산하지 못했습니다: %s"),
+            row_label, col_label, if (identical(message, "No complete cases are available for the selected cross-tabulation variables."))
+              complex_sample_text_pair(ui_language, message, "선택한 교차분석 변수에 완전한 사례가 없습니다.") else message))
           NULL
         }
       )
       items[[length(items) + 1L]] <- item
     }
-    sections[[length(sections) + 1L]] <- complex_sample_crosstab_group_display(items, col_var, variable_info, labels, category_table, options, skipped_notes)
+    sections[[length(sections) + 1L]] <- complex_sample_crosstab_group_display(items, col_var, variable_info, labels, category_table, options, skipped_notes, language)
   }
   do.call(shiny::tagList, sections)
 }
@@ -2823,19 +3094,19 @@ complex_sample_group_column_widths <- function(columns) {
   weights <- vapply(keys, function(key) {
     switch(
       key,
-      variable = 11,
-      value = 15,
+      variable = 15,
+      value = 20,
       mse = 18,
       msd = 18,
-      `95ci` = 19,
-      es = 13,
-      effectsize = 13,
-      tdf = 14,
-      fdf = 14,
-      tfdf = 14,
+      `95ci` = 17,
+      es = 8,
+      effectsize = 8,
+      tdf = 12,
+      fdf = 12,
+      tfdf = 12,
       p = 10,
       pfortrend = 10,
-      posthoc = 8,
+      posthoc = 13,
       weightedn = 8,
       cv = 7,
       deff = 7,
@@ -2845,8 +3116,10 @@ complex_sample_group_column_widths <- function(columns) {
   weights / sum(weights) * 100
 }
 
-complex_sample_group_result <- function(data, dependents, factor_vars, input, prefix, variable_info = NULL, labels = character(0), category_table = NULL) {
+complex_sample_group_result <- function(data, dependents, factor_vars, input, prefix, variable_info = NULL, labels = character(0), category_table = NULL, language = NULL) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("dependents", "factor_vars"))
   factor_vars <- as.character(factor_vars %||% character(0))
+  ui_language <- result_appendix_table_language(language)
   built <- complex_sample_build_design(data, input, prefix, c(dependents, factor_vars))
   options <- complex_sample_analysis_options(input, prefix, "ttest_anova")
   sections <- list()
@@ -2868,20 +3141,15 @@ complex_sample_group_result <- function(data, dependents, factor_vars, input, pr
       dependent_label <- ttest_display_variable(dependent, variable_info, labels, category_table)
       factor_label <- ttest_display_variable(factor_var, variable_info, labels, category_table)
       if (!any(complete)) {
-        skipped_notes <- c(skipped_notes, sprintf(
+        skipped_notes <- c(skipped_notes, sprintf(complex_sample_text_pair(ui_language,
           "%s by %s was not computed because no complete cases were available after survey design/subpopulation filtering.",
-          dependent_label,
-          factor_label
-        ))
+          "%s × %s 분석은 조사설계 및 부-모집단 필터링 후 완전사례가 없어 계산하지 못했습니다."), dependent_label, factor_label))
         next
       }
       if (complete_excluded_n > 0) {
-        missing_notes <- c(missing_notes, sprintf(
+        missing_notes <- c(missing_notes, sprintf(complex_sample_text_pair(ui_language,
           "%s by %s excluded %s row(s) with missing dependent or group values after survey design/subpopulation filtering.",
-          dependent_label,
-          factor_label,
-          complete_excluded_n
-        ))
+          "%s × %s 분석에서 조사설계 및 부-모집단 필터링 후 종속변수 또는 집단변수 값이 결측인 %s개 행을 제외했습니다."), dependent_label, factor_label, complete_excluded_n))
       }
       analysis_design$variables$`..group_analysis_keep..` <- complete
       analysis_design$variables$`..y..` <- dependent_values
@@ -2889,11 +3157,9 @@ complex_sample_group_result <- function(data, dependents, factor_vars, input, pr
       factor_values <- analysis_design$variables[[factor_var]]
       levels <- frequency_value_order(unique(as.character(factor_values[!is.na(factor_values)])))
       if (length(levels) < 2) {
-        skipped_notes <- c(skipped_notes, sprintf(
+        skipped_notes <- c(skipped_notes, sprintf(complex_sample_text_pair(ui_language,
           "%s by %s was not computed because the group variable had fewer than two usable groups after complete-case filtering.",
-          dependent_label,
-          factor_label
-        ))
+          "%s × %s 분석은 완전사례 필터링 후 사용할 수 있는 집단이 2개 미만이어서 계산하지 못했습니다."), dependent_label, factor_label))
         next
       }
       factor_measure <- named_value(ttest_measurement_lookup(variable_info), factor_var, "")
@@ -3006,20 +3272,17 @@ complex_sample_group_result <- function(data, dependents, factor_vars, input, pr
       }
     }
     if (length(rows) == 0) {
-      design_note <- complex_sample_design_note(built)
-      note <- paste(c(
-        "Complex-sample univariable analysis was fitted with the survey design.",
-        paste(unique(skipped_notes[nzchar(skipped_notes)]), collapse = " "),
-        design_note
-      )[nzchar(c(
-        "Complex-sample univariable analysis was fitted with the survey design.",
-        paste(unique(skipped_notes[nzchar(skipped_notes)]), collapse = " "),
-        design_note
-      ))], collapse = " ")
-      sections[[length(sections) + 1L]] <- shiny::div(
-        class = "result-section regression-result-panel ttest-anova-result-panel",
-        shiny::h3(ttest_display_variable(dependent, variable_info, labels, category_table)),
-        shiny::div(class = "analysis-result-notes", shiny::tags$p(note))
+      design_note <- complex_sample_design_note(built, role = "appendix", language = ui_language)
+      skipped_note <- paste(unique(skipped_notes[nzchar(skipped_notes)]), collapse = " ")
+      sections[[length(sections) + 1L]] <- complex_sample_appendix_diagnostics_section(
+        items = c("Skipped analyses", "Survey design"),
+        details = c(skipped_note, design_note),
+        language = ui_language,
+        title_en = ttest_display_variable(dependent, variable_info, labels, category_table),
+        title_ko = ttest_display_variable(dependent, variable_info, labels, category_table),
+        class = "result-section regression-result-panel ttest-anova-result-panel complex-sample-diagnostics-section",
+        preserve_details = TRUE,
+        title_is_user_data = TRUE
       )
       next
     }
@@ -3048,7 +3311,7 @@ complex_sample_group_result <- function(data, dependents, factor_vars, input, pr
       attr(table, "note_markers") <- do.call(rbind, ordered_marker_rows)
     }
     posthoc_table <- ttest_bind_result_rows(posthoc_tables)
-    design_note <- complex_sample_design_note(built)
+    design_note <- complex_sample_design_note(built, role = "appendix", language = ui_language)
     mean_note <- if (isTRUE(options$mean_sd)) "M \u00B1 SD uses the design-weighted mean and design-based within-group SD." else "M \u00B1 SE uses the design-weighted mean and its survey standard error."
     posthoc_note <- if (isTRUE(posthoc_used)) {
       paste0("Post-hoc comparisons are design-based pairwise t-tests with ", complex_sample_post_hoc_adjustment_note(options$post_hoc_correction %||% "holm"), " p-values and are computed only for significant omnibus ANOVA results.")
@@ -3059,16 +3322,46 @@ complex_sample_group_result <- function(data, dependents, factor_vars, input, pr
     effect_note <- if (isTRUE(options$show_effect_size)) "Effect sizes are design-weighted descriptive effect sizes and should be interpreted with the survey design note." else ""
     missing_note <- paste(unique(missing_notes[nzchar(missing_notes)]), collapse = " ")
     skipped_note <- paste(unique(skipped_notes[nzchar(skipped_notes)]), collapse = " ")
-    note <- paste(c("Complex-sample univariable analysis was fitted with the survey design.", mean_note, posthoc_note, trend_note, effect_note, missing_note, skipped_note, design_note)[nzchar(c("Complex-sample univariable analysis was fitted with the survey design.", mean_note, posthoc_note, trend_note, effect_note, missing_note, skipped_note, design_note))], collapse = " ")
+    diagnostic_values <- c(missing_note, skipped_note, design_note)
     sections[[length(sections) + 1L]] <- shiny::div(
       class = "result-section regression-result-panel ttest-anova-result-panel",
       shiny::h3(ttest_display_variable(dependent, variable_info, labels, category_table)),
-      coefficient_html_table(table, compact = TRUE, compact_font_size = 13, compact_width = 66, compact_first_width = 130, compact_min_width = if (isTRUE(posthoc_used) || isTRUE(trend_used)) 720 else 560, note_line = note),
+      coefficient_html_table(
+        complex_sample_table_data(table, "main", "en"),
+        compact = TRUE,
+        compact_font_size = 12,
+        compact_width = 66,
+        compact_first_width = 130,
+        compact_min_width = if (isTRUE(posthoc_used) || isTRUE(trend_used)) 720 else 560,
+        table_role = "main",
+        table_language = "en",
+        note_line = complex_sample_main_note(
+          abbreviations = "CI = confidence interval; ES = effect size; CV = coefficient of variation; Deff = design effect",
+          estimation = c("Complex-sample univariable analysis was fitted with the survey design", mean_note),
+          multiplicity = c(posthoc_note, trend_note)[nzchar(c(posthoc_note, trend_note))]
+        )
+      ),
+      complex_sample_appendix_diagnostics_section(
+        items = c("Missing data", "Skipped analyses", "Survey design"),
+        details = diagnostic_values,
+        language = ui_language,
+        preserve_details = TRUE
+      ),
       if (is.data.frame(posthoc_table) && nrow(posthoc_table) > 0) {
         shiny::div(
           class = "ttest-anova-posthoc-section",
           shiny::h4("Post-hoc"),
-          coefficient_html_table(posthoc_table, compact = TRUE, compact_font_size = 13, compact_width = 72, compact_first_width = 130, compact_min_width = 560)
+          coefficient_html_table(
+            complex_sample_table_data(posthoc_table, "main", "en"),
+            compact = TRUE,
+            compact_font_size = 12,
+            compact_width = 72,
+            compact_first_width = 130,
+            compact_min_width = 560,
+            table_role = "main",
+            table_language = "en",
+            note_line = complex_sample_main_note(multiplicity = complex_sample_post_hoc_adjustment_note(options$post_hoc_correction %||% "holm"))
+          )
         )
       }
     )
@@ -3274,7 +3567,9 @@ complex_sample_regression_coef_display_table <- function(raw, fit, predictors, s
   }
 }
 
-complex_sample_single_regression_result <- function(data, outcome, predictors, input, prefix, logistic = FALSE, variable_info = NULL, labels = character(0), category_table = NULL) {
+complex_sample_single_regression_result <- function(data, outcome, predictors, input, prefix, logistic = FALSE, variable_info = NULL, labels = character(0), category_table = NULL, language = NULL) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("outcome", "predictors"))
+  ui_language <- result_appendix_table_language(language)
   variables <- unique(c(outcome, predictors))
   built <- complex_sample_build_design(data, input, prefix, variables)
   options <- complex_sample_analysis_options(input, prefix, if (isTRUE(logistic)) "logistic" else "regression")
@@ -3417,23 +3712,27 @@ complex_sample_single_regression_result <- function(data, outcome, predictors, i
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
-  note_parts <- c(
-    if (isTRUE(logistic)) {
-      "Coefficients are from survey-weighted logistic regression; Wald is the squared coefficient test statistic with design-df F p-values when design df is available, and odds ratios are exponentiated coefficients."
-    } else {
-      "Coefficients are from survey-weighted linear regression; model statistics use the design-based Wald/F test."
-    },
-    if (isTRUE(logistic) && isTRUE(options$show_model_fit)) {
-      "Pseudo R-squared values are approximate descriptive fit indices for the survey-weighted logistic model."
-    } else {
-      ""
-    },
-    "Categorical predictors are displayed with the reference category followed by estimated categories.",
-    if (complete_excluded_n > 0) sprintf("Complete-case modeling excluded %s row(s) with missing outcome or predictor values after survey design/subpopulation filtering.", complete_excluded_n) else "",
-    complex_sample_design_note(built)
-  )
-  note_line <- paste(note_parts[nzchar(note_parts)], collapse = " ")
+  event_row <- match("Event category", overview$Item)
+  if (!is.na(event_row)) attr(overview, "result_user_cells") <- matrix(c(event_row, 2L), ncol = 2L)
+  design_note <- complex_sample_design_note(built, role = "appendix", language = ui_language)
+  complete_case_note <- if (complete_excluded_n > 0) {
+    sprintf(complex_sample_text_pair(ui_language,
+      "Complete-case modeling excluded %s row(s) with missing outcome or predictor values after survey design/subpopulation filtering.",
+      "완전사례 모형에서 조사설계 및 부-모집단 필터링 후 결과변수 또는 예측변수 값이 결측인 %s개 행을 제외했습니다."), complete_excluded_n)
+  } else {
+    ""
+  }
   shiny::tagList(
+    analysis_result_table_section(
+      complex_sample_appendix_title(
+        ui_language,
+        if (isTRUE(logistic)) "Complex-sample logistic regression overview" else "Complex-sample regression overview",
+        if (isTRUE(logistic)) "복합표본 로지스틱 회귀분석 개요" else "복합표본 회귀분석 개요"
+      ),
+      complex_sample_table_data(overview, "appendix", ui_language),
+      class = "result-section regression-result-panel logistic-result-panel complex-sample-overview-section",
+      table_fn = model_overview_html_table
+    ),
     shiny::div(
       class = "result-section regression-result-panel logistic-result-panel",
       shiny::h3(sprintf(
@@ -3441,50 +3740,66 @@ complex_sample_single_regression_result <- function(data, outcome, predictors, i
         if (isTRUE(logistic)) "Complex-sample logistic regression" else "Complex-sample regression",
         frequency_variable_display_name(outcome, variable_info, labels, category_table)
       )),
-      model_overview_html_table(overview),
       coefficient_html_table(
-        coef_table,
+        complex_sample_table_data(coef_table, "main", "en"),
         compact = TRUE,
-        compact_font_size = 13,
+        compact_font_size = 12,
         compact_width = 72,
         compact_first_width = 128,
         compact_min_width = if (isTRUE(logistic)) 680 else 560,
-        note_line = note_line
+        note_line = complex_sample_main_note(
+          abbreviations = if (isTRUE(logistic)) "OR = odds ratio; CI = confidence interval" else "B = unstandardized coefficient; SE = standard error; CI = confidence interval",
+          estimation = if (isTRUE(logistic)) "Survey-weighted logistic regression with design-based inference" else "Survey-weighted linear regression with design-based inference",
+          reference = "Categorical predictors use the displayed reference category"
+        ),
+        table_role = "main",
+        table_language = "en"
       )
+    ),
+    complex_sample_appendix_diagnostics_section(
+      items = c("Missing data", "Survey design"),
+      details = c(complete_case_note, design_note),
+      language = ui_language
     )
   )
 }
 
-complex_sample_regression_failure_section <- function(outcome, error, logistic = FALSE, variable_info = NULL, labels = character(0), category_table = NULL) {
+complex_sample_regression_failure_section <- function(outcome, error, logistic = FALSE, variable_info = NULL, labels = character(0), category_table = NULL, language = NULL) {
   message <- conditionMessage(error)
   if (!nzchar(message)) {
     message <- as.character(error)
   }
   message <- sub("^Error:\\s*", "", message)
-  shiny::div(
-    class = "result-section regression-result-panel logistic-result-panel",
-    shiny::h3(sprintf(
-      "%s: %s",
-      if (isTRUE(logistic)) "Complex-sample logistic regression" else "Complex-sample regression",
-      frequency_variable_display_name(outcome, variable_info, labels, category_table)
-    )),
-    shiny::div(
-      class = "analysis-result-notes",
-      shiny::tags$p(sprintf(
-        "%s was not computed: %s",
-        if (isTRUE(logistic)) "Complex-sample logistic regression" else "Complex-sample regression",
-        message
-      ))
-    )
+  ui_language <- result_appendix_table_language(language)
+  known_errors <- c(
+    "Dependent variable has no usable non-missing values." = "종속변수에 사용할 수 있는 비결측값이 없습니다.",
+    "Logistic regression requires a binary dependent variable." = "로지스틱 회귀에는 이분형 종속변수가 필요합니다."
+  )
+  if (message %in% names(known_errors)) message <- complex_sample_text_pair(ui_language, message, unname(known_errors[[message]]))
+  analysis_label <- complex_sample_text_pair(
+    ui_language,
+    if (isTRUE(logistic)) "Complex-sample logistic regression" else "Complex-sample regression",
+    if (isTRUE(logistic)) "복합표본 로지스틱 회귀분석" else "복합표본 회귀분석"
+  )
+  complex_sample_appendix_diagnostics_section(
+    items = "Error",
+    details = sprintf("%s: %s", analysis_label, message),
+    language = ui_language,
+    title_en = sprintf("%s: %s", analysis_label, frequency_variable_display_name(outcome, variable_info, labels, category_table)),
+    title_ko = sprintf("%s: %s", analysis_label, frequency_variable_display_name(outcome, variable_info, labels, category_table)),
+    class = "result-section regression-result-panel logistic-result-panel complex-sample-diagnostics-section",
+    preserve_details = TRUE,
+    title_is_user_data = TRUE
   )
 }
 
-complex_sample_regression_results <- function(data, outcomes, predictors, input, prefix, logistic = FALSE, variable_info = NULL, labels = character(0), category_table = NULL) {
+complex_sample_regression_results <- function(data, outcomes, predictors, input, prefix, logistic = FALSE, variable_info = NULL, labels = character(0), category_table = NULL, language = NULL) {
+  if (length(attr(data,"statedu_scope_excluded"))) analysis_scope_prepare_variables(data,environment(),c("outcomes","predictors"))
   sections <- lapply(outcomes, function(outcome) {
     tryCatch(
-      complex_sample_single_regression_result(data, outcome, predictors, input, prefix, logistic, variable_info, labels, category_table),
+      complex_sample_single_regression_result(data, outcome, predictors, input, prefix, logistic, variable_info, labels, category_table, language),
       error = function(error) {
-        complex_sample_regression_failure_section(outcome, error, logistic, variable_info, labels, category_table)
+        complex_sample_regression_failure_section(outcome, error, logistic, variable_info, labels, category_table, language)
       }
     )
   })
@@ -3672,8 +3987,10 @@ complex_sample_correlation_matrix_table <- function(table, variables, p_adjust_m
   result
 }
 
-complex_sample_correlation_result <- function(data, variables, input, prefix, variable_info = NULL, labels = character(0), category_table = NULL) {
+complex_sample_correlation_result <- function(data, variables, input, prefix, variable_info = NULL, labels = character(0), category_table = NULL, language = NULL) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("variables"))
   variables <- intersect(as.character(variables %||% character(0)), names(data))
+  ui_language <- result_appendix_table_language(language)
   shiny::validate(shiny::need(length(variables) >= 2, "Select at least two variables."))
   built <- complex_sample_build_design(data, input, prefix, variables)
   options <- complex_sample_analysis_options(input, prefix, "correlation")
@@ -3736,29 +4053,6 @@ complex_sample_correlation_result <- function(data, variables, input, prefix, va
   } else {
     ""
   }
-  detail_note <- paste(c(
-    sprintf("Complex-sample %s correlation was estimated with design-based covariance and delta-method standard errors.", if (identical(method, "spearman")) "Spearman rank" else "Pearson"),
-    method_definition_note,
-    if (isTRUE(ordered_included)) "Ordered variables were converted to ordinal scores before design-based covariance estimation." else NULL,
-    if (!identical(p_adjust_method, "none")) sprintf("The p adjusted column uses %s p-values across the displayed variable pairs.", complex_sample_p_adjustment_note(p_adjust_method)) else NULL,
-    "Each row uses pairwise complete observations for the two variables.",
-    if (isTRUE(options$show_missing)) "Missing N is the unweighted number of rows excluded from each pair because either variable was missing after survey design/subpopulation filtering." else NULL,
-    complex_sample_design_note(built)
-  ), collapse = " ")
-  matrix_note <- if (is.data.frame(matrix_table) && nrow(matrix_table) > 0) {
-    paste(c(
-      "Lower triangle shows design-based correlation coefficients.",
-      method_definition_note,
-      sprintf("Significance markers use %s p-values: * p < .05; ** p < .01; *** p < .001.", complex_sample_p_adjustment_note(p_adjust_method)),
-      attr(matrix_table, "matrix_variable_note", exact = TRUE) %||% ""
-    )[nzchar(c(
-      "Lower triangle shows design-based correlation coefficients.",
-      sprintf("Significance markers use %s p-values: * p < .05; ** p < .01; *** p < .001.", complex_sample_p_adjustment_note(p_adjust_method)),
-      attr(matrix_table, "matrix_variable_note", exact = TRUE) %||% ""
-    ))], collapse = " ")
-  } else {
-    ""
-  }
   meta <- built$meta %||% list()
   overview_items <- c(
     "Analysis",
@@ -3796,11 +4090,12 @@ complex_sample_correlation_result <- function(data, variables, input, prefix, va
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+  design_note <- complex_sample_design_note(built, role = "appendix", language = ui_language)
   shiny::tagList(
     div(
       class = "result-section regression-result-panel complex-sample-correlation-result-panel",
-      h3("Complex-sample correlation overview"),
-      model_overview_html_table(overview)
+      h3(complex_sample_appendix_title(ui_language, "Complex-sample correlation overview", "복합표본 상관분석 개요")),
+      model_overview_html_table(complex_sample_table_data(overview, "appendix", ui_language))
     ),
     if (is.data.frame(matrix_table) && nrow(matrix_table) > 0) {
       div(
@@ -3808,7 +4103,22 @@ complex_sample_correlation_result <- function(data, variables, input, prefix, va
         h3("Complex-sample correlation matrix"),
         div(
           class = "frequency-table-wrap",
-          coefficient_html_table(matrix_table, compact = TRUE, compact_font_size = 13, compact_width = 58, compact_first_width = 120, compact_min_width = 560, note_line = matrix_note)
+          coefficient_html_table(
+            complex_sample_table_data(matrix_table, "main", "en"),
+            compact = TRUE,
+            compact_font_size = 12,
+            compact_width = 58,
+            compact_first_width = 120,
+            compact_min_width = 560,
+            table_role = "main",
+            table_language = "en",
+            note_line = complex_sample_main_note(
+              format = "Lower triangle shows design-based correlation coefficients",
+              estimation = method_definition_note,
+              multiplicity = sprintf("Significance markers use %s p values: * p < .05; ** p < .01; *** p < .001", complex_sample_p_adjustment_note(p_adjust_method)),
+              symbol = attr(matrix_table, "matrix_variable_note", exact = TRUE) %||% ""
+            )
+          )
         )
       )
     },
@@ -3817,13 +4127,36 @@ complex_sample_correlation_result <- function(data, variables, input, prefix, va
       h3("Complex-sample correlation details"),
       div(
         class = "frequency-table-wrap",
-        coefficient_html_table(table, compact = TRUE, compact_font_size = 13, compact_width = 70, compact_first_width = 130, compact_min_width = 720, note_line = detail_note)
+        coefficient_html_table(
+          complex_sample_table_data(table, "main", "en"),
+          compact = TRUE,
+          compact_font_size = 12,
+          compact_width = 70,
+          compact_first_width = 130,
+          compact_min_width = 720,
+          table_role = "main",
+          table_language = "en",
+          note_line = complex_sample_main_note(
+            format = if (isTRUE(options$show_missing)) "Missing N is the unweighted number of rows excluded from each pair" else NULL,
+            abbreviations = "SE = standard error; CI = confidence interval",
+            estimation = c(
+              sprintf("Design-based %s correlations use delta-method standard errors", if (identical(method, "spearman")) "Spearman rank" else "Pearson"),
+              if (isTRUE(ordered_included)) "Ordered variables were converted to ordinal scores" else NULL
+            ),
+            multiplicity = if (!identical(p_adjust_method, "none")) sprintf("Adjusted p values use %s", complex_sample_p_adjustment_note(p_adjust_method)) else NULL
+          )
+        )
       )
+    ),
+    complex_sample_appendix_diagnostics_section(
+      items = "Survey design",
+      details = design_note,
+      language = ui_language
     )
   )
 }
 
-complex_sample_analysis_output <- function(type, data, target_values, input, prefix, variable_table = NULL, labels = character(0), category_table = NULL) {
+complex_sample_analysis_output <- function(type, data, target_values, input, prefix, variable_table = NULL, labels = character(0), category_table = NULL, language = NULL) {
   type <- as.character(type %||% "")
   design <- complex_sample_design_inputs(input, prefix)
   old_options <- options(survey.lonely.psu = complex_sample_lonely_psu_value(design$lonely_psu))
@@ -3831,40 +4164,41 @@ complex_sample_analysis_output <- function(type, data, target_values, input, pre
   if (identical(type, "frequencies")) {
     variables <- intersect(as.character(target_values$selected %||% character(0)), names(data))
     shiny::validate(shiny::need(length(variables) > 0, "Select at least one variable."))
-    return(complex_sample_frequency_result(data, variables, input, prefix, variable_table, labels, category_table))
+    return(complex_sample_frequency_result(data, variables, input, prefix, variable_table, labels, category_table, language))
   }
   if (identical(type, "crosstabs")) {
     row_vars <- intersect(as.character(target_values$row %||% character(0)), names(data))
     col_vars <- intersect(as.character(target_values$column %||% character(0)), names(data))
     shiny::validate(shiny::need(length(row_vars) > 0 && length(col_vars) > 0, "Select row and column variables."))
-    return(complex_sample_crosstab_results(data, row_vars, col_vars, input, prefix, variable_table, labels, category_table))
+    return(complex_sample_crosstab_results(data, row_vars, col_vars, input, prefix, variable_table, labels, category_table, language))
   }
   if (identical(type, "ttest_anova")) {
     dependents <- intersect(as.character(target_values$dependent %||% character(0)), names(data))
     factor_vars <- intersect(as.character(target_values$independent %||% character(0)), names(data))
     shiny::validate(shiny::need(length(dependents) > 0 && length(factor_vars) > 0, "Select dependent and independent variables."))
-    return(complex_sample_group_result(data, dependents, factor_vars, input, prefix, variable_table, labels, category_table))
+    return(complex_sample_group_result(data, dependents, factor_vars, input, prefix, variable_table, labels, category_table, language))
   }
   if (identical(type, "correlation")) {
     variables <- intersect(as.character(target_values$selected %||% character(0)), names(data))
     shiny::validate(shiny::need(length(variables) >= 2, "Select at least two variables."))
-    return(complex_sample_correlation_result(data, variables, input, prefix, variable_table, labels, category_table))
+    return(complex_sample_correlation_result(data, variables, input, prefix, variable_table, labels, category_table, language))
   }
   if (identical(type, "regression") || identical(type, "logistic")) {
     outcomes <- intersect(as.character(target_values$outcome %||% character(0)), names(data))
     predictors <- intersect(as.character(target_values$predictors %||% character(0)), names(data))
     shiny::validate(shiny::need(length(outcomes) > 0 && length(predictors) > 0, "Select outcome and predictor variables."))
-    return(complex_sample_regression_results(data, outcomes, predictors, input, prefix, logistic = identical(type, "logistic"), variable_info = variable_table, labels = labels, category_table = category_table))
+    return(complex_sample_regression_results(data, outcomes, predictors, input, prefix, logistic = identical(type, "logistic"), variable_info = variable_table, labels = labels, category_table = category_table, language = language))
   }
   NULL
 }
 
 complex_sample_result_panel <- function(prefix, target_specs, target_values, input, data = NULL, analysis_type = NULL, variable_table = NULL, labels = character(0), category_table = NULL, language = statedu_initial_language()) {
+  if (length(attr(data,"statedu_scope_excluded"))) analysis_scope_prepare_variables(data,environment(),"target_values")
   run_value <- input[[paste0(prefix, "_run")]]
   if (is.null(run_value) || run_value == 0) {
     return(NULL)
   }
-  result_language <- "en"
+  result_language <- result_appendix_table_language(language)
   variable_rows <- do.call(rbind, lapply(target_specs, function(spec) {
     data.frame(
       Section = complex_sample_ui_text(spec$key, result_language),
@@ -3942,9 +4276,13 @@ complex_sample_result_panel <- function(prefix, target_specs, target_values, inp
       prefix,
       variable_table = variable_table,
       labels = labels,
-      category_table = category_table
+      category_table = category_table,
+      language = result_language
     )
   }
+
+  variable_rows <- complex_sample_table_data(variable_rows, "appendix", result_language)
+  design_rows <- complex_sample_table_data(design_rows, "appendix", result_language)
 
   shiny::tagList(
     div(class = "step-summary complex-sample-run-note", complex_sample_ui_text("setup_note", result_language)),
@@ -3989,7 +4327,7 @@ register_complex_sample_handlers <- function(
   if (is.null(design_state)) {
     design_state <- reactiveVal(NULL)
   }
-  result_cache <- reactiveVal(NULL)
+  result_cache <- analysis_scope_result_val(NULL)
 
   all_target_values <- function() {
     stats::setNames(lapply(names(target_ids), function(key) {
@@ -4002,13 +4340,7 @@ register_complex_sample_handlers <- function(
   }
 
   selected_design_variables <- function() {
-    design <- tryCatch(
-      complex_sample_read_design_inputs(input, prefix),
-      error = function(e) complex_sample_normalize_design_state(design_state())
-    )
-    if (is.null(design)) {
-      design <- complex_sample_shared_design_defaults()
-    }
+    design <- complex_sample_normalize_design_state(design_state())
     unique(as.character(c(
       design$strata,
       design$cluster,
@@ -4034,7 +4366,7 @@ register_complex_sample_handlers <- function(
     language_fn = app_language_fn
   )
 
-  selected_for_render <- function() {
+  selected_for_render <- function(shared_raw = NULL) {
     ids <- c(
       available_id,
       unname(target_ids),
@@ -4075,7 +4407,6 @@ register_complex_sample_handlers <- function(
       paste0(prefix, "_design_options_tab")
     )
     selected <- stats::setNames(lapply(ids, function(id) isolate(input[[id]]) %||% character(0)), ids)
-    shared_raw <- isolate(design_state())
     if (!is.null(shared_raw)) {
       shared_design <- complex_sample_normalize_design_state(shared_raw)
       design_ids <- complex_sample_design_input_ids(prefix)
@@ -4087,19 +4418,6 @@ register_complex_sample_handlers <- function(
       }
     }
     selected
-  }
-
-  design_inputs_for_render <- function() {
-    ids <- c(
-      paste0(prefix, "_strata"),
-      paste0(prefix, "_cluster"),
-      paste0(prefix, "_weight"),
-      paste0(prefix, "_subpopulation"),
-      paste0(prefix, "_subpopulation_condition"),
-      paste0(prefix, "_subpopulation_condition_type"),
-      paste0(prefix, "_subpopulation_condition_value")
-    )
-    stats::setNames(lapply(ids, function(id) input[[id]] %||% character(0)), ids)
   }
 
   allowed_for_target <- function(key) {
@@ -4123,12 +4441,12 @@ register_complex_sample_handlers <- function(
     language <- statedu_current_language(app_language_fn)
     selected <- as.character(selected_names_fn() %||% character(0))
     all_names <- as.character(all_variable_names_fn() %||% selected)
+    shared_design <- design_state()
     if (length(selected) == 0) {
       return(setup_empty_message("Complete Step 2 in the Data tab before setting up regression.", language = language))
     }
-    design_inputs_for_render()
     clean_targets()
-        complex_sample_setup_panel(
+    complex_sample_setup_panel(
       prefix = prefix,
       selected_names = selected,
       all_names = all_names,
@@ -4137,7 +4455,7 @@ register_complex_sample_handlers <- function(
       variable_table = design_variable_table_fn(),
       labels = labels_fn(),
       language = language,
-      selected = selected_for_render(),
+      selected = selected_for_render(shared_design),
       analysis_type = analysis_type,
       show_design_tabs = FALSE
     )
@@ -4145,7 +4463,7 @@ register_complex_sample_handlers <- function(
 
   output[[paste0(prefix, "_reset_control")]] <- renderUI({
     design_changed <- !identical(
-      complex_sample_read_design_inputs(input, prefix),
+      complex_sample_normalize_design_state(design_state()),
       complex_sample_shared_design_defaults()
     )
     enabled <- any(vapply(target_values, function(value) length(value()) > 0, logical(1))) ||
@@ -4154,18 +4472,27 @@ register_complex_sample_handlers <- function(
     analysis_reset_button(paste0(prefix, "_reset"), enabled = enabled, language = statedu_current_language(app_language_fn))
   })
 
-  observeEvent(input[[paste0(prefix, "_run")]], {
+  register_analysis_command_handler(
+    paste0(prefix, "_run"), input, output, session,
+    states = c(target_values, list(design = design_state)),
+    dataset_fn = function() if (is.function(dataset_fn)) dataset_fn() else NULL,
+    context_fn = function() list(selected = selected_names_fn(), variables = design_variable_table_fn(), labels = labels_fn(), categories = if (is.function(category_table_fn)) category_table_fn() else NULL),
+    run_fn = function() {
+    analysis_input <- isolate(complex_sample_analysis_input_snapshot(
+      input, prefix, analysis_type, design_state()
+    ))
+    analysis_input[[paste0(prefix, "_run")]] <- 1L
     result_cache(complex_sample_result_panel(
       prefix,
       target_specs,
       isolate(all_target_values()),
-      input,
+      analysis_input,
       data = if (is.null(dataset_fn)) NULL else isolate(dataset_fn()),
       analysis_type = analysis_type,
       variable_table = isolate(design_variable_table_fn()),
       labels = isolate(labels_fn()),
       category_table = if (is.null(category_table_fn)) NULL else isolate(category_table_fn()),
-      language = "en"
+      language = statedu_current_language(app_language_fn)
     ))
   }, ignoreInit = TRUE)
 
@@ -4173,28 +4500,19 @@ register_complex_sample_handlers <- function(
     result_cache()
   })
 
+  observeEvent({
+    option_ids <- paste0(prefix, "_", complex_sample_option_keys(analysis_type))
+    lapply(option_ids, function(id) input[[id]])
+  }, {
+    if (!is.null(result_cache())) {
+      result_cache(NULL)
+    }
+    if (!is.null(mark_settings_dirty)) mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   observeEvent(input$main_menu, {
     if (identical(analysis_type, "crosstabs") && !identical(input$main_menu %||% "", "analysis_complex_crosstabs")) {
       result_cache(NULL)
-    }
-  }, ignoreInit = TRUE)
-
-  observe({
-    shared_raw <- design_state()
-    if (is.null(shared_raw)) return()
-    shared_design <- complex_sample_normalize_design_state(shared_raw)
-    complex_sample_update_design_inputs(session, prefix, shared_design)
-  })
-
-  observeEvent({
-    ids <- complex_sample_design_input_ids(prefix)
-    lapply(unname(ids), function(id) input[[id]])
-  }, {
-    current <- complex_sample_read_design_inputs(input, prefix)
-    previous <- complex_sample_normalize_design_state(design_state())
-    if (!identical(current, previous)) {
-      design_state(current)
-      if (!is.null(mark_settings_dirty)) mark_settings_dirty()
     }
   }, ignoreInit = TRUE)
 
@@ -4240,6 +4558,14 @@ register_complex_sample_handlers <- function(
           if (!is.null(mark_settings_dirty)) mark_settings_dirty()
         }
       }, ignoreInit = TRUE)
+      register_analysis_reorder(input, session, target_id, function(payload) {
+        updated <- analysis_reorder_items(target_values[[target_key]](), payload)
+        if (isTRUE(updated$changed)) {
+          target_values[[target_key]](updated$order)
+          updateSelectInput(session, target_id, selected = updated$selected)
+          if (!is.null(mark_settings_dirty)) mark_settings_dirty()
+        }
+      })
       observeEvent(input[[paste0(prefix, "_", target_key, "_down")]], {
         updated <- move_order_item(target_values[[target_key]](), input[[target_id]], "down")
         if (isTRUE(updated$changed)) {
@@ -4285,20 +4611,6 @@ register_complex_sample_handlers <- function(
     for (key in names(target_ids)) {
       target_values[[key]](character(0))
     }
-    updateSelectInput(session, paste0(prefix, "_strata"), selected = "")
-    updateSelectInput(session, paste0(prefix, "_cluster"), selected = "")
-    updateSelectInput(session, paste0(prefix, "_weight"), selected = "")
-    updateSelectInput(session, paste0(prefix, "_fpc"), selected = "")
-    updateSelectInput(session, paste0(prefix, "_variance_method"), selected = "auto")
-    updateSelectInput(session, paste0(prefix, "_lonely_psu"), selected = "adjust")
-    updateCheckboxInput(session, paste0(prefix, "_use_replicate_weights"), value = FALSE)
-    updateSelectInput(session, paste0(prefix, "_replicate_weights"), selected = character(0))
-    updateSelectInput(session, paste0(prefix, "_replicate_type"), selected = "auto")
-    updateCheckboxInput(session, paste0(prefix, "_replicate_combined_weights"), value = FALSE)
-    updateSelectInput(session, paste0(prefix, "_subpopulation"), selected = "")
-    updateSelectInput(session, paste0(prefix, "_subpopulation_condition_type"), selected = "equals")
-    updateTextInput(session, paste0(prefix, "_subpopulation_condition"), value = "")
-    updateTextInput(session, paste0(prefix, "_subpopulation_condition_value"), value = "")
     design_state(complex_sample_shared_design_defaults())
     updateCheckboxInput(session, paste0(prefix, "_show_ci"), value = TRUE)
     updateCheckboxInput(session, paste0(prefix, "_show_weighted_n"), value = FALSE)
@@ -4311,7 +4623,7 @@ register_complex_sample_handlers <- function(
     updateCheckboxInput(session, paste0(prefix, "_show_wald"), value = TRUE)
     updateCheckboxInput(session, paste0(prefix, "_post_hoc"), value = FALSE)
     updateSelectInput(session, paste0(prefix, "_post_hoc_correction"), selected = statedu_multiple_correction_default())
-    updateCheckboxInput(session, paste0(prefix, "_ordered_significance"), value = FALSE)
+    updateCheckboxInput(session, paste0(prefix, "_ordered_significance"), value = TRUE)
     updateCheckboxInput(session, paste0(prefix, "_mean_sd"), value = FALSE)
     updateSelectInput(session, paste0(prefix, "_crosstab_percent_basis"), selected = "row")
     updateSelectInput(session, paste0(prefix, "_crosstab_test_method"), selected = "F")
@@ -4320,7 +4632,6 @@ register_complex_sample_handlers <- function(
     updateCheckboxInput(session, paste0(prefix, "_correlation_matrix"), value = TRUE)
     updateCheckboxInput(session, paste0(prefix, "_show_percent_ci"), value = FALSE)
     updateCheckboxInput(session, paste0(prefix, "_trend_analysis"), value = FALSE)
-    updateTabsetPanel(session, paste0(prefix, "_design_options_tab"), selected = complex_sample_ui_text("design_tab", statedu_current_language(app_language_fn)))
     session$sendCustomMessage(
       "easyflow-clear-transfer-selection",
       list(inputIds = c(available_id, unname(target_ids)))
@@ -4373,6 +4684,9 @@ register_complex_sample_design_handlers <- function(
       selected = selected_for_render()
     )
   })
+  # Refresh the hidden setup when language changes so the lazy tab does not
+  # rebind an older form and overwrite the shared design with stale selections.
+  shiny::outputOptions(output, paste0(prefix, "_setup"), suspendWhenHidden = FALSE)
 
   observe({
     shared_design <- complex_sample_normalize_design_state(design_state())

@@ -1,0 +1,11 @@
+# Public documentation translations
+
+The three About documents (Analyses, Method Notes, Version History) have independent Korean, English, Japanese, Chinese, Spanish, French, German and Vietnamese text for 1.3.0. Other About documents retain their existing language coverage.
+
+Edit `<language>.txt` for the 18-topic analysis inventory. The first two rows contain localized titles and subtitles; subsequent rows contain `stable_id|heading|analysis|method_note`. The short methodological field supplies translation context; the public Method Notes now use the separate `method_notes/<language>.md` sources with 27 chapters. Edit those Markdown sources for formulas, assumptions, diagnostics and interpretation, and `releases.json` for release highlights. Preserve statistical constraints when translating.
+
+Run `python scripts/generate_localized_docs.py`, then `python scripts/generate_localized_docs.py --check`, `python scripts/validate_changelog_history.py` and `Rscript scripts/validate_localized_about_docs.R`. The generated manifest routes each UI language to its own three Markdown documents; missing manifest entries are errors, not English fallbacks.
+
+The original long Korean/English Method Notes were restored into the public sources and updated for 1.3.0. The other six languages have expanded methodological explanations with the same 27 chapters and the original calculator equations; they are not line-by-line translations of every Korean/English paragraph. Historical source copies remain in `docs/reference`. Methodological references and formulas remain public. Private validation source data, original outputs and execution logs are not linked from the public validation summary.
+
+Version History includes every release from 0.1.0 onward in all eight languages. Edit `docs/reference/CHANGELOG_ARCHIVE_<LANGUAGE>.md` for historical entries (1.2.0 and earlier); the generator appends each language's archive after its current highlights. Preserve release headings, dates, ordering, individual bullet entries and inline technical literals. The history validator compares the six translated archives with the English source; the existing Korean archive retains its original grouping. For browser checks, run `Rscript scripts/validate_changelog_render.R` followed by `node scripts/validate_changelog_browser.cjs` with Playwright and Chrome available.

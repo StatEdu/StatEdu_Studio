@@ -394,7 +394,7 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
       if (nzchar(guard)) {
         return(list(result = paired_skipped_item(pair_label, "Continuous", "Wilcoxon signed-rank test", pair$n, guard), scale = NULL, count = NULL, check = paired_check_table(pair_label, check), skipped = paired_skipped_item(pair_label, "Continuous", "Wilcoxon signed-rank test", pair$n, guard)))
       }
-      test <- suppressWarnings(stats::wilcox.test(pair$y, pair$x, paired = TRUE, exact = FALSE))
+      test <- suppressWarnings(paired_rm_wilcox_engine()(pair$y, pair$x, paired = TRUE, exact = FALSE))
       method <- "Wilcoxon signed-rank test"
       statistic <- unname(as.numeric(test$statistic))
       df <- NA_real_
@@ -450,7 +450,7 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
     if (nzchar(guard)) {
       return(list(result = paired_skipped_item(pair_label, "Ordinal", "Wilcoxon signed-rank test", pair$n, guard), scale = NULL, count = NULL, check = NULL, skipped = paired_skipped_item(pair_label, "Ordinal", "Wilcoxon signed-rank test", pair$n, guard)))
     }
-    test <- suppressWarnings(stats::wilcox.test(pair$y, pair$x, paired = TRUE, exact = FALSE))
+    test <- suppressWarnings(paired_rm_wilcox_engine()(pair$y, pair$x, paired = TRUE, exact = FALSE))
     p <- as.numeric(test$p.value)
     use_median_iqr <- isTRUE(options$median_iqr)
     pre_summary <- paired_summary_values(pair$x, median_iqr = use_median_iqr)
@@ -521,6 +521,7 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
 }
 
 prepare_paired_results <- function(data, first, second, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("first", "second"))
   first <- as.character(first %||% character(0))
   second <- as.character(second %||% character(0))
   shiny::validate(shiny::need(length(first) > 0 && length(second) > 0, "Select paired variables for both repeated measurements."))
@@ -596,6 +597,7 @@ prepare_paired_results <- function(data, first, second, variable_info = NULL, la
 }
 
 prepare_paired_unified_results <- function(data, variable_groups, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("variable_groups"))
   groups <- lapply(variable_groups %||% list(), as.character)
   groups <- groups[lengths(groups) >= 2L]
   shiny::validate(shiny::need(length(groups) > 0, "Select one or more repeated-measures rows."))

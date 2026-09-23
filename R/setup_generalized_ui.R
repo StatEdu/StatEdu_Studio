@@ -1,5 +1,53 @@
 # Generalized linear model setup UI state and panel.
 
+generalized_error_ui_text <- function(message, language = statedu_initial_language()) {
+  keys <- c(
+    "Select exactly one outcome variable for GLM." = "outcome",
+    "Select at least one predictor variable for GLM." = "predictor",
+    "At least 3 complete cases are required." = "cases",
+    "Gamma GLM requires strictly positive outcome values." = "gamma",
+    "Count GLM requires non-negative integer outcome values." = "count",
+    "Exposure / offset values must be strictly positive because GLM uses offset(log(exposure))." = "exposure",
+    "Exposure / offset must be a continuous positive variable." = "exposure_type",
+    "GLM supports continuous or binary dependent variables. Use the logistic regression menu for categorical or ordinal dependent variables." = "outcome_type",
+    "Binary logistic GLM requires exactly two observed outcome levels." = "binary",
+    "Binary logistic GLM requires exactly two observed outcome values." = "binary",
+    "Binary logistic GLM requires two observed outcome levels." = "binary",
+    "Standard-error methods differed across imputed datasets; MI pooling was stopped." = "mi_se",
+    "Family or link differed across imputed datasets; MI pooling was stopped." = "mi_family",
+    "Analyzed N or residual df differed across imputed datasets; MI pooling was stopped." = "mi_n",
+    "Coefficient term signatures differed across imputed datasets; MI pooling was stopped." = "mi_terms",
+    "Complete-data residual df was not supplied for MI pooling." = "mi_df",
+    "Rubin pooling requires at least two finite estimates with finite positive within-imputation variances." = "mi_rubin",
+    "A finite positive complete-data residual df is required for Barnard-Rubin pooling." = "mi_df_positive",
+    "Barnard-Rubin degrees of freedom could not be computed." = "mi_df_failed",
+    "The mice package is required for GLM multiple imputation." = "mi_package",
+    "No missing values were present in selected GLM variables; MI is not needed." = "mi_not_needed",
+    "Negative-binomial family was locked for MI, but the model failed to fit in this imputed dataset." = "mi_nb_failed",
+    "Analysis weights must match the analyzed GLM rows." = "weights",
+    "Count-family lock must be Poisson ('count') or negative binomial." = "count_lock"
+  )
+  # Translate known application messages only; preserve external errors and user text.
+  if (length(message) != 1L || is.na(message) || identical(normalize_app_language(language), "en")) return(message)
+  key <- unname(keys[message])
+  if (is.na(key)) {
+    patterns <- c(
+      "^MI pooling requires all ([0-9]+) fitted coefficient tables; partial pooling is not allowed\\.$" = "mi_tables",
+      "^Coefficient term signatures differed across imputed datasets \\(imputation\\(s\\): (.+)\\); intersection pooling is not allowed\\.$" = "mi_term_details",
+      "(?s)^MI model fitting failed; partial pooling is not allowed\\. (.*)$" = "mi_fit",
+      "(?s)^MI completion failed; partial pooling is not allowed\\. (.*)$" = "mi_completion",
+      "(?s)^Count-family selection failed before MI pooling\\. (.*)$" = "mi_count_selection",
+      "^The selected link function is not supported for the fitted GLM family: (.+)\\.$" = "link"
+    )
+    for (pattern in names(patterns)) {
+      matched <- regmatches(message, regexec(pattern, message, perl = TRUE))[[1]]
+      if (length(matched) == 2L) return(sprintf(statedu_t(paste0("analysis.glm_error.", patterns[[pattern]]), language), matched[[2]]))
+    }
+    return(message)
+  }
+  statedu_t(paste0("analysis.glm_error.", key), language)
+}
+
 generalized_missing_strategy_ui_detail <- function(strategy, language = statedu_initial_language()) {
   switch(
     generalized_resolve_missing_strategy(strategy),

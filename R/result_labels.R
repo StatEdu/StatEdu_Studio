@@ -223,8 +223,10 @@ category_value_label_lookup_static <- function(table) {
   }
 
   lookup <- list()
-  value_columns <- paste0("value_", seq_len(6))
-  label_columns <- paste0("label_", seq_len(6))
+  value_columns <- grep("^value_[0-9]+$", names(table), value = TRUE)
+  value_indices <- suppressWarnings(as.integer(sub("^value_", "", value_columns)))
+  value_columns <- value_columns[order(value_indices, na.last = TRUE)]
+  label_columns <- paste0("label_", sub("^value_", "", value_columns))
   for (row_index in seq_len(nrow(table))) {
     name <- as.character(table$name[[row_index]] %||% "")
     if (!nzchar(name)) next

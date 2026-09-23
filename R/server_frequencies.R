@@ -119,6 +119,15 @@ register_frequencies_handlers <- function(
     mark_settings_dirty = mark_settings_dirty
   )
 
+  register_analysis_reorder(input, session, "frequency_selected", function(payload) {
+    updated <- analysis_reorder_items(frequency_variables(), payload)
+    if (isTRUE(updated$changed)) {
+      frequency_variables(updated$order)
+      active_frequency_list("frequency_selected")
+      mark_settings_dirty()
+    }
+  })
+
   observeEvent(input$frequency_move_up, {
     updated <- move_order_item(frequency_variables(), input$frequency_selected, "up")
     if (isTRUE(updated$changed)) {
@@ -137,9 +146,15 @@ register_frequencies_handlers <- function(
     }
   })
 
-  frequency_result <- reactiveVal(NULL)
+  frequency_result <- analysis_scope_result_val(NULL)
+  frequency_export_images <- frequency_export_image_cache()
+  session$onSessionEnded(frequency_export_images$clear)
 
-  observeEvent(input$run_frequencies, {
+  register_analysis_command_handler(
+    "run_frequencies", input, output, session,
+    states = list(frequency_variables = frequency_variables),
+    dataset_fn = dataset_fn, context_fn = function() list(selected = selected_names_fn(), variables = variable_table_fn(), labels = labels_fn(), categories = category_table_fn()),
+    run_fn = function() {
     result <- prepare_frequencies_results(
       data = dataset_fn(),
       variables = frequency_variables(),
@@ -160,6 +175,7 @@ register_frequencies_handlers <- function(
       box = isTRUE(input$frequency_plot_box),
       violin = isTRUE(input$frequency_plot_violin)
     )
+    frequency_export_images$clear()
     frequency_result(result)
   })
 
@@ -221,6 +237,7 @@ register_frequencies_handlers <- function(
   observeEvent(input$reset_frequencies_selection, {
     if (length(as.character(frequency_variables() %||% character(0))) == 0) return()
     frequency_variables(character(0))
+    frequency_export_images$clear()
     frequency_result(NULL)
     active_frequency_list("frequency_available")
     session$sendCustomMessage(
@@ -258,11 +275,11 @@ register_frequencies_handlers <- function(
     }
     tryCatch(
       {
-        save_frequencies_excel_file(result, path)
+        save_frequencies_excel_file(result, path, plot_renderer = frequency_export_images$render)
         showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -285,7 +302,7 @@ register_frequencies_handlers <- function(
         showNotification(sprintf(statedu_t("result.figures_saved", statedu_current_language(app_language_fn)), length(saved), directory), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -303,11 +320,11 @@ register_frequencies_handlers <- function(
     }
     tryCatch(
       {
-        write_frequencies_results_html(result, path)
+        write_frequencies_results_html(result, path, plot_renderer = frequency_export_images$render)
         showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -325,11 +342,11 @@ register_frequencies_handlers <- function(
     }
     tryCatch(
       {
-        write_frequencies_results_pdf(result, path)
+        write_frequencies_results_pdf(result, path, plot_renderer = frequency_export_images$render)
         showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })

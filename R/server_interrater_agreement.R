@@ -14,7 +14,7 @@ register_interrater_agreement_handlers <- function(
 ) {
   active_interrater_list <- reactiveVal(NULL)
   interrater_variables <- reactiveVal(character(0))
-  interrater_result <- reactiveVal(NULL)
+  interrater_result <- analysis_scope_result_val(NULL)
 
   set_interrater_variables <- function(values) {
     selected <- as.character(selected_names_fn() %||% character(0))
@@ -167,6 +167,14 @@ register_interrater_agreement_handlers <- function(
     }
   )
 
+  register_analysis_reorder(input, session, "interrater_selected", function(payload) {
+    updated <- analysis_reorder_items(interrater_variables(), payload)
+    if (isTRUE(updated$changed)) {
+      set_interrater_variables(updated$order)
+      active_interrater_list("interrater_selected")
+    }
+  })
+
   observeEvent(input$interrater_move_up, {
     updated <- move_order_item(interrater_variables(), input$interrater_selected, "up")
     if (isTRUE(updated$changed)) {
@@ -183,7 +191,11 @@ register_interrater_agreement_handlers <- function(
     }
   })
 
-  observeEvent(input$run_interrater, {
+  register_analysis_command_handler(
+    "run_interrater", input, output, session,
+    states = list(interrater_variables = interrater_variables),
+    dataset_fn = dataset_fn, context_fn = function() list(selected = selected_names_fn(), variables = variable_table_fn(), labels = labels_fn(), categories = category_table_fn()),
+    run_fn = function() {
     variables <- interrater_variables()
     if (length(variables) < 2) {
       showNotification("Select at least two rater variables.", type = "warning", duration = 5)
@@ -268,7 +280,7 @@ register_interrater_agreement_handlers <- function(
         showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -290,7 +302,7 @@ register_interrater_agreement_handlers <- function(
         showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -312,7 +324,7 @@ register_interrater_agreement_handlers <- function(
         showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })

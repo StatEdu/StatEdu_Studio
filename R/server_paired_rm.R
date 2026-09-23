@@ -16,7 +16,7 @@ register_paired_rm_handlers <- function(
   active_list <- reactiveVal(NULL)
   assumption_check <- reactiveVal(FALSE)
   adjustment <- reactiveVal(statedu_multiple_correction_default())
-  paired_rm_result <- reactiveVal(NULL)
+  paired_rm_result <- analysis_scope_result_val(NULL)
 
   current_selected <- reactive(as.character(selected_names_fn() %||% character(0)))
   current_variable_table <- reactive(variable_table_fn())
@@ -191,6 +191,14 @@ register_paired_rm_handlers <- function(
     }
   }
 
+  register_analysis_reorder(input, session, "paired_rm_repeated", function(payload) {
+    updated <- analysis_reorder_items(paired_rm_group_values(repeated_groups()), payload)
+    if (isTRUE(updated$changed)) {
+      repeated_groups(paired_rm_group_from_values(updated$order))
+      mark_settings_dirty()
+    }
+  })
+
   observeEvent(input$paired_rm_up, {
     reorder_groups("up")
   })
@@ -199,7 +207,11 @@ register_paired_rm_handlers <- function(
     reorder_groups("down")
   })
 
-  observeEvent(input$run_paired_rm, {
+  register_analysis_command_handler(
+    "run_paired_rm", input, output, session,
+    states = list(repeated_groups = repeated_groups),
+    dataset_fn = dataset_fn, context_fn = function() list(selected = selected_names_fn(), variables = variable_table_fn(), labels = labels_fn(), categories = category_table_fn()),
+    run_fn = function() {
     result <- tryCatch(
       prepare_paired_rm_results(
         data = dataset_fn(),

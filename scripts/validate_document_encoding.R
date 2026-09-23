@@ -39,18 +39,17 @@ if (length(doc_files) == 0) {
 
 invisible(vapply(doc_files, assert_valid_utf8, logical(1)))
 
-current_version <- "1.2.0"
+current_version <- trimws(readLines("VERSION", warn = FALSE)[[1]])
 current_version_docs <- c(
-  "docs/ANALYSIS_METHODS_KO.md",
-  "docs/METHOD_NOTES_KO.md",
-  "docs/USER_GUIDE_KO.md"
+  sprintf("docs/ANALYSIS_METHODS_%s.md", c("KO", "EN", "JA", "ZH", "ES", "FR", "DE", "VI")),
+  sprintf("docs/METHOD_NOTES_%s.md", c("KO", "EN", "JA", "ZH", "ES", "FR", "DE", "VI"))
 )
 stale_current_version_pattern <- "0\\.9\\.(3[0-9]|40|41)"
 
-assert_current_doc_version <- function(path) {
+assert_current_doc_version <- function(path, version = current_version) {
   text <- paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  if (!grepl(current_version, text, fixed = TRUE)) {
-    stop(sprintf("Current documentation file does not mention %s: %s", current_version, path), call. = FALSE)
+  if (!grepl(version, text, fixed = TRUE)) {
+    stop(sprintf("Current documentation file does not mention %s: %s", version, path), call. = FALSE)
   }
   stale_matches <- regmatches(text, gregexpr(stale_current_version_pattern, text, perl = TRUE))[[1]]
   stale_matches <- unique(stale_matches[stale_matches != "-1"])
@@ -68,6 +67,9 @@ assert_current_doc_version <- function(path) {
 }
 
 invisible(vapply(current_version_docs, assert_current_doc_version, logical(1)))
+invisible(vapply(current_version_docs, assert_valid_utf8, logical(1)))
+# The operating guide has not yet been revised as part of the three About documents.
+assert_current_doc_version("docs/USER_GUIDE_KO.md", version = "1.2.0")
 
 product_plan <- paste(readLines("docs/PRODUCT_PLAN_KO.md", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 required_product_plan_terms <- c(

@@ -1,0 +1,361 @@
+param(
+  [string]$RepoRoot = "",
+  [string]$RscriptPath = ""
+)
+
+$ErrorActionPreference = "Stop"
+
+if (-not $RepoRoot) {
+  $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+} else {
+  $RepoRoot = Resolve-Path $RepoRoot
+}
+
+function Find-Rscript {
+  $command = Get-Command "Rscript.exe" -ErrorAction SilentlyContinue
+  if (-not $command) {
+    $command = Get-Command "Rscript" -ErrorAction SilentlyContinue
+  }
+  if ($command) {
+    return $command.Source
+  }
+
+  $candidates = @(
+    "D:\Program\R\R-4.5.3\bin\x64\Rscript.exe",
+    "D:\Program\R\R-4.5.3\bin\Rscript.exe",
+    "C:\Program Files\R\R-4.5.3\bin\x64\Rscript.exe",
+    "C:\Program Files\R\R-4.5.3\bin\Rscript.exe"
+  )
+  foreach ($candidate in $candidates) {
+    if (Test-Path -LiteralPath $candidate) {
+      return $candidate
+    }
+  }
+
+  throw "Rscript was not found. Install R or pass -RscriptPath."
+}
+
+function Invoke-RegressionStep {
+  param(
+    [string]$Label,
+    [scriptblock]$Command
+  )
+
+  Write-Host "==> $Label"
+  $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+  & $Command
+  $exitCode = $LASTEXITCODE
+  $stopwatch.Stop()
+  if ($exitCode -ne 0) {
+    throw "$Label failed with exit code $exitCode"
+  }
+  Write-Host ("    passed in {0:N2}s" -f $stopwatch.Elapsed.TotalSeconds)
+}
+
+function Assert-PlsWholeDrawEvidence {
+  param(
+    [Parameter(Mandatory = $true)]
+    [AllowNull()]
+    [object]$Evidence
+  )
+
+  if ($null -eq $Evidence) {
+    throw "Structural bootstrap evidence is missing PLS-SEM whole-draw inference fields."
+  }
+  $requiredFields = @(
+    "repetitions", "valid_repetitions", "valid_ratio",
+    "minimum_valid_repetitions", "minimum_valid_ratio",
+    "inference_available", "bootstrap_status"
+  )
+  foreach ($field in $requiredFields) {
+    if ($null -eq $Evidence.PSObject.Properties[$field] -or $null -eq $Evidence.$field) {
+      throw "Structural bootstrap evidence is missing PLS-SEM field '$field'."
+    }
+  }
+  foreach ($field in @(
+    "repetitions", "valid_repetitions", "valid_ratio",
+    "minimum_valid_repetitions", "minimum_valid_ratio"
+  )) {
+    if ($Evidence.$field -isnot [ValueType] -or $Evidence.$field -is [bool]) {
+      throw "Structural bootstrap PLS-SEM field '$field' must be a JSON number."
+    }
+  }
+
+  try {
+    $requested = [double]$Evidence.repetitions
+    $valid = [double]$Evidence.valid_repetitions
+    $ratio = [double]$Evidence.valid_ratio
+    $minimumValid = [double]$Evidence.minimum_valid_repetitions
+    $minimumRatio = [double]$Evidence.minimum_valid_ratio
+  } catch {
+    throw "Structural bootstrap PLS-SEM whole-draw counts or ratios are not numeric."
+  }
+  $invalidNumeric = @($requested, $valid, $ratio, $minimumValid, $minimumRatio) |
+    Where-Object { [double]::IsNaN($_) -or [double]::IsInfinity($_) }
+  if ($invalidNumeric.Count -gt 0 -or
+      $requested -ne 1000 -or $requested -ne [Math]::Floor($requested) -or
+      $valid -lt 800 -or $valid -gt $requested -or $valid -ne [Math]::Floor($valid) -or
+      $ratio -lt .80 -or $ratio -gt 1 -or
+      $minimumValid -ne 800 -or $minimumValid -ne [Math]::Floor($minimumValid) -or
+      [Math]::Abs($minimumRatio - .80) -gt 1e-12 -or
+      [Math]::Abs($ratio - ($valid / $requested)) -gt 1e-12 -or
+      $Evidence.inference_available -isnot [bool] -or
+      -not $Evidence.inference_available -or
+      [string]$Evidence.bootstrap_status -cne "Adequate") {
+    throw "Structural bootstrap PLS-SEM evidence does not satisfy the 1,000-draw, 80% whole-draw inference contract."
+  }
+}
+
+if (-not $RscriptPath) {
+  $RscriptPath = Find-Rscript
+}
+if (-not (Test-Path -LiteralPath $RscriptPath -PathType Leaf)) {
+  throw "Rscript was not found: $RscriptPath"
+}
+
+$env:LC_ALL = "English_United States.utf8"
+$env:LANG = "English_United States.utf8"
+$previousStructuralBootstrapMode = $env:STATEDU_STRUCTURAL_BOOTSTRAP_MODE
+$previousStructuralBootstrapReport = $env:STATEDU_STRUCTURAL_BOOTSTRAP_REPORT
+$previousStructuralBootstrapRunId = $env:STATEDU_STRUCTURAL_BOOTSTRAP_RUN_ID
+$previousCsemValidationMode = $env:STATEDU_CSEM_VALIDATION_MODE
+$previousSmartplsEvidenceMode = $env:STATEDU_SMARTPLS_EVIDENCE_MODE
+$structuralBootstrapRunId = [Guid]::NewGuid().ToString("N")
+$structuralGateStartedAtUtc = [DateTime]::UtcNow
+$structuralBootstrapReport = $env:STATEDU_STRUCTURAL_BOOTSTRAP_REPORT
+if ([string]::IsNullOrWhiteSpace($structuralBootstrapReport)) {
+  $structuralEvidenceDirectory = Join-Path ([System.IO.Path]::GetTempPath()) "StatEdu\release-evidence"
+  New-Item -ItemType Directory -Path $structuralEvidenceDirectory -Force | Out-Null
+  $structuralEvidenceName = "structural-bootstrap-{0}-{1}.json" -f `
+    (Get-Date -Format "yyyyMMdd-HHmmss"), ([Guid]::NewGuid().ToString("N"))
+  $structuralBootstrapReport = Join-Path $structuralEvidenceDirectory $structuralEvidenceName
+} elseif (-not [System.IO.Path]::IsPathRooted($structuralBootstrapReport)) {
+  $structuralBootstrapReport = Join-Path $RepoRoot $structuralBootstrapReport
+}
+if (Test-Path -LiteralPath $structuralBootstrapReport) {
+  Remove-Item -LiteralPath $structuralBootstrapReport -Force
+}
+if (Test-Path -LiteralPath $structuralBootstrapReport) {
+  throw "Previous structural bootstrap evidence could not be invalidated: $structuralBootstrapReport"
+}
+$env:STATEDU_STRUCTURAL_BOOTSTRAP_MODE = "installer"
+$env:STATEDU_STRUCTURAL_BOOTSTRAP_REPORT = $structuralBootstrapReport
+$env:STATEDU_STRUCTURAL_BOOTSTRAP_RUN_ID = $structuralBootstrapRunId
+$env:STATEDU_CSEM_VALIDATION_MODE = "required"
+$env:STATEDU_SMARTPLS_EVIDENCE_MODE = "required"
+
+$regressions = @(
+  [pscustomobject]@{
+    Label = "Installer regression gate contract"
+    Path = "scripts\validate_installer_regression_gate.R"
+  },
+  [pscustomobject]@{
+    Label = "Data import contract"
+    Path = "scripts\validate_data_io.R"
+  },
+  [pscustomobject]@{
+    Label = "Language UTF-8 and loaded-data export directories"
+    Path = "scripts\validate_loaded_language_and_paths.R"
+  },
+  [pscustomobject]@{
+    Label = "Public 1.3.0 feature exclusions and export policy"
+    Path = "scripts\validate_public_130.R"
+  },
+  [pscustomobject]@{
+    Label = "Small-file upload performance"
+    Path = "scripts\validate_data_upload_performance.R"
+  },
+  [pscustomobject]@{
+    Label = "Startup and stale-backend contract"
+    Path = "scripts\validate_startup_performance_contract.R"
+  },
+  [pscustomobject]@{
+    Label = "Canvas, progress, result, and Delta R-squared regressions"
+    Path = "scripts\validate_custom_model_canvas.R"
+  },
+  # Keep the interactive latency sentinel ahead of the intentionally long
+  # SEM/CFA stress profiles so thermal throttling cannot masquerade as a
+  # custom-bootstrap regression. The 20-second median target remains unchanged;
+  # 25 seconds is only a hard ceiling for any one independently spawned worker.
+  [pscustomobject]@{
+    Label = "Exact 10,000-sample custom bootstrap robust runtime"
+    Path = "scripts\validate_mediation_moderation_runtime.R"
+  },
+  [pscustomobject]@{
+    Label = "CFA defaults, labels, and shared structural UI"
+    Path = "scripts\validate_cfa_ui.R"
+  },
+  [pscustomobject]@{
+    Label = "SEM policy and bootstrap quantile metadata"
+    Path = "scripts\validate_sem_policy_metadata.R"
+  },
+  [pscustomobject]@{
+    Label = "SEM and PLS-SEM defaults, labels, bootstrap, and exports"
+    Path = "scripts\validate_sem_canvas.R"
+  },
+  [pscustomobject]@{
+    Label = "PLS-SEM and PLSc numerical regression"
+    Path = "scripts\validate_pls_fit_csem.R"
+  },
+  [pscustomobject]@{
+    Label = "PLS-SEM model contract"
+    Path = "scripts\validate_pls_model_contract.R"
+  },
+  [pscustomobject]@{
+    Label = "PLS-SEM fail-closed core contract"
+    Path = "scripts\validate_pls_failclosed_core.R"
+  },
+  [pscustomobject]@{
+    Label = "PLS structural effect-table contract"
+    Path = "scripts\validate_pls_effect_tables.R"
+  },
+  [pscustomobject]@{
+    Label = "PLSc f-squared consistency contract"
+    Path = "scripts\validate_plsc_f2_consistency.R"
+  },
+  [pscustomobject]@{
+    Label = "PLS-SEM missing-data policy and audit contract"
+    Path = "scripts\validate_pls_missing_policy.R"
+  },
+  [pscustomobject]@{
+    Label = "PLSc fold-consistent PLSpredict contract"
+    Path = "scripts\validate_plsc_predict_consistency.R"
+  },
+  [pscustomobject]@{
+    Label = "SmartPLS private/public external evidence"
+    Path = "scripts\validate_pls_smartpls_private_evidence.R"
+  },
+  [pscustomobject]@{
+    Label = "PLS-SEM bootstrap whole-draw validity contract"
+    Path = "scripts\validate_pls_bootstrap_contract.R"
+  },
+  [pscustomobject]@{
+    Label = "PLS-SEM specific and total indirect-effect bootstrap contract"
+    Path = "scripts\validate_pls_specific_indirect_engine.R"
+  },
+  [pscustomobject]@{
+    Label = "PLS composite-score multi-group effect contract"
+    Path = "scripts\validate_pls_mga_effect_engine.R"
+  },
+  [pscustomobject]@{
+    Label = "PLS latent-moderation core contract"
+    Path = "scripts\validate_pls_latent_moderation_core.R"
+  },
+  [pscustomobject]@{
+    Label = "PLS moderated-mediation and multi-group difference contract"
+    Path = "scripts\validate_pls_modmed_engine.R"
+  },
+  [pscustomobject]@{
+    Label = "PLS moderated-mediation audit export contract"
+    Path = "scripts\validate_pls_modmed_audit_export.R"
+  },
+  [pscustomobject]@{
+    Label = "PLS result workbook export contract"
+    Path = "scripts\validate_pls_workbook_export.R"
+  },
+  [pscustomobject]@{
+    Label = "PLS compact analysis-result save and restore contract"
+    Path = "scripts\validate_pls_analysis_result_roundtrip.R"
+  },
+  [pscustomobject]@{
+    Label = "Measured CFA, SEM, and PLS-SEM bootstrap performance"
+    Path = "scripts\validate_structural_bootstrap_performance.R"
+  },
+  [pscustomobject]@{
+    Label = "Mediation and moderation calculations"
+    Path = "scripts\validate_mediation_moderation.R"
+  },
+  [pscustomobject]@{
+    Label = "Shared analysis UI layout contract"
+    Path = "scripts\validate_ui_layout_contract.R"
+  },
+  [pscustomobject]@{
+    Label = "Release hygiene"
+    Path = "scripts\validate_release_hygiene.R"
+  }
+)
+
+Push-Location $RepoRoot
+try {
+  Invoke-RegressionStep "git diff --check" { git diff --check }
+
+  foreach ($regression in $regressions) {
+    if (-not (Test-Path -LiteralPath $regression.Path -PathType Leaf)) {
+      throw "Regression validation was not found: $($regression.Path)"
+    }
+    Invoke-RegressionStep $regression.Label { & $RscriptPath $regression.Path }
+  }
+
+  if (-not (Test-Path -LiteralPath $structuralBootstrapReport -PathType Leaf)) {
+    throw "Structural bootstrap validation did not write its required timing record: $structuralBootstrapReport"
+  }
+  $structuralEvidence = Get-Content -LiteralPath $structuralBootstrapReport -Raw -Encoding UTF8 |
+    ConvertFrom-Json
+  if (-not $structuralEvidence.passed -or $structuralEvidence.mode -ne "installer" -or
+      $structuralEvidence.schema_version -ne 2 -or
+      $structuralEvidence.run_id -ne $structuralBootstrapRunId) {
+    throw "Structural bootstrap timing record is not a verified installer-mode pass: $structuralBootstrapReport"
+  }
+  $structuralEvidenceWriteTimeUtc = (Get-Item -LiteralPath $structuralBootstrapReport).LastWriteTimeUtc
+  if ($structuralEvidenceWriteTimeUtc -lt $structuralGateStartedAtUtc.AddSeconds(-2)) {
+    throw "Structural bootstrap timing record predates this installer gate run: $structuralBootstrapReport"
+  }
+  $structuralExactness = $structuralEvidence.metrics.exactness
+  if (-not $structuralExactness.passed -or
+      -not $structuralExactness.sem_two_stage_vs_full_se -or
+      -not $structuralExactness.sem_seed_reproducible -or
+      -not $structuralExactness.sem_product_index_vs_legacy -or
+      -not $structuralExactness.sem_product_index_fail_open -or
+      -not $structuralExactness.sem_product_index_missing_guard -or
+      -not $structuralExactness.sem_product_index_single_position -or
+      -not $structuralExactness.sem_fixed_index_vs_legacy -or
+      -not $structuralExactness.sem_fixed_index_fail_open -or
+      -not $structuralExactness.sem_fixed_index_normal_default -or
+      -not $structuralExactness.sem_fixed_index_worker_payload_small -or
+      -not $structuralExactness.cfa_legacy_vs_fast_serial -or
+      -not $structuralExactness.cfa_fast_serial_vs_psock -or
+      -not $structuralExactness.metadata_restore) {
+    throw "Structural bootstrap timing record is missing required SEM/CFA exactness evidence."
+  }
+  if ($structuralEvidence.metrics.installer.cfa.repetitions -ne 1000 -or
+      $structuralEvidence.metrics.installer.sem.repetitions -ne 5000 -or
+      $structuralEvidence.metrics.installer.pls_sem.repetitions -ne 1000) {
+    throw "Structural bootstrap timing record does not contain CFA 1,000 / SEM 5,000 / PLS-SEM 1,000 actual repetitions."
+  }
+  Assert-PlsWholeDrawEvidence -Evidence $structuralEvidence.metrics.installer.pls_sem
+  Write-Host "Verified structural bootstrap timing record: $structuralBootstrapReport"
+  Write-Host ("    CFA 1,000: {0:N2}s; SEM 5,000: {1:N2}s; PLS-SEM 1,000: {2:N2}s" -f `
+    $structuralEvidence.metrics.installer.cfa.total_seconds,
+    $structuralEvidence.metrics.installer.sem.total_seconds,
+    $structuralEvidence.metrics.installer.pls_sem.total_seconds)
+
+  Write-Host "Installer regression gate passed."
+  Write-Host "Complete the packaged-app timing and visual checks in docs/INSTALLER_REGRESSION_CHECKLIST_2026-08-22_KO.md before publishing."
+} finally {
+  if ($null -eq $previousStructuralBootstrapMode) {
+    Remove-Item Env:\STATEDU_STRUCTURAL_BOOTSTRAP_MODE -ErrorAction SilentlyContinue
+  } else {
+    $env:STATEDU_STRUCTURAL_BOOTSTRAP_MODE = $previousStructuralBootstrapMode
+  }
+  if ($null -eq $previousStructuralBootstrapReport) {
+    Remove-Item Env:\STATEDU_STRUCTURAL_BOOTSTRAP_REPORT -ErrorAction SilentlyContinue
+  } else {
+    $env:STATEDU_STRUCTURAL_BOOTSTRAP_REPORT = $previousStructuralBootstrapReport
+  }
+  if ($null -eq $previousStructuralBootstrapRunId) {
+    Remove-Item Env:\STATEDU_STRUCTURAL_BOOTSTRAP_RUN_ID -ErrorAction SilentlyContinue
+  } else {
+    $env:STATEDU_STRUCTURAL_BOOTSTRAP_RUN_ID = $previousStructuralBootstrapRunId
+  }
+  if ($null -eq $previousCsemValidationMode) {
+    Remove-Item Env:\STATEDU_CSEM_VALIDATION_MODE -ErrorAction SilentlyContinue
+  } else {
+    $env:STATEDU_CSEM_VALIDATION_MODE = $previousCsemValidationMode
+  }
+  if ($null -eq $previousSmartplsEvidenceMode) {
+    Remove-Item Env:\STATEDU_SMARTPLS_EVIDENCE_MODE -ErrorAction SilentlyContinue
+  } else {
+    $env:STATEDU_SMARTPLS_EVIDENCE_MODE = $previousSmartplsEvidenceMode
+  }
+  Pop-Location
+}

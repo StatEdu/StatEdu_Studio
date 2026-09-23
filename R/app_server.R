@@ -1,8 +1,37 @@
 # Main Shiny server assembly for StatEdu Studio.
 
+statedu_active_session_registry <- local({
+  registry <- new.env(parent = emptyenv())
+  registry$current <- NULL
+  function() registry
+})
+
+statedu_single_session_enabled <- function() {
+  tolower(trimws(Sys.getenv("STATEDU_SINGLE_SESSION", "false"))) %in% c("1", "true", "yes", "on")
+}
+
 create_app_server <- function(app_version) {
   force(app_version)
-  function(input, output, session) {
+  # Keep the large server body out of factory compilation, retaining its closure.
+  eval(quote(function(input, output, session) {
+    # Avoid compiling one-time setup helpers; restore JIT before reactive work.
+    initialization_jit <- compiler::enableJIT(0)
+    on.exit(compiler::enableJIT(initialization_jit), add = TRUE)
+    server_start <- Sys.time()
+    server_phase_start <- server_start
+    if (isTRUE(statedu_single_session_enabled())) {
+      session_registry <- statedu_active_session_registry()
+      previous_session <- session_registry$current
+      session_registry$current <- session
+      if (!is.null(previous_session) && !identical(previous_session, session)) {
+        try(previous_session$close(), silent = TRUE)
+      }
+      session$onSessionEnded(function() {
+        if (identical(session_registry$current, session)) {
+          session_registry$current <- NULL
+        }
+      })
+    }
     session$onSessionEnded(function() {
       if (identical(Sys.getenv("STATEDU_STOP_ON_SESSION_END"), "1")) {
         stopApp()
@@ -25,8 +54,23 @@ create_app_server <- function(app_version) {
   control_names <- server_state$control_names
   predictor_order <- server_state$predictor_order
   hierarchical_block3_names <- server_state$hierarchical_block3_names
+  hierarchical_block4_names <- server_state$hierarchical_block4_names
   hierarchical_active_block <- reactiveVal("block1")
   complex_sample_design_state <- reactiveVal(NULL)
+  longitudinal_restore_request <- reactiveVal(NULL)
+  longitudinal_module <- new.env(parent = emptyenv())
+  survival_restore_request <- reactiveVal(NULL)
+  survival_module <- new.env(parent = emptyenv())
+  session$userData$survival_design_revision <- reactiveVal(0L)
+  restore_survival_settings <- function(value) {
+    previous <- isolate(survival_restore_request())
+    survival_restore_request(list(revision=(previous$revision %||% 0L)+1L, settings=normalize_survival_settings(value)))
+  }
+  restore_longitudinal_settings <- function(value) {
+    previous <- isolate(longitudinal_restore_request())
+    longitudinal_restore_request(list(revision = (previous$revision %||% 0L) + 1L,
+                                      settings = normalize_longitudinal_settings(value)))
+  }
   data_editor_selected_only <- reactiveVal(normalize_selected_variables_only_default(initial_preferences$selected_variables_only_default))
   calculator_selected_only <- reactiveVal(normalize_selected_variables_only_default(initial_preferences$selected_variables_only_default))
   reliability_variables <- server_state$reliability_variables
@@ -46,6 +90,20 @@ create_app_server <- function(app_version) {
   reset_on_dataset_load <- server_state$reset_on_dataset_load
   unsaved_settings <- server_state$unsaved_settings
   suppress_dirty_tracking <- server_state$suppress_dirty_tracking
+  analysis_canvas_reset_epoch <- reactiveVal(0L)
+  reset_analysis_canvas_context <- function() {
+    analysis_canvas_reset_epoch(shiny::isolate(analysis_canvas_reset_epoch()) + 1L)
+    session$sendCustomMessage("custom-model-canvas-reset-context", list(
+      rootIds = c(
+        "custom-model-canvas-root",
+        "structural_cfa-canvas-root",
+        "structural_cbsem-canvas-root",
+        "structural_plssem-canvas-root"
+      )
+    ))
+    invisible(TRUE)
+  }
+  observeEvent(input$reset_settings_data, reset_analysis_canvas_context(), ignoreInit = TRUE)
 
   dirty_handlers <- settings_dirty_handlers(session, unsaved_settings, suppress_dirty_tracking)
   set_unsaved_settings <- dirty_handlers$set_unsaved_settings
@@ -62,16 +120,24 @@ create_app_server <- function(app_version) {
     ""
   }
 
-  active_app_language <- reactiveVal(statedu_initial_language())
+  # Keep the mutable session language separate from bootstrap hints. URL and
+  # client inputs choose the initial language only; after the user changes it,
+  # this reactive value is the single authoritative source for the session.
+  active_app_language <- reactiveVal("")
   active_result_zoom <- reactiveVal(statedu_initial_result_zoom())
 
   app_language <- reactive({
-    selected <- first_nonempty(
-      input$app_language,
-      input$statedu_url_language,
-      statedu_query_value(session$clientData$url_search %||% "", "lang"),
-      active_app_language()
-    )
+    active_language <- active_app_language()
+    selected <- if (nzchar(active_language)) {
+      active_language
+    } else {
+      first_nonempty(
+        input$statedu_url_language,
+        statedu_query_value(session$clientData$url_search %||% "", "lang"),
+        input$app_language,
+        statedu_initial_language()
+      )
+    }
     language <- normalize_app_language(selected)
     options(statedu.app_language = language)
     language
@@ -90,12 +156,14 @@ create_app_server <- function(app_version) {
   })
 
   observeEvent(input$apply_app_language, {
-    selected <- normalize_app_language(input$app_language %||% app_language())
+    apply_request <- as.character(input$apply_app_language %||% "")
+    requested_language <- strsplit(apply_request, ":", fixed = TRUE)[[1]][[1]] %||% ""
+    selected <- normalize_app_language(first_nonempty(requested_language, input$app_language, app_language()))
     active_app_language(selected)
     options(statedu.app_language = selected)
     statedu_write_persisted_language(selected)
     session$sendCustomMessage("statedu-apply-language", selected)
-  }, ignoreInit = TRUE)
+  }, ignoreInit = TRUE, priority = 100)
 
   observeEvent(input$apply_result_zoom, {
     selected <- normalize_result_zoom_percent(input$result_zoom_percent %||% result_zoom_percent())
@@ -109,7 +177,7 @@ create_app_server <- function(app_version) {
   }, ignoreInit = TRUE)
 
   observeEvent(input$browse_default_save_dir, {
-    selected_dir <- choose_default_save_dir(input$default_save_dir %||% "")
+    selected_dir <- choose_default_save_dir(input$default_save_dir %||% "", language = app_language())
     if (is.null(selected_dir) || !nzchar(selected_dir)) {
       showNotification(statedu_t("result.folder_dialog_canceled", app_language()), type = "warning", duration = 4)
       return(invisible(NULL))
@@ -119,7 +187,10 @@ create_app_server <- function(app_version) {
 
   observeEvent(input$apply_general_preferences, {
     tryCatch({
-      selected_language <- normalize_app_language(input$app_language %||% app_language())
+      # A language change remounts this form. Its previous select value can
+      # arrive while the replacement is binding; the explicit language request
+      # above, not that stale form value, is authoritative.
+      selected_language <- app_language()
       preferences <- list(
         result_zoom_percent = normalize_result_zoom_percent(input$result_zoom_percent),
         output_decimal_digits = normalize_output_decimal_digits(input$output_decimal_digits),
@@ -162,90 +233,195 @@ create_app_server <- function(app_version) {
     })
   }, ignoreInit = TRUE)
 
-  render_about_document <- function(key, value) {
-    renderUI({
-      spec <- about_document_specs(app_language())[[key]]
-      tab_panel_content(about_markdown_tab_panel(spec$title, value, spec$path, spec$subtitle, app_language()))
-    })
+  lazy_ui <- function(output_id, ui_fn) {
+    register_visible_ui_output(output, session, output_id, ui_fn)
   }
 
-  output$lazy_data_editor_coding_error_check <- renderUI(data_editor_coding_error_check_panel(app_language()))
-  output$lazy_data_editor_likert <- renderUI(data_editor_likert_panel(app_language()))
-  output$lazy_data_editor_missing_values <- renderUI(data_editor_missing_panel(app_language()))
-  output$lazy_data_editor_wide_long <- renderUI(data_editor_wide_long_panel(app_language()))
-  output$lazy_data_editor_merge <- renderUI(data_editor_merge_panel(app_language()))
-  output$lazy_data_editor_id_aggregate <- renderUI(data_editor_id_aggregate_panel(app_language()))
-  output$lazy_data_editor_recode_different <- renderUI(data_editor_different_variable_panel(app_language()))
-  output$lazy_data_editor_variable_calculation <- renderUI(data_editor_variable_calculation_panel(app_language()))
-  output$lazy_data_editor_variable_transformation <- renderUI(data_editor_variable_transformation_panel(app_language()))
-  output$lazy_data_editor_recode_same <- renderUI(data_editor_same_variable_panel(app_language()))
-  output$lazy_data_editor_variable_rename <- renderUI(data_editor_variable_rename_panel(app_language()))
+  register_on_first_menu_visit <- function(menu_values, register_fn) {
+    force(menu_values)
+    force(register_fn)
+    observeEvent({
+      selected_menu <- input$main_menu %||% ""
+      explicit_visit <- input$easyflow_menu_visit %||% list()
+      explicit_menu <- if (is.list(explicit_visit)) explicit_visit$value %||% "" else explicit_visit
+      visited_menus <- unique(c(as.character(selected_menu), as.character(explicit_menu)))
+      req(any(visited_menus %in% menu_values))
+      visited_menus
+    }, {
+      register_fn()
+    }, ignoreInit = FALSE, once = TRUE)
+  }
+
+  render_about_document <- function(key, value) {
+    spec <- about_document_specs(app_language())[[key]]
+    tab_panel_content(about_markdown_tab_panel(spec$title, value, spec$path, spec$subtitle, app_language()))
+  }
+
+  lazy_ui("lazy_data_editor_coding_error_check", function() data_editor_coding_error_check_panel(app_language()))
+  lazy_ui("lazy_data_editor_cases", function() analysis_scope_panel("cases", app_language()))
+  lazy_ui("lazy_data_editor_split", function() analysis_scope_panel("split", app_language()))
+  lazy_ui("lazy_data_editor_likert", function() data_editor_likert_panel(app_language()))
+  lazy_ui("lazy_data_editor_missing_values", function() data_editor_missing_panel(app_language()))
+  lazy_ui("lazy_data_editor_wide_long", function() data_editor_wide_long_panel(app_language()))
+  lazy_ui("lazy_data_editor_merge", function() data_editor_merge_panel(app_language(), session$userData$merge_ui_values %||% list()))
+  lazy_ui("lazy_data_editor_id_aggregate", function() data_editor_id_aggregate_panel(app_language()))
+  lazy_ui("lazy_data_editor_recode_different", function() data_editor_different_variable_panel(app_language()))
+  lazy_ui("lazy_data_editor_variable_calculation", function() data_editor_variable_calculation_panel(app_language()))
+  lazy_ui("lazy_data_editor_variable_transformation", function() data_editor_variable_transformation_panel(app_language()))
+  lazy_ui("lazy_data_editor_recode_same", function() data_editor_same_variable_panel(app_language()))
+  lazy_ui("lazy_data_editor_variable_rename", function() data_editor_variable_rename_panel(app_language()))
 
   observeEvent(input$wide_long_nav_request, {
     updateNavbarPage(session, "main_menu", selected = "data_editor_wide_long")
   }, ignoreInit = TRUE)
 
-  output$lazy_calculator_hint8 <- renderUI(tab_panel_content(hint8_calculator_tab_panel(app_language())))
-  output$lazy_calculator_eq5d <- renderUI(tab_panel_content(eq5d_calculator_tab_panel(app_language())))
-  output$lazy_calculator_metabolic <- renderUI(tab_panel_content(metabolic_calculator_tab_panel(app_language())))
-  output$lazy_calculator_frs <- renderUI(tab_panel_content(frs_calculator_tab_panel(app_language())))
-  output$lazy_calculator_ascvd10 <- renderUI(tab_panel_content(ascvd10_calculator_tab_panel(app_language())))
-  output$lazy_calculator_metabolic_severity <- renderUI(tab_panel_content(metabolic_severity_calculator_tab_panel(app_language())))
+  lazy_ui("lazy_calculator_hint8", function() tab_panel_content(hint8_calculator_tab_panel(app_language())))
+  lazy_ui("lazy_calculator_eq5d", function() tab_panel_content(eq5d_calculator_tab_panel(app_language())))
+  lazy_ui("lazy_calculator_metabolic", function() tab_panel_content(metabolic_calculator_tab_panel(app_language())))
+  lazy_ui("lazy_calculator_frs", function() tab_panel_content(frs_calculator_tab_panel(app_language())))
+  lazy_ui("lazy_calculator_ascvd10", function() tab_panel_content(ascvd10_calculator_tab_panel(app_language())))
+  lazy_ui("lazy_calculator_metabolic_severity", function() tab_panel_content(metabolic_severity_calculator_tab_panel(app_language())))
 
-  output$lazy_analysis_frequencies <- renderUI(tab_panel_content(frequencies_tab_panel(statedu_ui_label("frequencies", app_language()), app_language())))
-  output$lazy_analysis_crosstabs <- renderUI(tab_panel_content(crosstab_tab_panel(app_language())))
-  output$lazy_analysis_ttest_anova <- renderUI(tab_panel_content(ttest_anova_tab_panel(statedu_ui_label("ttest_anova", app_language()), app_language())))
-  output$lazy_analysis_ancova <- renderUI(tab_panel_content(ancova_tab_panel(statedu_ui_label("ancova", app_language()), app_language())))
-  output$lazy_analysis_mixed_rm_anova <- renderUI(tab_panel_content(mixed_rm_anova_tab_panel(statedu_ui_label("mixed_rm_anova", app_language()), app_language())))
-  output$lazy_analysis_nonparametric <- renderUI(tab_panel_content(nonparametric_tab_panel(statedu_ui_label("nonparametric", app_language()), app_language())))
-  output$lazy_analysis_paired <- renderUI(tab_panel_content(paired_tab_panel(statedu_ui_label("paired", app_language()), app_language())))
-  output$lazy_analysis_nonparametric_paired <- renderUI(tab_panel_content(nonparametric_paired_tab_panel(statedu_ui_label("nonparametric_paired", app_language()), app_language())))
-  output$lazy_analysis_correlation <- renderUI(tab_panel_content(correlation_tab_panel(statedu_ui_label("correlation", app_language()), app_language())))
-  output$lazy_analysis_factor_analysis <- renderUI(tab_panel_content(factor_analysis_tab_panel(statedu_ui_label("factor_analysis", app_language()), app_language())))
-  output$lazy_analysis_pca <- renderUI(tab_panel_content(pca_tab_panel(statedu_ui_label("pca", app_language()), app_language())))
-  output$lazy_analysis_reliability <- renderUI(tab_panel_content(reliability_tab_panel(statedu_ui_label("reliability", app_language()), app_language())))
-  output$lazy_analysis_interrater_agreement <- renderUI(tab_panel_content(interrater_agreement_tab_panel(statedu_ui_label("interrater_agreement", app_language()), app_language())))
-  output$lazy_analysis_hierarchical <- renderUI(tab_panel_content(hierarchical_tab_panel(statedu_ui_label("regression", app_language()), app_language())))
-  output$lazy_analysis_mediation_moderation <- renderUI(tab_panel_content(mediation_moderation_tab_panel(mediation_moderation_title(app_language()), app_language())))
-  output$lazy_analysis_custom_model_canvas <- renderUI({
+  lazy_ui("lazy_analysis_frequencies", function() tab_panel_content(frequencies_tab_panel(statedu_ui_label("frequencies", app_language()), app_language())))
+  lazy_ui("lazy_analysis_crosstabs", function() tab_panel_content(crosstab_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_ttest_anova", function() tab_panel_content(ttest_anova_tab_panel(statedu_ui_label("ttest_anova", app_language()), app_language())))
+  lazy_ui("lazy_analysis_ancova", function() tab_panel_content(ancova_tab_panel(statedu_ui_label("ancova", app_language()), app_language())))
+  lazy_ui("lazy_analysis_one_group_rm_anova", function() tab_panel_content(one_group_rm_anova_tab_panel(statedu_ui_label("one_group_rm_anova", app_language()), app_language())))
+  lazy_ui("lazy_analysis_mixed_rm_anova", function() tab_panel_content(mixed_rm_anova_tab_panel(statedu_ui_label("mixed_rm_anova", app_language()), app_language())))
+  lazy_ui("lazy_analysis_nonparametric", function() tab_panel_content(nonparametric_tab_panel(statedu_ui_label("nonparametric", app_language()), app_language())))
+  lazy_ui("lazy_analysis_paired", function() tab_panel_content(paired_tab_panel(statedu_ui_label("paired", app_language()), app_language())))
+  lazy_ui("lazy_analysis_nonparametric_paired", function() tab_panel_content(nonparametric_paired_tab_panel(statedu_ui_label("nonparametric_paired", app_language()), app_language())))
+  lazy_ui("lazy_analysis_correlation", function() tab_panel_content(correlation_tab_panel(statedu_ui_label("correlation", app_language()), app_language())))
+  lazy_ui("lazy_analysis_ipa", function() tab_panel_content(ipa_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_meta", function() tab_panel_content(meta_analysis_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_factor_analysis", function() tab_panel_content(factor_analysis_tab_panel(statedu_ui_label("factor_analysis", app_language()), app_language())))
+  lazy_ui("lazy_analysis_pca", function() tab_panel_content(pca_tab_panel(statedu_ui_label("pca", app_language()), app_language())))
+  lazy_ui("lazy_analysis_reliability", function() tab_panel_content(reliability_tab_panel(statedu_ui_label("reliability", app_language()), app_language())))
+  lazy_ui("lazy_analysis_interrater_agreement", function() tab_panel_content(interrater_agreement_tab_panel(statedu_ui_label("interrater_agreement", app_language()), app_language())))
+  lazy_ui("lazy_analysis_hierarchical", function() tab_panel_content(hierarchical_tab_panel(statedu_ui_label("regression", app_language()), app_language())))
+  lazy_ui("lazy_analysis_mediation_moderation", function() tab_panel_content(mediation_moderation_tab_panel(mediation_moderation_title(app_language()), app_language())))
+  lazy_ui("lazy_analysis_custom_model_canvas", function() {
     if (!isTRUE(statedu_feature_enabled("custom_model_canvas", TRUE))) {
       return(tab_panel_content(div(class = "analysis-placeholder-panel", "Mediation / Moderation Custom Model is not enabled in this build.")))
     }
     tab_panel_content(custom_model_canvas_tab_panel(custom_model_canvas_title(app_language()), app_language()))
   })
-  output$lazy_analysis_longitudinal <- renderUI({
+  lazy_ui("lazy_analysis_structural_cfa", function() tab_panel_content(structural_equation_tab_panel("cfa", app_language())))
+  lazy_ui("lazy_analysis_structural_cbsem", function() tab_panel_content(structural_equation_tab_panel("cbsem", app_language())))
+  lazy_ui("lazy_analysis_structural_plssem", function() tab_panel_content(structural_equation_tab_panel("plssem", app_language())))
+  structural_recommendation_selection <- reactiveValues(
+    objective = "measurement", construct = "common_factor", indicator = "continuous"
+  )
+  observe({
+    values <- list(objective = input$structural_automation_objective,
+                   construct = input$structural_automation_construct,
+                   indicator = input$structural_automation_indicator)
+    allowed <- list(objective = c("measurement", "theory", "prediction"),
+                    construct = c("common_factor", "composite", "mixed"),
+                    indicator = c("continuous", "ordered"))
+    for (name in names(values)) {
+      value <- values[[name]]
+      if (length(value) == 1L && value %in% allowed[[name]]) {
+        structural_recommendation_selection[[name]] <- value
+      }
+    }
+  })
+  lazy_ui("lazy_analysis_structural_automation", function() {
+    selected <- isolate(reactiveValuesToList(structural_recommendation_selection))
+    tab_panel_content(structural_automation_tab_panel(app_language(), selected))
+  })
+  observeEvent(input$structural_automation_start, {
+    objective <- input$structural_automation_objective %||% "measurement"
+    construct <- input$structural_automation_construct %||% "common_factor"
+    indicator <- input$structural_automation_indicator %||% "continuous"
+    target <- if (identical(objective, "measurement") && identical(construct, "common_factor")) {
+      "analysis_structural_cfa"
+    } else if (!identical(construct, "common_factor") || identical(objective, "prediction")) {
+      "analysis_structural_plssem"
+    } else {
+      "analysis_structural_cbsem"
+    }
+    if (identical(indicator, "ordered") && !identical(construct, "common_factor")) {
+      showNotification(statedu_localized_text(app_language(), "The current engine does not support ordered indicators combined with composite constructs. Review the construct specification.", "순서형 지표와 합성변수를 함께 추정하는 엔진은 현재 지원하지 않습니다. 구성개념 명세를 다시 확인하십시오."), type = "warning", duration = 8)
+      return()
+    }
+    updateTabsetPanel(session, "main_menu", selected = target)
+  }, ignoreInit = TRUE)
+  lazy_ui("lazy_analysis_longitudinal", function() {
     if (!isTRUE(statedu_feature_enabled("longitudinal", TRUE))) {
       return(tab_panel_content(div(class = "analysis-placeholder-panel", "Longitudinal / Panel Models is not enabled in this build.")))
     }
     tab_panel_content(longitudinal_tab_panel(statedu_ui_label("longitudinal", app_language()), app_language()))
   })
-  output$lazy_analysis_generalized <- renderUI(tab_panel_content(generalized_tab_panel(statedu_ui_label("glm", app_language()), app_language())))
-  output$lazy_analysis_logistic <- renderUI(tab_panel_content(logistic_regression_tab_panel(app_language())))
-  output$lazy_analysis_complex_frequencies <- renderUI(tab_panel_content(complex_sample_frequencies_tab_panel(app_language())))
-  output$lazy_analysis_complex_design <- renderUI(tab_panel_content(complex_sample_design_tab_panel(app_language())))
-  output$lazy_analysis_complex_crosstabs <- renderUI(tab_panel_content(complex_sample_crosstabs_tab_panel(app_language())))
-  output$lazy_analysis_complex_ttest_anova <- renderUI(tab_panel_content(complex_sample_ttest_anova_tab_panel(app_language())))
-  output$lazy_analysis_complex_correlation <- renderUI(tab_panel_content(complex_sample_correlation_tab_panel(app_language())))
-  output$lazy_analysis_complex_regression <- renderUI(tab_panel_content(complex_sample_regression_tab_panel(app_language())))
-  output$lazy_analysis_complex_logistic <- renderUI(tab_panel_content(complex_sample_logistic_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_generalized", function() tab_panel_content(generalized_tab_panel(statedu_ui_label("glm", app_language()), app_language())))
+  lazy_ui("lazy_analysis_logistic", function() tab_panel_content(logistic_regression_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_complex_frequencies", function() tab_panel_content(complex_sample_frequencies_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_complex_design", function() tab_panel_content(complex_sample_design_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_complex_crosstabs", function() tab_panel_content(complex_sample_crosstabs_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_complex_ttest_anova", function() tab_panel_content(complex_sample_ttest_anova_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_complex_correlation", function() tab_panel_content(complex_sample_correlation_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_complex_regression", function() tab_panel_content(complex_sample_regression_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_complex_logistic", function() tab_panel_content(complex_sample_logistic_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_complex_custom_model", function() tab_panel_content(complex_sample_custom_model_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_survival_setup", function() {
+    session$userData$survival_design_revision()
+    tab_panel_content(survival_setup_tab_panel(app_language(), session$userData$survival_design_values %||% list()))
+  })
+  lazy_ui("lazy_analysis_survival_km", function() tab_panel_content(survival_km_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_survival_cox", function() tab_panel_content(survival_cox_tab_panel(app_language())))
+  lazy_ui("lazy_analysis_survival_competing", function() tab_panel_content(survival_competing_tab_panel(app_language())))
+  if (isTRUE(latent_mplus_enabled())) {
+    lazy_ui("lazy_latent_mixture", function() latent_mplus_panel_content(app_version, app_language()))
+  }
 
-  register_sample_size_server(input, output, session, app_language_fn = app_language)
+  register_on_first_menu_visit("analysis_custom_model_canvas", function() {
+    deferred_start <- Sys.time()
+    register_custom_model_canvas_handlers(
+      input = input,
+      output = output,
+      session = session,
+      dataset_fn = analysis_dataset,
+      selected_names_fn = selected_names,
+      variable_table_fn = regression_variable_table,
+      labels_fn = var_label_overrides,
+      category_table_fn = category_label_values,
+      mark_settings_dirty = mark_settings_dirty,
+      app_language_fn = app_language,
+      analysis_reset_epoch_fn = analysis_canvas_reset_epoch
+    )
+    statedu_log_timing("deferred custom-model canvas module", deferred_start)
+  })
 
-  output$lazy_about_preferences <- renderUI(tab_panel_content(about_preferences_tab_panel(app_language())))
-  output$lazy_about_overview <- render_about_document("overview", "about_overview")
-  output$lazy_about_user_guide <- render_about_document("user_guide", "about_user_guide")
-  output$lazy_about_analysis_methods <- render_about_document("analysis_methods", "about_analysis_methods")
-  output$lazy_about_method_notes <- render_about_document("method_notes", "about_method_notes")
-  output$lazy_about_validation <- render_about_document("validation", "about_validation")
-  output$lazy_about_version_history <- render_about_document("version_history", "about_version_history")
-  output$lazy_about_source_license <- renderUI(tab_panel_content(about_source_license_tab_panel(app_language())))
-  output$lazy_about_oss_licenses <- renderUI(tab_panel_content(about_license_tab_panel(app_language())))
-  output$lazy_about_update <- renderUI(tab_panel_content(about_update_tab_panel(app_language())))
-  output$lazy_about_info <- renderUI(tab_panel_content(about_info_tab_panel(app_version, app_language())))
-  output$lazy_help_bug <- renderUI(tab_panel_content(help_request_tab_panel("bug", "help_bug", app_version, app_language())))
-  output$lazy_help_feature <- renderUI(tab_panel_content(help_request_tab_panel("feature", "help_feature", app_version, app_language())))
-  output$lazy_help_analysis_request <- renderUI(tab_panel_content(help_request_tab_panel("analysis", "help_analysis_request", app_version, app_language())))
-  output$lazy_help_qa <- renderUI(tab_panel_content(help_request_tab_panel("qa", "help_qa", app_version, app_language())))
+  register_on_first_menu_visit("analysis_meta", function() {
+    deferred_start <- Sys.time()
+    register_meta_server(input, output, session, app_language_fn = app_language)
+    statedu_log_timing("deferred meta-analysis input module", deferred_start)
+  })
+
+  register_on_first_menu_visit(c(
+    paste0("sample_size_", names(sample_size_method_labels())),
+    paste0("effect_size_", names(effect_size_method_labels()))
+  ), function() {
+    deferred_start <- Sys.time()
+    register_sample_size_server(input, output, session, app_language_fn = app_language)
+    statedu_log_timing("deferred sample-size modules", deferred_start)
+  })
+
+  lazy_ui("lazy_about_preferences", function() tab_panel_content(about_preferences_tab_panel(app_language())))
+  lazy_ui("lazy_about_overview", function() render_about_document("overview", "about_overview"))
+  lazy_ui("lazy_about_user_guide", function() render_about_document("user_guide", "about_user_guide"))
+  lazy_ui("lazy_about_analysis_methods", function() render_about_document("analysis_methods", "about_analysis_methods"))
+  lazy_ui("lazy_about_method_notes", function() render_about_document("method_notes", "about_method_notes"))
+  lazy_ui("lazy_about_validation", function() render_about_document("validation", "about_validation"))
+  lazy_ui("lazy_about_version_history", function() render_about_document("version_history", "about_version_history"))
+  lazy_ui("lazy_about_source_license", function() tab_panel_content(about_source_license_tab_panel(app_language())))
+  lazy_ui("lazy_about_oss_licenses", function() tab_panel_content(about_license_tab_panel(app_language())))
+  lazy_ui("lazy_about_update", function() tab_panel_content(about_update_tab_panel(app_language())))
+  lazy_ui("lazy_about_info", function() tab_panel_content(about_info_tab_panel(app_version, app_language())))
+  lazy_ui("lazy_help_bug", function() tab_panel_content(help_request_tab_panel("bug", "help_bug", app_version, app_language())))
+  lazy_ui("lazy_help_feature", function() tab_panel_content(help_request_tab_panel("feature", "help_feature", app_version, app_language())))
+  lazy_ui("lazy_help_analysis_request", function() tab_panel_content(help_request_tab_panel("analysis", "help_analysis_request", app_version, app_language())))
+  lazy_ui("lazy_help_qa", function() tab_panel_content(help_request_tab_panel("qa", "help_qa", app_version, app_language())))
 
   observeEvent(input$check_updates, {
     notification_id <- showNotification(
@@ -279,9 +455,24 @@ create_app_server <- function(app_version) {
 
   data_reactives <- create_data_reactives(input, active_data_file, calculated_variables, renamed_variables, user_missing_rules)
   current_data_file <- data_reactives$current_data_file
+  session$userData$result_data_file <- function() {
+    file <- current_data_file()
+    source <- input$desktop_data_source
+    if (is.list(file) && !nzchar(file$original_path %||% "") &&
+        is.list(source) && identical(file$name, source$name)) file$original_path <- source$path
+    file
+  }
+  observe({
+    session$sendCustomMessage("statedu-data-directory",
+      data_file_source_directory(session$userData$result_data_file()))
+  })
   source_dataset <- data_reactives$source_dataset
   raw_dataset <- data_reactives$raw_dataset
   dataset <- data_reactives$dataset
+  session$userData$scope_app_frame <- environment()
+  analysis_scope <- register_analysis_scope(input, output, session, dataset, app_language, current_data_file,
+    var_label_overrides, function() category_label_values(), function() base_variable_info())
+  analysis_dataset <- analysis_scope$dataset
 
   override_handlers <- NULL
   update_var_label_overrides <- function(values, allow_blank = TRUE) {
@@ -443,23 +634,25 @@ create_app_server <- function(app_version) {
   render_calculator_scope_toggle("ascvd10_variable_scope_toggle", "toggle_ascvd10_selected_only")
   render_calculator_scope_toggle("mbss_variable_scope_toggle", "toggle_mbss_selected_only")
   if (isTRUE(latent_mplus_enabled())) {
-    statedu_time_expr(
-      "register_latent_mplus_server",
-      register_latent_mplus_server(
-        input = input,
-        output = output,
-        session = session,
-        app_version = app_version,
-        current_data_file = current_data_file,
-        variable_info_table = variable_info_table,
-        restored_data_file = restored_data_file,
-        restored_variable_info = restored_variable_info,
-        active_data_file = active_data_file,
-        reset_on_dataset_load = reset_on_dataset_load,
-        available_variable_names = available_variable_names
-      ),
-      detail = "startup"
-    )
+    register_on_first_menu_visit("latent_mixture", function() {
+      statedu_time_expr(
+        "register_latent_mplus_server",
+        register_latent_mplus_server(
+          input = input,
+          output = output,
+          session = session,
+          app_version = app_version,
+          current_data_file = current_data_file,
+          variable_info_table = variable_info_table,
+          restored_data_file = restored_data_file,
+          restored_variable_info = restored_variable_info,
+          active_data_file = active_data_file,
+          reset_on_dataset_load = reset_on_dataset_load,
+          available_variable_names = available_variable_names
+        ),
+        detail = "deferred latent"
+      )
+    })
   }
   table_input_collectors <- create_table_input_collectors(input, variable_info_table)
   merge_state_into_info <- create_merge_state_into_info_fn(
@@ -495,7 +688,22 @@ create_app_server <- function(app_version) {
     measurement_overrides = measurement_overrides,
     calculated_variables = calculated_variables,
     user_missing_rules = user_missing_rules,
-    complex_sample_design_state = complex_sample_design_state
+    complex_sample_design_state = complex_sample_design_state,
+    restore_longitudinal_settings_fn = restore_longitudinal_settings,
+    restore_survival_settings_fn = restore_survival_settings,
+    restore_hierarchical_settings_fn = function(value) {
+      hierarchical_block3_names(settings_vector(value$block3))
+      hierarchical_block4_names(settings_vector(value$block4))
+      hierarchical_active_block(if (length(value$active_block) == 1L && value$active_block %in% paste0("block",1:4)) value$active_block else "block1")
+        if (is.list(value$options)) for (key in names(value$options)) {
+          if (is.null(value$options[[key]]) || !length(value$options[[key]])) next
+          id <- paste0("hierarchical_",key)
+        if (key %in% c("residual_diagnostics","auto_method","show_sr2","show_f2","show_vif")) updateCheckboxInput(session,id,value=isTRUE(value$options[[key]]))
+        else if (key == "seed") updateNumericInput(session,id,value=value$options[[key]])
+        else if (key == "boot_r") updateSelectInput(session,id,selected=as.character(value$options[[key]]))
+        else if (key == "output_table_style") updateRadioButtons(session,id,selected=value$options[[key]])
+      }
+    }
   )
 
   restore_settings_variable_info_only <- create_restore_settings_variable_info_only_fn(
@@ -565,11 +773,13 @@ create_app_server <- function(app_version) {
     predictor_order = predictor_order,
     predictor_order_initialized = predictor_order_initialized,
     hierarchical_block3_names = hierarchical_block3_names,
+    hierarchical_block4_names = hierarchical_block4_names,
     reliability_variables = reliability_variables,
     frequency_variables = frequency_variables,
     go_data_step,
     set_role_choices,
-    complex_sample_design_state = complex_sample_design_state
+    complex_sample_design_state = complex_sample_design_state,
+    reset_longitudinal_settings_fn = function(value) { restore_longitudinal_settings(value); restore_survival_settings(NULL) }
   )
 
   register_loaded_dataset_observer(
@@ -577,7 +787,8 @@ create_app_server <- function(app_version) {
     pending_settings = pending_settings,
     reset_on_dataset_load = reset_on_dataset_load,
     reset_loaded_dataset_state_fn = reset_loaded_dataset_state,
-    restore_settings_state_fn = restore_settings_state
+    restore_settings_state_fn = restore_settings_state,
+    reset_analysis_canvases_fn = reset_analysis_canvas_context
   )
 
   register_data_input_observers(input, active_data_file, reset_on_dataset_load, mark_settings_dirty, language_fn = app_language)
@@ -587,7 +798,10 @@ create_app_server <- function(app_version) {
     session$onFlushed(function() {
       settings <- read_settings_json_file(capture_settings_file)
       reset_on_dataset_load(TRUE)
-      isolate(restore_settings_state(settings, capture_settings_file))
+      isolate({
+        reset_analysis_canvas_context()
+        restore_settings_state(settings, capture_settings_file)
+      })
     }, once = TRUE)
   }
 
@@ -613,7 +827,7 @@ create_app_server <- function(app_version) {
       showNotification(statedu_t("data.no_edits_to_save", app_language()), type = "warning", duration = 5)
       return()
     }
-    path <- choose_data_csv_save_path()
+    path <- choose_data_csv_save_path(language = app_language())
     if (length(path) == 0 || !nzchar(path[[1]])) {
       showNotification(statedu_t("result.save_dialog_canceled", app_language()), type = "warning", duration = 5)
       return()
@@ -765,7 +979,8 @@ create_app_server <- function(app_version) {
     reset_setup_inputs_fn = reset_setup_inputs,
     go_data_step_fn = go_data_step,
     mark_settings_clean = mark_settings_clean,
-    language_fn = app_language
+    language_fn = app_language,
+    reset_longitudinal_settings_fn = function(value) { restore_longitudinal_settings(value); restore_survival_settings(NULL) }
   )
 
   apply_settings_object <- register_settings_load_handler(
@@ -776,7 +991,10 @@ create_app_server <- function(app_version) {
     current_data_file_fn = current_data_file,
     restored_variable_info_fn = restored_variable_info,
     mark_settings_clean = mark_settings_clean,
-    clear_results_fn = function() clear_result_accumulator_store(session),
+    clear_results_fn = function() {
+      clear_result_accumulator_store(session)
+      reset_analysis_canvas_context()
+    },
     language_fn = app_language
   )
 
@@ -803,9 +1021,10 @@ create_app_server <- function(app_version) {
         tryCatch(
           {
             settings <- read_settings_json_file(launch_settings_file)
-            apply_settings_object(settings, launch_settings_file)
+            isolate(apply_settings_object(settings, launch_settings_file))
           },
           error = function(e) {
+            message("Startup settings restore failed: ", conditionMessage(e))
             showNotification(conditionMessage(e), type = "error", duration = 8)
           }
         )
@@ -848,7 +1067,6 @@ create_app_server <- function(app_version) {
   bootstrap_cancel_requested <- analysis_state$bootstrap_cancel_requested
   bootstrap_process <- analysis_state$bootstrap_process
   bootstrap_stop_visible <- analysis_state$bootstrap_stop_visible
-  bootstrap_tick <- analysis_state$bootstrap_tick
 
   bootstrap_manager <- create_bootstrap_manager(
     bootstrap_job = bootstrap_job,
@@ -860,11 +1078,21 @@ create_app_server <- function(app_version) {
     analysis_result = analysis_result
   )
 
+  session$onSessionEnded(function() {
+    try(bootstrap_manager$cancel(), silent = TRUE)
+  })
+
+  observeEvent(input$file, {
+    if (!is.null(isolate(bootstrap_job())) || !is.null(isolate(bootstrap_process()))) {
+      bootstrap_manager$cancel()
+    }
+  }, ignoreInit = TRUE, priority = 1000)
+
   prepare_analysis_result <- create_prepare_analysis_result_fn(
     current_data_file_fn = current_data_file,
     selection_applied_fn = selection_applied,
     roles_applied_fn = roles_applied,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     sync_predictor_order_fn = sync_predictor_order,
     sync_dependent_order_fn = sync_dependent_order,
     variable_info_table_fn = variable_info_table,
@@ -875,7 +1103,7 @@ create_app_server <- function(app_version) {
     auto_method_fn = function() isTRUE(input$residual_diagnostics %||% TRUE) && isTRUE(input$auto_method %||% TRUE)
   )
 
-  register_analysis_run_handlers(
+  run_regression_prepared <- register_analysis_run_handlers(
     input = input,
     session = session,
     prepare_analysis_result_fn = prepare_analysis_result,
@@ -886,8 +1114,7 @@ create_app_server <- function(app_version) {
     bootstrap_cancel_requested = bootstrap_cancel_requested,
     bootstrap_status = bootstrap_status,
     bootstrap_stop_visible = bootstrap_stop_visible,
-    bootstrap_manager = bootstrap_manager,
-    bootstrap_tick = bootstrap_tick
+    bootstrap_manager = bootstrap_manager
   )
 
   analysis_views <- create_analysis_result_views(analysis_result)
@@ -922,7 +1149,25 @@ create_app_server <- function(app_version) {
     collect_var_label_inputs
   )
 
+  register_codebook_handlers(
+    input = input,
+    output = output,
+    session = session,
+    current_data_file_fn = current_data_file,
+    variable_info_table_fn = variable_info_table,
+    measurement_overrides = measurement_overrides,
+    var_label_overrides = var_label_overrides,
+    category_label_values = category_label_values,
+    step3_variable_info = step3_variable_info,
+    selected_names_fn = selected_names,
+    selection_applied_fn = selection_applied,
+    go_data_step_fn = go_data_step,
+    mark_settings_dirty = mark_settings_dirty,
+    app_language_fn = app_language
+  )
+
   register_variable_table_output(
+    input,
     output,
     current_data_file_fn = current_data_file,
     restored_variable_info_fn = restored_variable_info,
@@ -952,6 +1197,8 @@ create_app_server <- function(app_version) {
     category_label_table_data_fn = category_label_table_data,
     app_language_fn = app_language
   )
+  statedu_log_timing("server initialize data workspace", server_phase_start)
+  server_phase_start <- Sys.time()
 
   add_calculated_variable <- function(name, values, var_label = "Calculated variable", measurement = NULL) {
     name <- trimws(as.character(name %||% ""))
@@ -1186,6 +1433,7 @@ create_app_server <- function(app_version) {
     dependent_order(rename_vector_values(dependent_order(), old_name, new_name))
     predictor_order(rename_vector_values(predictor_order(), old_name, new_name))
     hierarchical_block3_names(rename_vector_values(hierarchical_block3_names(), old_name, new_name))
+    hierarchical_block4_names(rename_vector_values(hierarchical_block4_names(), old_name, new_name))
     reliability_variables(rename_vector_values(reliability_variables(), old_name, new_name))
     frequency_variables(rename_vector_values(frequency_variables(), old_name, new_name))
 
@@ -1216,6 +1464,20 @@ create_app_server <- function(app_version) {
     invisible(TRUE)
   }
 
+  register_on_first_menu_visit(c(
+    "data_editor_coding_error_check",
+    "data_editor_likert",
+    "data_editor_missing_values",
+    "data_editor_wide_long",
+    "data_editor_merge",
+    "data_editor_id_aggregate",
+    "data_editor_recode_different",
+    "data_editor_variable_calculation",
+    "data_editor_variable_transformation",
+    "data_editor_recode_same",
+    "data_editor_variable_rename"
+  ), function() {
+  deferred_start <- Sys.time()
   register_recode_same_handlers(
     input = input,
     output = output,
@@ -1366,7 +1628,18 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty,
     language_fn = app_language
   )
+  statedu_log_timing("deferred data-editor modules", deferred_start)
+  })
 
+  register_on_first_menu_visit(c(
+    "calculator_hint8",
+    "calculator_eq5d",
+    "calculator_metabolic",
+    "calculator_frs",
+    "calculator_ascvd10",
+    "calculator_metabolic_severity"
+  ), function() {
+  deferred_start <- Sys.time()
   register_hint8_calculator_handlers(
     input = input,
     output = output,
@@ -1438,6 +1711,8 @@ create_app_server <- function(app_version) {
     add_calculated_variable_fn = add_calculated_variable,
     language_fn = app_language
   )
+  statedu_log_timing("deferred calculator modules", deferred_start)
+  })
 
   regression_accessors <- create_regression_variable_accessors(
     selected_names_fn = selected_names,
@@ -1466,6 +1741,16 @@ create_app_server <- function(app_version) {
     }
     available_variable_names()
   }
+  current_data_file_directory <- function() {
+    file <- current_data_file()
+    path <- if (is.list(file)) as.character(file$path %||% "") else ""
+    if (!nzchar(path)) return("")
+    directory <- dirname(normalizePath(path, winslash = "/", mustWork = FALSE))
+    if (dir.exists(directory)) directory else ""
+  }
+
+  register_on_first_menu_visit("analysis_complex_design", function() {
+    deferred_start <- Sys.time()
   register_complex_sample_design_handlers(
     input = input,
     output = output,
@@ -1479,18 +1764,8 @@ create_app_server <- function(app_version) {
     app_language_fn = app_language
   )
 
-  current_data_file_directory <- function() {
-    file <- current_data_file()
-    path <- if (is.list(file)) as.character(file$path %||% "") else ""
-    if (!nzchar(path)) {
-      return("")
-    }
-    directory <- dirname(normalizePath(path, winslash = "/", mustWork = FALSE))
-    if (dir.exists(directory)) directory else ""
-  }
-
   observeEvent(input$complex_design_load_settings, {
-    design_path <- open_complex_sample_design_file()
+    design_path <- open_complex_sample_design_file(language = app_language())
     if (is.null(design_path)) {
       return()
     }
@@ -1514,7 +1789,7 @@ create_app_server <- function(app_version) {
   }, ignoreInit = TRUE)
 
   observeEvent(input$complex_design_save_settings, {
-    design_path <- save_complex_sample_design_file(initial_dir = current_data_file_directory())
+    design_path <- save_complex_sample_design_file(initial_dir = current_data_file_directory(), language = app_language())
     if (is.null(design_path)) {
       return()
     }
@@ -1535,7 +1810,11 @@ create_app_server <- function(app_version) {
       type = "message"
     )
   }, ignoreInit = TRUE)
+    statedu_log_timing("deferred complex-sample design module", deferred_start)
+  })
 
+  register_on_first_menu_visit("analysis_complex_frequencies", function() {
+    deferred_start <- Sys.time()
   register_complex_sample_handlers(
     input = input,
     output = output,
@@ -1547,7 +1826,7 @@ create_app_server <- function(app_version) {
     all_variable_names_fn = complex_sample_variable_names,
     variable_table_fn = complex_sample_variable_table,
     design_variable_table_fn = complex_sample_variable_table,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     analysis_type = "frequencies",
     category_table_fn = category_label_values,
     labels_fn = var_label_overrides,
@@ -1555,7 +1834,11 @@ create_app_server <- function(app_version) {
     app_language_fn = app_language,
     design_state = complex_sample_design_state
   )
+    statedu_log_timing("deferred complex-sample frequencies module", deferred_start)
+  })
 
+  register_on_first_menu_visit("analysis_complex_crosstabs", function() {
+    deferred_start <- Sys.time()
   register_complex_sample_handlers(
     input = input,
     output = output,
@@ -1567,7 +1850,7 @@ create_app_server <- function(app_version) {
     all_variable_names_fn = complex_sample_variable_names,
     variable_table_fn = complex_sample_variable_table,
     design_variable_table_fn = complex_sample_variable_table,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     analysis_type = "crosstabs",
     category_table_fn = category_label_values,
     labels_fn = var_label_overrides,
@@ -1575,7 +1858,11 @@ create_app_server <- function(app_version) {
     app_language_fn = app_language,
     design_state = complex_sample_design_state
   )
+    statedu_log_timing("deferred complex-sample crosstab module", deferred_start)
+  })
 
+  register_on_first_menu_visit("analysis_complex_ttest_anova", function() {
+    deferred_start <- Sys.time()
   register_complex_sample_handlers(
     input = input,
     output = output,
@@ -1587,7 +1874,7 @@ create_app_server <- function(app_version) {
     all_variable_names_fn = complex_sample_variable_names,
     variable_table_fn = complex_sample_variable_table,
     design_variable_table_fn = complex_sample_variable_table,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     analysis_type = "ttest_anova",
     category_table_fn = category_label_values,
     labels_fn = var_label_overrides,
@@ -1595,7 +1882,11 @@ create_app_server <- function(app_version) {
     app_language_fn = app_language,
     design_state = complex_sample_design_state
   )
+    statedu_log_timing("deferred complex-sample mean-comparison module", deferred_start)
+  })
 
+  register_on_first_menu_visit("analysis_complex_correlation", function() {
+    deferred_start <- Sys.time()
   register_complex_sample_handlers(
     input = input,
     output = output,
@@ -1607,7 +1898,7 @@ create_app_server <- function(app_version) {
     all_variable_names_fn = complex_sample_variable_names,
     variable_table_fn = complex_sample_variable_table,
     design_variable_table_fn = complex_sample_variable_table,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     analysis_type = "correlation",
     category_table_fn = category_label_values,
     labels_fn = var_label_overrides,
@@ -1615,7 +1906,11 @@ create_app_server <- function(app_version) {
     app_language_fn = app_language,
     design_state = complex_sample_design_state
   )
+    statedu_log_timing("deferred complex-sample correlation module", deferred_start)
+  })
 
+  register_on_first_menu_visit("analysis_complex_regression", function() {
+    deferred_start <- Sys.time()
   register_complex_sample_handlers(
     input = input,
     output = output,
@@ -1627,7 +1922,7 @@ create_app_server <- function(app_version) {
     all_variable_names_fn = complex_sample_variable_names,
     variable_table_fn = complex_sample_variable_table,
     design_variable_table_fn = complex_sample_variable_table,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     analysis_type = "regression",
     category_table_fn = category_label_values,
     labels_fn = var_label_overrides,
@@ -1635,7 +1930,11 @@ create_app_server <- function(app_version) {
     app_language_fn = app_language,
     design_state = complex_sample_design_state
   )
+    statedu_log_timing("deferred complex-sample regression module", deferred_start)
+  })
 
+  register_on_first_menu_visit("analysis_complex_logistic", function() {
+    deferred_start <- Sys.time()
   register_complex_sample_handlers(
     input = input,
     output = output,
@@ -1647,7 +1946,7 @@ create_app_server <- function(app_version) {
     all_variable_names_fn = complex_sample_variable_names,
     variable_table_fn = complex_sample_variable_table,
     design_variable_table_fn = complex_sample_variable_table,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     analysis_type = "logistic",
     category_table_fn = category_label_values,
     labels_fn = var_label_overrides,
@@ -1655,12 +1954,34 @@ create_app_server <- function(app_version) {
     app_language_fn = app_language,
     design_state = complex_sample_design_state
   )
+    statedu_log_timing("deferred complex-sample logistic module", deferred_start)
+  })
 
+  register_on_first_menu_visit("analysis_complex_custom_model", function() {
+    deferred_start <- Sys.time()
+  register_complex_sample_custom_model_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = analysis_dataset,
+    selected_names_fn = selected_names,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    mark_settings_dirty = mark_settings_dirty,
+    app_language_fn = app_language,
+    design_state = complex_sample_design_state
+  )
+    statedu_log_timing("deferred complex-sample custom-model module", deferred_start)
+  })
+
+  register_on_first_menu_visit("analysis_mediation_moderation", function() {
+    deferred_start <- Sys.time()
   register_mediation_moderation_setup_output(
     input = input,
     output = output,
     session = session,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
     labels_fn = var_label_overrides,
@@ -1668,25 +1989,73 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+    statedu_log_timing("deferred mediation-moderation module", deferred_start)
+  })
 
-  register_custom_model_canvas_handlers(
+  register_on_first_menu_visit("analysis_structural_cfa", function() {
+    deferred_start <- Sys.time()
+  register_structural_equation_canvas_handlers(
     input = input,
     output = output,
     session = session,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
     labels_fn = var_label_overrides,
     category_table_fn = category_label_values,
     mark_settings_dirty = mark_settings_dirty,
-    app_language_fn = app_language
+    app_language_fn = app_language,
+    analysis_reset_epoch_fn = analysis_canvas_reset_epoch,
+    analysis_types = "cfa"
   )
+    statedu_log_timing("deferred structural-equation CFA module", deferred_start)
+  })
 
+  register_on_first_menu_visit("analysis_structural_cbsem", function() {
+    deferred_start <- Sys.time()
+  register_structural_equation_canvas_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = analysis_dataset,
+    selected_names_fn = selected_names,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    mark_settings_dirty = mark_settings_dirty,
+    app_language_fn = app_language,
+    analysis_reset_epoch_fn = analysis_canvas_reset_epoch,
+    analysis_types = "cbsem"
+  )
+    statedu_log_timing("deferred structural-equation CB-SEM module", deferred_start)
+  })
+
+  register_on_first_menu_visit("analysis_structural_plssem", function() {
+    deferred_start <- Sys.time()
+  register_structural_equation_canvas_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = analysis_dataset,
+    selected_names_fn = selected_names,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    mark_settings_dirty = mark_settings_dirty,
+    app_language_fn = app_language,
+    analysis_reset_epoch_fn = analysis_canvas_reset_epoch,
+    analysis_types = "plssem"
+  )
+    statedu_log_timing("deferred structural-equation PLS-SEM module", deferred_start)
+  })
+
+  register_on_first_menu_visit("Reliability", function() {
+    deferred_start <- Sys.time()
   register_reliability_handlers(
     input = input,
     output = output,
     session = session,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
     labels_fn = var_label_overrides,
@@ -1695,12 +2064,16 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+    statedu_log_timing("deferred reliability module", deferred_start)
+  })
 
+  register_on_first_menu_visit("Inter-rater Agreement", function() {
+    deferred_start <- Sys.time()
   register_interrater_agreement_handlers(
     input = input,
     output = output,
     session = session,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
     labels_fn = var_label_overrides,
@@ -1708,12 +2081,20 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+    statedu_log_timing("deferred inter-rater module", deferred_start)
+  })
 
+  register_on_first_menu_visit("IPA", function() {
+    register_ipa_handlers(input,output,session,analysis_dataset,selected_names,app_language,mark_settings_dirty,variable_table_fn=regression_variable_table,category_table_fn=category_label_values)
+  })
+
+  register_on_first_menu_visit("Frequencies / Descriptives", function() {
+    deferred_start <- Sys.time()
   register_frequencies_handlers(
     input = input,
     output = output,
     session = session,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
     labels_fn = var_label_overrides,
@@ -1722,12 +2103,16 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+    statedu_log_timing("deferred frequencies module", deferred_start)
+  })
 
+  register_on_first_menu_visit("analysis_crosstabs", function() {
+    deferred_start <- Sys.time()
   register_crosstab_handlers(
     input = input,
     output = output,
     session = session,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
     labels_fn = var_label_overrides,
@@ -1735,118 +2120,196 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty,
     language_fn = app_language
   )
+    statedu_log_timing("deferred crosstab module", deferred_start)
+  })
 
+  register_on_first_menu_visit("analysis_logistic_regression", function() {
+    deferred_start <- Sys.time()
   register_logistic_handlers(
     input = input,
     output = output,
     session = session,
     selected_names_fn = selected_names,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     variable_table_fn = regression_variable_table,
     labels_fn = var_label_overrides,
     category_table_fn = category_label_values,
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+    statedu_log_timing("deferred logistic module", deferred_start)
+  })
 
-  register_longitudinal_handlers(
+  register_on_first_menu_visit("Longitudinal / Panel Models", function() {
+    deferred_start <- Sys.time()
+  longitudinal_module$api <- register_longitudinal_handlers(
     input = input,
     output = output,
     session = session,
     selected_names_fn = selected_names,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     variable_table_fn = regression_variable_table,
     labels_fn = var_label_overrides,
     category_table_fn = category_label_values,
     mark_settings_dirty = mark_settings_dirty,
-    app_language_fn = app_language
+    app_language_fn = app_language,
+    restore_request_fn = longitudinal_restore_request
   )
+    statedu_log_timing("deferred longitudinal module", deferred_start)
+  })
 
+  register_on_first_menu_visit("Generalized Linear Model (GLM)", function() {
+    deferred_start <- Sys.time()
   register_generalized_handlers(
     input = input,
     output = output,
     session = session,
     selected_names_fn = selected_names,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     variable_table_fn = regression_variable_table,
     labels_fn = var_label_overrides,
     category_table_fn = category_label_values,
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+    statedu_log_timing("deferred generalized-linear module", deferred_start)
+  })
 
+  register_on_first_menu_visit(c(
+    "analysis_survival_setup",
+    "analysis_survival_km",
+    "analysis_survival_cox",
+    "analysis_survival_competing"
+  ), function() {
+    deferred_start <- Sys.time()
+  survival_module$api <- register_survival_handlers(
+    input = input,
+    output = output,
+    session = session,
+    selected_names_fn = selected_names,
+    dataset_fn = analysis_dataset,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    mark_settings_dirty = mark_settings_dirty,
+    current_data_file_fn = current_data_file,
+    app_language_fn = app_language,
+    restore_request_fn = survival_restore_request
+  )
+    statedu_log_timing("deferred survival module", deferred_start)
+  })
+
+  register_on_first_menu_visit("t-test / ANOVA", function() {
+    deferred_start <- Sys.time()
   register_ttest_anova_handlers(
     input = input,
     output = output,
     session = session,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     category_table_fn = category_label_values,
     labels_fn = var_label_overrides,
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+    statedu_log_timing("deferred t-test and ANOVA module", deferred_start)
+  })
 
+  register_on_first_menu_visit("ANCOVA", function() {
+    deferred_start <- Sys.time()
   register_ancova_handlers(
     input = input,
     output = output,
     session = session,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     category_table_fn = category_label_values,
     labels_fn = var_label_overrides,
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+    statedu_log_timing("deferred ANCOVA module", deferred_start)
+  })
 
+  register_on_first_menu_visit("Repeated-measures ANOVA", function() {
+    deferred_start <- Sys.time()
   register_mixed_rm_anova_handlers(
     input = input,
     output = output,
     session = session,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     category_table_fn = category_label_values,
     labels_fn = var_label_overrides,
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+    statedu_log_timing("deferred repeated-measures module", deferred_start)
+  })
 
+  register_on_first_menu_visit("One-group repeated-measures ANOVA", function() {
+    deferred_start <- Sys.time()
+  register_one_group_rm_anova_handlers(
+    input = input,
+    output = output,
+    session = session,
+    selected_names_fn = selected_names,
+    variable_table_fn = regression_variable_table,
+    dataset_fn = analysis_dataset,
+    category_table_fn = category_label_values,
+    labels_fn = var_label_overrides,
+    mark_settings_dirty = mark_settings_dirty,
+    app_language_fn = app_language
+  )
+    statedu_log_timing("deferred one-group repeated-measures module", deferred_start)
+  })
+
+  register_on_first_menu_visit("Nonparametric Tests", function() {
+    deferred_start <- Sys.time()
   register_nonparametric_handlers(
     input = input,
     output = output,
     session = session,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     category_table_fn = category_label_values,
     labels_fn = var_label_overrides,
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+    statedu_log_timing("deferred nonparametric module", deferred_start)
+  })
 
+  register_on_first_menu_visit("Nonparametric Paired", function() {
+    deferred_start <- Sys.time()
   register_nonparametric_paired_handlers(
     input = input,
     output = output,
     session = session,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     category_table_fn = category_label_values,
     labels_fn = var_label_overrides,
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+    statedu_log_timing("deferred paired nonparametric module", deferred_start)
+  })
 
+  register_on_first_menu_visit("Paired test", function() {
+    deferred_start <- Sys.time()
   register_paired_handlers(
     input = input,
     output = output,
     session = session,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     category_table_fn = category_label_values,
     labels_fn = var_label_overrides,
     mark_settings_dirty = mark_settings_dirty,
@@ -1859,18 +2322,22 @@ create_app_server <- function(app_version) {
     session = session,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     category_table_fn = category_label_values,
     labels_fn = var_label_overrides,
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+    statedu_log_timing("deferred paired-test modules", deferred_start)
+  })
 
+  register_on_first_menu_visit("Correlation", function() {
+    deferred_start <- Sys.time()
   register_correlation_handlers(
     input = input,
     output = output,
     session = session,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
     category_table_fn = category_label_values,
@@ -1878,12 +2345,16 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+    statedu_log_timing("deferred correlation module", deferred_start)
+  })
 
+  register_on_first_menu_visit("Factor Analysis", function() {
+    deferred_start <- Sys.time()
   register_factor_analysis_handlers(
     input = input,
     output = output,
     session = session,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
     category_table_fn = category_label_values,
@@ -1892,12 +2363,16 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+    statedu_log_timing("deferred factor-analysis module", deferred_start)
+  })
 
+  register_on_first_menu_visit("Principal Components", function() {
+    deferred_start <- Sys.time()
   register_pca_handlers(
     input = input,
     output = output,
     session = session,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
     category_table_fn = category_label_values,
@@ -1906,6 +2381,10 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )
+    statedu_log_timing("deferred PCA module", deferred_start)
+  })
+  statedu_log_timing("server initialize deferred registrations", server_phase_start)
+  server_phase_start <- Sys.time()
 
   setup_order_sync <- create_setup_order_sync(
     input = input,
@@ -1921,6 +2400,97 @@ create_app_server <- function(app_version) {
   )
   sync_dependent_order <- setup_order_sync$sync_dependent_order
   sync_predictor_order <- setup_order_sync$sync_predictor_order
+
+  register_regression_syntax(
+    input, output, session,
+    capture_fn = function() {
+      if (!isTRUE(selection_applied())) stop("먼저 데이터를 불러오고 변수 선택을 적용하세요.")
+      data <- dataset()
+      list(
+        VERSION = 1L, STUDIO_VERSION = as.character(app_version),
+        DATA = as.character(current_data_file()$name %||% "data"),
+        DATA_HASH = regression_syntax_data_hash(data),
+        DEPENDENTS = as.character(sync_dependent_order(update_input = FALSE)),
+        PREDICTORS = as.character(sync_predictor_order(update_input = FALSE)),
+        MEASUREMENTS = regression_syntax_measurements(variable_info_table()),
+        REFERENCES = as.list(regression_reference_values_static(category_label_values())),
+        MISSING = "LISTWISE", CI_METHOD = "bias_corrected",
+        BOOTSTRAP = as.integer(input$boot_r %||% 5000L), SEED = as.integer(input$seed %||% default_seed()),
+        RESIDUAL_DIAGNOSTICS = isTRUE(input$residual_diagnostics %||% TRUE),
+        AUTO_METHOD = isTRUE(input$residual_diagnostics %||% TRUE) && isTRUE(input$auto_method %||% TRUE),
+        SHOW_SR2 = isTRUE(input$show_sr2), SHOW_F2 = isTRUE(input$show_f2 %||% TRUE),
+        SHOW_VIF = isTRUE(input$show_vif %||% TRUE),
+        OUTPUT_STYLE = analysis_output_table_style(input$regression_output_table_style)
+      )
+    },
+    validate_fn = function(spec, allow_changed_data) {
+      if ("BLOCK1" %in% names(spec)) stop("블록 명령어는 통합 회귀분석 화면에서 불러오세요.")
+      if (!isTRUE(selection_applied())) stop("먼저 데이터를 불러오고 변수 선택을 적용하세요.")
+      if (!is.null(bootstrap_job()) || !is.null(bootstrap_process()))
+        stop("진행 중인 부트스트랩이 끝난 후 다시 실행하세요.")
+      missing <- setdiff(c(spec$DEPENDENTS, spec$PREDICTORS), selected_names())
+      if (length(missing)) stop(paste("먼저 데이터 화면에서 다음 변수를 선택하세요:", paste(missing, collapse = ", ")))
+      if (length(setdiff(spec$DEPENDENTS, dependent_candidates())))
+        stop("종속변수의 측정수준과 역할 설정을 확인하세요.")
+      validate_regression_syntax_context(spec, dataset(), variable_info_table(),
+        regression_reference_values_static(category_label_values()), allow_changed_data)
+    },
+    apply_fn = function(spec) {
+      dependent_order(spec$DEPENDENTS)
+      predictor_order(spec$PREDICTORS)
+      predictor_order_initialized(TRUE)
+      sync_dependent_order(update_input = TRUE)
+      sync_predictor_order(update_input = TRUE)
+      updateSelectInput(session, "boot_r", selected = as.character(spec$BOOTSTRAP))
+      updateNumericInput(session, "seed", value = spec$SEED)
+      for (key in c("RESIDUAL_DIAGNOSTICS", "AUTO_METHOD", "SHOW_SR2", "SHOW_F2", "SHOW_VIF"))
+        updateCheckboxInput(session, tolower(key), value = spec[[key]])
+      updateRadioButtons(session, "regression_output_table_style", selected = spec$OUTPUT_STYLE)
+      mark_settings_dirty()
+    },
+    prepare_fn = function(spec) prepare_regression_syntax(spec, analysis_dataset(), variable_info_table()),
+    run_fn = run_regression_prepared, version = app_version, scope_run_id = "run"
+  )
+
+  hierarchical_block3_current <- create_hierarchical_block3_current(
+    independent_names_fn = independent_names,
+    selected_names_fn = selected_names,
+    hierarchical_block3_names = hierarchical_block3_names
+  )
+
+  hierarchical_block4_current <- create_hierarchical_block3_current(
+    independent_names_fn = independent_names,
+    selected_names_fn = selected_names,
+    hierarchical_block3_names = hierarchical_block4_names
+  )
+
+  prepare_hierarchical_result <- create_prepare_hierarchical_analysis_result_fn(
+    current_data_file_fn = current_data_file,
+    dataset_fn = analysis_dataset,
+    hierarchical_y_fn = function() sync_dependent_order(update_input = FALSE),
+    hierarchical_block1_fn = control_names,
+    hierarchical_block2_fn = function() setdiff(independent_names(), c(hierarchical_block3_current(), hierarchical_block4_current())),
+    hierarchical_block3_fn = hierarchical_block3_current,
+    hierarchical_block4_fn = hierarchical_block4_current,
+    variable_info_table_fn = regression_variable_table,
+    category_label_values_fn = category_label_values,
+    boot_r_fn = function() input$hierarchical_boot_r,
+    seed_fn = function() input$hierarchical_seed,
+    residual_diagnostics_fn = function() input$hierarchical_residual_diagnostics %||% TRUE,
+    auto_method_fn = function() isTRUE(input$hierarchical_residual_diagnostics %||% TRUE) && isTRUE(input$hierarchical_auto_method %||% TRUE),
+    sync_dependent_order_fn = sync_dependent_order,
+    control_names_fn = control_names,
+    independent_names_fn = independent_names,
+    hierarchical_block3_current_fn = hierarchical_block3_current
+  )
+
+  register_on_first_menu_visit("analysis_penalized",function(){
+    register_penalized_menu("regularized",input,output,session,analysis_dataset,selected_names,regression_variable_table,var_label_overrides,category_label_values,app_language)
+  })
+  lazy_ui("lazy_analysis_penalized",function()penalized_menu_panel("regularized",app_language()))
+
+  register_on_first_menu_visit("Regression", function() {
+  deferred_start <- Sys.time()
 
   register_role_variable_list_outputs(
     output,
@@ -1953,12 +2523,6 @@ create_app_server <- function(app_version) {
     app_language_fn = app_language
   )
 
-  hierarchical_block3_current <- create_hierarchical_block3_current(
-    independent_names_fn = independent_names,
-    selected_names_fn = selected_names,
-    hierarchical_block3_names = hierarchical_block3_names
-  )
-
   register_hierarchical_block_observers(
     input,
     session,
@@ -1970,7 +2534,9 @@ create_app_server <- function(app_version) {
     dependent_candidates_fn = dependent_candidates,
     predictor_candidates_fn = predictor_candidates,
     hierarchical_block3_current_fn = hierarchical_block3_current,
+    hierarchical_block4_current_fn = hierarchical_block4_current,
     hierarchical_block3_names = hierarchical_block3_names,
+    hierarchical_block4_names = hierarchical_block4_names,
     hierarchical_active_block = hierarchical_active_block,
     sync_dependent_order_fn = sync_dependent_order,
     mark_settings_dirty = mark_settings_dirty
@@ -1990,6 +2556,7 @@ create_app_server <- function(app_version) {
     control_names_fn = control_names,
     independent_names_fn = independent_names,
     hierarchical_block3_current_fn = hierarchical_block3_current,
+    hierarchical_block4_current_fn = hierarchical_block4_current,
     hierarchical_active_block_fn = hierarchical_active_block,
     app_language_fn = app_language
   )
@@ -2047,6 +2614,7 @@ create_app_server <- function(app_version) {
     control_names(character(0))
     independent_names(character(0))
     hierarchical_block3_names(character(0))
+    hierarchical_block4_names(character(0))
     hierarchical_active_block("block1")
     sync_dependent_order(update_input = TRUE)
     analysis_result(NULL)
@@ -2058,7 +2626,7 @@ create_app_server <- function(app_version) {
     bootstrap_stop_visible(FALSE)
     session$sendCustomMessage(
       "easyflow-clear-transfer-selection",
-      list(inputIds = c("hierarchical_available", "hierarchical_y", "hierarchical_block1", "hierarchical_block2", "hierarchical_block3"))
+      list(inputIds = c("hierarchical_available", "hierarchical_y", "hierarchical_block1", "hierarchical_block2", "hierarchical_block3", "hierarchical_block4"))
     )
     mark_settings_dirty()
   }, ignoreInit = TRUE)
@@ -2068,7 +2636,7 @@ create_app_server <- function(app_version) {
     output = output,
     prefix = "regression",
     title = "Regression Data Viewer",
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     selected_names_fn = selected_names,
     variables_fn = function() unique(c(sync_dependent_order(update_input = FALSE), sync_predictor_order(update_input = FALSE))),
     variable_table_fn = regression_variable_table,
@@ -2082,32 +2650,13 @@ create_app_server <- function(app_version) {
     output = output,
     prefix = "hierarchical",
     title = "Regression Data Viewer",
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     selected_names_fn = selected_names,
     variables_fn = function() unique(c(sync_dependent_order(update_input = FALSE), control_names(), independent_names())),
     variable_table_fn = regression_variable_table,
     labels_fn = var_label_overrides,
     category_table_fn = category_label_values,
     language_fn = app_language
-  )
-
-  prepare_hierarchical_result <- create_prepare_hierarchical_analysis_result_fn(
-    current_data_file_fn = current_data_file,
-    dataset_fn = dataset,
-    hierarchical_y_fn = function() sync_dependent_order(update_input = FALSE),
-    hierarchical_block1_fn = control_names,
-    hierarchical_block2_fn = function() setdiff(independent_names(), hierarchical_block3_current()),
-    hierarchical_block3_fn = hierarchical_block3_current,
-    variable_info_table_fn = regression_variable_table,
-    category_label_values_fn = category_label_values,
-    boot_r_fn = function() input$hierarchical_boot_r,
-    seed_fn = function() input$hierarchical_seed,
-    residual_diagnostics_fn = function() input$hierarchical_residual_diagnostics %||% TRUE,
-    auto_method_fn = function() isTRUE(input$hierarchical_residual_diagnostics %||% TRUE) && isTRUE(input$hierarchical_auto_method %||% TRUE),
-    sync_dependent_order_fn = sync_dependent_order,
-    control_names_fn = control_names,
-    independent_names_fn = independent_names,
-    hierarchical_block3_current_fn = hierarchical_block3_current
   )
 
   register_hierarchical_analysis_run_handlers(
@@ -2124,6 +2673,63 @@ create_app_server <- function(app_version) {
     bootstrap_manager = bootstrap_manager
   )
 
+  register_regression_syntax(
+    input, output, session,
+    capture_fn = function() {
+      if (!isTRUE(selection_applied())) stop("먼저 데이터를 불러오고 변수 선택을 적용하세요.")
+      blocks <- compact_analysis_blocks(control_names(), setdiff(independent_names(), c(hierarchical_block3_current(), hierarchical_block4_current())), hierarchical_block3_current(), hierarchical_block4_current())
+      list(
+        VERSION = 1L, STUDIO_VERSION = as.character(app_version),
+        DATA = as.character(current_data_file()$name %||% "data"), DATA_HASH = regression_syntax_data_hash(dataset()),
+        DEPENDENTS = as.character(sync_dependent_order(update_input = FALSE)),
+        PREDICTORS = as.character(unlist(blocks, use.names = FALSE)),
+        MEASUREMENTS = regression_syntax_measurements(regression_variable_table()),
+        REFERENCES = as.list(regression_reference_values_static(category_label_values())),
+        MISSING = "LISTWISE", CI_METHOD = "bias_corrected",
+        BOOTSTRAP = as.integer(input$hierarchical_boot_r %||% 5000L), SEED = as.integer(input$hierarchical_seed %||% default_seed()),
+        RESIDUAL_DIAGNOSTICS = isTRUE(input$hierarchical_residual_diagnostics %||% TRUE),
+        AUTO_METHOD = isTRUE(input$hierarchical_residual_diagnostics %||% TRUE) && isTRUE(input$hierarchical_auto_method %||% TRUE),
+        SHOW_SR2 = isTRUE(input$hierarchical_show_sr2), SHOW_F2 = isTRUE(input$hierarchical_show_f2 %||% TRUE),
+        SHOW_VIF = isTRUE(input$hierarchical_show_vif %||% TRUE),
+        OUTPUT_STYLE = analysis_output_table_style(input$hierarchical_output_table_style),
+        BLOCK1 = blocks$block1, BLOCK2 = blocks$block2, BLOCK3 = blocks$block3, BLOCK4 = blocks$block4
+      )
+    },
+    validate_fn = function(spec, allow_changed_data) {
+      if (!isTRUE(selection_applied())) stop("먼저 데이터를 불러오고 변수 선택을 적용하세요.")
+      if (!is.null(bootstrap_job()) || !is.null(bootstrap_process())) stop("진행 중인 부트스트랩이 끝난 후 다시 실행하세요.")
+      missing <- setdiff(c(spec$DEPENDENTS, spec$PREDICTORS), selected_names())
+      if (length(missing)) stop(paste("먼저 데이터 화면에서 다음 변수를 선택하세요:", paste(missing, collapse = ", ")))
+      if (length(setdiff(spec$DEPENDENTS, dependent_candidates()))) stop("종속변수의 측정수준과 역할 설정을 확인하세요.")
+      if (spec$OUTPUT_STYLE == "compact_xm") stop("이 회귀분석 화면에서는 compact_xm 표 스타일을 지원하지 않습니다.")
+      validate_regression_syntax_context(spec, dataset(), regression_variable_table(),
+        regression_reference_values_static(category_label_values()), allow_changed_data)
+    },
+    apply_fn = function(spec) {
+      dependent_order(spec$DEPENDENTS)
+      control_names(spec$BLOCK1 %||% spec$PREDICTORS)
+      independent_names(c(spec$BLOCK2 %||% character(0), spec$BLOCK3 %||% character(0), spec$BLOCK4 %||% character(0)))
+      hierarchical_block3_names(spec$BLOCK3 %||% character(0))
+      hierarchical_block4_names(spec$BLOCK4 %||% character(0))
+      hierarchical_active_block("block1")
+      sync_dependent_order(update_input = TRUE)
+      updateSelectInput(session, "hierarchical_boot_r", selected = as.character(spec$BOOTSTRAP))
+      updateNumericInput(session, "hierarchical_seed", value = spec$SEED)
+      for (key in c("RESIDUAL_DIAGNOSTICS", "AUTO_METHOD", "SHOW_SR2", "SHOW_F2", "SHOW_VIF"))
+        updateCheckboxInput(session, paste0("hierarchical_", tolower(key)), value = spec[[key]])
+      updateRadioButtons(session, "hierarchical_output_table_style", selected = spec$OUTPUT_STYLE)
+      mark_settings_dirty()
+    },
+    prepare_fn = function(spec) {
+      if (is.null(spec$BLOCK1)) {
+        spec$BLOCK1 <- spec$PREDICTORS
+        spec$BLOCK2 <- spec$BLOCK3 <- character(0)
+      }
+      prepare_regression_syntax(spec, analysis_dataset(), regression_variable_table())
+    },
+    run_fn = run_regression_prepared, version = app_version, prefix = "hierarchical_", scope_run_id = "run_hierarchical"
+  )
+
   register_bootstrap_progress_outputs(
     output,
     bootstrap_status_fn = bootstrap_status,
@@ -2134,7 +2740,7 @@ create_app_server <- function(app_version) {
     input,
     output,
     analysis_result_fn = analysis_result,
-    dataset_fn = dataset,
+    dataset_fn = analysis_dataset,
     variable_table_fn = regression_variable_table,
     labels_fn = var_label_overrides,
     category_table_fn = category_label_values,
@@ -2183,6 +2789,8 @@ create_app_server <- function(app_version) {
     category_table_fn = category_label_values,
     app_language_fn = app_language
   )
+  statedu_log_timing("deferred regression modules", deferred_start)
+  })
 
   current_settings <- create_current_settings_fn(
     app_version = app_version,
@@ -2214,7 +2822,20 @@ create_app_server <- function(app_version) {
     sync_dependent_order_fn = sync_dependent_order,
     sync_predictor_order_fn = sync_predictor_order,
     selected_names_fn = selected_names,
-    complex_sample_design_state_fn = complex_sample_design_state
+    complex_sample_design_state_fn = complex_sample_design_state,
+    hierarchical_settings_fn = function() {
+      keys <- c("boot_r","seed","residual_diagnostics","auto_method","show_sr2","show_f2","show_vif","output_table_style")
+      list(block3 = I(hierarchical_block3_names()), block4 = I(hierarchical_block4_names()),
+        active_block = hierarchical_active_block(), options = stats::setNames(lapply(keys,function(k)input[[paste0("hierarchical_",k)]]),keys))
+    },
+    longitudinal_settings_fn = function() {
+      if (!is.null(longitudinal_module$api)) longitudinal_module$api$settings()
+      else longitudinal_restore_request()$settings
+    },
+    survival_settings_fn = function() {
+      if (!is.null(survival_module$api)) survival_module$api$settings()
+      else survival_restore_request()$settings
+    }
   )
 
   register_analysis_download_handlers(
@@ -2226,5 +2847,8 @@ create_app_server <- function(app_version) {
     category_table_fn = category_label_values
   )
 
-  }
+  statedu_log_timing("server initialize remaining outputs", server_phase_start)
+  statedu_log_timing("server initialize total", server_start)
+
+  }), envir = environment())
 }

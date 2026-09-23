@@ -201,7 +201,7 @@ frs_setup_ui <- function(file, data, variable_info, input, selected_names = NULL
   available_items <- analysis_variable_items(choices, variable_info, character(0))
   variable_inputs <- lapply(seq_len(nrow(specs)), function(index) {
     id <- specs$id[[index]]
-    selectInput(paste0("frs_", id), specs$label[[index]], choices = c(stats::setNames("", statedu_ui_label("select_variable", language)), choices), selected = isolate(input[[paste0("frs_", id)]]) %||% "", width = "100%")
+    selectInput(paste0("frs_", id), calculator_field_label(specs$label[[index]], language), choices = c(stats::setNames("", statedu_ui_label("select_variable", language)), choices), selected = isolate(input[[paste0("frs_", id)]]) %||% "", width = "100%")
   })
   div(
     class = "frequencies-setup-grid metabolic-setup-grid",
@@ -229,11 +229,11 @@ frs_setup_ui <- function(file, data, variable_info, input, selected_names = NULL
       tags$table(
         class = "hint8-initial-table",
         tags$tbody(
-          tags$tr(tags$td("Sex"), tags$td("Male = 1, Female = 2")),
-          tags$tr(tags$td("Current smoker"), tags$td("Yes = 1, No = 0")),
-          tags$tr(tags$td("Hypertension treatment"), tags$td("Yes = 1, No = 0")),
-          tags$tr(tags$td("Diabetes"), tags$td("Yes = 1, No = 0")),
-          tags$tr(tags$td("Lipids"), tags$td(if (identical(frs_lipid_unit(input), "mmol_l")) "mmol/L -> mg/dL" else "mg/dL")),
+          tags$tr(tags$td(calculator_field_label("Sex", language)), tags$td(calculator_field_label("Male = 1, Female = 2", language))),
+          tags$tr(tags$td(calculator_field_label("Current smoker", language)), tags$td(calculator_field_label("Yes = 1, No = 0", language))),
+          tags$tr(tags$td(calculator_field_label("Hypertension treatment", language)), tags$td(calculator_field_label("Yes = 1, No = 0", language))),
+          tags$tr(tags$td(calculator_field_label("Diabetes", language)), tags$td(calculator_field_label("Yes = 1, No = 0", language))),
+          tags$tr(tags$td(calculator_field_label("Lipids", language)), tags$td(if (identical(frs_lipid_unit(input), "mmol_l")) "mmol/L -> mg/dL" else "mg/dL")),
           tags$tr(tags$td("SBP"), tags$td("mmHg"))
         )
       ),
@@ -241,10 +241,10 @@ frs_setup_ui <- function(file, data, variable_info, input, selected_names = NULL
       tags$table(
         class = "hint8-initial-table",
         tags$tbody(
-          tags$tr(tags$td("Score"), tags$td("frs_score")),
-          tags$tr(tags$td("10-year risk"), tags$td("frs_cvd10")),
-          tags$tr(tags$td("Risk group"), tags$td("frs_cvd10_group")),
-          tags$tr(tags$td("Heart age"), tags$td("frs_heart_age"))
+          tags$tr(tags$td(calculator_field_label("Score", language)), tags$td("frs_score")),
+          tags$tr(tags$td(calculator_field_label("10-year risk", language)), tags$td("frs_cvd10")),
+          tags$tr(tags$td(calculator_field_label("Risk group", language)), tags$td("frs_cvd10_group")),
+          tags$tr(tags$td(calculator_field_label("Heart age", language)), tags$td("frs_heart_age"))
         )
       )
     )
@@ -255,7 +255,7 @@ register_frs_calculator_handlers <- function(input, output, session, dataset_fn,
   output$frs_loaded_message <- renderText({
     statedu_current_language(language_fn)
     file <- current_data_file_fn()
-    metabolic_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn())
+    metabolic_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn(), language = statedu_current_language(language_fn))
   })
   output$frs_calculator_setup <- renderUI({
     language <- statedu_current_language(language_fn)
@@ -288,22 +288,23 @@ register_frs_calculator_handlers <- function(input, output, session, dataset_fn,
       showNotification(statedu_t("calculator.frs_added", language), type = "message", duration = 5)
       result_data
     }, error = function(error) {
-      showNotification(conditionMessage(error), type = "warning", duration = 6)
+      showNotification(calculator_error_text(error, language), type = "warning", duration = 6)
       NULL
     })
   }, ignoreInit = TRUE)
   output$frs_calculator_summary <- renderUI({
-    statedu_current_language(language_fn)
+    language <- statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) return(NULL)
-    div(class = "empty-message", div(sprintf("Calculated FRS outputs for %s rows. The variables are available in analysis menus.", nrow(data))))
+    div(class = "empty-message", div(sprintf(statedu_t("calculator.status.outputs", language), "FRS", nrow(data))))
   })
   output$frs_calculator_preview <- DT::renderDT({
+    language <- statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) return(NULL)
     selected <- frs_selected_variables(input)
     preview_names <- intersect(c(unname(selected), "frs_score", "frs_cvd10", "frs_cvd10_group", "frs_heart_age"), names(data))
-    DT::datatable(utils::head(data[, preview_names, drop = FALSE], 50), rownames = FALSE, filter = "top", options = list(pageLength = 10, scrollX = TRUE))
+    DT::datatable(utils::head(data[, preview_names, drop = FALSE], 50), rownames = FALSE, filter = "top", options = with_datatable_language(list(pageLength = 10, scrollX = TRUE), language))
   })
   output$download_frs_calculator <- downloadHandler(
     filename = function() paste0("StatEdu_Studio_frs_", format(Sys.Date(), "%Y%m%d"), ".csv"),

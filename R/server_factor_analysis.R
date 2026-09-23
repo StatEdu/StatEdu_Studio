@@ -40,7 +40,10 @@ register_factor_analysis_handlers <- function(
 ) {
   factor_variables <- reactiveVal(character(0))
   active_factor_list <- reactiveVal(NULL)
-  factor_result <- reactiveVal(NULL)
+  factor_result <- analysis_scope_result_val(NULL)
+  # Use a separate session cache with the same bounds as correlation exports.
+  factor_export_images <- correlation_export_image_cache()
+  session$onSessionEnded(factor_export_images$clear)
 
   current_selected <- reactive({
     as.character(selected_names_fn() %||% character(0))
@@ -175,6 +178,15 @@ register_factor_analysis_handlers <- function(
     mark_settings_dirty = mark_settings_dirty
   )
 
+  register_analysis_reorder(input, session, "factor_selected", function(payload) {
+    updated <- analysis_reorder_items(factor_variables(), payload)
+    if (isTRUE(updated$changed)) {
+      factor_variables(updated$order)
+      active_factor_list("factor_selected")
+      mark_settings_dirty()
+    }
+  })
+
   observeEvent(input$factor_move_up, {
     updated <- move_order_item(factor_variables(), input$factor_selected, "up")
     if (isTRUE(updated$changed)) {
@@ -193,7 +205,11 @@ register_factor_analysis_handlers <- function(
     }
   })
 
-  observeEvent(input$run_factor_analysis, {
+  register_analysis_command_handler(
+    "run_factor_analysis", input, output, session,
+    states = list(factor_variables = factor_variables),
+    dataset_fn = dataset_fn, context_fn = function() list(selected = selected_names_fn(), variables = variable_table_fn(), labels = labels_fn(), categories = category_table_fn()),
+    run_fn = function() {
     if (length(factor_variables()) < 3) {
       showNotification(statedu_t("analysis.validation.factor_min_three", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return()
@@ -230,6 +246,7 @@ register_factor_analysis_handlers <- function(
       }
     )
     if (!is.null(result)) {
+      factor_export_images$clear()
       factor_result(result)
       save_options <- c(
         means = isTRUE(input$factor_save_factor_means %||% FALSE),
@@ -302,6 +319,7 @@ register_factor_analysis_handlers <- function(
   observeEvent(input$reset_factor_analysis_selection, {
     if (length(as.character(factor_variables() %||% character(0))) == 0) return()
     factor_variables(character(0))
+    factor_export_images$clear()
     factor_result(NULL)
     active_factor_list("factor_available")
     session$sendCustomMessage(
@@ -339,11 +357,11 @@ register_factor_analysis_handlers <- function(
     }
     tryCatch(
       {
-        write_factor_analysis_results_html(result, path)
+        write_factor_analysis_results_html(result, path, plot_renderer = factor_export_images$render)
         showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -361,11 +379,11 @@ register_factor_analysis_handlers <- function(
     }
     tryCatch(
       {
-        write_factor_analysis_results_pdf(result, path)
+        write_factor_analysis_results_pdf(result, path, plot_renderer = factor_export_images$render)
         showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -383,11 +401,11 @@ register_factor_analysis_handlers <- function(
     }
     tryCatch(
       {
-        save_factor_analysis_excel_file(result, path)
+        save_factor_analysis_excel_file(result, path, plot_renderer = factor_export_images$render)
         showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })

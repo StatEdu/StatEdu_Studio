@@ -1,6 +1,12 @@
+suppressPackageStartupMessages(library(shiny))
+
 source("R/utils.R")
 source("R/analysis_interrater_agreement.R")
+source("R/result_table_ui.R")
+source("R/result_reliability_ui.R")
 source("R/result_interrater_agreement_ui.R")
+
+tags_to_html <- function(content) paste(htmltools::renderTags(content)$html, collapse = "\n")
 
 assert_close <- function(actual, expected, tolerance = 1e-10, label = "value") {
   if (!isTRUE(all.equal(actual, expected, tolerance = tolerance))) {
@@ -104,6 +110,33 @@ if (!"Reason" %in% names(interrater_primary_agreement_table(ordinal_result))) {
 }
 if ("Gwet's AC2" %in% interrater_auxiliary_agreement_table(ordinal_result)$Method) {
   stop("Recommended inter-rater method should not be repeated in the auxiliary table.", call. = FALSE)
+}
+old_app_language <- getOption("statedu.app_language", NULL)
+options(statedu.app_language = "ko")
+ordinal_screen_html <- as.character(tags_to_html(interrater_agreement_results_ui(ordinal_result)))
+if (is.null(old_app_language)) options(statedu.app_language = NULL) else options(statedu.app_language = old_app_language)
+if (!grepl('data-result-table-role="main"', ordinal_screen_html, fixed = TRUE) ||
+    !grepl('data-result-table-role="appendix"', ordinal_screen_html, fixed = TRUE) ||
+    !grepl("보조 일치도 지수", ordinal_screen_html, fixed = TRUE) ||
+    !grepl("평가자 쌍 간 일치도", ordinal_screen_html, fixed = TRUE) ||
+    !grepl("순서형 알파", ordinal_screen_html, fixed = TRUE)) {
+  stop("Inter-rater screen output must separate the English recommended table from the UI-language auxiliary appendix.", call. = FALSE)
+}
+ordinal_auxiliary_ko <- interrater_agreement_appendix_table(ordinal_recommendation$auxiliary, "ko")
+if (!identical(names(ordinal_auxiliary_ko), c("방법", "추정치", "N", "평가자 수", "주석"))) {
+  stop("Inter-rater appendix Note column was not localized consistently.", call. = FALSE)
+}
+if (any(grepl("Pairwise agreement|Ordinal alpha", unlist(ordinal_auxiliary_ko, use.names = FALSE)))) {
+  stop("Inter-rater Korean appendix still contains English dynamic notes.", call. = FALSE)
+}
+ordinal_auxiliary_en <- interrater_agreement_appendix_table(ordinal_recommendation$auxiliary, "en")
+if (!any(grepl("Pairwise agreement", ordinal_auxiliary_en$Note, fixed = TRUE)) ||
+    !any(grepl("Ordinal alpha", ordinal_auxiliary_en$Note, fixed = TRUE))) {
+  stop("Inter-rater English appendix notes must remain English.", call. = FALSE)
+}
+ordinal_sheet_hits <- gregexpr('data-result-table-sheet="true"', ordinal_screen_html, fixed = TRUE)[[1]]
+if (identical(ordinal_sheet_hits[[1]], -1L) || length(ordinal_sheet_hits) != 2L) {
+  stop("Recommended and auxiliary agreement results must render as two independent table sheets.", call. = FALSE)
 }
 
 missing_nominal_frame <- data.frame(

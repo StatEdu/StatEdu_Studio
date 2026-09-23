@@ -133,7 +133,7 @@ metabolic_severity_setup_ui <- function(file, data, variable_info, input, select
     id <- specs$id[[index]]
     selectInput(
       paste0("mbss_", id),
-      specs$label[[index]],
+      calculator_field_label(specs$label[[index]], language),
       choices = c(stats::setNames("", statedu_ui_label("select_variable", language)), choices),
       selected = isolate(input[[paste0("mbss_", id)]]) %||% "",
       width = "100%"
@@ -160,8 +160,8 @@ metabolic_severity_setup_ui <- function(file, data, variable_info, input, select
       tags$table(
         class = "hint8-initial-table metabolic-reference-table mbss-formula-table",
         tags$tbody(
-          tags$tr(tags$td(statedu_t("calculator.age_range", language)), tags$td("20 to 59")),
-          tags$tr(tags$td("TG transform"), tags$td("ln(TG)"))
+          tags$tr(tags$td(statedu_t("calculator.age_range", language)), tags$td("20–59")),
+          tags$tr(tags$td(statedu_t("calculator.detail.tg_transform", language)), tags$td("ln(TG)"))
         )
       ),
       div(class = "analysis-option-title calculator-output-title mbss-output-title", statedu_ui_label("output", language)),
@@ -180,7 +180,7 @@ register_metabolic_severity_calculator_handlers <- function(input, output, sessi
   output$mbss_loaded_message <- renderText({
     statedu_current_language(language_fn)
     file <- current_data_file_fn()
-    metabolic_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn())
+    metabolic_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn(), language = statedu_current_language(language_fn))
   })
 
   output$mbss_calculator_setup <- renderUI({
@@ -217,26 +217,27 @@ register_metabolic_severity_calculator_handlers <- function(input, output, sessi
       showNotification(statedu_t("calculator.metabolic_severity_added", language), type = "message", duration = 5)
       result_data
     }, error = function(error) {
-      showNotification(conditionMessage(error), type = "warning", duration = 6)
+      showNotification(calculator_error_text(error, language), type = "warning", duration = 6)
       NULL
     })
   }, ignoreInit = TRUE)
 
   output$mbss_calculator_summary <- renderUI({
-    statedu_current_language(language_fn)
+    language <- statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) return(NULL)
-    div(class = "empty-message", div(sprintf("Calculated MBSS_overall and MBSS for %s rows. The variables are available in analysis menus.", nrow(data))))
+    div(class = "empty-message", div(sprintf(statedu_t("calculator.status.outputs", language), "MBSS_overall, MBSS", nrow(data))))
   })
 
   output$mbss_calculator_preview <- DT::renderDT({
+    language <- statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) {
       return(NULL)
     }
     selected <- metabolic_severity_selected_variables(input)
     preview_names <- intersect(c(unname(selected), "MBSS_overall", "MBSS"), names(data))
-    DT::datatable(utils::head(data[, preview_names, drop = FALSE], 50), rownames = FALSE, filter = "top", options = list(pageLength = 10, scrollX = TRUE))
+    DT::datatable(utils::head(data[, preview_names, drop = FALSE], 50), rownames = FALSE, filter = "top", options = with_datatable_language(list(pageLength = 10, scrollX = TRUE), language))
   })
 
   output$download_mbss_calculator <- downloadHandler(

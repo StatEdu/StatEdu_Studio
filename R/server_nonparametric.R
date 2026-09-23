@@ -17,10 +17,11 @@ register_nonparametric_handlers <- function(
   active_list <- reactiveVal(NULL)
   post_hoc_method_value <- reactiveVal(statedu_multiple_correction_default())
   trend_analysis_value <- reactiveVal(FALSE)
-  ordered_significance_value <- reactiveVal(FALSE)
+  ordered_significance_value <- reactiveVal(TRUE)
   effect_size_value <- reactiveVal(TRUE)
-  median_iqr_value <- reactiveVal(FALSE)
-  nonparametric_result <- reactiveVal(NULL)
+  median_iqr_value <- reactiveVal(TRUE)
+  add_mean_sd <- reactiveVal(FALSE)
+  nonparametric_result <- analysis_scope_result_val(NULL)
 
   current_selected <- reactive({
     as.character(selected_names_fn() %||% character(0))
@@ -51,6 +52,7 @@ register_nonparametric_handlers <- function(
         ordered_significance = isolate(ordered_significance_value()),
         effect_size = isolate(effect_size_value()),
         median_iqr = isolate(median_iqr_value()),
+      add_mean_sd = isolate(add_mean_sd()),
         language = language
       )
     )
@@ -90,6 +92,7 @@ register_nonparametric_handlers <- function(
     effect_size_value(isTRUE(input$nonparametric_effect_size))
   }, ignoreInit = TRUE)
 
+  observeEvent(input$nonparametric_add_mean_sd, { add_mean_sd(isTRUE(input$nonparametric_add_mean_sd)) })
   observeEvent(input$nonparametric_median_iqr, {
     median_iqr_value(isTRUE(input$nonparametric_median_iqr))
   }, ignoreInit = TRUE)
@@ -220,6 +223,15 @@ register_nonparametric_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
+  register_analysis_reorder(input, session, "nonparametric_dependents", function(payload) {
+    updated <- analysis_reorder_items(dependent_variables(), payload)
+    if (isTRUE(updated$changed)) {
+      dependent_variables(updated$order)
+      active_list("nonparametric_dependents")
+      mark_settings_dirty()
+    }
+  })
+
   observeEvent(input$nonparametric_dependent_up, {
     updated <- move_order_item(dependent_variables(), input$nonparametric_dependents, "up")
     if (isTRUE(updated$changed)) {
@@ -234,6 +246,15 @@ register_nonparametric_handlers <- function(
     if (isTRUE(updated$changed)) {
       dependent_variables(updated$order)
       active_list("nonparametric_dependents")
+      mark_settings_dirty()
+    }
+  })
+
+  register_analysis_reorder(input, session, "nonparametric_factors", function(payload) {
+    updated <- analysis_reorder_items(factor_variables(), payload)
+    if (isTRUE(updated$changed)) {
+      factor_variables(updated$order)
+      active_list("nonparametric_factors")
       mark_settings_dirty()
     }
   })
@@ -323,7 +344,11 @@ register_nonparametric_handlers <- function(
     if (changed) mark_settings_dirty()
   }, ignoreInit = TRUE)
 
-  observeEvent(input$run_nonparametric, {
+  register_analysis_command_handler(
+    "run_nonparametric", input, output, session,
+    states = list(dependent_variables = dependent_variables, factor_variables = factor_variables),
+    dataset_fn = dataset_fn, context_fn = function() list(selected = selected_names_fn(), variables = variable_table_fn(), labels = labels_fn(), categories = category_table_fn()),
+    run_fn = function() {
     if (length(dependent_variables()) == 0 || length(factor_variables()) == 0) {
       showNotification(statedu_t("analysis.validation.select_dependent_and_group", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return()
@@ -341,6 +366,7 @@ register_nonparametric_handlers <- function(
       nonparametric_post_hoc_method = post_hoc_method,
       ordered_significance = isTRUE(ordered_significance_value()),
       effect_size = isTRUE(effect_size_value()),
+      add_mean_sd = isTRUE(add_mean_sd()),
       median_iqr = isTRUE(median_iqr_value())
     )
     result <- tryCatch(
@@ -422,7 +448,7 @@ register_nonparametric_handlers <- function(
         showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -444,7 +470,7 @@ register_nonparametric_handlers <- function(
         showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -466,7 +492,7 @@ register_nonparametric_handlers <- function(
         showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })

@@ -48,46 +48,35 @@ factor_analysis_factor_selection_note <- function(result) {
 
 factor_analysis_note <- function(result) {
   loading_filter_note <- if (isTRUE(result$options$hide_small_loadings %||% TRUE)) {
-    "Loadings with absolute values below .30 are hidden."
+    "Absolute loadings below .30 are suppressed"
   } else {
-    "All loadings are shown; loadings with absolute values of .30 or higher are bold."
-  }
-  highlight_note <- if (isTRUE(result$options$highlight_problem_values %||% TRUE)) {
-    "Problem values are highlighted with a red background: primary loading < .30, cross-loading >= .30, h² < .30, h² > .90, or Complexity >= 2."
-  } else {
-    "Problem value highlighting is off."
+    "Absolute loadings of .30 or greater are shown in bold"
   }
   sort_note <- if (isTRUE(result$options$sort_loadings %||% TRUE)) {
-    "Variables are sorted by primary factor and descending absolute loading."
+    "Items are ordered by primary factor and absolute loading"
   } else {
-    "Variables are shown in the selected input order."
+    NULL
   }
   ordinal_note <- if (isTRUE(factor_analysis_has_ordered_variables(result))) {
     if (identical(result$matrix_type %||% "pearson", "polychoric")) {
-      "Ordinal variables were analyzed with a polychoric correlation matrix."
+      "Ordinal variables were analyzed with a polychoric correlation matrix"
     } else {
-      "Ordinal variables were analyzed with Pearson correlations; polychoric correlation is recommended for ordinal item sets."
+      "Ordinal variables were analyzed with Pearson correlations"
     }
   } else {
     ""
   }
   oblique_note <- if (is.matrix(result$fit$Phi)) {
-    "For oblique rotation, the pattern matrix shows unique factor contributions after accounting for factor correlations; the structure matrix shows variable-factor correlations."
+    "Pattern coefficients are reported for the oblique rotation"
   } else {
     ""
   }
-  notes <- c(
-    loading_filter_note,
-    sort_note,
-    "h² is communality, and complexity summarizes cross-loading pattern. Eigenvalue, variance %, and cumulative variance % are shown at the bottom of the loading matrix.",
-    ordinal_note,
-    factor_analysis_factor_selection_note(result),
-    factor_analysis_negative_primary_note(result),
-    oblique_note,
-    factor_analysis_reliability_note(result),
-    highlight_note
+  result_sci_note_text(
+    format = c(loading_filter_note, sort_note),
+    abbreviations = "h² = communality; complexity = cross-loading complexity",
+    estimation = c(ordinal_note, oblique_note),
+    symbol = c(factor_analysis_negative_primary_note(result), factor_analysis_reliability_note(result))
   )
-  paste(notes[nzchar(notes)], collapse = " ")
 }
 
 factor_analysis_suitability_note <- function(result) {
@@ -102,7 +91,10 @@ factor_analysis_normality_note <- function(result) {
 }
 
 factor_analysis_structure_note <- function(result) {
-  "Structure coefficients are variable-factor correlations. They are shown for oblique rotation because factors are allowed to correlate; compare them with the pattern matrix when interpreting cross-loadings."
+  result_sci_note_text(
+    abbreviations = "Structure coefficients are item-factor correlations",
+    estimation = "The pattern matrix shows unique factor contributions"
+  )
 }
 
 factor_analysis_reliability_note <- function(result) {
@@ -118,9 +110,9 @@ factor_analysis_reliability_note <- function(result) {
   )
   reliability_n <- reliability_n[nzchar(reliability_n)]
   n_note <- if (length(reliability_n) > 0) {
-    paste0(" Reliability coefficients use complete cases within each item set (", paste(reliability_n, collapse = "; "), ").")
+    paste0(" Sample sizes: ", paste(reliability_n, collapse = "; "), ".")
   } else {
-    " Reliability coefficients use complete cases within each item set."
+    ""
   }
   skipped <- reliability$skipped
   skipped_note <- if (is.data.frame(skipped) && nrow(skipped) > 0) {
@@ -143,7 +135,7 @@ factor_analysis_reliability_note <- function(result) {
     ""
   }
   paste0(
-    "Items are assigned to the subfactor with the largest absolute loading; items with primary loading below .30 are not included in subfactor reliability.",
+    "Subfactor reliability used items with absolute primary loadings >= .30 and complete cases.",
     n_note,
     skipped_note,
     issue_note
@@ -153,9 +145,20 @@ factor_analysis_reliability_note <- function(result) {
 factor_analysis_b5_panel <- function(..., class = "") {
   div(
     class = paste("result-section factor-analysis-result-section regression-result-panel", class),
-    style = "width:min(100%,688px);max-width:688px;overflow-x:hidden;box-sizing:border-box;",
     ...
   )
+}
+
+factor_analysis_main_table <- function(table) {
+  if (is.data.frame(table)) {
+    attr(table, "result_table_role") <- "main"
+    attr(table, "result_table_language") <- result_main_table_language()
+  }
+  table
+}
+
+factor_analysis_appendix_table <- function(table) {
+  result_appendix_localize_table(table)
 }
 
 factor_analysis_apply_column_widths <- function(table, widths = NULL) {
@@ -233,7 +236,7 @@ factor_analysis_loading_table_ui <- function(table, result) {
   factor_analysis_apply_column_widths(table, fixed / sum(fixed) * 100)
 }
 
-factor_analysis_results_ui <- function(result, report_mode = FALSE) {
+factor_analysis_results_ui <- function(result, report_mode = FALSE, plot_renderer = plot_data_uri) {
   if (is.null(result)) {
     return(NULL)
   }
@@ -243,61 +246,73 @@ factor_analysis_results_ui <- function(result, report_mode = FALSE) {
       factor_analysis_b5_panel(
         h3("Factor analysis"),
         coefficient_html_table(
-          factor_analysis_overview_table_ui(result),
+          factor_analysis_main_table(factor_analysis_overview_table_ui(result)),
           compact = TRUE,
-          compact_font_size = 11,
+          compact_font_size = 12,
           compact_width = 62,
           compact_first_width = 44,
-          compact_min_width = 320
+          compact_min_width = 320,
+          table_role = "main"
         )
       ),
       factor_analysis_b5_panel(
         h3("Pattern / loading matrix"),
         coefficient_html_table(
-          factor_analysis_loading_table_ui(result$loadings_table, result),
+          factor_analysis_main_table(factor_analysis_loading_table_ui(result$loadings_table, result)),
           compact = TRUE,
-          compact_font_size = 10,
+          compact_font_size = 12,
           compact_width = 48,
           compact_first_width = 138,
           compact_min_width = 320,
-          note_line = factor_analysis_note(result)
+          note_line = factor_analysis_note(result),
+          table_role = "main"
         )
       ),
       if (is.data.frame(result$structure_table) && nrow(result$structure_table) > 0) {
         factor_analysis_b5_panel(
           h3("Structure matrix"),
           coefficient_html_table(
-            factor_analysis_loading_table_ui(result$structure_table, result),
+            factor_analysis_main_table(factor_analysis_loading_table_ui(result$structure_table, result)),
             compact = TRUE,
-            compact_font_size = 10,
+            compact_font_size = 12,
             compact_width = 48,
             compact_first_width = 138,
             compact_min_width = 320,
-            note_line = factor_analysis_structure_note(result)
+            note_line = factor_analysis_structure_note(result),
+            table_role = "main"
           )
         )
       },
       analysis_warning_section(result$warnings, class = "result-section factor-analysis-result-section regression-result-panel"),
       factor_analysis_b5_panel(
-        h3("Suitability"),
-        coefficient_html_table(result$suitability$overview, note_line = factor_analysis_suitability_note(result))
+        h3(result_appendix_ui_text("Suitability")),
+        coefficient_html_table(
+          factor_analysis_appendix_table(result$suitability$overview),
+          note_line = result_appendix_ui_text(factor_analysis_suitability_note(result)),
+          table_role = "appendix"
+        )
       ),
       if (is.data.frame(result$normality_table) && nrow(result$normality_table) > 0) {
         factor_analysis_b5_panel(
-          h3("Normality"),
-          coefficient_html_table(result$normality_table, note_line = factor_analysis_normality_note(result))
+          h3(result_appendix_ui_text("Normality")),
+          coefficient_html_table(
+            factor_analysis_appendix_table(result$normality_table),
+            note_line = result_appendix_ui_text(factor_analysis_normality_note(result)),
+            table_role = "appendix"
+          )
         )
       },
       if (is.data.frame(result$variance_table) && nrow(result$variance_table) > 0) {
         factor_analysis_b5_panel(
           h3("Variance explained"),
           coefficient_html_table(
-            factor_analysis_apply_column_widths(result$variance_table),
+            factor_analysis_main_table(factor_analysis_apply_column_widths(result$variance_table)),
             compact = TRUE,
-            compact_font_size = 11,
+            compact_font_size = 12,
             compact_width = 58,
             compact_first_width = 104,
-            compact_min_width = 320
+            compact_min_width = 320,
+            table_role = "main"
           )
         )
       },
@@ -305,12 +320,13 @@ factor_analysis_results_ui <- function(result, report_mode = FALSE) {
         factor_analysis_b5_panel(
           h3("Factor correlations"),
           coefficient_html_table(
-            factor_analysis_apply_column_widths(result$factor_correlation_table),
+            factor_analysis_main_table(factor_analysis_apply_column_widths(result$factor_correlation_table)),
             compact = TRUE,
-            compact_font_size = 11,
+            compact_font_size = 12,
             compact_width = 54,
             compact_first_width = 82,
-            compact_min_width = 320
+            compact_min_width = 320,
+            table_role = "main"
           )
         )
       },
@@ -319,7 +335,8 @@ factor_analysis_results_ui <- function(result, report_mode = FALSE) {
         h3("Scree plot"),
         if (isTRUE(report_mode)) {
           tags$img(
-            src = plot_data_uri(draw_factor_analysis_scree_plot, result, width = 900, height = 620, res = 120),
+            src = plot_renderer(draw_factor_analysis_scree_plot, result, width = 900, height = 620, res = 120),
+            class = "analysis-plot-image", alt = "Scree plot", width = 900, height = 620,
             style = "max-width:900px;width:100%;height:auto;"
           )
         } else {
@@ -331,14 +348,16 @@ factor_analysis_results_ui <- function(result, report_mode = FALSE) {
         }
       ),
       factor_analysis_b5_panel(
-        h3("Eigenvalues"),
+        h3(result_appendix_ui_text("Eigenvalues")),
         coefficient_html_table(
-          factor_analysis_apply_column_widths(result$eigen_table),
+          factor_analysis_appendix_table(factor_analysis_apply_column_widths(result$eigen_table)),
           compact = TRUE,
-          compact_font_size = 11,
+          compact_font_size = 12,
           compact_width = 56,
           compact_first_width = 74,
-          compact_min_width = 320
+          compact_min_width = 320,
+          note_line = result_appendix_ui_text(factor_analysis_factor_selection_note(result)),
+          table_role = "appendix"
         )
       )
     )

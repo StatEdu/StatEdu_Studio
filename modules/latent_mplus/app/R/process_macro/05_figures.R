@@ -61,8 +61,12 @@ process_current_edition_fig <- function() {
   edition
 }
 
-process_figure_dpi_fig <- function() {
-  if (identical(process_current_edition_fig(), "free")) 300L else 600L
+process_figure_dpi_fig <- function(requested_dpi = NULL) {
+  edition <- process_current_edition_fig()
+  high_resolution <- edition %in% c("pro", "development")
+  default_dpi <- if (high_resolution) 600L else 300L
+  requested_dpi <- suppressWarnings(as.integer(requested_dpi %||% default_dpi))
+  if (high_resolution && identical(requested_dpi, 600L)) 600L else 300L
 }
 
 PROCESS_FIGURE_DPI <- process_figure_dpi_fig()

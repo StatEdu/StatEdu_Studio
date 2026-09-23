@@ -15,6 +15,18 @@ render_text <- function(tag) {
   paste(as.character(htmltools::renderTags(tag)$html), collapse = "\n")
 }
 
+fixed_count <- function(text, pattern) {
+  hits <- gregexpr(pattern, text, fixed = TRUE)[[1]]
+  if (length(hits) == 1L && hits[[1]] == -1L) 0L else length(hits)
+}
+
+expect_one_table_per_sheet <- function(text, label) {
+  sheets <- fixed_count(text, 'data-result-table-sheet="true"')
+  tables <- fixed_count(text, "<table")
+  expect_true(sheets > 0L, paste(label, "must render at least one contracted sheet."))
+  expect_true(identical(sheets, tables), sprintf("%s must render exactly one table per sheet (sheets=%d, tables=%d).", label, sheets, tables))
+}
+
 expect_contains <- function(text, pattern, label = pattern) {
   if (!grepl(pattern, text, fixed = TRUE)) {
     stop(sprintf("Expected output to contain %s.", label), call. = FALSE)
@@ -55,6 +67,61 @@ complex_input <- function() {
   )
 }
 
+message("Checking complex-sample setup input IDs...")
+candidate_info <- data.frame(
+  name = c("outcome", "plain_id", "design_stratum", "survey_psu", "sample_weight", "rep_weight_1"),
+  var_label = c("Outcome", "Identifier", "Stratification variable", "Primary sampling unit", "Sampling weight", "Replicate weight"),
+  measurement = c("continuous", "category", "category", "category", "continuous", "continuous"),
+  stringsAsFactors = FALSE
+)
+strata_choices <- unname(complex_sample_design_role_choices(
+  "strata", "outcome", candidate_info$name, candidate_info, language = "en"
+))
+cluster_choices <- unname(complex_sample_design_role_choices(
+  "cluster", "outcome", candidate_info$name, candidate_info, language = "en"
+))
+weight_choices <- unname(complex_sample_design_role_choices(
+  "weight", "outcome", candidate_info$name, candidate_info, language = "en"
+))
+expect_true(identical(strata_choices[1:2], c("", "design_stratum")), "Strata candidates must appear first in the design-variable list.")
+expect_true(identical(cluster_choices[1:2], c("", "survey_psu")), "Cluster / PSU candidates must appear first in the design-variable list.")
+expect_true(identical(weight_choices[1:2], c("", "sample_weight")), "Sampling-weight candidates must appear first in the design-variable list.")
+expect_true(!identical(weight_choices[[2]], "rep_weight_1"), "Replicate weights must not be promoted as sampling-weight candidates.")
+
+setup_html <- render_text(complex_sample_setup_panel(
+  prefix = "complex_frequency",
+  selected_names = c("x", "g", "psu", "wt"),
+  target_specs = complex_sample_target_specs("frequencies"),
+  target_values = list(selected = c("x", "g")),
+  analysis_type = "frequencies",
+  show_design_tabs = FALSE,
+  language = "en"
+))
+setup_option_ids <- gregexpr('id="complex_frequency_show_ci"', setup_html, fixed = TRUE)[[1]]
+expect_true(
+  setup_option_ids[[1]] != -1L && identical(length(setup_option_ids), 1L),
+  "Complex-sample analysis options must render exactly once."
+)
+expect_true(
+  !grepl("complex-sample-hidden-design-inputs", setup_html, fixed = TRUE) &&
+    !grepl('id="complex_frequency_strata"', setup_html, fixed = TRUE),
+  "Complex-sample analysis screens must not rebuild the shared survey-design controls invisibly."
+)
+snapshot <- complex_sample_analysis_input_snapshot(
+  list(complex_frequency_run = 1L, complex_frequency_show_ci = FALSE),
+  "complex_frequency",
+  "frequencies",
+  list(cluster = "psu", weight = "wt", lonely_psu = "average")
+)
+expect_true(
+  identical(snapshot$complex_frequency_run, 1L) &&
+    identical(snapshot$complex_frequency_show_ci, FALSE) &&
+    identical(snapshot$complex_frequency_cluster, "psu") &&
+    identical(snapshot$complex_frequency_weight, "wt") &&
+    identical(snapshot$complex_frequency_lonely_psu, "average"),
+  "Complex-sample run snapshots must combine visible analysis options with the shared survey design."
+)
+
 message("Checking complex-sample frequency skipped-variable reporting...")
 freq_data <- data.frame(
   psu = 1:8,
@@ -70,9 +137,17 @@ freq_info <- data.frame(
   measurement = c("continuous", "continuous", "nominal", "nominal"),
   stringsAsFactors = FALSE
 )
-freq_text <- render_text(complex_sample_frequency_result(freq_data, c("x", "y", "g", "h"), complex_input(), "p", variable_info = freq_info))
+freq_text <- render_text(complex_sample_frequency_result(freq_data, c("x", "y", "g", "h"), complex_input(), "p", variable_info = freq_info, language = "en"))
 expect_contains(freq_text, "Variables with no usable non-missing values")
 expect_contains(freq_text, "y, h")
+freq_ko_text <- render_text(complex_sample_frequency_result(freq_data, c("x", "y", "g", "h"), complex_input(), "p", variable_info = freq_info, language = "ko"))
+expect_contains(freq_ko_text, "조사설계는")
+expect_contains(freq_ko_text, "사용할 수 있는 비결측값이 없는 변수")
+expect_contains(freq_ko_text, 'data-result-table-role="appendix"')
+expect_contains(freq_ko_text, 'data-result-table-language="ko"')
+expect_true(!grepl("Survey design was constructed", freq_ko_text, fixed = TRUE), "Korean frequency diagnostics must not leak the English dynamic survey-design note.")
+expect_true(!grepl("analysis-result-notes", freq_ko_text, fixed = TRUE), "Complex-sample diagnostics must remain inside contracted table sheets, not free-standing note blocks.")
+expect_one_table_per_sheet(freq_ko_text, "Korean complex-sample frequencies")
 
 message("Checking complex-sample crosstab independent combinations...")
 cross_data <- data.frame(
@@ -88,9 +163,14 @@ cross_info <- data.frame(
   measurement = c("nominal", "nominal", "nominal"),
   stringsAsFactors = FALSE
 )
-cross_text <- render_text(complex_sample_crosstab_results(cross_data, c("row_bad", "row_ok"), "col", complex_input(), "p", variable_info = cross_info))
+cross_text <- render_text(complex_sample_crosstab_results(cross_data, c("row_bad", "row_ok"), "col", complex_input(), "p", variable_info = cross_info, language = "en"))
 expect_contains(cross_text, "row_bad by col was not computed")
 expect_contains(cross_text, "row_ok")
+cross_ko_text <- render_text(complex_sample_crosstab_results(cross_data, c("row_bad", "row_ok"), "col", complex_input(), "p", variable_info = cross_info, language = "ko"))
+expect_contains(cross_ko_text, "복합표본 교차분석 진단")
+expect_contains(cross_ko_text, "조사설계는")
+expect_true(!grepl("analysis-result-notes", cross_ko_text, fixed = TRUE), "Complex-sample crosstab diagnostics must not render a duplicate free-standing note block.")
+expect_one_table_per_sheet(cross_ko_text, "Korean complex-sample crosstab")
 
 message("Checking complex-sample t-test / ANOVA independent combinations...")
 group_data <- data.frame(
@@ -106,7 +186,7 @@ group_info <- data.frame(
   measurement = c("continuous", "nominal", "nominal"),
   stringsAsFactors = FALSE
 )
-group_text <- render_text(complex_sample_group_result(group_data, "y", c("g1", "g2"), complex_input(), "p", variable_info = group_info))
+group_text <- render_text(complex_sample_group_result(group_data, "y", c("g1", "g2"), complex_input(), "p", variable_info = group_info, language = "en"))
 expect_contains(group_text, "fewer than two usable groups")
 expect_contains(group_text, "Complex-sample univariable analysis")
 expect_contains(group_text, "M \u00B1 SE", "complex-sample t-test / ANOVA compact M +/- SE header")
@@ -127,20 +207,48 @@ group_mixed_info <- data.frame(
   measurement = c("continuous", "nominal", "nominal"),
   stringsAsFactors = FALSE
 )
-group_mixed_text <- render_text(complex_sample_group_result(group_mixed_data, "y", c("g2", "g3"), complex_input(), "p", variable_info = group_mixed_info))
+group_mixed_text <- render_text(complex_sample_group_result(group_mixed_data, "y", c("g2", "g3"), complex_input(), "p", variable_info = group_mixed_info, language = "en"))
 expect_contains(group_mixed_text, "t/F(df)", "mixed complex-sample t-test / ANOVA statistic header")
 expect_true(grepl("\\([0-9,]+\\)", group_mixed_text), "Complex-sample t-test / ANOVA should render df values under the statistic in parentheses.")
 expect_true(grepl(">\\([0-9,]+\\)</td>", group_mixed_text), "Complex-sample t-test / ANOVA df should render in the next table-row cell.")
 expect_true(!grepl("d=", group_mixed_text, fixed = TRUE), "Complex-sample t-test / ANOVA effect-size values should omit the d= prefix.")
 expect_contains(group_mixed_text, "table-layout:fixed", "complex-sample t-test / ANOVA fixed table layout")
+expect_contains(group_mixed_text, "coefficient-table-complex-sample-group", "complex-sample t-test / ANOVA table class")
 expect_contains(group_mixed_text, "width:18.0000%", "complex-sample t-test / ANOVA M +/- SE B5 portrait width")
-expect_contains(group_mixed_text, "width:19.0000%", "complex-sample t-test / ANOVA 95% CI B5 portrait width")
-expect_contains(group_mixed_text, "width:13.0000%", "complex-sample t-test / ANOVA ES B5 portrait width")
-expect_contains(group_mixed_text, "width:14.0000%", "complex-sample t-test / ANOVA compact statistic B5 portrait width")
+expect_contains(group_mixed_text, "width:17.0000%", "complex-sample t-test / ANOVA 95% CI B5 portrait width")
+expect_contains(group_mixed_text, "width:8.0000%", "complex-sample t-test / ANOVA ES B5 portrait width")
+expect_contains(group_mixed_text, "width:12.0000%", "complex-sample t-test / ANOVA compact statistic B5 portrait width")
 expect_contains(group_mixed_text, "padding-left:6px !important;padding-right:6px !important", "complex-sample t-test / ANOVA compact stat columns spacing")
 expect_not_matches(group_mixed_text, 'coefficient-col-effect-size" style="[^"]*(^|;)width:[0-9]+px', "legacy fixed-pixel ES width")
 expect_not_matches(group_mixed_text, 'coefficient-col-statistic" style="[^"]*(^|;)width:[0-9]+px', "legacy fixed-pixel t/F(df) width")
 expect_not_matches(group_mixed_text, 'coefficient-col-p" style="[^"]*(^|;)width:[0-9]+px', "legacy fixed-pixel p width")
+
+no_ci_input <- complex_input()
+no_ci_input$p_show_ci <- FALSE
+no_ci_text <- render_text(complex_sample_group_result(group_mixed_data, "y", c("g2", "g3"), no_ci_input, "p", variable_info = group_mixed_info, language = "en"))
+expect_true(!grepl("95% CI</th>", no_ci_text, fixed = TRUE), "Unchecked complex-sample t-test / ANOVA 95% CI option must remove the 95% CI column.")
+
+ordered_group_data <- data.frame(
+  psu = 1:90,
+  wt = rep(1, 90),
+  y = c(1:30, 101:130, 201:230),
+  g = rep(c("A", "B", "C"), each = 30),
+  stringsAsFactors = FALSE
+)
+ordered_group_info <- data.frame(
+  name = c("y", "g"),
+  measurement = c("continuous", "nominal"),
+  stringsAsFactors = FALSE
+)
+ordered_input <- complex_input()
+ordered_input$p_post_hoc <- TRUE
+ordered_input$p_ordered_significance <- TRUE
+ordered_text <- render_text(complex_sample_group_result(ordered_group_data, "y", "g", ordered_input, "p", variable_info = ordered_group_info, language = "en"))
+expect_contains(ordered_text, "coefficient-footnote-marker", "complex-sample ordered post-hoc superscript markers")
+expect_true(
+  grepl("c&gt;b&gt;a", ordered_text, fixed = TRUE) || grepl("c>b>a", ordered_text, fixed = TRUE),
+  "Complex-sample mean-order significance notation should match the standard ANOVA marker summary."
+)
 
 cross_wide_test <- list(statistic = c(F = 3.14159), parameter = c(ndf = 1, ddf = 24), p.value = 0.0123)
 cross_wide_options <- list(crosstab_test_method = "F", show_df = TRUE, show_percent = TRUE, row_percent = FALSE, show_p = TRUE, show_trend = FALSE)
@@ -171,10 +279,13 @@ cor_info <- data.frame(
 filter_choices <- complex_sample_subpopulation_choices(c("x", "y", "Filter"), colnames(cor_data), cor_info)
 expect_true(identical(unname(filter_choices[1]), "Filter"), "Expected Filter to be the first subpopulation candidate")
 expect_true(identical(unname(filter_choices[2]), ""), "Expected No variable to follow Filter in subpopulation choices")
-cor_text <- render_text(complex_sample_correlation_result(cor_data, c("x", "y", "z"), complex_input(), "p", variable_info = cor_info))
+cor_text <- render_text(complex_sample_correlation_result(cor_data, c("x", "y", "z"), complex_input(), "p", variable_info = cor_info, language = "en"))
 expect_contains(cor_text, "Complex-sample correlation overview")
 expect_contains(cor_text, "Displayed variable pairs")
-expect_contains(cor_text, "P-value adjustment")
+expect_true(
+  grepl("P-value adjustment", cor_text, fixed = TRUE) || grepl("p-value 보정", cor_text, fixed = TRUE),
+  "Complex-sample appendix overview must follow the current UI language."
+)
 expect_contains(cor_text, "Survey design N")
 expect_contains(cor_text, "Complex-sample correlation matrix")
 expect_contains(cor_text, "Complex-sample correlation details")
@@ -184,12 +295,21 @@ expect_contains(cor_text, "rows excluded from each pair")
 expect_contains(cor_text, "Lower triangle shows design-based correlation coefficients")
 expect_contains(cor_text, "Holm-Bonferroni-adjusted")
 expect_contains(cor_text, "fewer than two unique pairwise complete values")
-ordered_text <- render_text(complex_sample_correlation_result(cor_data, c("x", "ord"), complex_input(), "p", variable_info = cor_info))
+cor_ko_text <- render_text(complex_sample_correlation_result(cor_data, c("x", "y", "z"), complex_input(), "p", variable_info = cor_info, language = "ko"))
+expect_contains(cor_ko_text, "복합표본 상관분석 개요")
+expect_contains(cor_ko_text, "조사설계는")
+expect_contains(cor_ko_text, 'data-result-table-role="appendix"')
+expect_contains(cor_ko_text, 'data-result-table-language="ko"')
+expect_contains(cor_ko_text, 'data-result-table-role="main"')
+expect_contains(cor_ko_text, 'data-result-table-language="en"')
+expect_true(!grepl("Complex-sample correlation overview", cor_ko_text, fixed = TRUE), "The appendix correlation overview title must follow the Korean UI language.")
+expect_one_table_per_sheet(cor_ko_text, "Korean complex-sample correlation")
+ordered_text <- render_text(complex_sample_correlation_result(cor_data, c("x", "ord"), complex_input(), "p", variable_info = cor_info, language = "en"))
 expect_contains(ordered_text, "Pearson (ordinal scores)")
 expect_contains(ordered_text, "Ordered variables were converted to ordinal scores")
 spearman_input <- complex_input()
 spearman_input$p_correlation_method <- "spearman"
-spearman_text <- render_text(complex_sample_correlation_result(cor_data, c("x", "y"), spearman_input, "p", variable_info = cor_info))
+spearman_text <- render_text(complex_sample_correlation_result(cor_data, c("x", "y"), spearman_input, "p", variable_info = cor_info, language = "en"))
 expect_contains(spearman_text, "Spearman rank correlation rank-transforms each variable")
 
 message("Checking complex-sample regression independent outcomes...")
@@ -206,9 +326,19 @@ reg_info <- data.frame(
   measurement = c("continuous", "continuous", "continuous"),
   stringsAsFactors = FALSE
 )
-reg_text <- render_text(complex_sample_regression_results(reg_data, c("y_bad", "y_ok"), "x", complex_input(), "p", logistic = FALSE, variable_info = reg_info))
+reg_text <- render_text(complex_sample_regression_results(reg_data, c("y_bad", "y_ok"), "x", complex_input(), "p", logistic = FALSE, variable_info = reg_info, language = "en"))
 expect_contains(reg_text, "Dependent variable has no usable non-missing values")
 expect_contains(reg_text, "Complex-sample regression: y_ok")
+reg_ko_text <- render_text(complex_sample_regression_results(reg_data, c("y_bad", "y_ok"), "x", complex_input(), "p", logistic = FALSE, variable_info = reg_info, language = "ko"))
+expect_contains(reg_ko_text, "복합표본 회귀분석 개요")
+expect_contains(reg_ko_text, "조사설계는")
+expect_contains(reg_ko_text, 'data-result-table-role="main"')
+expect_contains(reg_ko_text, 'data-result-table-language="en"')
+expect_contains(reg_ko_text, 'data-result-table-role="appendix"')
+expect_contains(reg_ko_text, 'data-result-table-language="ko"')
+expect_true(!grepl("Survey design was constructed", reg_ko_text, fixed = TRUE), "Korean regression diagnostics must not leak the English dynamic survey-design note.")
+expect_true(!grepl("analysis-result-notes", reg_ko_text, fixed = TRUE), "Complex-sample regression failures and diagnostics must use contracted appendix sheets.")
+expect_one_table_per_sheet(reg_ko_text, "Korean complex-sample regression")
 
 message("Checking complex-sample logistic regression independent outcomes...")
 log_data <- data.frame(
@@ -224,7 +354,7 @@ log_info <- data.frame(
   measurement = c("nominal", "nominal", "continuous"),
   stringsAsFactors = FALSE
 )
-log_text <- render_text(complex_sample_regression_results(log_data, c("y_bad", "y_ok"), "x", complex_input(), "p", logistic = TRUE, variable_info = log_info))
+log_text <- render_text(complex_sample_regression_results(log_data, c("y_bad", "y_ok"), "x", complex_input(), "p", logistic = TRUE, variable_info = log_info, language = "en"))
 expect_contains(log_text, "Logistic regression requires a binary dependent variable")
 expect_contains(log_text, "Complex-sample logistic regression: y_ok")
 

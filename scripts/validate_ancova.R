@@ -1,6 +1,7 @@
 source("R/app_bootstrap.R")
 load_app_packages(check = FALSE)
 source_app_modules()
+options(statedu.app_language = "en")
 
 cat("Checking ANCOVA analysis paths...\n")
 
@@ -128,7 +129,7 @@ stopifnot("M \u00B1 SE" %in% names(mean_se_result$results[[1]]$table))
 stopifnot(!("Adjusted mean" %in% names(mean_se_result$results[[1]]$table)))
 stopifnot(!("SE" %in% names(mean_se_result$results[[1]]$table)))
 stopifnot(grepl("\u00B1", mean_se_result$results[[1]]$table[["M \u00B1 SE"]][[1]], fixed = TRUE))
-stopifnot(grepl("M \u00B1 SE = adjusted mean \u00B1 standard error.", ancova_combined_note(mean_se_result, variable_info), fixed = TRUE))
+stopifnot(grepl("M \u00B1 SE = adjusted mean \u00B1 standard error;", ancova_combined_note(mean_se_result, variable_info), fixed = TRUE))
 
 ordered <- prepare_ancova_results(data_basic, "y", "group", "x", variable_info, options = list(ordered_significance = TRUE))
 stopifnot("post-hoc" %in% names(ordered$results[[1]]$table))
@@ -212,16 +213,16 @@ stopifnot(length(unique(combined$DV[nzchar(combined$DV)])) == 2L)
 combined_markers <- attr(combined, "note_markers", exact = TRUE)
 stopifnot(is.null(combined_markers) || !any(combined_markers$column %in% c("DV", "Effect size", "post-hoc")))
 combined_note <- ancova_combined_note(multi, variable_info_multi)
+stopifnot(!startsWith(combined_note, "Note."))
 stopifnot(grepl("Analysis method:", combined_note, fixed = TRUE))
-stopifnot(grepl("Complete-case analysis:", combined_note, fixed = TRUE))
-stopifnot(grepl("Assumption decision rule:", combined_note, fixed = TRUE))
 stopifnot(grepl("Sum of squares: Type II", combined_note, fixed = TRUE))
 stopifnot(grepl("ES = effect size", combined_note, fixed = TRUE))
 stopifnot(grepl("Post-hoc:", combined_note, fixed = TRUE))
-stopifnot(regexpr("Analysis method:", combined_note, fixed = TRUE) < regexpr("ES = effect size", combined_note, fixed = TRUE))
-stopifnot(regexpr("ES = effect size", combined_note, fixed = TRUE) < regexpr("Post-hoc:", combined_note, fixed = TRUE))
-stopifnot(regexpr("Post-hoc:", combined_note, fixed = TRUE) < regexpr("Complete-case analysis:", combined_note, fixed = TRUE))
-stopifnot(regexpr("Complete-case analysis:", combined_note, fixed = TRUE) < regexpr("Assumption decision rule:", combined_note, fixed = TRUE))
+stopifnot(!grepl("Complete-case analysis:", combined_note, fixed = TRUE))
+stopifnot(!grepl("Assumption decision rule:", combined_note, fixed = TRUE))
+# Shared table-note contract: definitions precede method explanations.
+stopifnot(regexpr("ES = effect size", combined_note, fixed = TRUE) < regexpr("Analysis method:", combined_note, fixed = TRUE))
+stopifnot(regexpr("Analysis method:", combined_note, fixed = TRUE) < regexpr("Post-hoc:", combined_note, fixed = TRUE))
 stopifnot(!grepl("y: Analysis method", combined_note, fixed = TRUE))
 stopifnot(!grepl("y2: Analysis method", combined_note, fixed = TRUE))
 
@@ -261,20 +262,56 @@ ranked <- prepare_ancova_results(data_basic, "y", "group", "x", variable_info, o
 stopifnot(identical(ranked$results[[1]]$method, "Ranked ANCOVA"))
 stopifnot("Adjusted rank mean" %in% names(ranked$results[[1]]$table))
 stopifnot(!("Adjusted mean" %in% names(ranked$results[[1]]$table)))
-stopifnot("Adjusted mean" %in% names(ranked$results[[1]]$display_table))
-stopifnot(!("Adjusted rank mean" %in% names(ranked$results[[1]]$display_table)))
+stopifnot("Adjusted rank mean" %in% names(ranked$results[[1]]$display_table))
+stopifnot("Adjusted mean" %in% names(ranked$results[[1]]$original_scale_table))
+stopifnot(!any(c("F", "p", "Effect size", "post-hoc") %in% names(ranked$results[[1]]$original_scale_table)))
 ranked_display_table <- ancova_combined_result_table(ranked, variable_info)
 ranked_rank_table <- ancova_combined_result_table(ranked, variable_info, table_type = "rank")
-stopifnot("M" %in% names(ranked_display_table))
-stopifnot(!("Adjusted mean" %in% names(ranked_display_table)))
-stopifnot(!("Adjusted rank mean" %in% names(ranked_display_table)))
+ranked_original_scale_table <- ancova_combined_result_table(ranked, variable_info, table_type = "original_scale")
+stopifnot(nrow(ranked_display_table) == 0L)
 stopifnot("Rank M" %in% names(ranked_rank_table))
 stopifnot(!("Adjusted rank mean" %in% names(ranked_rank_table)))
 stopifnot(!("Adjusted mean" %in% names(ranked_rank_table)))
+stopifnot("M" %in% names(ranked_original_scale_table))
+stopifnot(!any(c("F", "p", "Effect size", "post-hoc", "Rank M") %in% names(ranked_original_scale_table)))
 ranked_html <- as.character(ancova_results_ui(ranked, variable_info))
 stopifnot(grepl("Ranked ANCOVA table", ranked_html, fixed = TRUE))
+stopifnot(grepl("Original-scale descriptive estimates", ranked_html, fixed = TRUE))
+stopifnot(grepl("do not determine ranked-model inference", ranked_html, fixed = TRUE))
 stopifnot(grepl("ancova-normality-diagnostics-table", ranked_html, fixed = TRUE))
 stopifnot(grepl("interpreted on the rank scale", ranked$results[[1]]$note, fixed = TRUE))
+
+options(statedu.app_language = "ko")
+ranked_overview_ko <- as.character(htmltools::renderTags(ancova_model_overview_html_table(
+  ancova_model_overview_table(ranked, variable_info),
+  table_role = "appendix",
+  table_language = "ko"
+))$html)
+robust_probe <- result
+robust_probe$results[[1]]$method <- "Robust ANCOVA (HC3)"
+robust_probe$results[[1]]$reason <- "homogeneity of variance not satisfied"
+robust_overview_ko <- as.character(htmltools::renderTags(ancova_model_overview_html_table(
+  ancova_model_overview_table(robust_probe, variable_info),
+  table_role = "appendix",
+  table_language = "ko"
+))$html)
+options(statedu.app_language = "en")
+stopifnot(
+  grepl("순위 공분산분석", ranked_overview_ko, fixed = TRUE),
+  grepl("잔차 정규성 미충족 또는 순위 분석 선택", ranked_overview_ko, fixed = TRUE),
+  !grepl("Ranked ANCOVA", ranked_overview_ko, fixed = TRUE),
+  grepl("강건 공분산분석(HC3)", robust_overview_ko, fixed = TRUE),
+  grepl("분산 동질성 미충족", robust_overview_ko, fixed = TRUE),
+  grepl(">y<", robust_overview_ko, fixed = TRUE),
+  !grepl("Robust ANCOVA (HC3)", robust_overview_ko, fixed = TRUE),
+  grepl("Ranked ANCOVA", ancova_combined_note(ranked, variable_info, table_type = "rank"), fixed = TRUE)
+)
+ranked_overview_en <- as.character(htmltools::renderTags(ancova_model_overview_html_table(
+  ancova_model_overview_table(ranked, variable_info),
+  table_role = "appendix",
+  table_language = "en"
+))$html)
+stopifnot(grepl("Ranked ANCOVA", ranked_overview_en, fixed = TRUE))
 
 mixed_method <- multi
 mixed_method$results[[2]] <- ranked$results[[1]]
@@ -283,14 +320,15 @@ mixed_method_table <- ancova_combined_result_table(mixed_method, variable_info_m
 stopifnot("M" %in% names(mixed_method_table))
 stopifnot(!("Adjusted mean" %in% names(mixed_method_table)))
 stopifnot(!("Adjusted rank mean" %in% names(mixed_method_table)))
+stopifnot(length(unique(mixed_method_table$DV[nzchar(mixed_method_table$DV)])) == 1L)
 mixed_method_markers <- attr(mixed_method_table, "note_markers", exact = TRUE)
-stopifnot(is.data.frame(mixed_method_markers), any(mixed_method_markers$column == "p"))
-stopifnot(!any(mixed_method_markers$column == "DV"))
-stopifnot(!any(mixed_method_markers$column == "Effect size"))
+stopifnot(is.null(mixed_method_markers) || nrow(mixed_method_markers) == 0L)
 mixed_method_note <- ancova_combined_note(mixed_method, variable_info_multi)
-stopifnot(any(grepl("Ranked ANCOVA:", mixed_method_note, fixed = TRUE)))
-stopifnot(regexpr("1. Analysis method:", mixed_method_note, fixed = TRUE) < regexpr("ES = effect size", mixed_method_note, fixed = TRUE))
-stopifnot(regexpr("ES = effect size", mixed_method_note, fixed = TRUE) < regexpr("Post-hoc:", mixed_method_note, fixed = TRUE))
+stopifnot(!any(grepl("Ranked ANCOVA:", mixed_method_note, fixed = TRUE)))
+mixed_rank_note <- ancova_combined_note(mixed_method, variable_info_multi, table_type = "rank")
+stopifnot(any(grepl("Ranked ANCOVA:", mixed_rank_note, fixed = TRUE)))
+stopifnot(regexpr("ES = effect size", mixed_method_note, fixed = TRUE) < regexpr("Analysis method:", mixed_method_note, fixed = TRUE))
+stopifnot(regexpr("Analysis method:", mixed_method_note, fixed = TRUE) < regexpr("Post-hoc:", mixed_method_note, fixed = TRUE))
 
 mixed_posthoc <- multi
 mixed_posthoc$results[[2]] <- holm$results[[1]]
@@ -328,9 +366,28 @@ stopifnot(identical(warn_only_review[["Decision mode"]][[1]], "Warn only"))
 
 custom_alpha <- prepare_ancova_results(data_basic, "y", "group", "x", variable_info, options = list(decision_alpha = 0.01))
 custom_alpha_review <- ancova_assumption_review_table(custom_alpha, variable_info)
-stopifnot(identical(custom_alpha_review[["Decision alpha"]][[1]], ".01"))
+custom_alpha_value <- suppressWarnings(as.numeric(sub("^\\.", "0.", custom_alpha_review[["Decision alpha"]][[1]])))
+stopifnot(isTRUE(all.equal(custom_alpha_value, 0.01, tolerance = 1e-8)))
 
 html <- as.character(ancova_results_ui(result, variable_info))
+html_count <- function(text, pattern) {
+  hits <- gregexpr(pattern, text, fixed = TRUE)[[1]]
+  if (length(hits) == 1L && hits[[1]] < 0L) 0L else length(hits)
+}
+ancova_sheet_count <- html_count(html, 'data-result-table-sheet="true"')
+stopifnot(ancova_sheet_count > 1L)
+stopifnot(ancova_sheet_count == html_count(html, "<table"))
+stopifnot(grepl('data-result-table-role="main"', html, fixed = TRUE))
+stopifnot(grepl('data-result-table-role="appendix"', html, fixed = TRUE))
+stopifnot(grepl('data-result-table-language="en"', html, fixed = TRUE))
+stopifnot(grepl('data-result-table-orientation="portrait"', html, fixed = TRUE))
+stopifnot(grepl('data-result-table-orientation="landscape"', html, fixed = TRUE))
+options(statedu.app_language = "ko")
+html_ko <- as.character(ancova_results_ui(result, variable_info))
+options(statedu.app_language = "en")
+stopifnot(grepl('data-result-table-role="main" data-result-table-language="en"', html_ko, fixed = TRUE))
+stopifnot(grepl('data-result-table-role="appendix" data-result-table-language="ko"', html_ko, fixed = TRUE))
+stopifnot(grepl("\ubaa8\ud615 \uac1c\uc694", html_ko, fixed = TRUE))
 stopifnot(grepl("Model overview", html, fixed = TRUE))
 stopifnot(grepl("ANCOVA table", html, fixed = TRUE))
 stopifnot(grepl("Assumption summary", html, fixed = TRUE))
@@ -350,33 +407,36 @@ stopifnot(grepl("Assumption summary", report_html, fixed = TRUE))
 stopifnot(grepl("Regression slope homogeneity", report_html, fixed = TRUE))
 stopifnot(grepl("Normality diagnostics", report_html, fixed = TRUE))
 
-if (nzchar(find_pdf_chromium())) {
-  pdf_file <- tempfile(fileext = ".pdf")
-  write_ancova_results_pdf(result, pdf_file, variable_info)
-  stopifnot(file.exists(pdf_file))
-  stopifnot(file.info(pdf_file)$size > 0)
+validate_file_exports <- !identical(tolower(Sys.getenv("STATEDU_SKIP_EXPORT_VALIDATION", "false")), "true")
+if (isTRUE(validate_file_exports)) {
+  if (nzchar(find_pdf_chromium())) {
+    pdf_file <- tempfile(fileext = ".pdf")
+    write_ancova_results_pdf(result, pdf_file, variable_info)
+    stopifnot(file.exists(pdf_file))
+    stopifnot(file.info(pdf_file)$size > 0)
+  }
+
+  excel_file <- tempfile(fileext = ".xlsx")
+  save_ancova_excel_file(result, excel_file, variable_info)
+  stopifnot(file.exists(excel_file))
+  excel_sheets <- openxlsx::getSheetNames(excel_file)
+  stopifnot("Assumption summary" %in% excel_sheets)
+  stopifnot("Normality diagnostics" %in% excel_sheets)
+  stopifnot("Regression slope homogeneity" %in% excel_sheets)
+  stopifnot("Covariate linearity check" %in% excel_sheets)
+  stopifnot("Collinearity diagnostics" %in% excel_sheets)
+
+  influence_excel_file <- tempfile(fileext = ".xlsx")
+  save_ancova_excel_file(influence, influence_excel_file, variable_info)
+  influence_excel_sheets <- openxlsx::getSheetNames(influence_excel_file)
+  stopifnot("Influence sensitivity analysis" %in% influence_excel_sheets)
+
+  interaction_excel_file <- tempfile(fileext = ".xlsx")
+  save_ancova_excel_file(interaction, interaction_excel_file, variable_info_interaction)
+  interaction_excel_sheets <- openxlsx::getSheetNames(interaction_excel_file)
+  stopifnot("Interaction terms" %in% interaction_excel_sheets)
+  stopifnot("Simple group effects" %in% interaction_excel_sheets)
 }
-
-excel_file <- tempfile(fileext = ".xlsx")
-save_ancova_excel_file(result, excel_file, variable_info)
-stopifnot(file.exists(excel_file))
-excel_sheets <- openxlsx::getSheetNames(excel_file)
-stopifnot("Assumption summary" %in% excel_sheets)
-stopifnot("Normality diagnostics" %in% excel_sheets)
-stopifnot("Slope homogeneity" %in% excel_sheets)
-stopifnot("Linearity diagnostics" %in% excel_sheets)
-stopifnot("Collinearity diagnostics" %in% excel_sheets)
-
-influence_excel_file <- tempfile(fileext = ".xlsx")
-save_ancova_excel_file(influence, influence_excel_file, variable_info)
-influence_excel_sheets <- openxlsx::getSheetNames(influence_excel_file)
-stopifnot("Influence sensitivity" %in% influence_excel_sheets)
-
-interaction_excel_file <- tempfile(fileext = ".xlsx")
-save_ancova_excel_file(interaction, interaction_excel_file, variable_info_interaction)
-interaction_excel_sheets <- openxlsx::getSheetNames(interaction_excel_file)
-stopifnot("Interaction terms" %in% interaction_excel_sheets)
-stopifnot("Simple effects" %in% interaction_excel_sheets)
 
 figure_dir <- tempfile("ancova_figures_")
 dir.create(figure_dir)

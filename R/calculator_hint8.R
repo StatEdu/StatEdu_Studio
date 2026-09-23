@@ -1,5 +1,38 @@
 # HINT-8 calculator module.
 
+# Only application-owned field captions pass here, never variable choices.
+calculator_field_label <- function(label, language = statedu_initial_language()) {
+  coded <- grepl("^(LQ|EQ)[0-9]+ \\(.*\\)$", label)
+  text <- if (coded) sub("^(LQ|EQ)[0-9]+ \\((.*)\\)$", "\\2", label) else label
+  key <- gsub("^_+|_+$", "", gsub("[^a-z0-9]+", "_", tolower(text)))
+  translated <- statedu_t(paste0("calculator.field.", key), language, text)
+  if (coded) paste0(sub(" \\(.*$", "", label), " (", translated, ")") else translated
+}
+
+# Translate only known application errors; preserve external details verbatim.
+calculator_error_text <- function(error, language = statedu_initial_language()) {
+  message <- conditionMessage(error)
+  counts <- c('HINT8 requires exactly 8 item columns.' = 'HINT8',
+    'EQ-5D requires exactly 5 item columns.' = 'EQ-5D')
+  if (message %in% names(counts)) return(sprintf(statedu_t('calculator.error.item_count', language),
+    counts[[message]], if (counts[[message]] == 'HINT8') 8L else 5L))
+  selection <- list(
+    'Select 8 different HINT8 item variables.' = c('8', 'HINT8'),
+    'Select 5 different EQ-5D item variables.' = c('5', 'EQ-5D'),
+    'Select 8 different FRS variables.' = c('8', 'FRS'),
+    'Select 9 different metabolic variables.' = c('9', statedu_t('calc_metabolic_syndrome', language)),
+    'Select 7 different metabolic severity variables.' = c('7', statedu_t('calc_metabolic_severity', language)))
+  if (message %in% names(selection)) return(sprintf(statedu_t('calculator.error.selection_count', language),
+    selection[[message]][1L], selection[[message]][2L]))
+  if (message %in% c('Selected variables are not available in the loaded data.',
+    'Selected HINT8 item variables are not available in the loaded data.',
+    'Selected EQ-5D item variables are not available in the loaded data.'))
+    return(statedu_t('calculator.error.unavailable', language))
+  if (identical(message, 'Select different required ASCVD10 variables.'))
+    return(sprintf(statedu_t('calculator.error.required', language), 'ASCVD10'))
+  message
+}
+
 hint8_item_specs <- function() {
   data.frame(
     id = paste0("hint8_item_", 1:8),
@@ -184,21 +217,21 @@ calculator_tab_panel <- function(language = statedu_initial_language()) {
 hint8_item_select_control <- function(id, label, choices, selected = "", language = statedu_initial_language()) {
   selectInput(
     id,
-    label,
+    calculator_field_label(label, language),
     choices = c(stats::setNames("", statedu_ui_label("select_variable", language)), choices),
     selected = selected,
     width = "100%"
   )
 }
 
-hint8_loaded_message_text <- function(file = NULL, data = NULL) {
+hint8_loaded_message_text <- function(file = NULL, data = NULL, language = statedu_initial_language()) {
   if (is.null(file)) {
-    return("No data file is open.")
+    return(statedu_t("calculator.status.no_data", language, "No data file is open."))
   }
-  sprintf("Loaded %s: %s variables, %s rows.", file$name, ncol(data), nrow(data))
+  sprintf(statedu_t("calculator.status.loaded", language, "Loaded %s: %s variables, %s rows."), file$name, ncol(data), nrow(data))
 }
 
-hint8_weight_values_table <- function() {
+hint8_weight_values_table <- function(language = statedu_initial_language()) {
   maps <- hint8_penalty_maps()
   levels <- as.character(1:4)
   dimensions <- paste0("LQ", seq_along(maps))
@@ -217,17 +250,17 @@ hint8_weight_values_table <- function() {
         )
       }),
       tags$tr(
-        tags$td("constant", class = "hint8-dimension-label"),
+        tags$td(statedu_t("calculator.reference.constant", language), class = "hint8-dimension-label"),
         tags$td(sprintf("%.3f", 0.073), colspan = length(levels))
       )
     )
   )
 }
 
-hint8_output_table <- function() {
+hint8_output_table <- function(language = statedu_initial_language()) {
   tags$table(
     class = "hint8-initial-table hint8-output-table",
-    tags$tbody(tags$tr(tags$td("Score"), tags$td("hint8_score")))
+    tags$tbody(tags$tr(tags$td(calculator_field_label("Score", language)), tags$td("hint8_score")))
   )
 }
 
@@ -277,12 +310,12 @@ hint8_calculator_setup_ui <- function(file, data, variable_info, input, selected
         ),
         checkboxInput(
           "hint8_profile_11111111_as_one",
-          "profile 11111111 -> HINT8 = 1.0",
+          sprintf(statedu_t("calculator.reference.profile", language), "11111111", "HINT8"),
           value = profile_as_one
         ),
-        hint8_weight_values_table(),
+        hint8_weight_values_table(language),
         div(class = "analysis-option-title calculator-output-title", statedu_ui_label("output", language)),
-        hint8_output_table()
+        hint8_output_table(language)
       )
     )
   )
@@ -302,7 +335,7 @@ register_hint8_calculator_handlers <- function(
   output$hint8_loaded_message <- renderText({
     statedu_current_language(language_fn)
     file <- current_data_file_fn()
-    hint8_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn())
+    hint8_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn(), language = statedu_current_language(language_fn))
   })
 
   output$hint8_calculator_setup <- renderUI({
@@ -355,14 +388,14 @@ register_hint8_calculator_handlers <- function(
         result_data
       },
       error = function(error) {
-        showNotification(conditionMessage(error), type = "warning", duration = 6)
+        showNotification(calculator_error_text(error, language), type = "warning", duration = 6)
         NULL
       }
     )
   }, ignoreInit = TRUE)
 
   output$hint8_calculator_summary <- renderUI({
-    statedu_current_language(language_fn)
+    language <- statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) {
       return(NULL)
@@ -371,7 +404,7 @@ register_hint8_calculator_handlers <- function(
     div(
       class = "empty-message",
       div(sprintf(
-        "Calculated %s for %s rows. Missing/invalid item rows: %s. The score variable is available in analysis menus.",
+        statedu_t("calculator.status.hint8", language),
         "hint8_score",
         nrow(data),
         sum(is.na(score))
@@ -380,6 +413,7 @@ register_hint8_calculator_handlers <- function(
   })
 
   output$hint8_calculator_preview <- DT::renderDT({
+    language <- statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) {
       return(NULL)
@@ -390,7 +424,7 @@ register_hint8_calculator_handlers <- function(
       utils::head(data[, preview_names, drop = FALSE], 50),
       rownames = FALSE,
       filter = "top",
-      options = list(pageLength = 10, scrollX = TRUE)
+      options = with_datatable_language(list(pageLength = 10, scrollX = TRUE), language)
     )
   })
 

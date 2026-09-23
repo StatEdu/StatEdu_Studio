@@ -82,76 +82,14 @@ extract_model_structure_from_tag <- function(x) {
 }
 
 parse_lpa_indicator_profile <- function(out_file, indicators, model_tag = NA_character_) {
-  txt <- safe_read_lines(out_file)
-  if (length(txt) == 0 || length(indicators) == 0) return(data.frame())
-
-  lines <- trimws(txt)
-  out_list <- list()
-  idx <- 1L
-
-  in_model_results <- FALSE
-  in_means_block   <- FALSE
-  current_class    <- NA_integer_
-
-  indicators_up <- toupper(as.character(indicators))
-
-  for (ln in lines) {
-    if (!nzchar(ln)) next
-
-    if (grepl("MODEL RESULTS", toupper(ln))) {
-      in_model_results <- TRUE
-      in_means_block   <- FALSE
-      current_class    <- NA_integer_
-      next
-    }
-
-    if (!in_model_results) next
-
-    if (grepl("LATENT CLASS\\s+[0-9]+", toupper(ln))) {
-      current_class <- suppressWarnings(
-        as.integer(gsub(".*LATENT CLASS\\s+([0-9]+).*", "\\1", toupper(ln)))
-      )
-      in_means_block <- FALSE
-      next
-    }
-
-    if (grepl("^\\s*MEANS\\s*$", toupper(ln))) {
-      in_means_block <- TRUE
-      next
-    }
-
-    if (grepl("^(VARIANCES|INTERCEPTS|THRESHOLDS|CATEGORICAL LATENT VARIABLES|LATENT CLASS|QUALITY OF NUMERICAL RESULTS)",
-              toupper(ln))) {
-      in_means_block <- FALSE
-    }
-
-    if (!in_means_block || is.na(current_class)) next
-
-    parts <- unlist(strsplit(ln, "\\s+"))
-    if (length(parts) < 3) next
-
-    var_i <- toupper(parts[1])
-    if (!(var_i %in% indicators_up)) next
-
-    est_i <- suppressWarnings(as.numeric(parts[2]))
-    se_i  <- suppressWarnings(as.numeric(parts[3]))
-    if (is.na(est_i)) next
-
-    out_list[[idx]] <- data.frame(
-      model_tag = as.character(model_tag),
-      var_name  = tolower(var_i),
-      Class     = paste0("Class ", current_class),
-      Mean      = est_i,
-      SE        = se_i,
-      stringsAsFactors = FALSE
-    )
-    idx <- idx + 1L
-  }
-
-  if (length(out_list) == 0) return(data.frame())
-  out <- do.call(rbind, out_list)
-  rownames(out) <- NULL
-  out
+  parsed <- profile_parse_mplus_means(
+    path = out_file,
+    indicators = indicators,
+    model_tag = model_tag,
+    require_normal_termination = TRUE
+  )
+  if (!isTRUE(parsed$available)) return(data.frame())
+  parsed$data
 }
 
 # ------------------------------------------------------------

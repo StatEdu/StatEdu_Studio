@@ -1,0 +1,28 @@
+Sys.setlocale('LC_ALL','Korean_Korea.utf8')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules();options(statedu.app_language='ko')
+out<-'outputs/spss_phase37_20260907';dir.create(out,showWarnings=FALSE)
+set.seed(20260908);n<-220;d<-data.frame(x=rnorm(n),g=factor(sample(c('A','B','C'),n,TRUE)),aux=rnorm(n),exposure=runif(n,.5,2))
+d$y<-.4+.7*d$x+.3*(d$g=='B')+rnorm(n);d$binary<-rbinom(n,1,plogis(.2+.6*d$x));d$count<-rpois(n,exp(.5+.3*d$x)*d$exposure);d$nb<-rnbinom(n,mu=exp(.5+.3*d$x)*d$exposure,size=.7);d$gamma<-rgamma(n,shape=3,scale=exp(.2+.3*d$x)/3)
+for(i in 1:30)d[[paste0('z',i)]]<-rnorm(n)
+info<-data.frame(name=names(d),measurement=ifelse(names(d)=='g','category',ifelse(names(d)=='binary','binary','continuous')),var_label=names(d))
+m<-d;m$x[1:12]<-NA;m$y[13:18]<-NA
+make<-function(y='y',family='gaussian',data=d,predictors=c('x','g'),extra=list())do.call(prepare_generalized_analysis_result,modifyList(list(data=data,outcome=y,predictors=predictors,family=family,se_type='model',robust=FALSE,show_vif=TRUE,variable_info=info),extra))
+cases<-list(gaussian=function()make(),binomial=function()make('binary','binomial'),poisson=function()make('count','count',extra=list(exposure='exposure',overdispersion=FALSE)),negative_binomial=function()make('nb','count',extra=list(exposure='exposure')),gamma=function()make('gamma','gamma'),hc3_missing=function()make(data=m,extra=list(se_type='HC3',robust=TRUE)),multiple_imputation=function()make(data=m,extra=list(missing_strategy='mi',missing_imputations=3L,missing_iterations=3L)),ipw=function()make(data=m,extra=list(missing_strategy='ipw',ipw_auxiliary='aux')),long_predictors=function()make(predictors=c('x',paste0('z',1:30))))
+for(name in names(cases)) {
+ r<-cases[[name]]();folder<-file.path(out,name);dir.create(folder,showWarnings=FALSE)
+ write_generalized_results_html(r,file.path(folder,'result.html'))
+ html<-paste(readLines(file.path(folder,'result.html'),encoding='UTF-8'),collapse='\n');b<-xml2::read_html(html)
+ a<-xml2::read_html(as.character(htmltools::renderTags(generalized_results_panel(r))$html))
+ cells<-function(doc)vapply(xml2::xml_find_all(doc,'.//table//th|.//table//td'),result_html_text,character(1));stopifnot(identical(cells(a),cells(b)))
+ e<-list(title='GLM',html=html,saved_at='2026-09-07')
+ write_generalized_results_pdf(r,file.path(folder,'result.pdf'));save_generalized_excel_file(r,file.path(folder,'result.xlsx'));write_result_collection_docx(list(e),file.path(folder,'result.docx'))
+  tables<-result_entry_tables(e)
+  image_items<-result_entry_images(e)
+  orders<-vapply(c(tables,image_items),`[[`,numeric(1),'output_order')
+  sheet_indices<-rank(orders,ties.method='first')[seq_along(tables)]
+  unlink(vapply(image_items,`[[`,character(1),'path'))
+ expected<-list(tables=lapply(tables,function(t)list(title=t$title,orientation=t$orientation,notes=t$notes,cells=lapply(t$screen$cells,function(c)c(c,list(value=t$screen$values[c$row,c$col]))))),images=as.list(xml2::xml_attr(xml2::xml_find_all(b,'.//img'),'alt')))
+  for(i in seq_along(expected$tables))expected$tables[[i]]$sheet_index<-unname(sheet_indices[i])
+  jsonlite::write_json(expected,file.path(folder,'expected.json'),auto_unbox=TRUE);saveRDS(r,file.path(folder,'analysis.rds'))
+ cat(name,length(tables),'tables',length(expected$images),'images\n')
+}

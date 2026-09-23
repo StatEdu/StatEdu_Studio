@@ -1,4 +1,13 @@
+suppressPackageStartupMessages(library(shiny))
+
+source("R/utils.R")
+source("R/result_labels.R")
+source("R/analysis_frequencies.R")
 source("R/analysis_reliability.R")
+source("R/result_table_ui.R")
+source("R/result_reliability_ui.R")
+
+tags_to_html <- function(content) paste(htmltools::renderTags(content)$html, collapse = "\n")
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
 named_value <- function(values, name, default = NULL) {
@@ -113,5 +122,52 @@ expect_validation_message(
   "Item(s) with zero variance were found: i1. Remove constant items before reliability analysis.",
   "Zero variance item"
 )
+
+continuous_info <- data.frame(
+  name = names(continuous_items),
+  measurement = "continuous",
+  stringsAsFactors = FALSE
+)
+screen_result <- prepare_reliability_results(
+  continuous_items,
+  names(continuous_items),
+  variable_info = continuous_info,
+  options = list(
+    omega = TRUE,
+    normality = TRUE,
+    reliability_if_deleted = TRUE,
+    item_total_correlation = TRUE
+  )
+)
+old_app_language <- getOption("statedu.app_language", NULL)
+options(statedu.app_language = "ko")
+screen_html <- as.character(tags_to_html(reliability_results_ui(screen_result)))
+if (is.null(old_app_language)) options(statedu.app_language = NULL) else options(statedu.app_language = old_app_language)
+if (!grepl('data-result-table-role="main"', screen_html, fixed = TRUE) ||
+    !grepl('data-result-table-role="appendix"', screen_html, fixed = TRUE) ||
+    !grepl("문항 분석", screen_html, fixed = TRUE)) {
+  stop("Reliability screen output must separate the English main table from the UI-language item-analysis appendix.", call. = FALSE)
+}
+sheet_hits <- gregexpr('data-result-table-sheet="true"', screen_html, fixed = TRUE)[[1]]
+if (identical(sheet_hits[[1]], -1L) || length(sheet_hits) != 2L) {
+  stop("Reliability overview and item analysis must render as two independent table sheets.", call. = FALSE)
+}
+appendix_note_ko <- reliability_item_analysis_note(screen_result, "ko")
+if (!grepl("정규성 진단", appendix_note_ko, fixed = TRUE) ||
+    !grepl("문항 제거 시 신뢰도", appendix_note_ko, fixed = TRUE) ||
+    grepl("Skewness and kurtosis", appendix_note_ko, fixed = TRUE)) {
+  stop("Reliability appendix notes must follow the Korean UI language.", call. = FALSE)
+}
+corrected_header_ko <- as.character(reliability_header_label("Corrected item-total correlation", "ko"))
+if (!grepl("수정 문항-총점", corrected_header_ko, fixed = TRUE) ||
+    grepl("Corrected", corrected_header_ko, fixed = TRUE)) {
+  stop("Reliability appendix headers must follow the Korean UI language.", call. = FALSE)
+}
+main_note <- reliability_method_note(screen_result)
+if (grepl("Recommended reliability method", main_note, fixed = TRUE) ||
+    !grepl("Item normality was defined", main_note, fixed = TRUE) ||
+    !startsWith(main_note, "alpha =")) {
+  stop("Reliability main-table note must use concise SCI-style content.", call. = FALSE)
+}
 
 cat("Reliability validation passed.\n")

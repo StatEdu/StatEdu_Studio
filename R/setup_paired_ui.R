@@ -96,7 +96,7 @@ paired_setup_state <- function(
   bowker = TRUE,
   effect_size = TRUE,
   cohen_d = TRUE,
-  mean_sd = FALSE,
+  mean_sd = TRUE,
   median_iqr = FALSE,
   adjustment = statedu_multiple_correction_default(),
   time_labels = NULL,

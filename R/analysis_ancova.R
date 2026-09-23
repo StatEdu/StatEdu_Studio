@@ -833,26 +833,25 @@ ancova_result_table <- function(model, fit_data, dependent, factor, covariates, 
   rows
 }
 
-ancova_original_scale_display_table <- function(rank_table, original_model, clean_data, factor, covariates) {
-  if (!is.data.frame(rank_table) || nrow(rank_table) == 0) return(rank_table)
+ancova_original_scale_descriptive_table <- function(rank_table, original_model, clean_data, factor, covariates, mean_se = FALSE) {
+  if (!is.data.frame(rank_table) || nrow(rank_table) == 0) return(data.frame())
   adjusted <- ancova_adjusted_means(original_model, clean_data, factor, covariates)
   estimate_values <- ancova_format_decimal3_vec(adjusted$Estimate)
   se_values <- ancova_format_decimal3_vec(adjusted$SE)
-  out <- rank_table
-  if ("Adjusted rank mean" %in% names(out)) {
-    out[["Adjusted rank mean"]] <- estimate_values
-    names(out)[names(out) == "Adjusted rank mean"] <- "Adjusted mean"
-  } else if ("Rank M \u00B1 SE" %in% names(out)) {
-    out[["Rank M \u00B1 SE"]] <- ifelse(
+  identity_columns <- intersect(c("Variable", "Label"), names(rank_table))
+  out <- rank_table[, identity_columns, drop = FALSE]
+  if (isTRUE(mean_se)) {
+    out[["M \u00B1 SE"]] <- ifelse(
       nzchar(estimate_values) & nzchar(se_values),
       paste0(estimate_values, "\u00A0\u00B1\u00A0", se_values),
       ""
     )
-    names(out)[names(out) == "Rank M \u00B1 SE"] <- "M \u00B1 SE"
-  }
-  if ("SE" %in% names(out)) {
+  } else {
+    out[["Adjusted mean"]] <- estimate_values
     out$SE <- se_values
   }
+  adjusted_warning <- attr(adjusted, "warning", exact = TRUE)
+  if (nzchar(adjusted_warning %||% "")) attr(out, "warning") <- adjusted_warning
   out
 }
 ancova_min_group_n <- function(clean_data, factor) {
@@ -1072,6 +1071,35 @@ ancova_method_reason <- function(method, assumptions, options = list()) {
   "residual normality, homogeneity of variance, and homogeneity of regression slopes satisfied"
 }
 
+ancova_method_ui_label <- function(method, language = "en") {
+  method <- as.character(method %||% "")
+  language <- tolower(as.character(language %||% "en")[[1L]])
+  if (!language %in% c("ko", "korean", "kor")) return(method)
+  labels <- c(
+    "ANCOVA" = "공분산분석",
+    "Interaction ANCOVA" = "상호작용 공분산분석",
+    "Ranked ANCOVA" = "순위 공분산분석",
+    "Robust ANCOVA (HC3)" = "강건 공분산분석(HC3)"
+  )
+  if (method %in% names(labels)) unname(labels[[method]]) else method
+}
+
+ancova_method_reason_ui_text <- function(reason, language = "en") {
+  reason <- as.character(reason %||% "")
+  language <- tolower(as.character(language %||% "en")[[1L]])
+  if (!language %in% c("ko", "korean", "kor")) return(reason)
+  labels <- c(
+    "assumption warning mode selected; standard ANCOVA retained" =
+      "가정 경고 모드를 선택하여 표준 공분산분석을 유지함",
+    "homogeneity of regression slopes not satisfied" = "회귀기울기 동질성 미충족",
+    "residual normality not satisfied or ranked analysis selected" = "잔차 정규성 미충족 또는 순위 분석 선택",
+    "homogeneity of variance not satisfied" = "분산 동질성 미충족",
+    "residual normality, homogeneity of variance, and homogeneity of regression slopes satisfied" =
+      "잔차 정규성, 분산 동질성 및 회귀기울기 동질성 충족"
+  )
+  if (reason %in% names(labels)) unname(labels[[reason]]) else reason
+}
+
 ancova_assumption_warning_note <- function(assumptions, options = list()) {
   flags <- ancova_assumption_flags(assumptions, options)
   alpha <- ancova_decision_alpha(options)
@@ -1146,10 +1174,18 @@ ancova_single_result <- function(data, dependent, factor, covariates, variable_i
   }
   model <- ancova_fit_lm(ancova_formula(dependent, factor, covariates, interaction = interaction), fit_data, sum_of_squares)
   table <- ancova_result_table(model, fit_data, dependent, factor, covariates, method, variable_info, labels, category_table, options)
-  display_table <- if (identical(method, "Ranked ANCOVA")) {
-    ancova_original_scale_display_table(table, base_model, clean, factor, covariates)
+  display_table <- table
+  original_scale_table <- if (identical(method, "Ranked ANCOVA")) {
+    ancova_original_scale_descriptive_table(
+      table,
+      base_model,
+      clean,
+      factor,
+      covariates,
+      mean_se = isTRUE(options$mean_se)
+    )
   } else {
-    table
+    data.frame()
   }
   interaction_terms <- if (identical(method, "Interaction ANCOVA")) ancova_interaction_terms_table(model, sum_of_squares) else data.frame()
   simple_effects <- if (identical(method, "Interaction ANCOVA")) ancova_simple_effects_table(model, fit_data, factor, covariates) else data.frame()
@@ -1199,6 +1235,7 @@ ancova_single_result <- function(data, dependent, factor, covariates, variable_i
     assumptions = assumptions,
     table = table,
     display_table = display_table,
+    original_scale_table = original_scale_table,
     interaction_terms = interaction_terms,
     simple_effects = simple_effects,
     collinearity = collinearity,
@@ -1232,6 +1269,7 @@ ancova_single_result <- function(data, dependent, factor, covariates, variable_i
 }
 
 prepare_ancova_results <- function(data, dependents, factor, covariates, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("dependents", "factor", "covariates"))
   if (!is.data.frame(data)) {
     stop("No data frame is available for ANCOVA.")
   }

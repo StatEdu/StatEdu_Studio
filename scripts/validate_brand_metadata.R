@@ -49,8 +49,7 @@ visible_product_files <- c(
   "SOURCE-OFFER.txt",
   "R/app_misc_ui.R",
   "packaging/electron/main.js",
-  "packaging/electron/package.json",
-  "packaging/electron/scripts/afterPack.js"
+  "packaging/electron/package.json"
 )
 
 for (path in visible_product_files) {
@@ -69,10 +68,22 @@ assert_contains("R/app_misc_ui.R", 'h2("StatEdu Studio")', "About dialog product
 assert_contains("R/labels.R", "StatEdu Studio source availability and application license.", "About source/license product text")
 assert_contains("packaging/electron/main.js", "function appDisplayName()", "Electron dynamic app display name helper")
 assert_contains("packaging/electron/main.js", "app.setName(appDisplayName())", "Electron app display name")
-assert_contains("packaging/electron/scripts/afterPack.js", "context.packager.appInfo.productName", "Windows executable dynamic product name")
-assert_contains("packaging/electron/scripts/afterPack.js", '"OriginalFilename", exeName', "Windows executable dynamic original filename")
 
 electron_package <- read_json("packaging/electron/package.json")
+version <- trimws(readLines(file.path(repo_root, "VERSION"), warn = FALSE)[[1L]])
+electron_profile <- if (grepl("^\\d+\\.\\d+\\.\\d+-dev$", version)) {
+  list(
+    product_name = "StatEdu Studio Dev",
+    shortcut_name = "StatEdu Studio Dev",
+    artifact_name = 'StatEdu_Studio_Dev_Setup_${version}.${ext}'
+  )
+} else {
+  list(
+    product_name = "StatEdu Studio",
+    shortcut_name = "StatEdu Studio",
+    artifact_name = 'StatEdu_Studio_Setup_${version}.${ext}'
+  )
+}
 
 assert_equal <- function(actual, expected, label) {
   if (is.null(actual) || length(actual) == 0) {
@@ -85,29 +96,62 @@ assert_equal <- function(actual, expected, label) {
 
 assert_equal(
   electron_package$build$productName,
-  "StatEdu Studio",
+  electron_profile$product_name,
   "Electron build productName"
 )
 assert_equal(
   electron_package$build$nsis$shortcutName,
-  "StatEdu Studio",
+  electron_profile$shortcut_name,
   "Electron NSIS shortcutName"
 )
 assert_equal(
   electron_package$build$win$artifactName,
-  'StatEdu_Studio_Setup_${version}.${ext}',
+  electron_profile$artifact_name,
   "Electron final installer artifactName"
 )
+assert_equal(electron_package$build$win$signExecutable, FALSE, "Electron code-signing opt-out")
 assert_contains("scripts/build_electron_beta.ps1", "Sync-ElectronPackageMetadata", "Electron package metadata sync")
+assert_contains("scripts/build_electron_beta.ps1", '"npm@10.9.2"', "Electron pnpm fallback pins npm")
+assert_contains("scripts/build_electron_release.ps1", "-PnpmPath", "Electron release build forwards pnpm path")
 assert_contains("scripts/build_electron_beta.ps1", "StatEdu_Studio_Setup", "final 1.0 installer artifact prefix")
 assert_contains("scripts/build_electron_beta.ps1", "com.statedu.studio", "final 1.0 app id")
 assert_contains("scripts/build_electron_release.ps1", "build_electron_beta.ps1", "release build wrapper delegates to compatibility build script")
 
 assert_contains("packaging/electron/main.js", "STATEDU_TOKEN", "Electron token handoff")
+assert_contains("R/ui_helpers.R", "statedu_request_token_authorized(request)", "main Shiny token gate")
+assert_contains("modules/latent_mplus/app/R/ui_helpers.R", "statedu_request_token_authorized(request)", "latent Shiny token gate")
+assert_contains("modules/latent_mplus/app/app.R", "function(request) app_ui(app_version, request)", "latent request-aware UI")
+assert_contains("packaging/electron/main.js", 'LC_ALL: "English_United States.utf8"', "Electron Windows R UTF-8 locale")
+assert_contains("packaging/electron/main.js", 'endsWith(".asar")', "Electron ASAR unpacked runtime resolution")
 assert_contains("docs/RELEASE_CHECKLIST.md", "Keep backward-compatible internal identifiers", "compatibility policy")
 assert_contains("docs/RELEASE_CHECKLIST.md", "Do not expose legacy `.efs-settings` or `.json` settings filters", "legacy settings dialog non-exposure note")
 assert_contains("scripts/generate_oss_notices.R", "THIRD-PARTY-NOTICES.txt", "OSS notice output file")
 assert_contains("scripts/generate_oss_notices.R", "license_report.csv", "OSS license report output")
 assert_contains("scripts/generate_oss_notices.R", "public releases must include source code, documentation, example data, and validation notes", "OSS notice public source release policy")
+
+token_contract <- new.env(parent = globalenv())
+sys.source(file.path(repo_root, "R", "utils.R"), envir = token_contract)
+expected_token <- "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+if (!isTRUE(token_contract$statedu_request_token_authorized(
+  list(QUERY_STRING = paste0("token=", expected_token, "&lang=ko")),
+  expected_token
+))) {
+  stop("matching Shiny session token was rejected", call. = FALSE)
+}
+if (isTRUE(token_contract$statedu_request_token_authorized(
+  list(QUERY_STRING = "token=wrong"),
+  expected_token
+))) {
+  stop("mismatched Shiny session token was accepted", call. = FALSE)
+}
+if (isTRUE(token_contract$statedu_request_token_authorized(
+  list(REQUEST_URI = "/?lang=en"),
+  expected_token
+))) {
+  stop("missing Shiny session token was accepted", call. = FALSE)
+}
+if (!isTRUE(token_contract$statedu_request_token_authorized(NULL, ""))) {
+  stop("browser/development mode without STATEDU_TOKEN was rejected", call. = FALSE)
+}
 
 cat("Brand metadata validation passed.\n")

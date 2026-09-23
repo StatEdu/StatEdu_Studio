@@ -140,10 +140,6 @@ register_regression_results_output <- function(
   penalized_result_fn
 ) {
   output$regression_results <- renderUI({
-    if (is.null(input$run) || input$run == 0) {
-      return(NULL)
-    }
-
     results <- tryCatch(analyses_fn(), error = function(e) NULL)
     if (is.null(results)) {
       return(NULL)
@@ -194,11 +190,20 @@ register_hierarchical_results_output <- function(
   labels_fn,
   category_table_fn
 ) {
-  output$hierarchical_results <- renderUI({
-    if (is.null(input$run_hierarchical) || input$run_hierarchical == 0) {
-      return(NULL)
+  session <- shiny::getDefaultReactiveDomain()
+  if (!is.null(session)) {
+    session$userData$scope_localization_factories$hierarchical_results <- function(results) {
+      renderer <- if (regression_results_are_hierarchical(results)) hierarchical_results_panel else regression_results_panel
+      args <- list(results = results, variable_table = variable_table_fn(), labels = labels_fn(),
+        category_table = category_table_fn(), refs = regression_reference_values_static(category_table_fn()),
+        value_labels = category_value_label_lookup_static(category_table_fn()),
+        show_sr2 = input$hierarchical_show_sr2, show_f2 = input$hierarchical_show_f2,
+        show_vif = input$hierarchical_show_vif,
+        output_table_style = analysis_output_table_style(input$hierarchical_output_table_style))
+      function() do.call(renderer, args)
     }
-
+  }
+  output$hierarchical_results <- renderUI({
     results <- tryCatch(analyses_fn(), error = function(e) NULL)
     if (is.null(results)) {
       return(NULL)
@@ -268,10 +273,13 @@ register_hierarchical_save_handlers <- function(
   category_table_fn,
   app_language_fn = NULL
 ) {
+  export_images <- correlation_export_image_cache(max_entries = 32L)
+  session$onSessionEnded(export_images$clear)
+  # Includes completion of background bootstrap updates and resetting to NULL.
+  observeEvent(tryCatch(analyses_fn(), error = function(e) NULL),
+               { export_images$clear() }, ignoreNULL = FALSE, priority = 100)
+
   output$hierarchical_save_control <- renderUI({
-    if (is.null(input$run_hierarchical) || input$run_hierarchical == 0) {
-      return(NULL)
-    }
     if (is.null(tryCatch(analyses_fn(), error = function(e) NULL))) {
       return(NULL)
     }
@@ -285,7 +293,7 @@ register_hierarchical_save_handlers <- function(
   })
 
   observeEvent(input$save_hierarchical_excel_dialog, {
-    shiny::req(!is.null(input$run_hierarchical), input$run_hierarchical > 0)
+    shiny::req(!is.null(analyses_fn()))
     path <- choose_excel_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
       showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
@@ -307,18 +315,19 @@ register_hierarchical_save_handlers <- function(
           show_sr2 = input$hierarchical_show_sr2,
           show_f2 = input$hierarchical_show_f2,
           show_vif = input$hierarchical_show_vif,
-          output_table_style = analysis_output_table_style(input$hierarchical_output_table_style)
+          output_table_style = analysis_output_table_style(input$hierarchical_output_table_style),
+          plot_renderer = export_images$render
         )
         showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
 
   observeEvent(input$save_hierarchical_figures_dialog, {
-    shiny::req(!is.null(input$run_hierarchical), input$run_hierarchical > 0)
+    shiny::req(!is.null(analyses_fn()))
     directory <- choose_figure_save_dir()
     if (length(directory) == 0 || !nzchar(directory[[1]])) {
       showNotification(statedu_t("result.folder_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
@@ -337,13 +346,13 @@ register_hierarchical_save_handlers <- function(
         showNotification(sprintf(statedu_t("result.figures_saved", statedu_current_language(app_language_fn)), length(saved), directory), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
 
   observeEvent(input$save_hierarchical_html_dialog, {
-    shiny::req(!is.null(input$run_hierarchical), input$run_hierarchical > 0)
+    shiny::req(!is.null(analyses_fn()))
     path <- choose_html_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
       showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
@@ -365,18 +374,19 @@ register_hierarchical_save_handlers <- function(
           show_sr2 = input$hierarchical_show_sr2,
           show_f2 = input$hierarchical_show_f2,
           show_vif = input$hierarchical_show_vif,
-          output_table_style = analysis_output_table_style(input$hierarchical_output_table_style)
+          output_table_style = analysis_output_table_style(input$hierarchical_output_table_style),
+          plot_renderer = export_images$render
         )
         showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
 
   observeEvent(input$save_hierarchical_pdf_dialog, {
-    shiny::req(!is.null(input$run_hierarchical), input$run_hierarchical > 0)
+    shiny::req(!is.null(analyses_fn()))
     path <- choose_pdf_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
       showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
@@ -397,12 +407,13 @@ register_hierarchical_save_handlers <- function(
           category_table = category_table_fn(),
           show_sr2 = input$hierarchical_show_sr2,
           show_f2 = input$hierarchical_show_f2,
-          show_vif = input$hierarchical_show_vif
+          show_vif = input$hierarchical_show_vif,
+          plot_renderer = export_images$render
         )
         showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -425,10 +436,13 @@ register_analysis_save_handlers <- function(
   category_table_fn,
   app_language_fn = NULL
 ) {
+  export_images <- correlation_export_image_cache(max_entries = 32L)
+  session$onSessionEnded(export_images$clear)
+  # Includes completion of background bootstrap updates and resetting to NULL.
+  observeEvent(tryCatch(analyses_fn(), error = function(e) NULL),
+               { export_images$clear() }, ignoreNULL = FALSE, priority = 100)
+
   output$regression_save_control <- renderUI({
-    if (is.null(input$run) || input$run == 0) {
-      return(NULL)
-    }
     if (is.null(tryCatch(analyses_fn(), error = function(e) NULL))) {
       return(NULL)
     }
@@ -445,7 +459,7 @@ register_analysis_save_handlers <- function(
   })
 
   observeEvent(input$save_analysis_excel_dialog, {
-    shiny::req(!is.null(input$run), input$run > 0)
+    shiny::req(!is.null(analyses_fn()))
     path <- choose_excel_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
       showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
@@ -465,18 +479,19 @@ register_analysis_save_handlers <- function(
           show_sr2 = input$show_sr2,
           show_f2 = input$show_f2,
           show_vif = input$show_vif,
-          output_table_style = analysis_output_table_style(input$regression_output_table_style)
+          output_table_style = analysis_output_table_style(input$regression_output_table_style),
+          plot_renderer = export_images$render
         )
         showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
 
   observeEvent(input$save_analysis_figures_dialog, {
-    shiny::req(!is.null(input$run), input$run > 0)
+    shiny::req(!is.null(analyses_fn()))
     directory <- choose_figure_save_dir()
     if (length(directory) == 0 || !nzchar(directory[[1]])) {
       showNotification(statedu_t("result.folder_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
@@ -493,13 +508,13 @@ register_analysis_save_handlers <- function(
         showNotification(sprintf(statedu_t("result.figures_saved", statedu_current_language(app_language_fn)), length(saved), directory), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
 
   observeEvent(input$save_analysis_html_dialog, {
-    shiny::req(!is.null(input$run), input$run > 0)
+    shiny::req(!is.null(analyses_fn()))
     path <- choose_html_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
       showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
@@ -519,18 +534,19 @@ register_analysis_save_handlers <- function(
           show_sr2 = input$show_sr2,
           show_f2 = input$show_f2,
           show_vif = input$show_vif,
-          output_table_style = analysis_output_table_style(input$regression_output_table_style)
+          output_table_style = analysis_output_table_style(input$regression_output_table_style),
+          plot_renderer = export_images$render
         )
         showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
 
   observeEvent(input$save_analysis_pdf_dialog, {
-    shiny::req(!is.null(input$run), input$run > 0)
+    shiny::req(!is.null(analyses_fn()))
     path <- choose_pdf_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
       showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
@@ -549,12 +565,13 @@ register_analysis_save_handlers <- function(
           category_table = category_table_fn(),
           show_sr2 = input$show_sr2,
           show_f2 = input$show_f2,
-          show_vif = input$show_vif
+          show_vif = input$show_vif,
+          plot_renderer = export_images$render
         )
         showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), result_export_error_text(e, statedu_current_language(app_language_fn))), type = "error", duration = 8)
       }
     )
   })
@@ -575,7 +592,7 @@ register_analysis_download_handlers <- function(
   output$save_coefficients <- downloadHandler(
     filename = coefficients_csv_filename,
     content = function(file) {
-      shiny::req(!is.null(input$run), input$run > 0)
+      shiny::req(!is.null(analyses_fn()))
       write_coefficients_csv(
         analyses_fn(),
         file,
@@ -589,7 +606,7 @@ register_analysis_download_handlers <- function(
   output$save_analysis_results <- downloadHandler(
     filename = analysis_results_html_filename,
     content = function(file) {
-      shiny::req(!is.null(input$run), input$run > 0)
+      shiny::req(!is.null(analyses_fn()))
       write_analysis_results_html(
         analyses_fn(),
         file,
@@ -617,17 +634,19 @@ register_analysis_run_handlers <- function(
   bootstrap_cancel_requested,
   bootstrap_status,
   bootstrap_stop_visible,
-  bootstrap_manager,
-  bootstrap_tick
+  bootstrap_manager
 ) {
-  observeEvent(input$run, {
+  run_prepared <- function(prepared) {
+    if (!is.null(isolate(bootstrap_job()))) {
+      stop("진행 중인 부트스트랩이 끝난 후 다시 실행하세요. / Wait for the active bootstrap to finish.")
+    }
+    force(prepared)
     penalized_result(NULL)
     bootstrap_job(NULL)
     bootstrap_job_queue(list())
     bootstrap_cancel_requested(FALSE)
     bootstrap_stop_visible(FALSE)
     bootstrap_status(list(done = 0L, r = 0L, stopping = FALSE, message = "Running regression"))
-    prepared <- prepare_analysis_result_fn()
     analysis_result(prepared$results)
     if (length(prepared$jobs) == 0) {
       bootstrap_status(NULL)
@@ -640,6 +659,12 @@ register_analysis_run_handlers <- function(
     session$onFlushed(function() {
       bootstrap_manager$start(first_job)
     }, once = TRUE)
+  }
+
+  observeEvent(input$run, {
+    tryCatch(analysis_scope_run(session, "run", function() run_prepared(prepare_analysis_result_fn())), error = function(e) {
+      showNotification(conditionMessage(e), type = "error", duration = 10)
+    })
   })
 
   observeEvent(input$stop_bootstrap, {
@@ -651,11 +676,14 @@ register_analysis_run_handlers <- function(
   }, ignoreInit = TRUE)
 
   observe({
-    bootstrap_tick()
-    isolate(bootstrap_manager$poll())
+    req(!is.null(bootstrap_job()))
+    bootstrap_manager$poll()
+    if (!is.null(isolate(bootstrap_job()))) {
+      invalidateLater(200, session)
+    }
   })
 
-  invisible(TRUE)
+  invisible(run_prepared)
 }
 
 register_hierarchical_analysis_run_handlers <- function(
@@ -671,7 +699,7 @@ register_hierarchical_analysis_run_handlers <- function(
   bootstrap_stop_visible,
   bootstrap_manager
 ) {
-  observeEvent(input$run_hierarchical, {
+  run_hierarchical <- function() {
     penalized_result(NULL)
     bootstrap_job(NULL)
     bootstrap_job_queue(list())
@@ -691,7 +719,8 @@ register_hierarchical_analysis_run_handlers <- function(
     session$onFlushed(function() {
       bootstrap_manager$start(first_job)
     }, once = TRUE)
-  })
+  }
+  observeEvent(input$run_hierarchical, analysis_scope_run(session, "run_hierarchical", run_hierarchical))
 
   invisible(TRUE)
 }

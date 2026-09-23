@@ -1,0 +1,226 @@
+source(file.path("scripts", "validate_cfa_common.R"), encoding = "UTF-8")
+
+PLS_EXTERNAL_DEFAULT_PROFILE <- "holzinger-swineford-first100-smartpls-student"
+PLS_EXTERNAL_LEGACY_PROFILE <- "holzinger-swineford-301"
+
+benchmark_arguments <- function(arguments) {
+  values <- list(
+    output_dir = file.path("outputs", "pls_external_benchmark"),
+    profile = PLS_EXTERNAL_DEFAULT_PROFILE
+  )
+  for (argument in arguments) {
+    pair <- strsplit(sub("^--", "", argument), "=", fixed = TRUE)[[1L]]
+    if (length(pair) != 2L) next
+    values[[gsub("-", "_", pair[[1L]], fixed = TRUE)]] <- pair[[2L]]
+  }
+  values
+}
+
+benchmark_sha256 <- function(path) {
+  digest::digest(file = path, algo = "sha256", serialize = FALSE)
+}
+
+benchmark_text_sha256 <- function(path) {
+  bytes <- readBin(path, what = "raw", n = file.info(path)$size)
+  if (any(bytes == as.raw(0L))) stop("Public text artifact contains a NUL byte: ", path, call. = FALSE)
+  normalized <- gsub("\r\n?", "\n", rawToChar(bytes), perl = TRUE)
+  digest::digest(charToRaw(normalized), algo = "sha256", serialize = FALSE)
+}
+
+pls_external_benchmark_profile <- function(profile = PLS_EXTERNAL_DEFAULT_PROFILE) {
+  profile <- tolower(trimws(as.character(profile %||% PLS_EXTERNAL_DEFAULT_PROFILE)))
+  if (!nzchar(profile)) profile <- PLS_EXTERNAL_DEFAULT_PROFILE
+  if (profile %in% c("historical301", "full301", "hs301")) profile <- PLS_EXTERNAL_LEGACY_PROFILE
+  if (profile %in% c("student100", "first100", "hs100")) {
+    profile <- "holzinger-swineford-first100-smartpls-student"
+  }
+  if (identical(profile, PLS_EXTERNAL_LEGACY_PROFILE)) {
+    return(list(
+      id = profile,
+      row_indices = NULL,
+      data_filename = "HolzingerSwineford1939.csv",
+      external_data_format = "canonical CSV source file",
+      intended_scope = "Legacy historical 301-row reference; current strict PLSc admissibility is enforced fail-closed and no external equivalence claim is permitted"
+    ))
+  }
+  if (identical(profile, "holzinger-swineford-first100-smartpls-student")) {
+    return(list(
+      id = profile,
+      row_indices = seq_len(100L),
+      data_filename = "HolzingerSwineford1939_first100_x1_x9.txt",
+      external_data_format = "semicolon-delimited UTF-8 text without quoting",
+      intended_scope = "Deterministic first-100-row benchmark executed under the SmartPLS Student license (free limited, non-Professional)"
+    ))
+  }
+  stop("Unknown PLS external benchmark profile: ", profile, call. = FALSE)
+}
+
+pls_external_write_profile_data <- function(analysis_data, profile, path) {
+  if (identical(profile$id, PLS_EXTERNAL_LEGACY_PROFILE)) {
+    if (!file.copy(file.path("sample", "HolzingerSwineford1939.csv"), path, overwrite = TRUE)) {
+      stop("Could not copy the historical benchmark data.", call. = FALSE)
+    }
+  } else {
+    output_connection <- file(path, open = "wb")
+    on.exit(close(output_connection), add = TRUE)
+    utils::write.table(
+      analysis_data, output_connection, sep = ";", row.names = FALSE, col.names = TRUE,
+      quote = FALSE, na = "", eol = "\r\n"
+    )
+  }
+  invisible(path)
+}
+
+`%||%` <- function(value, fallback) if (is.null(value) || !length(value)) fallback else value
+
+pls_external_guard_profile_directory <- function(output_dir, profile) {
+  known_data_files <- c(
+    "holzinger-swineford-301" = "HolzingerSwineford1939.csv",
+    "holzinger-swineford-first100-smartpls-student" = "HolzingerSwineford1939_first100_x1_x9.txt"
+  )
+  expected_data_file <- unname(known_data_files[[profile$id]])
+  stale_data_files <- setdiff(unname(known_data_files[file.exists(file.path(output_dir, unname(known_data_files)))]), expected_data_file)
+  if (length(stale_data_files)) {
+    stop(
+      "Output directory contains data from a different PLS external benchmark profile: ",
+      paste(stale_data_files, collapse = ", "),
+      ". Use a clean or profile-specific output directory.",
+      call. = FALSE
+    )
+  }
+
+  for (metadata_file in c("benchmark_manifest.json", "external_run.json")) {
+    metadata_path <- file.path(output_dir, metadata_file)
+    if (!file.exists(metadata_path)) next
+    metadata <- try(jsonlite::fromJSON(metadata_path, simplifyVector = TRUE), silent = TRUE)
+    if (inherits(metadata, "try-error")) {
+      stop("Existing ", metadata_file, " could not be parsed; refusing to mix benchmark profiles.", call. = FALSE)
+    }
+    recorded_profile <- if (identical(metadata_file, "benchmark_manifest.json")) metadata$profile$id else metadata$profile
+    recorded_profile <- trimws(as.character(recorded_profile %||% ""))
+    if (!nzchar(recorded_profile) || !identical(recorded_profile, profile$id)) {
+      stop(
+        "Existing ", metadata_file, " belongs to a different or unspecified PLS external benchmark profile. ",
+        "Use a clean or profile-specific output directory.",
+        call. = FALSE
+      )
+    }
+  }
+  invisible(TRUE)
+}
+
+generate_pls_external_benchmark <- function(output_dir, profile = PLS_EXTERNAL_DEFAULT_PROFILE) {
+  output_dir <- normalizePath(output_dir, winslash = "/", mustWork = FALSE)
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  profile <- pls_external_benchmark_profile(profile)
+  pls_external_guard_profile_directory(output_dir, profile)
+  data_path <- file.path("sample", "HolzingerSwineford1939.csv")
+  model_path <- file.path("sample", "pls_external_benchmark.stmodel")
+  indicators <- paste0("x", 1:9)
+  source_data <- utils::read.csv(data_path, check.names = FALSE, stringsAsFactors = FALSE)
+  if (is.null(profile$row_indices)) profile$row_indices <- seq_len(nrow(source_data))
+  analysis_data <- source_data[profile$row_indices, indicators, drop = FALSE]
+  external_data_path <- file.path(output_dir, profile$data_filename)
+  pls_external_write_profile_data(analysis_data, profile, external_data_path)
+  snapshot <- jsonlite::fromJSON(model_path, simplifyVector = FALSE)
+
+  analysis <- run_structural_canvas_analysis(snapshot, analysis_data, "plssem", estimator = "PLS")
+  bundle <- list(
+    fit = analysis$fit,
+    diagnostics = analysis,
+    estimator = "PLS",
+    snapshot = snapshot,
+    analysis_data = analysis_data
+  )
+
+  rows <- lapply(c("PLS", "PLSC"), function(estimator) {
+    fit <- structural_canvas_pls_diagnostic_fit(bundle, estimator)
+    if (is.null(fit)) stop(estimator, " benchmark fit was unavailable.", call. = FALSE)
+    diagnostic_bundle <- bundle
+    diagnostic_bundle$fit <- fit
+    diagnostic_bundle$estimator <- estimator
+    values <- structural_canvas_pls_approximate_fit_indices(diagnostic_bundle, summary(fit))
+    if (any(!is.finite(values[c("srmr", "d_g", "d_uls")]))) {
+      stop(estimator, " benchmark produced non-finite fit diagnostics.", call. = FALSE)
+    }
+    data.frame(
+      Model = tolower(estimator), Fit = "saturated",
+      srmr = unname(values[["srmr"]]), d_G = unname(values[["d_g"]]), d_ULS = unname(values[["d_uls"]]),
+      check.names = FALSE, stringsAsFactors = FALSE
+    )
+  })
+  statedu <- do.call(rbind, rows)
+
+  statedu_path <- file.path(output_dir, "statedu_fit.csv")
+  template_path <- file.path(output_dir, "external_fit_template.csv")
+  manifest_path <- file.path(output_dir, "benchmark_manifest.json")
+  old_digits <- getOption("digits")
+  on.exit(options(digits = old_digits), add = TRUE)
+  options(digits = 17)
+  utils::write.csv(statedu, statedu_path, row.names = FALSE, na = "")
+  external_template <- statedu
+  external_template[, c("srmr", "d_G", "d_ULS")] <- NA_real_
+  utils::write.csv(external_template, template_path, row.names = FALSE, na = "")
+
+  manifest <- list(
+  schema_version = "1.1",
+  public_text_hash_normalization = "CRLF and CR normalized to LF before SHA-256",
+  purpose = "External SmartPLS/ADANCO saturated-model numerical comparison",
+  profile = list(id = profile$id, intended_scope = profile$intended_scope),
+  generated_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE),
+  statedu = list(
+    version = trimws(readLines("VERSION", warn = FALSE, n = 1L)),
+    R = R.version.string,
+    seminr = as.character(utils::packageVersion("seminr")),
+    lavaan = as.character(utils::packageVersion("lavaan"))
+  ),
+  data = list(
+    file = basename(external_data_path), sha256 = benchmark_text_sha256(external_data_path),
+    source_file = gsub("\\\\", "/", data_path), source_sha256 = benchmark_text_sha256(data_path),
+    rows = nrow(analysis_data), indicators = indicators, missing_cells = sum(is.na(analysis_data)),
+    row_selection = list(
+      index_basis = "1-based data rows excluding the header",
+      start = min(profile$row_indices), end = max(profile$row_indices), count = length(profile$row_indices),
+      order = "source-file order preserved"
+    ),
+    external_format = profile$external_data_format,
+    source = "lavaan::HolzingerSwineford1939",
+    export = "utils::write.csv(lavaan::HolzingerSwineford1939, row.names = FALSE)",
+    preprocessing = "seminr default mean replacement with standardized PLS results"
+  ),
+  model = list(
+    file = gsub("\\\\", "/", model_path), sha256 = benchmark_text_sha256(model_path),
+    constructs = list(visual = c("x1", "x2", "x3"), textual = c("x4", "x5", "x6"), speed = c("x7", "x8", "x9")),
+    structural_paths = c("visual -> textual", "visual -> speed", "textual -> speed"),
+    ontology = "All constructs are reflective common factors initialized with Mode A weights"
+  ),
+  algorithm = list(
+    weighting_scheme = "path", maximum_iterations = 300L, stop_criterion = 1e-7,
+    missing_data = "mean replacement", sign_changes = "seminr default",
+    fit_target = "saturated",
+    fit_definition = "Local reflective measurement-model approximation with all construct correlations free; no estimated structural-model fit is claimed",
+    external_iteration_note = "SmartPLS 4 uses a fixed 3,000-iteration maximum; numerical comparison is valid only when both implementations converge before StatEdu/seminr's 300-iteration maximum"
+  ),
+  external_run_required = list(
+    software = NULL, version = NULL, run_date = NULL,
+    settings_confirmation = "Record the exact external software version; use standardized results, path weighting, +1 initial outer weights, the fixed 1e-7 stop criterion, and saturated-model output. SmartPLS 4 fixes its maximum at 3,000 iterations, so confirm convergence occurred before 300 iterations to match the StatEdu/seminr ceiling. The benchmark data contain no missing cells.",
+    output_file = "external_fit_template.csv"
+  )
+  )
+  jsonlite::write_json(manifest, manifest_path, auto_unbox = TRUE, pretty = TRUE, null = "null")
+  invisible(list(
+    profile = profile$id, statedu = statedu, statedu_path = statedu_path,
+    template_path = template_path, manifest_path = manifest_path, data_path = external_data_path
+  ))
+}
+
+if (sys.nframe() == 0L) {
+  arguments <- benchmark_arguments(commandArgs(trailingOnly = TRUE))
+  result <- generate_pls_external_benchmark(arguments$output_dir, arguments$profile)
+  cat("PLS external benchmark bundle generated:\n")
+  cat(" - ", result$statedu_path, "\n", sep = "")
+  cat(" - ", result$template_path, "\n", sep = "")
+  cat(" - ", result$manifest_path, "\n", sep = "")
+  print(result$statedu, row.names = FALSE)
+}

@@ -2,7 +2,22 @@
 
 These rules apply to every analysis result table in **StatEdu Studio**.
 
-## Export Rules
+## Language and Publication Roles
+
+- Main result tables are publication-ready SCI journal tables and are always written in English, regardless of the UI language.
+- Appendix, diagnostic, sensitivity, and input-review tables follow the current UI language.
+- Analysis menus, setup blocks, options, and appendix headings follow the UI language. Main-table titles, headers, system-generated cells, and notes remain English, including when the UI is Korean.
+- User-defined variable names, variable labels, and category/value labels retain their original text in both main and appendix tables. A label matching an application phrase (for example `Normality`, `Yes`, or `Status`) must not be translated. Mark nonstandard user-data columns/headers with `result_user_columns` / `result_user_headers` when the shared table helper cannot infer their role.
+- Publication figures, including forest plots and funnel plots, are always written in English.
+- Every new analysis method must classify each new table as either `main` or `appendix` and apply the corresponding language rule through the shared result-table contract.
+- Bootstrap confidence intervals use a grouped `95% CI` header above separate `LLCI` and `ULCI` columns. Other headers span both rows; existing model/effect groups remain above this pair. Apply the same geometry to screen, HTML, PDF, Word, HWPX, and Excel, including accumulated results. Preserve values, precision, footnote markers, and interval method. Define `95% CI = 95% confidence interval` before LLCI/ULCI in notes; hierarchical regression retains its single shared note after the final model.
+
+## Current Export Rules
+
+- The public release exposes HTML result saving, 300 dpi figure-file saving, and the in-app Result collection.
+- PDF, Excel, and Word result saving are planned for the general public 1.3.0 release, independently of Pro. They remain disabled in public 1.2.x and enabled in non-public development builds for implementation and validation.
+- Pro is tentatively planned around 1.5.0; its scope and release timing are not final. See [release roadmap](RELEASE_ROADMAP_KO.md).
+- Free-edition PDF covers display `FREE`, the StatEdu logo, and `Prepared with / StatEdu, Institute of Statistics`; user and institution metadata are omitted. Development covers use `DEVELOPMENT` / `Development owner`.
 
 - Every analysis with computed results should show `Save tables` and `Save figures` in the same action area.
 - `Save tables` exports Excel workbooks (`.xlsx`).
@@ -22,7 +37,7 @@ These rules apply to every analysis result table in **StatEdu Studio**.
 - The exported table starts on row 3.
 - Exported tables use thin solid lines at the table top, header bottom, and table bottom.
 - Figure exports use a folder picker and save separate PNG files.
-- Figure PNG files are saved at 600 dpi by default.
+- Public figure PNG files are saved at 300 dpi. Development and Pro editions support 600 dpi output.
 - New analysis modules should call the shared export helpers in `R/result_export.R` and `R/result_export_files.R`.
 
 ## Table Lines
@@ -33,12 +48,21 @@ These rules apply to every analysis result table in **StatEdu Studio**.
 
 ## Table Notes
 
+- Regression's note convention applies to every analysis and every table. Omit the redundant `Note.` / `주.` prefix.
+- Put definitions before estimation methods, reference coding, adjustments, and explanations. Use the shared order M/SD, SE (including robust/bootstrap variants), 95% CI, LLCI, ULCI, Tol, VIF, d, z(p), χ²(p), f², sr²; retain the relative order of other definitions and explanatory clauses.
+- Explain only statistics displayed in the relevant table. Optional columns and their definitions must appear/disappear together. Preserve numerical footnote markers, HTML superscripts, symbols, and all substantive explanations.
+- Hierarchical regression retains its existing exception: shared definitions appear once after the final model for each outcome and cover earlier models in that group. Model/method labels remain with their models.
+- Use `result_note_tag`, `result_note_paragraph`, `result_note_div`, or a table helper's `note_line`; do not bypass the shared normalizer with raw note markup.
+- The captured screen is authoritative for all five exports. Apply [RESULT_EXPORT_CONTRACT.md](RESULT_EXPORT_CONTRACT.md) if older release or cover guidance above conflicts: no newly invented cover or rewritten note, and retain the displayed per-table orientation.
+
 - Analysis result notes and footnotes must use the same visual width as the table they describe.
 - Notes must never extend beyond the table width and must never be narrower than the table width.
 - Long note text must wrap inside the table width.
 - New HTML table output should place notes in the shared table-note wrapper, for example with `result_table_with_notes()` or `coefficient_html_table(note_line = ...)`.
 
 ## Labels
+
+- Standard regression and per-model hierarchical regression reserve 28–42% of table width for Variable, depending on the number of displayed statistics (42% for the six-column bootstrap table). Statistics share the remaining width, with extra allowance for SE and `reference`. Preserve these column proportions in every export.
 
 - Variable names: show `var_label` when it exists; otherwise show the variable name.
 - Value names: show `value_label` when it exists; otherwise show the raw value.
@@ -54,3 +78,13 @@ These rules apply to every analysis result table in **StatEdu Studio**.
 - Skewness and kurtosis: show three decimal places.
 - p-values: show three decimal places, omit the leading zero, for example `.027`.
 - p-values below .001: show `<.001`.
+
+PDF cover labels, standard titles, descriptions and edition names follow the current UI language (ko/en/ja/zh/es/fr/de/vi). Preserve logos, the full name `StatEdu, Institute of Statistics`, and custom titles/footers.
+
+- Regression and mediation/moderation notes omit the `Note.` prefix and define displayed statistics in this order: SE/HC3 SE/Boot SE, 95% CI, LLCI, ULCI, Tol, VIF, d, z(p), chi-square(p), f-squared. Additional method-specific explanations follow.
+- Hierarchical regression shows shared notes only after the final model table for each outcome, including definitions needed by preceding models. Model/method labels remain visible; predictor formulas are omitted from model notes.
+
+- Optional statistics and their note definitions must appear together: unchecked sr-squared, f-squared, or VIF options omit both the columns and definitions. When f-squared alone is selected, its note must not introduce sr-squared.
+
+- Regression-family coefficient tables use the mediation/moderation publication appearance (shared font, text color, padding, header and horizontal rules). Standard hierarchical results use the same model-table renderer as mediation/moderation, with outcome and estimation method retained below each model title.
+- Conditional effects allocate space to Path and Moderator and wrap long labels inside their own cells. Do not add nowrap markup to Path. Preserve the explicit column proportions and landscape orientation in every export.

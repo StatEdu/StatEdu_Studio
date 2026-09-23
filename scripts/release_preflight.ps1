@@ -14,6 +14,15 @@ if (-not $RepoRoot) {
   $RepoRoot = Resolve-Path $RepoRoot
 }
 
+$currentPowerShellExecutable = (Get-Process -Id $PID -ErrorAction Stop).Path
+if ([string]::IsNullOrWhiteSpace($currentPowerShellExecutable) -or
+    -not (Test-Path -LiteralPath $currentPowerShellExecutable -PathType Leaf)) {
+  throw "The current PowerShell host executable could not be resolved."
+}
+if (-not (Get-Command Start-Process -ErrorAction Stop).Parameters.ContainsKey("Environment")) {
+  throw "The current PowerShell host does not support Start-Process -Environment. Run release_preflight.ps1 with a current pwsh.exe host."
+}
+
 function Invoke-PreflightStep {
   param(
     [string]$Label,
@@ -35,13 +44,18 @@ function Invoke-Script {
   )
 
   Invoke-PreflightStep $Label {
-    & powershell -ExecutionPolicy Bypass -File $Path @Arguments
+    & $script:currentPowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $Path @Arguments
   }
 }
 
 $validationArgs = @("-RepoRoot", $RepoRoot, "-Full")
 if ($RscriptPath) {
   $validationArgs += @("-RscriptPath", $RscriptPath)
+}
+
+$installerRegressionArgs = @("-RepoRoot", $RepoRoot)
+if ($RscriptPath) {
+  $installerRegressionArgs += @("-RscriptPath", $RscriptPath)
 }
 
 $shinyArgs = @("-RepoRoot", $RepoRoot, "-Port", "$Port", "-TimeoutSeconds", "$TimeoutSeconds")
@@ -53,6 +67,11 @@ $electronArgs = @("-RepoRoot", $RepoRoot)
 if (-not $FullElectronSmoke) {
   $electronArgs += "-SkipUnpackedChecks"
 }
+
+Invoke-Script `
+  -Label "Installer regression gate" `
+  -Path (Join-Path $RepoRoot "scripts\validate_installer_regressions.ps1") `
+  -Arguments $installerRegressionArgs
 
 Invoke-Script `
   -Label "Full stabilization validation" `

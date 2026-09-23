@@ -1,3 +1,89 @@
+/* Case selection and split file share the analysis menu's fixed panel geometry. */
+.scope-workspace.workspace-panel {
+  width: var(--se-standard-four-column-workspace-width);
+  min-width: var(--se-standard-four-column-workspace-width);
+  box-sizing: border-box;
+}
+.scope-three-block {
+  display: grid;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width);
+  gap: var(--se-standard-gap);
+  width: var(--se-standard-four-column-setup-width);
+  padding: var(--se-standard-panel-padding);
+  align-items: stretch;
+  background: #f4f8fb;
+  border: 1px solid #e1eaf2;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+.scope-three-block > .analysis-transfer-panel,
+.scope-three-block > .analysis-options-panel {
+  width: 100%;
+  min-width: 0;
+  height: var(--se-standard-panel-height);
+  min-height: var(--se-standard-panel-height);
+}
+.scope-three-block .analysis-transfer-controls { align-self: center; }
+.scope-three-block .analysis-transfer-listbox {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: 417px !important;
+  min-height: 417px !important;
+  max-height: 417px !important;
+}
+.scope-three-block h4 { margin: 0 0 18px; font-size: 16px; font-weight: 700; }
+.scope-three-block > .analysis-options-panel > .shiny-html-output { height: 100%; }
+.scope-condition-editor { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.scope-condition-body { flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; overflow-wrap: anywhere; }
+.scope-condition-variable { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.scope-condition-variable > span { color: #536779; font-size: 12px; flex-shrink: 0; }
+.scope-condition-variable > strong { overflow-wrap: anywhere; }
+.scope-condition-group {
+  min-width: 0;
+  margin: 0 0 12px;
+  padding: 10px;
+  border: 1px solid #bccddd;
+  border-radius: 3px;
+  background: #f8fbfd;
+}
+.scope-condition-group > legend {
+  float: none;
+  width: auto;
+  padding: 0 5px;
+  margin: 0;
+  border: 0;
+  color: #163b59;
+  font-size: 13px;
+  font-weight: 700;
+}
+.scope-condition-editor .form-group { width: 100%; margin-bottom: 10px; }
+.scope-condition-editor .control-label { font-size: 12px; }
+.scope-condition-editor .radio { margin: 0 0 8px; }
+.scope-category-list { padding: 8px 10px; background: #fff; border: 1px solid #c5d4e1; border-radius: 2px; }
+.scope-category-list .shiny-options-group { max-height: 110px; overflow-y: auto; }
+.scope-category-list .form-group { margin-bottom: 0; }
+.scope-category-list .checkbox { margin: 4px 0; }
+.scope-condition-range-header,
+.scope-condition-range { display: grid; grid-template-columns: minmax(0, 1fr) 44px 12px 44px minmax(0, 1fr); gap: 4px; align-items: center; }
+.scope-condition-range-header label { font-size: 12px; margin-bottom: 4px; }
+.scope-condition-range .form-group { min-width: 0; margin-bottom: 0; }
+.scope-condition-range .form-control { padding: 4px; }
+.scope-condition-range-help,
+.scope-condition-help { font-size: 12px; line-height: 1.5; color: #536779; margin: 8px 0 0; }
+.scope-condition-add { display: flex; align-items: flex-end; gap: 8px; margin: 12px 0; }
+.scope-condition-add > .form-group { flex: 1; min-width: 0; margin: 0; }
+.scope-condition-add > .btn { flex-shrink: 0; }
+.scope-rule { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; }
+.scope-rule + .scope-rule { border-top: 1px solid #d5e2ec; }
+.scope-rule > div { flex: 1; min-width: 0; }
+.scope-rule p { margin: 3px 0 0; color: #536779; font-size: 12px; }
+.scope-condition-footer { border-top: 1px solid #cbd9e4; padding-top: 12px; margin-top: 12px; }
+.scope-condition-actions { display: flex; gap: 8px; }
+.scope-condition-actions > .btn { flex: 1; }
+.scope-condition-status { margin-top: 8px; font-size: 12px; color: #536779; overflow-wrap: anywhere; }
+.scope-condition-empty { display: flex; align-items: center; color: #536779; line-height: 1.7; }
+
 body {
   --se-standard-panel-width: 326px;
   --se-standard-gap: 18px;
@@ -204,6 +290,87 @@ body {
   background: #337ab7;
   border-left-color: #0f2f5f;
   color: #ffffff;
+}
+
+.analysis-menu-nested-section {
+  display: block;
+  position: relative;
+  width: 100%;
+}
+
+.analysis-menu-nested-title {
+  background: transparent;
+  border: 0;
+  color: #333333;
+  display: block;
+  font-size: 14px;
+  line-height: 1.35;
+  padding: 8px 30px 8px 14px;
+  position: relative;
+  text-align: left;
+  width: 100%;
+}
+
+.analysis-menu-nested-title::after {
+  border-bottom: 4px solid transparent;
+  border-left: 4px solid #94a3b8;
+  border-top: 4px solid transparent;
+  content: "";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.analysis-menu-nested-section:hover > .analysis-menu-nested-title,
+.analysis-menu-nested-section.open > .analysis-menu-nested-title {
+  background: #f1f5f9;
+  color: #0f2f5f;
+}
+
+.analysis-menu-nested-items {
+  background: #ffffff;
+  border: 1px solid #d5dde7;
+  box-shadow: 4px 4px 10px rgba(15, 23, 42, 0.12);
+  display: none;
+  left: 100%;
+  list-style: none;
+  margin: 0;
+  min-width: 210px;
+  padding: 6px 0;
+  position: absolute;
+  top: 0;
+  z-index: 1065;
+}
+
+.analysis-menu-nested-section:hover > .analysis-menu-nested-items,
+.analysis-menu-nested-section.open > .analysis-menu-nested-items {
+  display: block;
+}
+
+.analysis-menu-nested-items > li > a {
+  border-left: 3px solid transparent;
+  color: #333333;
+  display: block;
+  line-height: 1.35;
+  padding: 8px 16px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.analysis-menu-nested-items > li > a:hover,
+.analysis-menu-nested-items > li > a:focus {
+  background: #f1f5f9;
+  color: #111827;
+}
+
+.analysis-menu-nested-items > li.active > a,
+.analysis-menu-nested-items > li.active > a:hover,
+.analysis-menu-nested-items > li.active > a:focus {
+  background: #337ab7;
+  border-left-color: #0f2f5f;
+  color: #ffffff;
+  font-weight: 500;
 }
 
 .navbar .dropdown-menu > li.dropdown.active > a.dropdown-toggle,
@@ -612,11 +779,31 @@ body.statedu-excel-import-review-visible .recalculating {
 
 .bulk-measurement-action {
   clear: both;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(0, 1fr);
   margin-top: 8px;
+  width: 100%;
 }
 
-.bulk-measurement-action .btn {
-  margin-top: 0;
+.step-block .bulk-measurement-action .btn {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  line-height: 1.3;
+  margin: 0;
+  min-height: var(--se-control-height);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 8px 12px;
+  text-align: center;
+  white-space: normal;
+  width: 100%;
+}
+
+#dat_delimiter,
+#dat_delimiter + .selectize-control {
+  width: 100% !important;
 }
 
 .step-block .btn {
@@ -2244,41 +2431,41 @@ input.variable-select:disabled {
 }
 
 .crosstab-main-table {
-  min-width: 760px;
+  min-width: 0;
   table-layout: fixed;
 }
 
 .crosstab-row-variable-col {
-  width: 80px;
+  width: 70px;
 }
 
 .crosstab-row-label-col {
-  width: 86px;
+  width: 76px;
 }
 
 .crosstab-n-col {
-  width: 86px;
+  width: 64px;
 }
 
 .crosstab-count-col {
-  width: 86px;
+  width: 68px;
 }
 
 .crosstab-percent-col {
-  width: 50px;
+  width: 44px;
 }
 
 .crosstab-stat-col {
-  width: 72px;
+  width: 56px;
 }
 
 .crosstab-trend-p-col {
-  width: 92px;
+  width: 76px;
 }
 
 .crosstab-main-table th,
 .crosstab-main-table td {
-  padding: 9px 12px;
+  padding: 7px 4px;
   line-height: 1.35;
   border-left: 0;
   border-right: 0;
@@ -2721,6 +2908,12 @@ input.variable-select:disabled {
   padding-right: 14px;
   font-weight: 500;
 }
+
+.structural-equation-workspace-panel .structural_equation-workspace-heading {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
 
 .data-editor-variable-scope-button.is-active {
   color: #ffffff;
@@ -4768,6 +4961,68 @@ input.variable-select:disabled {
   table-layout: fixed;
 }
 
+.coefficient-table th.coefficient-ci-group-header,
+th.structural-table-header-cell[colspan] {
+  text-align: center !important;
+}
+
+.coefficient-ci-group-label {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.survival-cox-result-table .survival-cox-summary-row > td {
+  padding: 0.8rem 0.75rem;
+  border-bottom: 1px solid #d4dbe5;
+  text-align: center;
+  white-space: normal;
+}
+
+.survival-cox-result-table .survival-cox-summary-row-first > td {
+  border-top: 3px solid #202936;
+}
+
+.survival-cox-result-table .survival-cox-summary-row:last-child > td {
+  border-bottom: 3px solid #202936;
+}
+
+.structural-validity-table {
+  width: 100% !important;
+  min-width: 1040px;
+  table-layout: fixed !important;
+}
+
+.structural-validity-table th:nth-child(1),
+.structural-validity-table td:nth-child(1) { width: 11%; }
+.structural-validity-table th:nth-child(2),
+.structural-validity-table td:nth-child(2) { width: 12%; }
+.structural-validity-table th:nth-child(3),
+.structural-validity-table td:nth-child(3) { width: 10%; }
+.structural-validity-table th:nth-child(4),
+.structural-validity-table td:nth-child(4) { width: 25%; }
+.structural-validity-table th:nth-child(n + 5),
+.structural-validity-table td:nth-child(n + 5) { width: 7%; }
+
+.structural-validity-table th {
+  white-space: normal !important;
+  word-break: keep-all;
+}
+
+.structural-validity-table td {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.structural-pls-measurement-main-table th.structural-boot-bh-header {
+  min-width: 150px;
+  white-space: normal !important;
+  line-height: 1.25;
+  text-align: center !important;
+}
+
 .logistic-results > .logistic-hierarchical-result-panel {
   width: min(100%, 590px);
   max-width: 100%;
@@ -4781,7 +5036,7 @@ input.variable-select:disabled {
 }
 
 .logistic-results > .logistic-hierarchical-result-panel:not(.landscape-table-panel) .logistic-hierarchical-table {
-  font-size: 9.5px !important;
+  font-size: 12px !important;
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;
@@ -5199,6 +5454,30 @@ input.variable-select:disabled {
   overflow-wrap: anywhere !important;
 }
 
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group th,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group td {
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-term,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-value,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-mse,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-ci,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-effect-size,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-statistic,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-p,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-posthoc {
+  width: auto !important;
+  min-width: 0 !important;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-term,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-value {
+  overflow-wrap: anywhere !important;
+  word-break: keep-all !important;
+}
+
 .regression-results > .regression-result-panel.landscape-table-panel {
   width: min(100%, 890px);
   max-width: 100%;
@@ -5212,6 +5491,38 @@ input.variable-select:disabled {
   max-width: 100% !important;
   table-layout: fixed;
   font-size: var(--result-table-font-size);
+}
+
+@media screen {
+  .regression-results > .structural-residual-result.landscape-table-panel {
+    overflow-x: auto;
+  }
+
+  .regression-results > .structural-residual-result.landscape-table-panel .structural-residual-matrix {
+    width: max-content !important;
+    min-width: 100% !important;
+    max-width: none !important;
+    table-layout: auto !important;
+  }
+
+  .regression-results > .structural-residual-result.landscape-table-panel .structural-residual-matrix th,
+  .regression-results > .structural-residual-result.landscape-table-panel .structural-residual-matrix td {
+    white-space: nowrap;
+  }
+}
+
+@media print {
+  body.print-mixed-landscape .structural-residual-result.landscape-table-panel .structural-residual-matrix {
+    font-size: 5.5pt !important;
+  }
+
+  body.print-mixed-landscape .structural-residual-result.landscape-table-panel .structural-residual-matrix th,
+  body.print-mixed-landscape .structural-residual-result.landscape-table-panel .structural-residual-matrix td {
+    padding-left: 1.5pt !important;
+    padding-right: 1.5pt !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
 }
 
 .regression-result-panel h3 {
@@ -5902,7 +6213,7 @@ table {
   min-width: 0 !important;
   max-width: 100% !important;
   table-layout: fixed !important;
-  font-size: 9px !important;
+  font-size: 12px !important;
 }
 
 .logistic-hierarchical-result-panel.landscape-table-panel .logistic-hierarchical-table.fit-width-hierarchical-table th,
@@ -6059,6 +6370,178 @@ table {
   min-width: 100%;
   max-width: none;
   box-sizing: border-box;
+}
+
+/* Shared B5 screen-table contract.
+ * Each wrapper represents one table sheet. Portrait is the default; the R
+ * builder selects landscape only when the table's intrinsic width exceeds the
+ * portrait capacity. The table keeps its intrinsic width inside the sheet so
+ * wide headers scroll instead of colliding or being clipped. */
+.result-table-sheet {
+  --result-sheet-width: 590px;
+  --result-sheet-table-font-size: 12px;
+  --result-sheet-header-font-size: 11px;
+  --result-sheet-note-font-size: 11px;
+  display: block;
+  width: min(100%, var(--result-sheet-width));
+  max-width: 100%;
+  margin: 0 0 18px;
+  box-sizing: border-box;
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-inline: contain;
+  background: #ffffff;
+  color: #2f3a46;
+  font-family: Arial, "Noto Sans KR", "Malgun Gothic", sans-serif;
+  font-size: var(--result-sheet-table-font-size);
+  line-height: 1.35;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.result-table-sheet--portrait {
+  --result-sheet-width: 590px;
+}
+
+.result-table-sheet--landscape {
+  --result-sheet-width: 890px;
+}
+
+.result-table-sheet > table.result-table-contract-table {
+  width: max(100%, var(--result-table-intrinsic-width, 480px)) !important;
+  min-width: var(--result-table-intrinsic-width, 480px) !important;
+  max-width: none !important;
+  table-layout: auto !important;
+  margin: 0;
+  font-family: inherit !important;
+  font-size: var(--result-sheet-table-font-size) !important;
+}
+
+.result-table-sheet > table.result-table-contract-table th {
+  box-sizing: border-box;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+  hyphens: manual;
+  font-family: inherit !important;
+  font-size: var(--result-sheet-header-font-size) !important;
+  line-height: 1.25 !important;
+  vertical-align: middle !important;
+}
+
+.result-table-sheet > table.result-table-contract-table td {
+  box-sizing: border-box;
+  font-family: inherit !important;
+  font-size: var(--result-sheet-table-font-size) !important;
+  line-height: 1.35 !important;
+  text-overflow: clip;
+}
+
+.result-table-sheet .coefficient-header-break {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: inherit;
+  max-width: 100%;
+  white-space: normal !important;
+}
+
+.result-table-sheet .coefficient-header-break > span {
+  display: block;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.result-table-sheet .coefficient-note,
+.result-table-sheet .coefficient-warning {
+  font-family: inherit;
+  font-size: var(--result-sheet-note-font-size);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.result-table-sheet--main .coefficient-note {
+  color: #455260;
+}
+
+.result-table-sheet--appendix .coefficient-note {
+  color: #52606d;
+}
+
+.result-table-sheet-section,
+.result-section.regression-result-panel:has(.result-table-sheet) {
+  box-sizing: border-box;
+  font-family: Arial, "Noto Sans KR", "Malgun Gothic", sans-serif;
+}
+
+.result-table-sheet-section > h3,
+.result-section.regression-result-panel:has(.result-table-sheet) > h3 {
+  margin: 0 0 10px;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.result-table-sheet-section--portrait,
+.result-section.regression-result-panel:has(.result-table-sheet--portrait) {
+  width: min(100%, 590px) !important;
+  max-width: 100% !important;
+}
+
+.result-table-sheet-section--landscape,
+.result-section.regression-result-panel:has(.result-table-sheet--landscape) {
+  width: min(100%, 890px) !important;
+  max-width: 100% !important;
+  overflow-x: visible !important;
+}
+
+.meta-advanced-settings {
+  margin: 10px 0 14px;
+  padding: 8px 10px;
+  border: 1px solid #cbd9e6;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.meta-advanced-settings > summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  color: #183b63;
+}
+
+.meta-advanced-settings[open] > summary {
+  margin-bottom: 8px;
+}
+
+@media print {
+  @page statedu-b5-portrait {
+    size: B5 portrait;
+    margin: 14mm;
+  }
+
+  @page statedu-b5-landscape {
+    size: B5 landscape;
+    margin: 12mm;
+  }
+
+  .result-table-sheet {
+    margin: 0;
+    overflow: visible;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .result-table-sheet--portrait {
+    page: statedu-b5-portrait;
+  }
+
+  .result-table-sheet--landscape {
+    page: statedu-b5-landscape;
+  }
 }
 
 .reliability-note {
@@ -6354,6 +6837,27 @@ pre {
   white-space: nowrap;
 }
 
+.statedu-bootstrap-status-title {
+  display: block;
+  margin-bottom: 4px;
+  line-height: 1.35;
+}
+
+.statedu-bootstrap-status-detail {
+  margin-bottom: 8px;
+  line-height: 1.35;
+}
+
+.statedu-bootstrap-progress {
+  height: 20px;
+  margin: 0 0 10px;
+}
+
+.statedu-bootstrap-stop-button {
+  width: 100%;
+  white-space: normal;
+}
+
 .regression-workspace-panel {
   width: var(--se-analysis-workspace-width);
   min-width: var(--se-analysis-workspace-width);
@@ -6587,7 +7091,7 @@ pre {
 .frequencies-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
 .reliability-setup-grid > .analysis-transfer-panel:not(.reliability-target-panel) .analysis-transfer-listbox,
 .correlation-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
-.ttest-anova-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
+.ttest-anova-setup-grid > .analysis-transfer-panel:not(.one-group-rm-target-panel) .analysis-transfer-listbox,
 .paired-setup-grid > .analysis-transfer-panel:not(.paired-rm-target-panel) .analysis-transfer-listbox {
   height: 417px !important;
   min-height: 417px !important;
@@ -7008,6 +7512,131 @@ pre {
   padding-right: 4px;
 }
 
+.one-group-rm-format {
+  margin: 0 18px;
+}
+
+.one-group-rm-format-help {
+  margin-top: 2px;
+  color: #52697d;
+}
+
+.one-group-rm-transfer-grid > .one-group-rm-target-panel {
+  display: flex;
+  flex-direction: column;
+  height: var(--se-standard-panel-height, 520px);
+  overflow: hidden;
+}
+
+.one-group-rm-target-section {
+  flex: 0 0 auto;
+}
+
+.one-group-rm-target-section .analysis-field-label {
+  margin-bottom: 6px;
+}
+
+.one-group-rm-wide-target-section {
+  height: 190px;
+}
+
+.one-group-rm-wide-target-section + .one-group-rm-wide-target-section {
+  margin-top: 10px;
+}
+
+.ttest-anova-setup-grid.one-group-rm-transfer-grid > .analysis-transfer-panel.one-group-rm-target-panel .one-group-rm-wide-target-section .analysis-transfer-listbox {
+  height: 120px !important;
+  min-height: 120px !important;
+  max-height: 120px !important;
+}
+
+.one-group-rm-wide-target-section .analysis-order-actions {
+  justify-content: flex-start;
+  margin-top: 8px;
+}
+
+.one-group-rm-wide-covariate-section {
+  height: 96px;
+  margin-top: 10px;
+}
+
+.ttest-anova-setup-grid.one-group-rm-transfer-grid > .analysis-transfer-panel.one-group-rm-target-panel .one-group-rm-wide-covariate-section .analysis-transfer-listbox {
+  height: 72px !important;
+  min-height: 72px !important;
+  max-height: 72px !important;
+}
+
+.one-group-rm-long-target-section {
+  height: auto;
+}
+
+.one-group-rm-long-target-section + .one-group-rm-long-target-section {
+  margin-top: 8px;
+}
+
+.one-group-rm-outcome-section,
+.one-group-rm-time-section,
+.one-group-rm-group-section {
+  height: 88px;
+}
+
+.one-group-rm-id-section {
+  height: 76px;
+}
+
+.one-group-rm-covariate-section {
+  height: 100px;
+}
+
+.ttest-anova-setup-grid.one-group-rm-transfer-grid > .analysis-transfer-panel.one-group-rm-target-panel .one-group-rm-id-section .analysis-transfer-listbox {
+  height: 48px !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
+}
+
+.ttest-anova-setup-grid.one-group-rm-transfer-grid > .analysis-transfer-panel.one-group-rm-target-panel .one-group-rm-outcome-section .analysis-transfer-listbox,
+.ttest-anova-setup-grid.one-group-rm-transfer-grid > .analysis-transfer-panel.one-group-rm-target-panel .one-group-rm-time-section .analysis-transfer-listbox,
+.ttest-anova-setup-grid.one-group-rm-transfer-grid > .analysis-transfer-panel.one-group-rm-target-panel .one-group-rm-group-section .analysis-transfer-listbox {
+  height: 60px !important;
+  min-height: 60px !important;
+  max-height: 60px !important;
+}
+
+.ttest-anova-setup-grid.one-group-rm-transfer-grid > .analysis-transfer-panel.one-group-rm-target-panel .one-group-rm-covariate-section .analysis-transfer-listbox {
+  height: 72px !important;
+  min-height: 72px !important;
+  max-height: 72px !important;
+}
+
+.one-group-rm-transfer-controls {
+  display: grid;
+  align-items: stretch;
+  justify-content: center;
+  height: var(--se-standard-panel-height, 520px);
+  padding: 12px 0;
+  box-sizing: border-box;
+}
+
+.one-group-rm-wide-controls {
+  grid-template-rows: 190px 190px 96px;
+  row-gap: 10px;
+}
+
+.one-group-rm-long-controls {
+  grid-template-rows: 88px 76px 88px 88px 100px;
+  row-gap: 8px;
+}
+
+.one-group-rm-transfer-button-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.one-group-rm-options-block .analysis-option-group {
+  margin-bottom: 18px;
+}
+
 .paired-target-panel {
   display: flex;
   flex-direction: column;
@@ -7332,6 +7961,26 @@ pre {
   max-height: 186px !important;
 }
 
+/* Let the regularized-regression predictor list use its panel's spare space. */
+.penalized-menu-grid .hierarchical-block1-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.penalized-menu-grid .hierarchical-block1-panel .analysis-transfer-listbox {
+  flex: 1 1 0;
+  height: auto !important;
+  min-height: 186px !important;
+  max-height: none !important;
+}
+
+.penalized-menu-grid .hierarchical-block1-panel .hierarchical-order-actions {
+  flex-shrink: 0;
+}
+
+.analysis-transfer-option.transfer-insert-before { box-shadow: inset 0 2px #2563eb; }
+.analysis-transfer-option.transfer-insert-after { box-shadow: inset 0 -2px #2563eb; }
+
 .crosstab-target-column {
   grid-template-rows: auto auto !important;
   height: auto !important;
@@ -7428,7 +8077,7 @@ pre {
   min-width: 0 !important;
   max-width: 100% !important;
   table-layout: fixed !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
 }
 
 .regression-results > .crosstab-result-section.regression-result-panel.landscape-table-panel .crosstab-row-variable-col {
@@ -7932,11 +8581,13 @@ pre {
 .analysis-three-block-workspace:has(.hierarchical-action-row),
 .analysis-three-block-workspace:has(.logistic-action-row),
 .analysis-three-block-workspace:has(.generalized-action-row),
+.analysis-three-block-workspace:has(.survival-action-row),
 .analysis-three-block-workspace.crosstab-workspace-panel,
 .analysis-three-block-workspace.regression-workspace-panel,
 .analysis-three-block-workspace.hierarchical-workspace-panel,
 .analysis-three-block-workspace.logistic-workspace-panel,
-.analysis-three-block-workspace.generalized-workspace-panel {
+.analysis-three-block-workspace.generalized-workspace-panel,
+.analysis-three-block-workspace.survival-workspace-panel {
   width: var(--se-standard-four-column-workspace-width) !important;
   min-width: var(--se-standard-four-column-workspace-width) !important;
   max-width: var(--se-standard-four-column-workspace-width) !important;
@@ -7954,6 +8605,179 @@ pre {
 
 .analysis-three-block-workspace .analysis-workspace-heading {
   margin-bottom: 10px !important;
+}
+
+.survival-design-setup-grid {
+  display: grid;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-panel-width) var(--se-standard-options-width);
+  gap: var(--se-standard-gap);
+  width: calc((var(--se-standard-panel-width) * 2) + var(--se-standard-options-width) + (var(--se-standard-gap) * 2) + (var(--se-standard-panel-padding) * 2));
+  padding: var(--se-standard-panel-padding);
+  box-sizing: border-box;
+  align-items: stretch;
+}
+
+.survival-design-setup-grid > .analysis-transfer-panel {
+  width: var(--se-standard-panel-width);
+  min-width: var(--se-standard-panel-width);
+  max-width: var(--se-standard-panel-width);
+}
+
+.survival-design-setup-grid > .analysis-options-panel {
+  width: var(--se-standard-options-width);
+  min-width: var(--se-standard-options-width);
+  max-width: var(--se-standard-options-width);
+}
+
+.survival-design-setup-grid h4,
+.survival-competing-setup-grid h4 {
+  margin: 0 0 16px;
+  color: var(--se-heading-color, #102a52);
+  font-weight: 700;
+}
+
+.survival-design-time-panel,
+.survival-design-variable-panel,
+.survival-competing-options-panel {
+  overflow-y: auto;
+}
+
+.survival-design-variable-panel.analysis-options-column {
+  display: block;
+  gap: 0;
+}
+
+.survival-design-time-panel > h4,
+.survival-design-variable-panel > h4 {
+  margin-bottom: 16px;
+}
+
+#survival_contract_setup,
+.survival-contract-grid-fragment {
+  display: contents;
+}
+
+.survival-design-action-row {
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
+  gap: var(--se-standard-gap) !important;
+  width: calc((var(--se-standard-panel-width) * 2) + var(--se-standard-options-width) + (var(--se-standard-gap) * 2) + (var(--se-standard-panel-padding) * 2)) !important;
+  min-width: calc((var(--se-standard-panel-width) * 2) + var(--se-standard-options-width) + (var(--se-standard-gap) * 2) + (var(--se-standard-panel-padding) * 2)) !important;
+  max-width: none !important;
+  padding: 0 var(--se-standard-panel-padding) var(--se-standard-panel-padding) !important;
+  box-sizing: border-box;
+}
+
+.survival-design-results {
+  width: calc((var(--se-standard-panel-width) * 2) + var(--se-standard-options-width) + (var(--se-standard-gap) * 2) + (var(--se-standard-panel-padding) * 2));
+  padding: 0 var(--se-standard-panel-padding) var(--se-standard-panel-padding);
+  box-sizing: border-box;
+}
+
+.survival-design-result-card {
+  margin-top: 0 !important;
+}
+
+.survival-recommendation-explanation {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+  margin: 18px 0 4px;
+}
+
+.survival-recommendation-section {
+  min-width: 0;
+}
+
+.survival-recommendation-section h4 {
+  margin: 0 0 7px;
+  color: var(--se-heading-color, #102a52);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.survival-recommendation-section p,
+.survival-recommendation-section ul {
+  margin: 0 0 8px;
+}
+
+.survival-recommendation-section ul {
+  padding-left: 20px;
+}
+
+.survival-recommendation-data {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #dbe5ee;
+  border-radius: 6px;
+  background: #f7fafc;
+}
+
+.survival-recommendation-rule {
+  margin-top: 12px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .survival-recommendation-explanation {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.survival-event-map-panel {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.survival-event-map-row {
+  display: grid;
+  grid-template-columns: 76px minmax(104px, 1fr) minmax(72px, 0.85fr);
+  gap: 8px;
+  align-items: start;
+  min-width: 0;
+}
+
+.survival-event-map-row > * {
+  min-width: 0;
+}
+
+.survival-event-map-raw {
+  padding-top: 8px;
+  overflow-wrap: anywhere;
+}
+
+.survival-event-map-row .form-group,
+.survival-event-map-row .form-control {
+  width: 100%;
+  min-width: 0;
+}
+
+.analysis-three-block-workspace .survival-competing-setup-grid > .survival-competing-variable-panel {
+  grid-column: 1 !important;
+}
+
+.analysis-three-block-workspace .survival-competing-setup-grid > .survival-competing-event-panel {
+  grid-column: 3 !important;
+}
+
+.analysis-three-block-workspace .survival-competing-setup-grid > .survival-competing-options-panel {
+  grid-column: 4 !important;
+}
+
+@media (max-width: 900px) {
+  .survival-design-setup-grid {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
+  }
+
+  .survival-design-setup-grid > .analysis-transfer-panel,
+  .survival-design-setup-grid > .analysis-options-panel {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
 }
 
 .analysis-three-block-workspace .analysis-workspace-heading {
@@ -7985,6 +8809,7 @@ pre {
 .analysis-three-block-workspace .hierarchical-setup-grid,
 .analysis-three-block-workspace .logistic-setup-grid,
 .analysis-three-block-workspace .generalized-setup-grid,
+.analysis-three-block-workspace .survival-setup-grid,
 .analysis-three-block-workspace .frequencies-action-row,
 .analysis-three-block-workspace .reliability-action-row,
 .analysis-three-block-workspace .paired-action-row,
@@ -7993,7 +8818,8 @@ pre {
 .analysis-three-block-workspace .regression-action-row,
 .analysis-three-block-workspace .hierarchical-action-row,
 .analysis-three-block-workspace .logistic-action-row,
-.analysis-three-block-workspace .generalized-action-row {
+.analysis-three-block-workspace .generalized-action-row,
+.analysis-three-block-workspace .survival-action-row {
   width: var(--se-standard-setup-width) !important;
   min-width: var(--se-standard-setup-width) !important;
   max-width: var(--se-standard-setup-width) !important;
@@ -8024,6 +8850,8 @@ pre {
 .analysis-three-block-workspace:has(.logistic-action-row) .frequencies-setup-grid,
 .analysis-three-block-workspace:has(.generalized-action-row) .generalized-setup-grid,
 .analysis-three-block-workspace:has(.generalized-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.survival-action-row) .survival-setup-grid,
+.analysis-three-block-workspace:has(.survival-action-row) .frequencies-setup-grid,
 .analysis-three-block-workspace .frequencies-action-row:not(.crosstab-action-row),
 .analysis-three-block-workspace .reliability-action-row,
 .analysis-three-block-workspace .paired-action-row,
@@ -8033,7 +8861,8 @@ pre {
 .analysis-three-block-workspace .regression-action-row,
 .analysis-three-block-workspace .hierarchical-action-row,
 .analysis-three-block-workspace .logistic-action-row,
-.analysis-three-block-workspace .generalized-action-row {
+.analysis-three-block-workspace .generalized-action-row,
+.analysis-three-block-workspace .survival-action-row {
   width: var(--se-standard-four-column-setup-width) !important;
   min-width: var(--se-standard-four-column-setup-width) !important;
   max-width: var(--se-standard-four-column-setup-width) !important;
@@ -8047,7 +8876,8 @@ pre {
 .analysis-three-block-workspace .regression-setup-grid,
 .analysis-three-block-workspace .hierarchical-setup-grid,
 .analysis-three-block-workspace .logistic-setup-grid,
-.analysis-three-block-workspace .generalized-setup-grid {
+.analysis-three-block-workspace .generalized-setup-grid,
+.analysis-three-block-workspace .survival-setup-grid {
   margin-top: 0 !important;
 }
 
@@ -8056,11 +8886,13 @@ pre {
 .analysis-three-block-workspace .paired-setup-grid,
 .analysis-three-block-workspace .ttest-anova-setup-grid,
 .analysis-three-block-workspace .correlation-setup-grid,
+.analysis-three-block-workspace .survival-setup-grid,
 .analysis-three-block-workspace .frequencies-action-row,
 .analysis-three-block-workspace .reliability-action-row,
 .analysis-three-block-workspace .paired-action-row,
 .analysis-three-block-workspace .ttest-anova-action-row,
-.analysis-three-block-workspace .correlation-action-row {
+.analysis-three-block-workspace .correlation-action-row,
+.analysis-three-block-workspace .survival-action-row {
   grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
 }
@@ -8069,6 +8901,7 @@ pre {
 .analysis-three-block-workspace .reliability-setup-grid > .analysis-options-panel,
 .analysis-three-block-workspace .paired-setup-grid > .ttest-anova-options-column,
 .analysis-three-block-workspace .ttest-anova-setup-grid > .ttest-anova-options-column,
+.analysis-three-block-workspace .survival-setup-grid > .ttest-anova-options-column,
 .analysis-three-block-workspace .correlation-setup-grid > .correlation-options-column {
   grid-column: 4 !important;
   grid-row: 1 !important;
@@ -8132,7 +8965,8 @@ pre {
 .analysis-three-block-workspace.regression-workspace-panel .analysis-three-block-action-row .analysis-save-cell,
 .analysis-three-block-workspace.hierarchical-workspace-panel .analysis-three-block-action-row .analysis-save-cell,
 .analysis-three-block-workspace.logistic-workspace-panel .analysis-three-block-action-row .analysis-save-cell,
-.analysis-three-block-workspace.generalized-workspace-panel .analysis-three-block-action-row .analysis-save-cell {
+.analysis-three-block-workspace.generalized-workspace-panel .analysis-three-block-action-row .analysis-save-cell,
+.analysis-three-block-workspace.survival-workspace-panel .analysis-three-block-action-row .analysis-save-cell {
   grid-column: 4 !important;
 }
 
@@ -8160,6 +8994,229 @@ pre {
   grid-column: 4 !important;
   grid-row: 1 !important;
   align-self: stretch !important;
+}
+
+.analysis-three-block-workspace .analysis-three-block-action-row {
+  display: grid !important;
+}
+
+.survival-target-column {
+  grid-template-rows: 164px 164px 156px !important;
+  height: var(--se-standard-panel-height, 520px) !important;
+  min-height: var(--se-standard-panel-height, 520px) !important;
+}
+
+.survival-target-column .survival-target-panel {
+  height: 100% !important;
+  min-height: 0 !important;
+  box-sizing: border-box;
+}
+
+.survival-transfer-controls {
+  display: grid !important;
+  grid-template-rows: 164px 164px 156px !important;
+  gap: var(--se-standard-gap, 18px) !important;
+  align-items: center !important;
+  justify-items: center !important;
+}
+
+.survival-time-panel .analysis-transfer-listbox,
+.survival-event-panel .analysis-transfer-listbox {
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+}
+
+.survival-group-panel .analysis-transfer-listbox,
+.survival-covariates-panel .analysis-transfer-listbox {
+  height: 80px !important;
+  min-height: 80px !important;
+  max-height: 80px !important;
+}
+
+.survival-target-setting {
+  margin-top: 8px;
+}
+
+.survival-target-setting .form-group {
+  margin-bottom: 0;
+}
+
+.survival-target-setting label {
+  color: #002b50;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.survival-target-setting .form-control {
+  height: 34px;
+  padding-bottom: 6px;
+  padding-top: 6px;
+}
+
+.survival-options-column.analysis-options-panel {
+  height: var(--se-standard-panel-height, 520px) !important;
+  min-height: var(--se-standard-panel-height, 520px) !important;
+}
+
+.survival-options-column .nav-tabs {
+  border-bottom: 1px solid #c8d7e6;
+  margin-bottom: 16px;
+}
+
+.survival-options-column .nav-tabs > li > a {
+  color: #24415f;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 7px 10px;
+}
+
+.survival-options-column .nav-tabs > li.active > a,
+.survival-options-column .nav-tabs > li.active > a:hover,
+.survival-options-column .nav-tabs > li.active > a:focus {
+  background-color: #ffffff;
+  border-color: #c8d7e6 #c8d7e6 transparent;
+  color: #002b50;
+}
+
+.survival-options-tab-content {
+  padding-top: 4px;
+}
+
+.survival-options-column .analysis-option-group {
+  margin-bottom: 22px;
+}
+
+.survival-options-column .analysis-option-title {
+  margin-bottom: 12px;
+  line-height: 1.35;
+}
+
+.survival-options-column .form-group {
+  margin-bottom: 12px;
+}
+
+.survival-options-column .checkbox,
+.survival-options-column .radio {
+  margin-bottom: 9px;
+  margin-top: 6px;
+}
+
+.survival-options-column .checkbox label,
+.survival-options-column .radio label {
+  line-height: 1.45;
+}
+
+.survival-results > .survival-wide-result-panel {
+  width: min(100%, 940px) !important;
+  max-width: 100% !important;
+}
+
+.survival-results > .survival-wide-result-panel table {
+  width: 100% !important;
+}
+
+.survival-result-table th,
+.survival-result-table td {
+  min-width: 72px;
+  max-width: 260px;
+  word-break: normal;
+  line-height: 1.35;
+  vertical-align: middle !important;
+}
+
+.survival-result-table th {
+  white-space: normal !important;
+}
+
+.survival-result-table td {
+  white-space: pre-line !important;
+  overflow-wrap: normal !important;
+}
+
+.survival-cox-target-column,
+.survival-cox-transfer-controls {
+  grid-template-rows: 110px 174px 200px !important;
+}
+
+.survival-cox-transfer-controls > .analysis-move-button {
+  align-self: start !important;
+}
+
+.survival-cox-transfer-controls > .analysis-move-button:nth-child(1),
+.survival-cox-transfer-controls > .analysis-move-button:nth-child(2) {
+  margin-top: 56px !important;
+}
+
+.survival-cox-transfer-controls > .analysis-move-button:nth-child(3) {
+  margin-top: 78px !important;
+}
+
+.survival-result-table th {
+  vertical-align: bottom !important;
+}
+
+.survival-result-panel {
+  overflow-x: auto !important;
+}
+
+.survival-result-panel .survival-result-table {
+  width: max-content !important;
+  min-width: 100% !important;
+  max-width: none !important;
+  table-layout: auto !important;
+}
+
+.survival-result-panel .survival-result-table th,
+.survival-result-panel .survival-result-table td {
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+}
+
+.survival-options-column .tab-content {
+  min-width: 0;
+  overflow: visible;
+}
+
+.survival-options-column .survival-options-tab-content {
+  padding-top: 14px;
+}
+
+.survival-result-table .survival-col-median-95-ci {
+  min-width: 112px !important;
+  max-width: 132px !important;
+  line-height: 1.25 !important;
+}
+
+.survival-result-table .survival-col-m-se {
+  min-width: 92px !important;
+  line-height: 1.25 !important;
+}
+
+.survival-table-note {
+  color: #4b5563;
+  font-family: Arial, "Noto Sans KR", "Malgun Gothic", sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  margin-top: 8px;
+}
+
+.survival-results .survival-plot-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.survival-results .survival-plot-result-panel {
+  width: min(100%, 760px) !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+.survival-results .survival-plot-result-panel .shiny-plot-output {
+  width: 100% !important;
 }
 
 .logistic-action-row {
@@ -9560,6 +10617,7 @@ pre {
 }
 
 .saved-result-entry-header {
+  flex-wrap: wrap;
   align-items: center;
   background: #f7fafc;
   border-bottom: 1px solid #d9e2ec;
@@ -9882,6 +10940,7 @@ pre {
   .hierarchical-setup-grid,
   .regression-setup-grid,
   .logistic-setup-grid,
+  .survival-setup-grid,
   .reliability-action-row,
   .frequencies-action-row,
   .paired-action-row,
@@ -9890,7 +10949,9 @@ pre {
   .hierarchical-action-row,
   .regression-action-row,
   .logistic-action-row,
+  .survival-action-row,
   .generalized-workspace-panel,
+  .survival-workspace-panel,
   .generalized-setup-grid,
   .generalized-action-row,
   #likert_groups,
@@ -9911,6 +10972,7 @@ pre {
   .hierarchical-setup-grid,
   .regression-setup-grid,
   .logistic-setup-grid,
+  .survival-setup-grid,
   .reliability-action-row,
   .frequencies-action-row,
   .paired-action-row,
@@ -9919,6 +10981,7 @@ pre {
   .hierarchical-action-row,
   .regression-action-row,
   .logistic-action-row,
+  .survival-action-row,
   .generalized-action-row {
     grid-template-columns: 304px 44px 304px 16px 286px !important;
     gap: 16px !important;
@@ -9935,7 +10998,8 @@ pre {
   .correlation-setup-grid,
   .hierarchical-setup-grid,
   .regression-setup-grid,
-  .logistic-setup-grid {
+  .logistic-setup-grid,
+  .survival-setup-grid {
     padding: 16px;
   }
 
@@ -9965,6 +11029,9 @@ pre {
     padding-right: 8px;
   }
 }
+.saved-result-entry-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+.saved-result-entry-actions .btn { min-height: 32px; }
+.saved-result-entry-delete { color: #b42318; }
 
 @media (max-width: 1440px) and (min-width: 901px) and (max-height: 850px) {
   .page-shell {
@@ -9981,11 +11048,15 @@ pre {
   .ttest-anova-setup-grid,
   .correlation-setup-grid,
   .regression-setup-grid,
+  .survival-setup-grid,
   .frequencies-setup-grid > .analysis-transfer-panel,
   .frequencies-setup-grid > .analysis-options-panel,
   .ttest-anova-setup-grid > .analysis-transfer-panel,
   .ttest-anova-setup-grid > .ttest-anova-target-column,
   .ttest-anova-setup-grid > .ttest-anova-options-column,
+  .survival-setup-grid > .analysis-transfer-panel,
+  .survival-setup-grid > .ttest-anova-target-column,
+  .survival-setup-grid > .ttest-anova-options-column,
   .correlation-setup-grid > .analysis-transfer-panel,
   .correlation-setup-grid > .correlation-options-column,
   .regression-setup-grid > .analysis-transfer-panel,
@@ -9998,6 +11069,7 @@ pre {
   .frequencies-setup-grid,
   .reliability-setup-grid,
   .ttest-anova-setup-grid,
+  .survival-setup-grid,
   .correlation-setup-grid {
     grid-auto-rows: var(--se-standard-panel-height, 520px);
   }
@@ -10005,7 +11077,7 @@ pre {
   .frequencies-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
   .reliability-setup-grid > .analysis-transfer-panel:not(.reliability-target-panel) .analysis-transfer-listbox,
   .correlation-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
-  .ttest-anova-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
+  .ttest-anova-setup-grid > .analysis-transfer-panel:not(.one-group-rm-target-panel) .analysis-transfer-listbox,
   .paired-setup-grid > .analysis-transfer-panel:not(.paired-rm-target-panel) .analysis-transfer-listbox {
     height: 417px !important;
     min-height: 417px !important;
@@ -10067,6 +11139,325 @@ pre {
 
 .sample-size-block3 {
   grid-column: 5;
+}
+
+/* Meta-analysis has three content panels and no transfer/options columns. */
+.meta-analysis-workspace-panel {
+  min-width: 980px;
+}
+
+.meta-analysis-setup-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: minmax(500px, auto);
+  min-width: 940px;
+}
+
+.meta-analysis-setup-grid > .sample-size-block {
+  grid-column: auto;
+  width: auto;
+  min-width: 0;
+  min-height: 500px;
+  overflow-x: hidden;
+}
+
+.meta-analysis-input-block .analysis-action-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.meta-analysis-input-block .analysis-action-row .btn {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+.meta-analysis-input-block .shiny-input-container {
+  width: 100% !important;
+  max-width: none;
+}
+
+.meta-input-actions {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #d7e2eb;
+}
+
+.meta-input-actions > .analysis-option-title {
+  margin-bottom: 10px;
+  color: #102a43;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.meta-input-actions .analysis-action-row {
+  margin-bottom: 14px;
+}
+
+.meta-download-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.meta-download-actions .btn {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  height: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.meta-additional-card {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #d7e2eb;
+  border-radius: 6px;
+  background: #f8fbfd;
+}
+
+.meta-additional-card + .meta-additional-card {
+  margin-top: 12px;
+}
+
+.meta-additional-card > .analysis-option-title {
+  margin-bottom: 10px;
+  color: #102a43;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.meta-additional-card .form-group:last-child {
+  margin-bottom: 0;
+}
+
+.meta-additional-card.meta-publication-bias-options {
+  margin-top: 12px;
+}
+
+.meta-moderator-card .meta-moderator-selector {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.meta-validation-strip {
+  display: grid;
+  grid-template-columns: minmax(330px, 0.9fr) minmax(0, 2fr);
+  gap: 18px;
+  align-items: start;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 5px;
+  background: #f4f8fb;
+}
+
+.meta-validation-summary {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px 16px;
+  min-width: 0;
+}
+
+.meta-validation-summary > p {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.analysis-three-block-workspace .meta-analysis-action-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+  min-width: 940px;
+  margin-top: 14px;
+  margin-bottom: 14px;
+  /* Match the setup grid's 18px padding plus its 1px border. */
+  padding-right: 19px;
+  padding-left: 19px;
+  box-sizing: border-box;
+}
+
+.analysis-three-block-workspace .meta-analysis-action-row .analysis-extra-cell {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  justify-self: stretch !important;
+}
+
+.analysis-three-block-workspace .meta-analysis-action-row .analysis-run-cell {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  justify-self: stretch !important;
+}
+
+.analysis-three-block-workspace .meta-analysis-action-row .analysis-reset-cell {
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  justify-self: stretch !important;
+}
+
+.analysis-three-block-workspace .meta-analysis-action-row .analysis-save-cell {
+  display: none;
+}
+
+.analysis-three-block-workspace .meta-analysis-action-row .analysis-extra-cell,
+.analysis-three-block-workspace .meta-analysis-action-row .analysis-run-cell,
+.analysis-three-block-workspace .meta-analysis-action-row .analysis-reset-cell {
+  padding-right: 19px;
+  padding-left: 19px;
+  box-sizing: border-box;
+}
+
+.analysis-three-block-workspace .meta-analysis-action-row .btn,
+.analysis-three-block-workspace .meta-analysis-action-row .analysis-run-cell > .btn,
+.analysis-three-block-workspace .meta-analysis-action-row .analysis-reset-cell > .btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+.meta-validation-strip .sample-size-method-note {
+  margin: 0;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.meta-analysis-input-block > .sample-size-method-note,
+.meta-analysis-review-block > .sample-size-method-note {
+  font-size: 14px !important;
+  line-height: 1.55 !important;
+}
+
+.meta-analysis-input-block .sample-size-method-note li {
+  margin-bottom: 4px;
+}
+
+.meta-moderator-help {
+  margin: -2px 15px 12px;
+  padding: 8px 10px;
+  border-radius: 5px;
+  background: #f4f8fb;
+  color: #334e68;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.meta-analysis-results {
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 2px solid #243b53;
+}
+
+.meta-analysis-results > h2 {
+  margin: 0 0 18px;
+  color: #102a43;
+  font-size: 21px;
+}
+
+.meta-result-section,
+.meta-forest-section,
+.meta-funnel-section {
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.meta-result-section h3,
+.meta-forest-section h3,
+.meta-funnel-section h3 {
+  margin-top: 0;
+}
+
+.meta-result-table {
+  width: 100%;
+  margin-bottom: 0;
+  background: #ffffff;
+}
+
+.meta-result-table th {
+  white-space: nowrap;
+  background: #edf3f8;
+  color: #102a43;
+}
+
+.meta-result-table th,
+.meta-result-table td {
+  padding: 7px 9px !important;
+  vertical-align: middle !important;
+}
+
+.meta-forest-section .shiny-plot-output {
+  width: 100% !important;
+  min-width: 720px;
+}
+
+.meta-funnel-section .shiny-plot-output {
+  width: 100% !important;
+  min-width: 680px;
+}
+
+.meta-publication-bias-options {
+  margin-top: 10px;
+  padding: 10px 12px 4px;
+  border: 1px solid #d7e2eb;
+  border-radius: 6px;
+  background: #f8fbfd;
+}
+
+.meta-moderator-selector {
+  margin-top: 10px;
+  padding: 10px 12px 4px;
+  border: 1px solid #d7e2eb;
+  border-radius: 6px;
+  background: #f8fbfd;
+}
+
+.meta-moderator-selector .form-group {
+  margin-bottom: 6px;
+}
+
+.meta-moderator-centering-note {
+  margin: -8px 0 18px;
+  padding: 9px 12px;
+  color: #334e68;
+  background: #f4f8fb;
+  border-left: 3px solid #5b91bd;
+}
+
+.meta-analysis-notes {
+  margin-top: 4px;
+}
+
+@media (max-width: 1050px) {
+  .meta-analysis-workspace-panel {
+    min-width: 0 !important;
+  }
+
+  .meta-analysis-setup-grid {
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+    min-width: 0;
+  }
+
+  .meta-analysis-setup-grid > .sample-size-block {
+    min-height: 0;
+  }
+
+  .meta-validation-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-three-block-workspace .meta-analysis-action-row {
+    grid-template-columns: 1fr !important;
+    min-width: 0;
+  }
+
+  .analysis-three-block-workspace .meta-analysis-action-row .analysis-extra-cell,
+  .analysis-three-block-workspace .meta-analysis-action-row .analysis-run-cell,
+  .analysis-three-block-workspace .meta-analysis-action-row .analysis-reset-cell {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+  }
 }
 
 .sample-size-block h3 {
@@ -12945,12 +14336,13 @@ select[id$="_active_role"]:focus {
   padding-right: 6px !important;
 }
 
-.mm-results .mm-conditional-effects-section .coefficient-col-path,
+.mm-results .mm-conditional-effects-section .coefficient-table th,
+.mm-results .mm-conditional-effects-section .coefficient-table td,
 .mm-results .mm-johnson-neyman-section .coefficient-col-path,
 .mm-results .mm-johnson-neyman-detail-section .coefficient-col-path {
-  white-space: nowrap !important;
-  overflow-wrap: normal !important;
-  word-break: keep-all !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
 }
 
 @media (max-width: 1100px) {
@@ -13016,4 +14408,559 @@ select[id$="_active_role"]:focus {
 .regression-options.analysis-options-panel .analysis-option-group .checkbox.disabled label,
 .regression-options.analysis-options-panel .analysis-option-group .checkbox.is-disabled label {
   color: #778899;
+}
+
+/* Laptop analysis workspaces: keep every panel and control inside the CSS viewport. */
+@media (max-width: 1440px) and (min-width: 901px) {
+  body {
+    --se-standard-panel-width: 304px;
+    --se-standard-options-width: 286px;
+    --se-standard-inner-button-width: 280px;
+    --se-standard-options-button-width: 262px;
+    --se-standard-setup-width: 1050px;
+  }
+
+  .analysis-transfer-panel .analysis-transfer-listbox {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .custom-model-workspace-panel,
+  .structural-equation-workspace-panel,
+  .mm-workspace-panel,
+  .longitudinal-workspace-panel,
+  .longitudinal-data-viewer-panel {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  .longitudinal-workspace-heading {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .mm-role-grid {
+    grid-template-areas:
+      "available transfer targets model"
+      "diagram diagram diagram diagram";
+    grid-template-columns: 304px 44px 304px minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mm-available-panel { grid-area: available; }
+  .mm-transfer-controls { grid-area: transfer; }
+  .mm-role-targets-panel { grid-area: targets; }
+  .mm-model-column { grid-area: model; }
+  .mm-diagram-panel { grid-area: diagram; }
+
+  .mm-model-column,
+  .mm-model-panel,
+  .mm-role-targets-panel,
+  .mm-available-panel,
+  .mm-diagram-panel {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .mm-action-row {
+    grid-template-columns: 304px 44px 304px minmax(0, 1fr) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .mm-action-row > #mediation_moderation_save_control {
+    grid-column: 4;
+    width: 100%;
+    min-width: 0;
+    max-width: 304px;
+  }
+
+  .longitudinal-setup-grid,
+  .longitudinal-action-row {
+    grid-template-columns: minmax(220px, 1fr) 36px minmax(220px, 1fr) 36px minmax(220px, 1fr) minmax(250px, 1.15fr) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  .longitudinal-available-panel,
+  .longitudinal-target-block {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .longitudinal-options.analysis-options-panel {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: auto !important;
+    min-height: 570px !important;
+    max-height: none !important;
+  }
+
+  .longitudinal-options .regression-field,
+  .longitudinal-options .form-group,
+  .longitudinal-options .selectize-control,
+  .longitudinal-options .form-control,
+  .longitudinal-options select {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .longitudinal-options .nav-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .longitudinal-options .nav-tabs > li {
+    float: none;
+    flex: 1 1 50%;
+    min-width: 0;
+  }
+
+  .longitudinal-options .nav-tabs > li > a {
+    margin-right: 0;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .longitudinal-action-row > .btn,
+  .longitudinal-action-row > #reset_longitudinal {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  .longitudinal-action-row > #longitudinal_save_control {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .longitudinal-action-row .analysis-run-cell,
+  .longitudinal-action-row .analysis-reset-cell,
+  .longitudinal-action-row .analysis-save-cell,
+  .longitudinal-action-row .analysis-run-cell > .btn,
+  .longitudinal-action-row .analysis-reset-cell .analysis-reset-button {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .ttest-anova-setup-grid.ancova-setup-grid {
+    grid-auto-rows: auto !important;
+  }
+
+  .ttest-anova-setup-grid.ancova-setup-grid > .ancova-target-column {
+    grid-template-rows: 162px 92px 246px !important;
+    align-self: start !important;
+    height: 536px !important;
+    min-height: 536px !important;
+    max-height: none !important;
+  }
+
+  .survival-setup-grid {
+    grid-auto-rows: auto !important;
+  }
+
+  .survival-target-column,
+  .survival-transfer-controls {
+    grid-template-rows: 164px 196px 160px !important;
+    align-self: start !important;
+    height: 556px !important;
+    min-height: 556px !important;
+    max-height: none !important;
+  }
+}
+
+/* Final table-contract precedence: keep these rules after analysis-specific
+ * layouts so callers cannot accidentally reintroduce mixed fonts or clip a
+ * landscape sheet with a portrait panel rule. */
+.result-table-with-note.result-table-sheet {
+  width: min(100%, var(--result-sheet-width)) !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  font-family: Arial, "Noto Sans KR", "Malgun Gothic", sans-serif !important;
+  font-size: var(--result-sheet-table-font-size) !important;
+}
+
+/* Some legacy result panels set every direct table wrapper to width: 100%
+ * with a more specific selector.  A section may legitimately contain both a
+ * portrait and a landscape sheet, so that legacy rule must not stretch the
+ * portrait siblings to the landscape width. */
+body .result-section.regression-result-panel >
+  .result-table-with-note.result-table-sheet[data-result-table-sheet="true"][data-result-table-orientation] {
+  width: min(100%, var(--result-sheet-width)) !important;
+  max-width: 100% !important;
+}
+
+.result-table-sheet table.result-table-contract-table {
+  width: max(100%, var(--result-table-intrinsic-width, 480px)) !important;
+  min-width: var(--result-table-intrinsic-width, 480px) !important;
+  max-width: none !important;
+  table-layout: auto !important;
+  font-family: inherit !important;
+  font-size: var(--result-sheet-table-font-size) !important;
+}
+
+.result-table-sheet table.result-table-contract-table th {
+  white-space: normal !important;
+  overflow: visible !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+  font-family: inherit !important;
+  font-size: var(--result-sheet-header-font-size) !important;
+  line-height: 1.25 !important;
+}
+
+.result-table-sheet table.result-table-contract-table td {
+  font-family: inherit !important;
+  font-size: var(--result-sheet-table-font-size) !important;
+  line-height: 1.35 !important;
+}
+
+.result-table-sheet .coefficient-note,
+.result-table-sheet .coefficient-warning {
+  font-family: inherit !important;
+  font-size: var(--result-sheet-note-font-size) !important;
+  line-height: 1.4 !important;
+}
+
+/* Cross-tabulation uses an explicit colgroup whose widths are already part of
+ * the B5 width estimate. Keep that layout fixed so the generic regression
+ * panel rules cannot expand a compact 2 x 2 table beyond a portrait sheet. */
+.result-table-sheet > table.result-table-contract-table.crosstab-main-table {
+  table-layout: fixed !important;
+}
+
+.result-table-sheet > table.result-table-contract-table.crosstab-main-table th,
+.result-table-sheet > table.result-table-contract-table.crosstab-main-table td {
+  padding: 7px 4px !important;
+}
+
+/* The t-test/ANOVA family defines compact semantic column widths.  Keep the
+ * finished table inside its B5 sheet; the generic intrinsic-width rule can
+ * otherwise add a few pixels of unnecessary horizontal overflow. */
+.ttest-anova-result-panel .result-table-sheet > table.result-table-contract-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+/* Keep the same compact layout when the standalone viewer adds its high-
+ * specificity intrinsic-width rules. Labels wrap instead of widening the sheet. */
+.ttest-anova-result-panel .result-table-with-note.result-table-sheet:is(#statedu-saved-result-sheet, [data-result-table-sheet="true"]) > table.result-table-contract-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+/* Frequency and descriptive tables are already split by measurement type.
+ * Keep the wider continuous table exactly inside its B5 landscape sheet so
+ * border and intrinsic-width rounding cannot add a small horizontal scroll. */
+.frequency-table-wrap .result-table-sheet > table.result-table-contract-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.result-table-sheet-section--portrait,
+.result-section.regression-result-panel:has(.result-table-sheet--portrait) {
+  width: min(100%, 590px) !important;
+  max-width: 100% !important;
+}
+
+.result-table-sheet-section--landscape,
+.result-section.regression-result-panel:has(.result-table-sheet--landscape) {
+  width: min(100%, 890px) !important;
+  max-width: 100% !important;
+  overflow-x: visible !important;
+}
+/* Shared command/run actions align to the first panel, with separate hit areas. */
+.analysis-three-block-workspace .analysis-three-block-action-row .analysis-run-cell {
+  justify-self: center !important;
+  width: calc(var(--se-standard-panel-width, 326px) - 26px) !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+.analysis-primary-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
+.analysis-primary-actions > .btn {
+  flex: 1 1 0;
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 38px;
+  height: auto;
+  margin: 0 !important;
+  white-space: normal;
+  border-radius: 4px;
+}
+.analysis-three-block-action-row .analysis-extra-cell { grid-row: 2; }
+.analysis-three-block-workspace .meta-analysis-action-row .analysis-run-cell { grid-column: 1 !important; }
+.analysis-three-block-workspace .meta-analysis-action-row .analysis-extra-cell { grid-column: 2 !important; }
+/* Structural main/appendix tables share typography and one display zoom.
+ * Nested appendix panels must not multiply the outer panel's 1.5x zoom. */
+.structural-analysis-results.regression-results .regression-result-panel .regression-result-panel {
+  zoom: 1 !important;
+}
+.structural-analysis-results.regression-results table,
+.structural-analysis-results.regression-results table th,
+.structural-analysis-results.regression-results table td {
+  font-family: Arial, "Noto Sans KR", "Malgun Gothic", sans-serif !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+.structural-analysis-results.regression-results table :is(span, div, p, small, strong, em, b, i) {
+  font-size: inherit !important;
+  font-family: inherit !important;
+}
+.structural-analysis-results.regression-results :is(.coefficient-note, .coefficient-warning, .structural-result-note) {
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+}
+.statedu-output-page--landscape .model-canvas-report-figure img { max-height: 148mm !important; object-fit: contain; }
+.statedu-output-page--portrait .model-canvas-report-figure img { max-height: 220mm !important; object-fit: contain; }
+@media print {
+  .model-canvas-report-figure[data-result-table-orientation="landscape"] img { max-height: 148mm; object-fit: contain; }
+}
+/* Saved structural headers must wrap inside their own columns. */
+body .structural-analysis-results.regression-results table th,
+body .structural-analysis-results.regression-results table th :is(span, div, p, strong, b, small) {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+  text-overflow: clip !important;
+  line-height: 1.35 !important;
+  height: auto !important;
+  max-height: none !important;
+}
+body .structural-analysis-results.regression-results table th {
+  vertical-align: middle !important;
+}
+@media screen {
+  body .structural-analysis-results.regression-results table.structural-landscape-table {
+    table-layout: auto !important;
+    min-width: 890px !important;
+  }
+  body .structural-analysis-results.regression-results table.structural-landscape-table th {
+    min-width: 52px !important;
+  }
+  body .structural-analysis-results.regression-results .table-responsive { overflow-x: auto !important; }
+}
+/* Publication headers and compact B5 portrait tables share the export contract. */
+.regression-results table.result-table-contract-table thead th {
+  text-align: center !important;
+}
+.regression-results table.result-table-contract-table[data-result-table-orientation="portrait"] {
+  width: 100% !important; min-width: 0 !important; max-width: 590px !important;
+  table-layout: fixed !important;
+}
+.regression-results table.result-table-contract-table[data-result-table-orientation="portrait"] th,
+.regression-results table.result-table-contract-table[data-result-table-orientation="portrait"] td {
+  min-width: 0 !important; overflow-wrap: anywhere !important; white-space: normal !important;
+}
+.regression-results table.crosstab-main-table[data-result-table-orientation="portrait"] col.crosstab-row-variable-col { width: 17% !important; }
+.regression-results table.crosstab-main-table[data-result-table-orientation="portrait"] col.crosstab-row-label-col { width: 18% !important; }
+.regression-results table.crosstab-main-table[data-result-table-orientation="portrait"] col.crosstab-n-col { width: 11% !important; }
+.regression-results table.crosstab-main-table[data-result-table-orientation="portrait"] col.crosstab-count-col { width: auto !important; }
+.regression-results table.crosstab-main-table[data-result-table-orientation="portrait"] col.crosstab-stat-col { width: 8% !important; }
+.regression-results table.crosstab-main-table[data-result-table-orientation="portrait"] th,
+.regression-results table.crosstab-main-table[data-result-table-orientation="portrait"] td {
+  padding: 5px 3px !important; overflow-wrap: anywhere !important; word-break: normal !important;
+}
+
+/* Keep these wide publication tables inside the same sheet as their notes. */
+body .result-table-sheet:is(#statedu-saved-result-sheet, [data-result-table-sheet="true"])
+  table.result-table-contract-table:is(.interrater-agreement-table, .penalized-journal-table) {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+body .result-table-sheet table:is(.interrater-agreement-table, .penalized-journal-table) :is(th, td) {
+  min-width: 0 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* Regression families share the mediation/moderation publication appearance. */
+body :is(table.regression-publication-table, .mm-results table.coefficient-table,
+  .logistic-results table.coefficient-table, .generalized-results table.coefficient-table,
+  .longitudinal-results table.coefficient-table, table.penalized-journal-table) {
+  color: #374151 !important;
+  font-family: Arial, "Noto Sans KR", "Malgun Gothic", sans-serif !important;
+  border-top: 2px solid #1f2937 !important;
+  border-bottom: 2px solid #1f2937 !important;
+}
+body :is(table.regression-publication-table, .mm-results table.coefficient-table,
+  .logistic-results table.coefficient-table, .generalized-results table.coefficient-table,
+  .longitudinal-results table.coefficient-table, table.penalized-journal-table) :is(th, td) {
+  padding: 5px 4px !important;
+  line-height: 1.35 !important;
+  color: #374151 !important;
+}
+body :is(table.regression-publication-table, .mm-results table.coefficient-table,
+  .logistic-results table.coefficient-table, .generalized-results table.coefficient-table,
+  .longitudinal-results table.coefficient-table, table.penalized-journal-table) th {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+body :is(table.regression-publication-table, .mm-results table.coefficient-table,
+  .logistic-results table.coefficient-table, .generalized-results table.coefficient-table,
+  .longitudinal-results table.coefficient-table, table.penalized-journal-table) td {
+  font-size: 12px !important;
+}
+body .result-table-sheet:is(#statedu-saved-result-sheet, [data-result-table-sheet="true"]) > table.conditional-effects-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+body .mm-results table.conditional-effects-table :is(th, td),
+body .mm-results table.conditional-effects-table :is(th, td):nth-child(-n+3) * {
+  min-width: 0 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+/* Shared typography for regression and its regularized-regression setup. */
+:is(.regression-setup-grid, .hierarchical-setup-grid) {
+  font-family: Arial, "Noto Sans KR", "Malgun Gothic", sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+}
+:is(.regression-setup-grid, .hierarchical-setup-grid) :is(label, .form-control, .btn, p, .analysis-transfer-option-label) {
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+}
+:is(.regression-setup-grid, .hierarchical-setup-grid) .analysis-field-label {
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+/* IPA: two ordered score panels, with a conditional group panel underneath. */
+.ipa-setup-grid > .ipa-available-panel,
+.ipa-setup-grid .ipa-options-panel {
+  height: var(--se-standard-panel-height, 520px);
+  min-height: var(--se-standard-panel-height, 520px);
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.ipa-setup-grid > .ipa-target-stack {
+  grid-column: 2 / 4;
+  height: var(--se-standard-panel-height, 520px);
+  min-width: 0;
+  overflow-y: auto;
+}
+.ipa-setup-grid > .correlation-options-column { grid-column: 5; }
+.ipa-target-stack > .shiny-html-output { height: 100%; }
+.ipa-primary-panels { display: flex; flex-direction: column; gap: 12px; height: 100%; }
+.ipa-target-row {
+  display: grid;
+  grid-template-columns: var(--se-standard-transfer-width, 50px) minmax(0, 1fr);
+  gap: 18px;
+  flex: 1 1 0;
+  min-height: 0;
+}
+.ipa-primary-panels > .ipa-single-row { flex: 0 0 104px; }
+.ipa-time-block-nav { display:flex; align-items:center; justify-content:space-between; flex:0 0 36px; margin:0 0 0 68px; min-width:0; }
+.ipa-time-block-nav .analysis-field-label { margin:0; font-size:14px; }
+.ipa-time-block-nav .hierarchical-block-nav { display:flex; gap:4px; }
+.ipa-target-arrow { display: flex; align-items: center; justify-content: center; }
+.ipa-setup-grid .ipa-target-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  padding: 12px;
+  box-sizing: border-box;
+}
+.ipa-target-panel .analysis-field-label { flex: 0 0 auto; margin-bottom: 8px; }
+.ipa-target-panel .analysis-order-actions { flex: 0 0 auto; margin-top: 8px; }
+.ipa-target-panel > .analysis-transfer-listbox {
+  flex: 1 1 0;
+  height: auto !important;
+  min-height: 24px !important;
+}
+.ipa-setup-grid .shiny-input-container { width: 100%; max-width: 100%; }
+.ipa-setup-grid .analysis-transfer-listbox {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+.ipa-extra-row { grid-template-columns: 32px minmax(0, 1fr); gap: 6px; height: 116px; margin-bottom: 12px; }
+.ipa-extra-row .ipa-target-panel { padding: 8px; }
+.ipa-extra-row .analysis-field-label { font-size: 13px; }
+.ipa-extra-row.ipa-id-row { height:78px; }
+.ipa-time-direction { display:flex; flex-direction:column; align-items:flex-start; gap:8px; margin-bottom:12px; overflow-wrap:anywhere; }
+.ipa-options-panel .tab-content { overflow-y: auto; overflow-x: hidden; padding-top: 14px; }
+.ipa-options-panel .nav-tabs { flex-wrap:nowrap; gap:3px; }
+.ipa-options-panel .nav-tabs > li { flex:1 1 0; min-width:0; }
+.ipa-options-panel .nav-tabs > li > a { padding:8px 3px; font-size:12px; }
+.ipa-options-panel .nav-tabs a[aria-disabled="true"] { color:#8b98a5; background:#e9eef3; cursor:not-allowed; opacity:.65; }
+.ipa-color-swatch { display:block; width:24px; height:24px; border:1px solid #64748b; border-radius:4px; }
+.ipa-color-palette .shiny-options-group { display:grid; grid-template-columns:repeat(5,32px); gap:6px; }
+.ipa-color-palette .radio-inline { position:relative; margin:0; padding:4px; width:32px; height:32px; min-height:0; cursor:pointer; }
+.ipa-color-palette .radio-inline input[type="radio"] { position:absolute; width:1px; height:1px; opacity:0; margin:0; }
+.ipa-color-palette input:checked + span .ipa-color-swatch { outline:2px solid #0b2a4a; outline-offset:2px; box-shadow:inset 0 0 0 2px white; }
+.ipa-color-palette input:focus-visible + span .ipa-color-swatch { outline:3px dashed #0b2a4a; outline-offset:2px; }
+.ipa-primary-panels.ipa-with-group > .ipa-score-row { flex: 1 1 0; min-height: 0; }
+
+/* Publication report: B5 portrait, compact three-rule tables. */
+.ipa-publication-results { width: 176mm; max-width: 100%; color: #17212b; }
+@media screen {
+  .ipa-publication-results { zoom: var(--statedu-result-zoom, 1.5); max-width: none; }
+  .statedu-output-page .ipa-publication-results { zoom: 1 !important; }
+}
+.ipa-publication-results .ipa-section-title { font-size: 12pt; margin: 24px 0 12px; }
+.ipa-publication-sheet { box-sizing: border-box; width: 100%; background: white; padding: 8mm 10mm; margin-bottom: 16px; }
+.ipa-publication-sheet .structural-result-table-title { font-size: 10.5pt; font-weight: 600; line-height: 1.45; margin: 0 0 10px; }
+.ipa-publication-table { width: 100%; border-collapse: collapse; border-top: 1.2px solid #17212b; border-bottom: 1.2px solid #17212b; font-size: 10pt; line-height: 1.45; }
+.ipa-publication-table th, .ipa-publication-table td { border: 0; padding: 6px 5px; background: white; overflow-wrap: anywhere; }
+.ipa-publication-table thead { border-bottom: 1px solid #17212b; }
+.ipa-publication-table th { font-weight: 600; }
+.ipa-publication-sheet p { font-size: 9pt; line-height: 1.45; margin: 9px 0 0; overflow-wrap: anywhere; }
+.ipa-figure-sheet { break-inside: avoid; }
+.ipa-figure-sheet img { max-width: 100%; }
+@media print { .ipa-publication-results { width: 100%; } .ipa-publication-sheet { padding: 3mm 4mm; box-shadow: none; } }
+
+#result_document_contents .shiny-options-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 12px;
+  row-gap: 6px;
+  align-items: start;
+}
+#result_document_contents .shiny-options-group.is-single-row {
+  grid-template-columns: repeat(4, max-content);
+}
+#result_document_contents .checkbox-inline {
+  margin-left: 0;
+  margin-top: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

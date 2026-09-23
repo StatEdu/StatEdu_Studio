@@ -81,7 +81,7 @@ calculated_variable_info_row <- function(
 
 create_data_reactives <- function(input, active_data_file, calculated_variables = NULL, renamed_variables = NULL, user_missing_rules = NULL) {
   current_data_file <- reactive({
-    current_data_file_value(input$file, active_data_file())
+    current_data_file_value(isolate(input$file), active_data_file())
   })
 
   source_dataset <- reactive({
@@ -129,12 +129,31 @@ create_data_reactives <- function(input, active_data_file, calculated_variables 
 }
 
 create_table_input_collectors <- function(input, variable_info_table_fn) {
+  merge_client_table_state <- function(direct, field) {
+    state <- input$variable_table_state %||% list()
+    state_values <- state[[field]] %||% character(0)
+    if (identical(field, "measurements") && exists("settings_state_measurements", mode = "function")) {
+      state_values <- settings_state_measurements(state)
+    }
+    state_values <- unlist(state_values, recursive = TRUE, use.names = TRUE)
+    state_values <- stats::setNames(as.character(state_values), names(state_values))
+    state_values <- state_values[nzchar(names(state_values) %||% character(0))]
+    if (!length(state_values)) return(direct)
+    c(direct[setdiff(names(direct), names(state_values))], state_values)
+  }
+
   collect_var_label_inputs <- function() {
-    collect_var_label_inputs_from_table(variable_info_table_fn, input)
+    merge_client_table_state(
+      collect_var_label_inputs_from_table(variable_info_table_fn, input),
+      "var_labels"
+    )
   }
 
   collect_measurement_inputs <- function() {
-    collect_measurement_inputs_from_table(variable_info_table_fn, input)
+    merge_client_table_state(
+      collect_measurement_inputs_from_table(variable_info_table_fn, input),
+      "measurements"
+    )
   }
 
   list(
@@ -296,9 +315,14 @@ create_apply_restored_settings_basics_fn <- function(
   measurement_overrides,
   calculated_variables = NULL,
   user_missing_rules = NULL,
-  complex_sample_design_state = NULL
+  complex_sample_design_state = NULL,
+  restore_longitudinal_settings_fn = NULL,
+  restore_hierarchical_settings_fn = NULL,
+  restore_survival_settings_fn = NULL
 ) {
   function(settings, restored, selected) {
+    if (is.function(restore_survival_settings_fn)) restore_survival_settings_fn(settings$survival)
+    if (is.function(restore_longitudinal_settings_fn)) restore_longitudinal_settings_fn(settings$longitudinal)
     var_label_overrides(restored$var_labels)
     restore_category_labels_fn(restored$category_labels)
     if (is.function(calculated_variables)) {
@@ -312,6 +336,7 @@ create_apply_restored_settings_basics_fn <- function(
       selected_names(selected)
     }
     restore_setup_inputs(session, settings)
+    if (is.function(restore_hierarchical_settings_fn)) restore_hierarchical_settings_fn(settings$hierarchical)
     measurement_overrides(restored$measurement_overrides)
     if (is.function(user_missing_rules)) {
       user_missing_rules(restored$user_missing_rules)
@@ -429,6 +454,13 @@ create_restore_settings_state_fn <- function(
   restore_settings_for_current_data_fn
 ) {
   function(settings, settings_path = NULL) {
+    # The dataset observer applies pending settings again after the data read.
+    # Keep the .studio location on that in-memory object so this second pass
+    # resolves the same data file and retains the project dialog directory.
+    settings_path <- settings_path %||% attr(settings, "statedu_settings_path", exact = TRUE)
+    if (!is.null(settings_path) && nzchar(settings_path)) {
+      attr(settings, "statedu_settings_path") <- settings_path
+    }
     start <- Sys.time()
     restored <- settings_restore_state(settings)
     selected <- restored$selected
@@ -463,6 +495,13 @@ create_restore_settings_state_fn <- function(
       return()
     }
 
+    # Opening another .studio for the same dataset changes the project folder
+    # even when no data-file switch is necessary.
+    file <- current_data_file_fn()
+    if (is.list(file) && !is.null(settings_path) && nzchar(settings_path)) {
+      file$source_directory <- dirname(normalizePath(settings_path, winslash = "/", mustWork = FALSE))
+      active_data_file(file)
+    }
     restore_settings_for_current_data_fn(settings, selected, dependent, independent, controls, saved_info, restored)
     statedu_log_timing("restore_settings_state current data", start)
   }

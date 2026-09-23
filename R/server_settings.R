@@ -69,13 +69,16 @@ loaded_dataset_reset_handler <- function(
   predictor_order = NULL,
   predictor_order_initialized = NULL,
   hierarchical_block3_names = NULL,
+  hierarchical_block4_names = NULL,
   reliability_variables = NULL,
   frequency_variables = NULL,
   go_data_step,
   set_role_choices,
-  complex_sample_design_state = NULL
+  complex_sample_design_state = NULL,
+  reset_longitudinal_settings_fn = NULL
 ) {
   function(cols) {
+    if (is.function(reset_longitudinal_settings_fn)) reset_longitudinal_settings_fn(NULL)
     reset_on_dataset_load(FALSE)
     restored_data_file("")
     restored_variable_info(NULL)
@@ -98,6 +101,7 @@ loaded_dataset_reset_handler <- function(
     if (is.function(predictor_order)) predictor_order(character(0))
     if (is.function(predictor_order_initialized)) predictor_order_initialized(FALSE)
     if (is.function(hierarchical_block3_names)) hierarchical_block3_names(character(0))
+    if (is.function(hierarchical_block4_names)) hierarchical_block4_names(character(0))
     if (is.function(reliability_variables)) reliability_variables(character(0))
     if (is.function(frequency_variables)) frequency_variables(character(0))
     if (is.function(complex_sample_design_state)) {
@@ -116,16 +120,19 @@ register_loaded_dataset_observer <- function(
   pending_settings,
   reset_on_dataset_load,
   reset_loaded_dataset_state_fn,
-  restore_settings_state_fn
+  restore_settings_state_fn,
+  reset_analysis_canvases_fn = NULL
 ) {
   observeEvent(dataset_fn(), {
     cols <- names(dataset_fn())
     settings <- pending_settings()
     if (is.null(settings)) {
       if (isTRUE(reset_on_dataset_load())) {
+        if (is.function(reset_analysis_canvases_fn)) reset_analysis_canvases_fn()
         reset_loaded_dataset_state_fn(cols)
       }
     } else {
+      if (is.function(reset_analysis_canvases_fn)) reset_analysis_canvases_fn()
       reset_on_dataset_load(FALSE)
       restore_settings_state_fn(settings)
     }
@@ -186,13 +193,25 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
             active_data_file(excel_pending_file_value(uploaded_path, uploaded_name, ""))
             reset_on_dataset_load(FALSE)
           } else {
-            active_data_file(list(
+            extension <- tolower(tools::file_ext(as.character(uploaded_name %||% uploaded_path %||% "")))
+            csv_header <- isolate(input$header)
+            dat_delimiter <- isolate(input$dat_delimiter)
+            dat_has_names <- isolate(input$dat_has_names)
+            uploaded_file <- list(
               path = uploaded_path,
               name = uploaded_name,
               original_path = "",
               restored = FALSE,
               loaded_at = format(Sys.time(), "%Y%m%d%H%M%OS6")
-            ))
+            )
+            if (identical(extension, "csv")) {
+              uploaded_file$csv_header <- if (is.null(csv_header)) TRUE else isTRUE(csv_header)
+            }
+            if (identical(extension, "dat")) {
+              uploaded_file$dat_delimiter <- as.character(dat_delimiter %||% "whitespace")
+              uploaded_file$dat_has_names <- if (is.null(dat_has_names)) FALSE else isTRUE(dat_has_names)
+            }
+            active_data_file(uploaded_file)
           }
         },
         error = function(error) {
@@ -204,17 +223,38 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
       )
     }
     mark_settings_dirty()
-  })
+  }, priority = 1000)
 
   observeEvent(input$header, {
+    file <- active_data_file()
+    extension <- if (is.null(file)) "" else tolower(tools::file_ext(as.character(file$name %||% file$path %||% "")))
+    value <- isTRUE(input$header)
+    if (identical(extension, "csv") && !identical(file$csv_header, value)) {
+      file$csv_header <- value
+      active_data_file(file)
+    }
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
   observeEvent(input$dat_delimiter, {
+    file <- active_data_file()
+    extension <- if (is.null(file)) "" else tolower(tools::file_ext(as.character(file$name %||% file$path %||% "")))
+    value <- as.character(input$dat_delimiter %||% "whitespace")
+    if (identical(extension, "dat") && !identical(file$dat_delimiter, value)) {
+      file$dat_delimiter <- value
+      active_data_file(file)
+    }
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
   observeEvent(input$dat_has_names, {
+    file <- active_data_file()
+    extension <- if (is.null(file)) "" else tolower(tools::file_ext(as.character(file$name %||% file$path %||% "")))
+    value <- isTRUE(input$dat_has_names)
+    if (identical(extension, "dat") && !identical(file$dat_has_names, value)) {
+      file$dat_has_names <- value
+      active_data_file(file)
+    }
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
@@ -223,7 +263,7 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
     message("[StatEdu timing] browse_data_file: open dialog")
     tryCatch(
       {
-        data_path <- open_data_file()
+        data_path <- open_data_file(language = statedu_current_language(language_fn))
         if (is.null(data_path)) {
           statedu_log_timing("browse_data_file canceled", start)
           return()
@@ -301,9 +341,11 @@ register_settings_reset_handler <- function(
     reset_setup_inputs_fn,
     go_data_step_fn,
     mark_settings_clean,
-    language_fn = statedu_initial_language
+    language_fn = statedu_initial_language,
+    reset_longitudinal_settings_fn = NULL
 ) {
   reset_session_settings <- function() {
+    if (is.function(reset_longitudinal_settings_fn)) reset_longitudinal_settings_fn(NULL)
     start <- Sys.time()
     message("[StatEdu timing] reset_session_settings: start")
     suppress_dirty_tracking(TRUE)
@@ -403,7 +445,7 @@ register_settings_load_handler <- function(
   observeEvent(input$browse_settings_data, {
     browse_start <- Sys.time()
     message("[StatEdu timing] browse_settings_data: open dialog")
-    settings_path <- open_settings_file()
+    settings_path <- open_settings_file(language = statedu_current_language(language_fn))
     if (is.null(settings_path)) {
       statedu_log_timing("browse_settings_data canceled", browse_start)
       return()
@@ -445,7 +487,7 @@ register_settings_save_handler <- function(
   }
 
   save_settings_to_file <- function() {
-    settings_path <- save_settings_file(initial_dir = current_data_file_directory())
+    settings_path <- save_settings_file(initial_dir = current_data_file_directory(), language = statedu_current_language(language_fn))
     if (is.null(settings_path)) {
       return()
     }

@@ -1,20 +1,87 @@
-# 검증 기준 비교
+# 검증 결과
 
-이 문서는 공개 1.2 애플리케이션에서 노출되는 기능을 대상으로 한 검증 기준 비교 요약입니다.
+기준 버전: **1.3.0**
 
-## 요약
+## 1. 최종 판단과 범위
 
-- 분석 계산은 base R, 공개 R 패키지, 또는 명시적인 자동 선택 규칙과 비교합니다.
-- 표본수 계산은 G*Power와 동등한 공식, 공개 R 패키지, 또는 문헌 기반 공식과 비교합니다.
-- 효과크기 계산은 `effectsize` 또는 동일한 표준 공식과 비교합니다.
+**검증한 자료와 분석 조건에서 주요 결과는 비교 대상과 대체로 일치했습니다. 발견한 계산·표시 문제는 수정하고 재검증했으며, 남은 차이와 실행 제한은 아래 비교표에 명시했습니다.**
 
-## 공개 1.2 분석 검증
+이 페이지는 1.3.0 공개판에 반영된 누적 검증을 정리합니다. 표의 버전은 결과를 반영한 공개 버전이며 개발 중 수행한 비교를 포함합니다. 모든 사례를 최종 1.3.0 설치본에서 새로 실행했다는 뜻은 아닙니다.
 
-공개 1.2 검증 범위는 화면에 보이는 Analysis 메뉴의 직접 계산과 자동 선택 경로를 포함합니다. 자동 경로에는 sparse cell에서 Fisher 계열 검정으로 전환, 비정규 상관쌍에서 Spearman 전환, t-test / ANOVA에서 Mann-Whitney, Welch, Kruskal-Wallis 전환, 평가자간 일치도 권장 지표 선택, 혼합 반복측정 ANOVA 가정 검토, GLM family 감지, count model 과분산 선택, 매개·조절 사용자 정의 모델 canvas mapping이 포함됩니다.
+**1.3.0 재검증:** SmartPLS 4.1.1.8 Student에서 HS100의 PLS·PLSc를 새로 실행해 saturated SRMR·d_ULS·d_G **6/6 표시값 일치**를 확인했습니다(소수 셋째 자리, 절대오차 ≤ .0005). 두 실행은 26회 반복으로 종료했습니다. 아래 과거 TAM 결과는 이번 재검증 건수에 포함하지 않습니다.
 
-## 분석 방법별 상세 검증 요약
+- 일치: 해당 자료·모형·옵션과 허용오차에서 비교한 항목의 일치입니다.
+- 예제: 실행·모형·조건 단위이며, 독립 프로젝트나 표본 수와 다릅니다.
+- 집계: 재실행, 비교 셀, 저장 형식을 더해 전체 예제 수나 통과율을 만들지 않습니다.
+- 구분: 실제 사례 비교, 고정 예제 비교, R·공식 검산, 저장 검증은 서로 다른 근거입니다.
 
-이 절은 분석 방법별로 어떤 기준 구현 또는 패키지와 대조했는지 정리합니다. Sample Size와 Effect Size 계산기는 아래 별도 절에 유지합니다.
+## 2. 실제 사례의 통계 결과 비교
+
+SPSS·AMOS·SmartPLS 비교와 GEE 후속 검증은 1.3.0에 반영된 결과입니다. 자료·조건이 다른 검증은 구분해 표시합니다.
+
+### 일반 분석·회귀·구조모형
+
+| 분석 | 검증 예제·단위 | 비교 대상 | 비교 결과 | 조건·남은 차이 | 반영 버전 |
+| --- | --- | --- | --- | --- | --- |
+| 기술통계 | 31 실행 | SPSS | 3,141/3,141셀 일치 | 동일 자료·대응 옵션의 비교 항목 기준 | 1.3.0 |
+| 빈도분석 | 28 실행 | SPSS | 503/503셀 일치 | 동일 자료·대응 옵션의 비교 항목 기준 | 1.3.0 |
+| Pearson 상관 | 8 실행 | SPSS | 1,662/1,662셀 일치 | 동일 자료·대응 옵션의 비교 항목 기준 | 1.3.0 |
+| 교차표·Pearson χ² | 21 실행 | SPSS | 228/228셀 일치 | 동일 자료·대응 옵션의 비교 항목 기준 | 1.3.0 |
+| 신뢰도 분석 | 40 실행 | SPSS | 692/692셀 일치 | 동일 자료·대응 옵션의 비교 항목 기준 | 1.3.0 |
+| 독립·대응 t검정 | 42 실행 | SPSS | 3,496/3,496셀 일치 | 동일 자료·대응 옵션의 비교 항목 기준 | 1.3.0 |
+| 일원 ANOVA | 115 실행 | SPSS | 3,100/3,100셀 일치 | 동일 자료·대응 옵션의 비교 항목 기준 | 1.3.0 |
+| ANOVA 사후검정 | 284 실행 | SPSS | 13,184/13,184셀 일치 | Scheffé·Games–Howell 쌍별 보정 p값 비교 | 1.3.0 |
+| ANCOVA | 55 실행 | SPSS | 1,090/1,090셀 일치 | 단일 요인·Type III 가법 모형 | 1.3.0 |
+| 반복측정 ANOVA(제한 범위) | 2 실행 | SPSS | 36/36셀 일치 | 동일 자료·대응 옵션의 비교 항목 기준 | 1.3.0 |
+| 혼합 반복측정 ANOVA | 35 실행 | SPSS | 1,610/1,610셀 일치 | 구형성·GG/HF 계산 수정 후 일치; 단일 집단요인 × 시간요인 | 1.3.0 |
+| Mann–Whitney U | 5 실행 | SPSS | 24/24셀 일치 | 표시 z와 p 규약 통일 후 5셀 차이 해소 | 1.3.0 |
+| Kruskal–Wallis | 5 실행 | SPSS | 54/54셀 일치 | H·df·p 비교 | 1.3.0 |
+| Friedman | 36 실행 | SPSS | 144/144셀 일치 | N·χ²·df·점근 p 비교 | 1.3.0 |
+| Wilcoxon 부호순위 | 1 실행 | SPSS | p값 1셀 차이 | 기본 연속성 보정 차이. 보정 해제 진단값은 일치; 기본값 유지 | 1.3.0 |
+| 선형회귀 | 9 실행 | SPSS | 436/436셀 일치 | 동일 자료·대응 옵션의 비교 항목 기준 | 1.3.0 |
+| 이항 로지스틱 회귀 | 7 실행 | SPSS | 455/455셀 일치 | IRLS 정밀도 수정 후 기존 90셀 차이 해소 | 1.3.0 |
+| Cox 회귀 | 11 실행 | SPSS | 66/66셀 일치 | SPSS 수렴 기준 강화 시 일치. 기본 조건에서는 17셀 차이 유지 | 1.3.0 |
+| PCA·Varimax | 50 모형 | SPSS / 공통 재회전 | 공통 재회전 49/50 일치 | 원본 적재량 최대차 ≤1e-4는 9/50. 1모형의 문항 배정 차이 10건 유지 | 1.3.0 |
+| LMM | 90 모형 | SPSS / 독립 수학 검산 | 2,854/2,895항목 일치 | 41항목 차이 유지. 독립 검산은 Studio 계산을 지지; SPSS 완전 일치 아님 | 1.3.0 |
+| CFA·SEM 합산 | 55 대상 / 50 비교 가능 | 기존 AMOS 출력 | 49/50모형 일치 | 5개 자료 부족, 1개 코딩 확인 필요. 적합도·계수 반올림 허용차 ≤0.0005; bootstrap 제외 | 1.3.0 |
+| PLS-SEM·PLSc | 9 보고서 모형 | 기존 SmartPLS 출력 | 7/9 원표본 경로 일치 | 2개 추정 거부(조절모형 제한·PLSc 부적합). bootstrap·예측성능 비교 제외 | 1.3.0 |
+| PLS-SEM — 별도 보고서 | 1 모형 | 기존 연구보고서 | 7/7 구조경로 일치 | 소수 셋째 자리 반올림 범위; SmartPLS 9모형과 별도 출처 | 1.3.0 |
+
+CFA·SEM은 원기록의 합산 단위입니다. 개별 메뉴별 수를 임의로 나누지 않았습니다. AMOS·SmartPLS 사례 비교는 원표본 결과 기준이며 bootstrap 결과 전체를 재현한 검증은 아닙니다.
+
+### GEE: 기본 패키지 경로와 SPSS 대응 기록
+
+현재 기본 geepack 경로의 직접 비교와 이전 SPSS 대응 실험 모드·수정 자료 검증을 구분합니다. 서로 다른 행의 모형 수를 합산하지 않습니다.
+
+| 분석 | 검증 예제·단위 | 비교 대상 | 비교 결과 | 조건·남은 차이 | 반영 버전 |
+| --- | --- | --- | --- | --- | --- |
+| GEE — 보관 모형 후속 검증 | 80 모형 시도 | SPSS 대응 옵션 | 72 성공; 2,388/2,388항목 일치 | 해당 비교에서 8실패; 이후 자료 수정·실험 모드 검증과 합산하지 않음 | 1.3.0 |
+| GEE — 수정 자료 | 3 모형 × 2 수렴 조건 | 실제 SPSS 재실행 | 160/160셀 일치 | 수정 Y3 자료 기준; 원래 자료의 실패가 해소됐다고 집계하지 않음 | 1.3.0 |
+| GEE — 자체 실험 모드 | 5 모형 | SPSS 비교 기록 | 264/264셀 일치 | 자체 실험 모드 기준. 현재 기본 geepack 경로와 구분 | 1.3.0 |
+| GEE — 기본 패키지 경로 | 16 조건 | geepack 직접 실행 | 96 검사군 일치; 최대 차이 0 | 4개 분포 × 4개 상관구조; 9,936 수치 원소 | 1.3.0 |
+| GEE — 가중치·offset·결측 | 12 조건 | geepack 직접 실행 | 72 지표군 일치 | 4개 분포 × 3개 입력 조건. 최종 결과 경로 3건 재확인은 중복 합산 제외 | 1.3.0 |
+
+## 3. 고정 예제의 교차 프로그램 비교
+
+### 검증 근거와 교차 프로그램 일치
+
+동일 자료·모형·결측 처리·추정 옵션을 고정한 벤치마크입니다. 앞 절의 보관 사례 수와 별개이며, 프로그램별 계산 관례는 대응 조건으로 명시합니다.
+
+| 외부 프로그램 | 검증 범위 | 일치 여부 | 수치 근거 |
+|---|---|---|---|
+| IBM SPSS Statistics 31.0.1.0 | 교차표, 상관, 신뢰도, t/ANOVA, 비모수, 선형·로지스틱 회귀, ANCOVA, 반복측정 | 일치 | 핵심값 66/66 PASS, 최대 절대차 2.19×10^-8 |
+| IBM SPSS Statistics 31.0.1.0 | Kaplan–Meier, log-rank, Cox 회귀 | 일치 | KM 사건시점 50/50 PASS, Cox 최대 절대차 3.81×10^-12 |
+| IBM SPSS Amos 23.0.0.0 | Holzinger–Swineford 3요인 ML-CFA | 일치 | Wishart ML에서 30/30 PASS, 최대 절대차 1.03×10^-6 |
+| SmartPLS 4.1.1.8 | TAM 100행 PLS/PLSc | 일치 | SRMR·d_G·d_ULS 및 7개 구조경로 PASS; 계산 불가 PLSc d_G는 양쪽 모두 N/A |
+| SmartPLS 4.1.1.8 | TAM 100행 ML-CB-SEM | 일치 | 적합도·구조경로 표시값 25/25 PASS |
+
+Normal/Wishart ML, percentile 및 Mann–Whitney 표시 규칙처럼 정의가 다른 항목은 같은 조건에서 비교합니다. 수치 일치가 연구설계 가정이나 인과해석의 타당성을 보증하지는 않습니다.
+
+## 4. R·공식 기준 계산 검증
+
+### 분석 계산과 자동 선택
+
+아래 PASS는 명시된 R 패키지·공식 및 입력 처리 경로에 대한 판정입니다. 앞 절에서 차이가 남은 SPSS 기본 출력까지 일치한다는 뜻은 아닙니다.
 
 | 분석 방법 | 기준 / 비교 대상 | 검증한 계산 및 자동 경로 | 결과 | 참고 / 제한사항 |
 |---|---|---|---|---|
@@ -36,46 +103,9 @@
 | Data editor recode / missing-code handling | 직접 helper 검증과 formula-transform 방어 테스트 | 같은 변수 recode, category/range recode, reverse scoring, Likert detection/conversion, missing-code detection 및 `NA` 변환, formula transformation, 숫자 라벨 factor의 숫자 helper 변환 | PASS | 데이터 편집기의 missing-code 기능은 사용자/센티널 코드를 `NA`로 바꾸는 경로입니다. 일반 MI/IPW 엔진은 GLM과 종단 모듈에서 검증합니다. |
 | Custom model canvas wiring | synthetic canvas snapshot과 기대 analysis map 비교 | node role, directed X->Y, X->M, M->Y, M->M map, serial mediator detection, moderated path flag, moderation map row, invalid edge/moderation filtering | PASS | 캔버스 배선 검증은 snapshot-to-engine map 생성 범위를 다룹니다. 적합 계산은 mediation/moderation 엔진 경로에서 검증합니다. |
 
-Category 순서 검증: `Low/Mid/High`, `낮음/보통/높음` 같은 문자 라벨 서열변수는 상관분석, 교차분석 trend test, 평가자간 일치도의 weighted statistic, 서열형 신뢰도에서 ordinal scoring 또는 ordered level이 필요할 때 `category_table` 순서로 점수화됩니다.
+### 표본수 계산기
 
-아직 이 요약 범위에 포함하지 않은 항목: 이전에 남겨둔 모듈 중 현재 요약 범위 밖에 남아 있는 항목은 없습니다. 새 분석 모듈이 추가되거나 기존 모듈이 크게 바뀌면 같은 방식의 기준값 대조 검증이 필요합니다.
-
-| 메뉴 | 사례 | 지표 | 상태 |
-|---|---|---|---|
-| Frequencies | 범주형 빈도 | N | PASS |
-| Frequencies | 연속형 기술통계 | 평균 반올림 | PASS |
-| Crosstabs | Pearson chi-square | 통계량과 p 값 | PASS |
-| Crosstabs | Sparse-cell 자동 규칙 | Fisher exact 선택과 p 값 | PASS |
-| Correlation | Pearson correlation | r과 p 값 | PASS |
-| Correlation | 비정규 연속형 쌍 | Spearman 자동 선택 | PASS |
-| t-test / ANOVA | Independent t-test | t 통계량 | PASS |
-| t-test / ANOVA | One-way ANOVA | F 통계량 | PASS |
-| t-test / ANOVA | 비정규 두 집단 비교 | Mann-Whitney 자동 선택 | PASS |
-| t-test / ANOVA | 이분산 두 집단 비교 | Welch t-test 자동 선택 | PASS |
-| t-test / ANOVA | 이분산 다집단 비교 | Welch ANOVA 자동 선택 | PASS |
-| t-test / ANOVA | 비정규 다집단 비교 | Kruskal-Wallis 자동 선택 | PASS |
-| Paired | Paired t-test | t 통계량 | PASS |
-| Repeated Measures | RM ANOVA | F 통계량 | PASS |
-| Nonparametric Paired | Wilcoxon signed-rank | p 값 | PASS |
-| Nonparametric RM | Friedman test | chi-square 통계량 | PASS |
-| Mixed Repeated-Measures ANOVA | Time / group / interaction workflow | 모형 개요와 가정 검토 경로 | PASS |
-| ANCOVA | Type II group effect | F 통계량 | PASS |
-| Regression | OLS coefficients | B와 SE | PASS |
-| Logistic Regression | Binary logistic | B와 SE | PASS |
-| GLM | Gaussian identity | B와 SE | PASS |
-| GLM | Binomial logit | B와 SE | PASS |
-| GLM | Auto family: binary outcome | family 감지 | PASS |
-| GLM | Auto family: positive skewed outcome | Gamma 감지와 추정값 | PASS |
-| GLM | Auto count workflow | count 감지와 negative-binomial fallback | PASS |
-| Reliability | Cronbach alpha | alpha | PASS |
-| Inter-rater Agreement | ICC, kappa 계열, AC1/AC2, alpha 경로 | 권장 및 보조 일치도 지표 | PASS |
-| PCA | Correlation eigenvalues | eigenvalues | PASS |
-| Factor Analysis | PAF one-factor loadings | absolute loadings | PASS |
-| Mediation / Moderation Custom Model | Canvas snapshot mapping | node role, path, moderator, invalid edge filtering | PASS |
-
-## Sample Size 검증
-
-다음 공개 계산기는 대표 검증 사례를 포함합니다.
+대표 조건에서 기준 공식·패키지와 비교했습니다. G*Power-equivalent는 동등한 공식 비교를 뜻하며 실제 G*Power 실행 비교와 구분합니다. GEE·LMM·Cox·SEM 등의 행은 분석 엔진이 아닌 표본수 계산기 검증입니다.
 
 | 범위 | 방법 | 비교 기준 | 판정 |
 |---|---|---|---|
@@ -100,11 +130,9 @@ Category 순서 검증: `Low/Mid/High`, `낮음/보통/높음` 같은 문자 라
 | G*Power 외 | Cronbach alpha precision | Bonett log(1-alpha) formula | match |
 | G*Power 외 | SEM / CFA | `WebPower::wp.sem.rmsea` | match |
 
-위 표의 GEE, LMM, survival/Cox, cluster, SEM/CFA 항목은 Sample Size 계산기 검증을 의미하며, 공개 1.2의 Analysis workflow를 의미하지 않습니다.
+### 효과크기 계산기
 
-## Effect Size 검증
-
-다음 공개 계산기 검증표는 StatEdu Studio의 대표 효과크기 결과를 `effectsize` 패키지 또는 동일한 표준 공식과 비교한 것입니다. SEM/CFA 항목은 통상적인 보고용 효과크기라기보다 표본수 계획 진단값에 가까우므로 Effect Size 메뉴에서는 표시하지 않습니다.
+대표 27개 항목은 `effectsize` 또는 같은 정의의 표준 공식과 일치했습니다. SEM/CFA 계획 진단량은 일반 보고용 효과크기와 구분하여 이 메뉴에 포함하지 않습니다.
 
 | 방법 | 비교한 효과크기 | 조건 | StatEdu Studio 값 | 기준값 | 차이 | 판정 |
 |---|---|---|---:|---:|---:|---|
@@ -136,4 +164,40 @@ Category 순서 검증: `Low/Mid/High`, `낮음/보통/높음` 같은 문자 라
 | Reliability / Agreement | Alpha difference | alpha=.80 vs reference=.70, items=5 | 0.100000 | 0.100000 | 0 | match |
 | Reliability / Agreement | Average inter-item r | alpha=.80 vs reference=.70, items=5 | 0.444444 | 0.444444 | 0 | match |
 
-요약: 공개 효과크기 비교표의 27개 항목이 모두 기준 정의와 일치했습니다.
+## 5. 분석 결과 저장 검증
+
+1.3.0에서 22개 분석군의 179개 예제를 대상으로 HTML·PDF·Word·Excel 716개 파일의 내용·구조 검사를 통과했습니다. 아래 표·그림 수는 각 분석군의 형식당 합계입니다. 후속 재생성은 같은 사례군으로 중복 합산하지 않았습니다. 모든 페이지의 육안 검토나 외부 프로그램 통계값 비교를 뜻하지 않습니다.
+
+| 분석군 | 예제 수 | 4형식 파일 수 | 표 수(형식당) | 그림 수(형식당) |
+| --- | --- | --- | --- | --- |
+| 빈도분석·기술통계 | 5 | 20 | 8 | 3 |
+| 신뢰도 | 7 | 28 | 13 | 0 |
+| 상관분석 | 8 | 32 | 25 | 2 |
+| 교차분석 | 8 | 32 | 12 | 0 |
+| t 검정·분산분석 | 8 | 32 | 39 | 0 |
+| 공분산분석 | 8 | 32 | 68 | 4 |
+| 대응표본 | 9 | 36 | 30 | 0 |
+| 대응·반복측정 | 8 | 32 | 30 | 0 |
+| 단일집단 반복측정 분산분석 | 8 | 32 | 53 | 0 |
+| 혼합 반복측정 분산분석 | 8 | 32 | 55 | 0 |
+| 비모수 | 8 | 32 | 43 | 0 |
+| 대응 비모수 | 9 | 36 | 29 | 0 |
+| 회귀분석 | 8 | 32 | 33 | 18 |
+| 위계적 회귀 | 8 | 32 | 42 | 40 |
+| 로지스틱 회귀 | 8 | 32 | 42 | 0 |
+| 탐색적 요인분석 | 8 | 32 | 44 | 8 |
+| 주성분분석 | 9 | 36 | 47 | 16 |
+| 매개·조절 | 8 | 32 | 67 | 14 |
+| 일반화 모형 | 9 | 36 | 121 | 0 |
+| 종단 모형 | 9 | 36 | 135 | 0 |
+| 생존분석 | 9 | 36 | 128 | 23 |
+| 평가자 간 일치도 | 9 | 36 | 16 | 0 |
+
+### 후속 저장·화면 확인
+
+| 반영 버전 | 확인 범위 |
+|---|---|
+| 1.3.0 | 동일 생존분석 대표 결과 1건의 그림 8개, 표 13개·413셀, 주석 4개 보존. 기존 종단 모형 9예제의 안내 40항목에 대한 Word·Excel 내용·순서 확인 |
+| 1.3.0 | 네 모형 캔버스의 버튼 배치·PNG 저장·보고서 그림, 회귀 주석, PDF 표지·배치 점검 |
+
+위 항목은 저장·화면 검증이며 신규 외부 통계 비교 예제로 합산하지 않습니다.

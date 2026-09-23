@@ -1,0 +1,27 @@
+Sys.setlocale('LC_ALL','Korean_Korea.utf8')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules();options(statedu.app_language='ko')
+out<-'outputs/spss_phase27_20260906';dir.create(out,showWarnings=FALSE)
+set.seed(20260913);n<-80;subject<-rnorm(n,50,5)
+d<-data.frame(id=sprintf('S%03d',1:n),age=rnorm(n,40,8))
+for(i in 1:8){d[[paste0('e',i)]]<-subject-i+rnorm(n);d[[paste0('c',i)]]<-subject-i*.2+rnorm(n)}
+info<-data.frame(name=names(d),measurement=c('category',rep('continuous',17)))
+make<-function(data=d,k=3,cov=character(0),extra=list())prepare_one_group_rm_anova_results(data,experimental_variables=paste0('e',1:k),control_variables=paste0('c',1:k),covariates=cov,variable_info=info,options=modifyList(list(assumption_check=TRUE,posthoc=TRUE,posthoc_adjustment='holm',treatment_labels=c('실험 처치','대조 처치'),time_labels=paste('시점',1:k)),extra))
+long<-do.call(rbind,lapply(1:n,function(i)data.frame(id=d$id[i],group=factor(rep(c('실험 처치','대조 처치'),each=3),levels=c('실험 처치','대조 처치')),time=factor(rep(paste('시점',1:3),2),levels=paste('시점',1:3),ordered=TRUE),score=as.numeric(d[i,c(paste0('e',1:3),paste0('c',1:3))]),age=d$age[i])))
+li<-data.frame(name=names(long),measurement=c('category','category','ordered','continuous','continuous'))
+longmake<-function(cov=character(0))prepare_one_group_rm_anova_results(long,input_format='long',id_variable='id',group_variable='group',time_variable='time',outcome_variable='score',covariates=cov,variable_info=li,options=list(assumption_check=TRUE,posthoc=TRUE,posthoc_adjustment='holm'))
+m<-d;m$e1[1:7]<-NA;m$c3[8:11]<-NA
+cases<-list(wide=make(),long=longmake(),covariate=make(cov='age'),long_covariate=longmake('age'),two_times=make(k=2),minimal=make(extra=list(assumption_check=FALSE,posthoc=FALSE)),missing=make(m),eight_times=make(k=8,extra=list(posthoc_adjustment='bonferroni')))
+stopifnot(identical(cases$wide$anova,cases$long$anova),identical(cases$covariate$anova,cases$long_covariate$anova))
+for(name in names(cases)) {
+ r<-cases[[name]];folder<-file.path(out,name);dir.create(folder,showWarnings=FALSE)
+ write_one_group_rm_anova_results_html(r,file.path(folder,'result.html'))
+ html<-paste(readLines(file.path(folder,'result.html'),encoding='UTF-8'),collapse='\n')
+ a<-xml2::read_html(as.character(htmltools::renderTags(one_group_rm_anova_results_ui(r))$html));b<-xml2::read_html(html)
+ cells<-function(doc)vapply(xml2::xml_find_all(doc,'.//table//th|.//table//td'),result_html_text,character(1));stopifnot(identical(cells(a),cells(b)))
+ e<-list(title='Within-subject treatment repeated measures',html=html,saved_at='2026-09-06')
+ write_one_group_rm_anova_results_pdf(r,file.path(folder,'result.pdf'));save_mixed_rm_anova_excel_file(r,file.path(folder,'result.xlsx'));write_result_collection_docx(list(e),file.path(folder,'result.docx'))
+ tables<-result_entry_tables(e)
+ expected<-list(tables=lapply(tables,function(t)list(title=t$title,orientation=t$orientation,notes=t$notes,cells=lapply(t$screen$cells,function(c)c(c,list(value=t$screen$values[c$row,c$col]))))),images=as.list(xml2::xml_attr(xml2::xml_find_all(b,'.//img'),'alt')))
+ jsonlite::write_json(expected,file.path(folder,'expected.json'),auto_unbox=TRUE);saveRDS(r,file.path(folder,'analysis.rds'))
+ cat(name,length(tables),'tables; screen/HTML matched\n')
+}
