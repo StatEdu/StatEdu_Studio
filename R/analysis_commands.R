@@ -138,7 +138,7 @@ register_analysis_command_handler <- function(run_id, input, output, session, st
     option_prototypes <<- setNames(lapply(option_names, function(key) isolate(input[[key]])), option_names)
   }, priority = 100)
   capture <- function() {
-    list(VERSION = 1L, STUDIO_VERSION = as.character(readLines("VERSION", warn = FALSE)[1]),
+    list(VERSION = 1L, STUDIO_VERSION = as.character(read_app_config()$version),
          ANALYSIS = run_id, DATA_HASH = regression_syntax_data_hash(dataset_fn()),
          CONTEXT_HASH = regression_syntax_data_hash(context_fn()),
          STATE = lapply(states, function(get) get()),
@@ -174,7 +174,7 @@ register_analysis_command_handler <- function(run_id, input, output, session, st
       session$onFlushed(send_options, once = TRUE)
     },
     run_fn = function(spec) pending$run <<- TRUE,
-    version = readLines("VERSION", warn = FALSE)[1], prefix = paste0(run_id, "_"),
+    version = read_app_config()$version, prefix = paste0(run_id, "_"),
     parse_fn = parse, text_fn = analysis_command_text, filename = paste0(run_id, ".stcmd"),
     notify_apply = FALSE,
     details = if (identical(run_id, "meta_run_analysis"))

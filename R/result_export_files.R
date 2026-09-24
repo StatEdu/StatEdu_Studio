@@ -1,7 +1,7 @@
 # File dialog and figure export helpers for analysis results.
 data_file_source_directory <- function(file) {
-  directory <- file$source_directory %||% ""
-  if (nzchar(directory) && !data_path_is_session_temporary(directory) && dir.exists(directory)) return(normalizePath(directory, winslash = "/"))
+  # A .studio file may live outside the data folder. Prefer the actual data
+  # location; use the settings folder only for embedded/temporary data.
   candidates <- c(file$original_path %||% "", file$path %||% "")
   for (path in candidates) {
     if (is.na(path) || !nzchar(path)) next
@@ -11,6 +11,8 @@ data_file_source_directory <- function(file) {
     directory <- dirname(path)
     if (dir.exists(directory)) return(directory)
   }
+  directory <- file$source_directory %||% ""
+  if (nzchar(directory) && !data_path_is_session_temporary(directory) && dir.exists(directory)) return(normalizePath(directory, winslash = "/"))
   ""
 }
 

@@ -981,20 +981,21 @@ assert_lavaan_metadata_fast_path_contract <- function(fit) {
     stop("The lavaan metadata fast path changed output or failed exact binding restoration.", call. = FALSE)
   }
 
-  original_step17 <- get("lav_step17_lavaan", namespace, inherits = FALSE)
-  original_step17_lock <- bindingIsLocked("lav_step17_lavaan", namespace)
+  step17_name <- if (identical(as.character(utils::packageVersion("lavaan")), "0.6.21")) "lav_lavaan_step17_lavaan" else "lav_step17_lavaan"
+  original_step17 <- get(step17_name, namespace, inherits = FALSE)
+  original_step17_lock <- bindingIsLocked(step17_name, namespace)
   restore_step17 <- function() {
-    if (bindingIsLocked("lav_step17_lavaan", namespace)) {
-      unlockBinding("lav_step17_lavaan", namespace)
+    if (bindingIsLocked(step17_name, namespace)) {
+      unlockBinding(step17_name, namespace)
     }
-    assign("lav_step17_lavaan", original_step17, envir = namespace)
-    if (original_step17_lock) lockBinding("lav_step17_lavaan", namespace)
+    assign(step17_name, original_step17, envir = namespace)
+    if (original_step17_lock) lockBinding(step17_name, namespace)
     invisible(TRUE)
   }
   on.exit(restore_step17(), add = TRUE)
-  if (original_step17_lock) unlockBinding("lav_step17_lavaan", namespace)
-  assign("lav_step17_lavaan", function(...) NULL, envir = namespace)
-  if (original_step17_lock) lockBinding("lav_step17_lavaan", namespace)
+  if (original_step17_lock) unlockBinding(step17_name, namespace)
+  assign(step17_name, function(...) NULL, envir = namespace)
+  if (original_step17_lock) lockBinding(step17_name, namespace)
   mismatch <- structural_canvas_lavaan_worker_metadata_fast_path_install()
   restore_step17()
   if (isTRUE(mismatch$applied) || !grepl("fingerprint", mismatch$reason, fixed = TRUE) ||

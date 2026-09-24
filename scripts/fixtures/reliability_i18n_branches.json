@@ -1,0 +1,12 @@
+[
+  "Subfactor",
+  "Ordinal alpha if item deleted",
+  "Ordinal omega if item deleted",
+  "Reliability if item deleted",
+  "Total items if item deleted",
+  "Item-deleted columns show Ordinal alpha and Ordinal omega after removing each item.",
+  "Item-deleted columns show Ordinal alpha after removing each item.",
+  "Item-deleted columns show Cronbach's alpha after removing each item.",
+  "Reliability if item deleted shows the selected reliability coefficient after removing each item.",
+  "Total items if item deleted is calculated from all items across subfactors after removing each item."
+]

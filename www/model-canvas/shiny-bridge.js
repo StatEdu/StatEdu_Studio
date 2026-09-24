@@ -438,6 +438,28 @@
     window.StatEduModelCanvas.resultHandlerBound = true;
     Shiny.addCustomMessageHandler("custom-model-canvas-result", applyResult);
     Shiny.addCustomMessageHandler("custom-model-canvas-reset-context", clearContext);
+    Shiny.addCustomMessageHandler("custom-model-canvas-score", function(message) {
+      var root = document.getElementById(message.rootId);
+      var instance = root && root.__stateduModelCanvas;
+      var api = window.StatEduModelCanvas;
+      if (!instance || !instance.scoreRequest || instance.scoreRequest.token !== message.token) return;
+      if (instance.scoreRequest.base !== JSON.stringify(api.state.snapshot(instance.state))) {
+        window.alert(api.state.label(instance, "score_model_changed", "The model changed. Reopen the original-item editor."));
+        instance.scoreRequest = null;
+        return;
+      }
+      api.state.pushHistory(instance);
+      api.state.restore(instance.state, message.snapshot);
+      instance.resultSnapshot = null;
+      instance.resultSnapshots = [];
+      instance.viewingResult = false;
+      if (message.layoutTarget) api.canvas.reflowMeasurements(instance, [message.layoutTarget]);
+      instance.sourceSnapshot = api.state.snapshot(instance.state);
+      instance.scoreRequest = null;
+      root.classList.remove("has-result", "is-viewing-result");
+      api.canvas.render(instance);
+      sendState(instance);
+    });
   }
 
   window.StatEduModelCanvas = window.StatEduModelCanvas || {};

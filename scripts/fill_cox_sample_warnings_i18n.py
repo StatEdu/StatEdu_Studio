@@ -1,0 +1,12 @@
+import json,re
+from pathlib import Path
+rows='''Survival sparse evidence Events/parameter =|事件数/パラメータ =|事件数/参数 =|Eventos/parámetro =|Événements/paramètre =|Ereignisse/Parameter =|Số biến cố/tham số =
+Survival sparse evidence Robust-variance clusters =|ロバスト分散のクラスター数 =|稳健方差的聚类数 =|Conglomerados para la varianza robusta =|Grappes pour la variance robuste =|Cluster für die robuste Varianz =|Số cụm cho phương sai vững =
+Review coefficient instability and overfitting; consider model simplification or penalized analysis.|係数の不安定性と過適合を検討し、モデルの単純化やペナルティ付き解析を考慮してください。|审查系数不稳定性和过拟合；考虑简化模型或采用惩罚分析。|Revise la inestabilidad de los coeficientes y el sobreajuste; considere simplificar el modelo o utilizar un análisis penalizado.|Examinez l’instabilité des coefficients et le surajustement ; envisagez de simplifier le modèle ou d’utiliser une analyse pénalisée.|Prüfen Sie Koeffizienteninstabilität und Überanpassung; erwägen Sie eine Modellvereinfachung oder eine penalisiert geschätzte Analyse.|Xem xét tính không ổn định của hệ số và hiện tượng quá khớp; cân nhắc đơn giản hóa mô hình hoặc phân tích có phạt.
+With few clusters, review finite-sample bias of sandwich standard errors and consider a small-sample correction or dedicated clustered analysis.|クラスター数が少ない場合、サンドイッチ標準誤差の有限標本バイアスを検討し、小標本補正やクラスター構造に対応した解析を考慮してください。|聚类数较少时，应审查三明治标准误的有限样本偏倚，并考虑小样本校正或专门的聚类分析。|Con pocos conglomerados, revise el sesgo en muestras finitas de los errores estándar sándwich y considere una corrección para muestras pequeñas o un análisis específico para datos agrupados.|Avec peu de grappes, examinez le biais en échantillon fini des erreurs-types sandwich et envisagez une correction pour petits échantillons ou une analyse adaptée aux données en grappes.|Prüfen Sie bei wenigen Clustern die Verzerrung der Sandwich-Standardfehler in endlichen Stichproben und erwägen Sie eine Klein-Stichproben-Korrektur oder eine speziell auf Cluster ausgerichtete Analyse.|Khi có ít cụm, hãy xem xét sai lệch mẫu hữu hạn của sai số chuẩn sandwich và cân nhắc hiệu chỉnh mẫu nhỏ hoặc phân tích chuyên biệt cho dữ liệu phân cụm.'''
+for i,lang in enumerate(['ja','zh','es','fr','de','vi'],1):
+ p=Path('i18n')/(lang+'.json');data=json.loads(p.read_text(encoding='utf-8'))
+ for row in rows.splitlines():
+  f=row.split('|');assert len(f)==7
+  data['translations']['analysis.ui.'+re.sub(r'[^a-z0-9]+','_',f[0].lower()).strip('_')]=f[i]
+ p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

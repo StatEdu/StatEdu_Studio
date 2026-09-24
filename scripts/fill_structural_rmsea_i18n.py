@@ -1,0 +1,22 @@
+import json,re
+from pathlib import Path
+rows='''Guide for Table 2: RMSEA hypothesis tests	表2のガイド：RMSEA仮説検定	表2指南：RMSEA假设检验	Guía de la tabla 2: pruebas de hipótesis de RMSEA	Guide du tableau 2 : tests d’hypothèses RMSEA	Hinweise zu Tabelle 2: RMSEA-Hypothesentests	Hướng dẫn bảng 2: kiểm định giả thuyết RMSEA
+Close-fit tests H0: population RMSEA <= .05; a small p value rejects close fit. Not-close tests H0: population RMSEA >= .08; a small p value rejects poor approximate fit. Interpret both with the RMSEA estimate and confidence interval.	Close-fit検定の帰無仮説は母集団RMSEA <= .05です。小さいp値は近似的に良好な適合を棄却します。Not-close検定の帰無仮説は母集団RMSEA >= .08です。小さいp値は近似適合が不良であるという仮説を棄却します。両検定をRMSEA推定値と信頼区間と併せて解釈してください。	Close-fit检验的原假设为总体RMSEA <= .05；较小的p值拒绝近似良好拟合。Not-close检验的原假设为总体RMSEA >= .08；较小的p值拒绝近似拟合较差。两项检验应结合RMSEA估计值及置信区间解释。	Close-fit contrasta H0: RMSEA poblacional <= .05; un p pequeño rechaza el ajuste cercano. Not-close contrasta H0: RMSEA poblacional >= .08; un p pequeño rechaza el ajuste aproximado deficiente. Interprete ambos con la estimación RMSEA y su intervalo de confianza.	Close-fit teste H0 : RMSEA de population <= .05 ; un petit p rejette l’ajustement proche. Not-close teste H0 : RMSEA de population >= .08 ; un petit p rejette un mauvais ajustement approximatif. Interprétez les deux avec l’estimation RMSEA et son intervalle de confiance.	Close-fit prüft H0: Populations-RMSEA <= .05; ein kleiner p-Wert verwirft einen engen Fit. Not-close prüft H0: Populations-RMSEA >= .08; ein kleiner p-Wert verwirft einen schlechten approximativen Fit. Interpretieren Sie beide mit RMSEA-Schätzwert und Konfidenzintervall.	Close-fit kiểm định H0: RMSEA tổng thể <= .05; p nhỏ bác bỏ độ phù hợp gần. Not-close kiểm định H0: RMSEA tổng thể >= .08; p nhỏ bác bỏ độ phù hợp xấp xỉ kém. Diễn giải cả hai cùng ước lượng RMSEA và khoảng tin cậy.
+Robust or scaled p values are selected to match the reported RMSEA when available. These hypothesis tests are sample-size sensitive and are not standalone model-acceptance rules.	利用可能な場合、報告するRMSEAに対応する頑健またはスケーリング済みp値を選択します。これらの検定は標本サイズに敏感であり、単独でモデルを採択する規則ではありません。	可用时选择与所报告RMSEA相匹配的稳健或缩放p值。这些检验对样本量敏感，不能单独作为接受模型的规则。	Cuando están disponibles, se seleccionan valores p robustos o escalados acordes con el RMSEA informado. Estas pruebas son sensibles al tamaño muestral y no son reglas independientes de aceptación del modelo.	Les valeurs p robustes ou corrigées sont choisies pour correspondre au RMSEA rapporté, lorsqu’elles sont disponibles. Ces tests sont sensibles à la taille d’échantillon et ne constituent pas des règles autonomes d’acceptation du modèle.	Verfügbare robuste oder skalierte p-Werte werden passend zum berichteten RMSEA gewählt. Diese Tests reagieren auf den Stichprobenumfang und sind keine eigenständigen Regeln zur Modellannahme.	Khi có, chọn p vững hoặc đã hiệu chỉnh tỷ lệ phù hợp với RMSEA được báo cáo. Các kiểm định này nhạy với cỡ mẫu và không phải quy tắc độc lập để chấp nhận mô hình.
+Close-fit H0	近似適合のH0	近似良好拟合H0	H0 de ajuste cercano	H0 d’ajustement proche	H0 für engen Fit	H0 độ phù hợp gần
+Close-fit p	近似適合のp値	近似良好拟合p值	p de ajuste cercano	p d’ajustement proche	p für engen Fit	p độ phù hợp gần
+Not-close H0	近似不適合のH0	近似拟合较差H0	H0 de ajuste no cercano	H0 d’ajustement non proche	H0 für nicht engen Fit	H0 độ phù hợp không gần
+Not-close p	近似不適合のp値	近似拟合较差p值	p de ajuste no cercano	p d’ajustement non proche	p für nicht engen Fit	p độ phù hợp không gần
+Fitted model	適合モデル	拟合模型	Modelo ajustado	Modèle ajusté	Angepasstes Modell	Mô hình đã khớp
+Original model	元のモデル	原始模型	Modelo original	Modèle initial	Ursprüngliches Modell	Mô hình ban đầu
+Modified model	修正モデル	修正模型	Modelo modificado	Modèle modifié	Modifiziertes Modell	Mô hình đã sửa đổi'''
+for i,lang in enumerate(['ja','zh','es','fr','de','vi'],1):
+ p=Path('i18n')/(lang+'.json');data=json.loads(p.read_text(encoding='utf-8'))
+ for line in rows.splitlines():
+  fields=line.split('\t');assert len(fields)==7,fields
+  data['translations']['analysis.ui.'+re.sub(r'[^a-z0-9]+','_',fields[0].lower()).strip('_')]=fields[i]
+ p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+p=Path('i18n/ko.json');data=json.loads(p.read_text(encoding='utf-8'))
+for source,value in {'Close-fit H0':'근접 적합 H0','Close-fit p':'근접 적합 p','Not-close H0':'비근접 적합 H0','Not-close p':'비근접 적합 p'}.items():
+ data['translations']['analysis.ui.'+re.sub(r'[^a-z0-9]+','_',source.lower()).strip('_')]=value
+p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

@@ -293,3 +293,23 @@ custom_model_canvas_i18n <- function(language = statedu_initial_language()) {
     role_covariate = custom_model_canvas_text(language, "Covariate", "\uacf5\ubcc0\ub7c9")
   )
 }
+
+# Canvas labels depend only on language. R copy-on-modify keeps per-workspace
+# label overrides from changing this cached baseline.
+custom_model_canvas_i18n <- local({
+  build <- custom_model_canvas_i18n
+  cache <- new.env(parent=emptyenv())
+  function(language = statedu_initial_language()) {
+    key <- normalize_app_language(language)
+    if(!exists(key,envir=cache,inherits=FALSE)) {
+      labels <- build(language)
+      labels$score_editor <- canvas_score_text("Original items / reliability / parcels",language)
+      labels$score_model_changed <- canvas_score_text("The model changed. Reopen the original-item editor.",language)
+      labels$score_model_results <- canvas_score_text("Model results",language)
+      labels$score_with_covariates <- canvas_score_text("with covariates",language)
+      labels$score_without_covariates <- canvas_score_text("without covariates",language)
+      assign(key,labels,envir=cache)
+    }
+    get(key,envir=cache,inherits=FALSE)
+  }
+})

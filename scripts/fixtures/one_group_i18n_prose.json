@@ -1,0 +1,13 @@
+[
+  "Two-factor within-subject repeated-measures ANOVA",
+  "Both Treatment and Time are within-subject factors.",
+  "Every included subject has both treatments at every selected time.",
+  "The interaction tests whether experimental-control differences change over time.",
+  "Do not treat the treatment-specific change pattern as supported.",
+  "Time and Treatment x Time have separate sphericity checks.",
+  "No selected subjects were excluded.",
+  "Normality review did not flag p < .05.",
+  "Use a subject/site mixed model when treatment-by-time records are incomplete.",
+  "The current result is a complete-case classical repeated-measures ANOVA.",
+  "Subjects missing any treatment-by-time cell are excluded listwise."
+]

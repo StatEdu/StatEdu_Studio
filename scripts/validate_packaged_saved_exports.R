@@ -1,0 +1,36 @@
+Sys.setenv(STATEDU_MODULE_CACHE='false')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules()
+out<-Sys.getenv('STATEDU_QA_OUTPUT');stopifnot(nzchar(out))
+saved<-read_result_snapshot_store(file.path(out,'saved-results.json'))
+stopifnot(length(saved)==3)
+Sys.setenv(STATEDU_RESULT_STORE=file.path(out,'saved-results.json'))
+restore_session<-new.env();restore_session$userData<-new.env()
+restored<-shiny::isolate(result_accumulator_store(restore_session)())
+if(identical(Sys.getenv('STATEDU_QA_AUTORESTORE'),'true'))stopifnot(identical(saved,restored))
+normalize<-function(x)gsub('[[:space:]\u00a0]+','',paste(x,collapse=''),perl=TRUE)
+for(mode in c('current','accumulated')){
+ entries<-if(mode=='current')tail(saved,1)else saved
+ captured<-paste(vapply(entries,`[[`,character(1),'html'),collapse='\n')
+ writeLines(captured,file.path(out,paste0(mode,'-expected.html')),useBytes=TRUE)
+ doc<-xml2::read_html(captured)
+ expected<-xml2::xml_text(xml2::xml_find_all(doc,'//th|//td|//h3|//h4|//h5|//p'))
+ expected<-expected[nzchar(trimws(expected))]
+ stem<-file.path(out,mode)
+ write_result_collection_html(entries,paste0(stem,'.html'))
+ write_result_collection_docx(entries,paste0(stem,'.docx'))
+ save_result_collection_excel_file(entries,paste0(stem,'.xlsx'))
+ write_result_collection_pdf(entries,paste0(stem,'.pdf'))
+ write_result_collection_hwpx(entries,paste0(stem,'.hwpx'))
+ word<-normalize(xml2::xml_text(xml2::read_xml(unz(paste0(stem,'.docx'),'word/document.xml'))))
+ members<-unzip(paste0(stem,'.hwpx'),list=TRUE)$Name
+ hwpx<-normalize(vapply(members[grepl('Contents/section[0-9]+[.]xml$',members)],function(s)xml2::xml_text(xml2::read_xml(unz(paste0(stem,'.hwpx'),s))),character(1)))
+ workbook<-openxlsx::loadWorkbook(paste0(stem,'.xlsx'))
+ excel<-normalize(unlist(lapply(seq_along(names(workbook)),function(i)as.matrix(openxlsx::read.xlsx(workbook,sheet=i,colNames=FALSE)))))
+ html<-normalize(xml2::xml_text(xml2::read_html(paste0(stem,'.html'))))
+ for(value in expected)for(actual in list(word,hwpx,excel,html))stopifnot(grepl(normalize(value),actual,fixed=TRUE))
+ expected_images<-length(xml2::xml_find_all(doc,'//img[starts-with(@src,"data:image/png")]'))
+ stopifnot(expected_images==2*length(entries))
+ docx_images<-unzip(paste0(stem,'.docx'),list=TRUE)$Name
+ stopifnot(sum(grepl('^word/media/',docx_images))>=expected_images)
+ message('PASS: ',mode,' captured results, all cells/headings/notes in HTML/Word/HWPX/Excel; PDF generated; ',expected_images,' plots retained in DOCX')
+}

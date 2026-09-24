@@ -440,6 +440,10 @@ structural_canvas_validate_pls_model_contract <- function(snapshot, analysis_typ
 }
 
 run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0), nominal = character(0), residual_variance_fixes = numeric(0), ml_likelihood = "normal") {
+  if(any(vapply(snapshot$nodes %||% list(),function(n)!is.null(n$scoreSpec),logical(1)))) data <- canvas_score_data(snapshot, data)
+  score_indicators <- vapply(Filter(function(n)!is.null(n$scoreDesign) && identical(n$scoreDesign$mode,"single"),snapshot$nodes),
+    function(n)custom_model_canvas_node_variable(n$scoreDesign$original),character(1))
+  if(length(intersect(score_indicators,ordered)))stop("Reliability-constrained sum/mean indicators must be treated as continuous scores, not ordered categories. / 신뢰도 제약을 적용한 합산·평균점수는 순서형 범주가 아닌 연속형으로 지정하세요.")
   if (length(attr(data,"statedu_scope_excluded"))) {
     snapshot <- analysis_scope_model_snapshot(snapshot,data)
     ordered <- setdiff(ordered,analysis_scope_excluded(data))

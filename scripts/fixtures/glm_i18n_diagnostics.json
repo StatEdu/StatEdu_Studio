@@ -1,0 +1,12 @@
+[
+  "Standard GLM assumes independent observations after conditioning on predictors.",
+  "Confirm that the outcome scale and scientific estimand match the selected GLM family.",
+  "Inspect residual plots and consider robust inference or a more appropriate family/link.",
+  "Residual diagnostic screening did not flag a major issue.",
+  "No fitted-probability separation flag was detected.",
+  "Continue to inspect sparse categories and confidence interval width.",
+  "VIF could not be estimated.",
+  "Dispersion ratio could not be estimated.",
+  "No major overdispersion signal by the screening threshold.",
+  "Interpret coefficients cautiously and consider sensitivity analysis."
+]

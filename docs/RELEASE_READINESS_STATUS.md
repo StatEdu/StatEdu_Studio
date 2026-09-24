@@ -1,6 +1,8 @@
 # StatEdu Studio Release Readiness Status
 
-Last reviewed: 2026-09-15
+Last reviewed: 2026-09-24
+
+Next source version: 1.3.1 (unreleased). Current development changes and the minimum-version policy are being prepared for the public edition, excluding meta-analysis and within-subject treatment repeated-measures ANOVA. No 1.3.1 installer build or publication is authorized at this stage. See `docs/RELEASE_1_3_1_PREPARATION_KO.md`. The 1.3.0 installer evidence below does not validate a 1.3.1 installer.
 
 Latest upgrade fixes: default desktop result history now uses the user profile; valid surviving legacy histories are copied without changing their originals. Explicit unspecified construct types are preserved. Regression checks, the rebuilt installer, 337 packaged-source hashes, and a GUI restore without a history-path override passed. See `docs/UPGRADE_FIXES_20260915_KO.md`. Actual previous-version installation/upgrade remains unverified; users must save legacy histories outside the installation directory before updating. The prior findings in `docs/UPGRADE_READINESS_20260915_KO.md` are retained as history, not current unresolved source defects.
 

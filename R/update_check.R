@@ -1,5 +1,102 @@
 # Update-check helpers for StatEdu Studio.
 
+# This policy controls supported versions, not Pro license entitlements.
+# Future Pro builds must set STATEDU_PRODUCT_EDITION=pro and publish an
+# editions.pro policy; the legacy top-level manifest applies only to free.
+statedu_version_policy <- function(manifest, current_version,
+                                   edition = Sys.getenv("STATEDU_PRODUCT_EDITION", "free")) {
+  invalid <- list(valid = FALSE, blocked = FALSE, minimum_version = "")
+  scalar <- function(x) is.character(x) && length(x) == 1L && !is.na(x)
+  version <- function(x) scalar(x) && grepl("^[0-9]+\\.[0-9]+\\.[0-9]+(-[A-Za-z0-9.-]+)?$", x)
+  if (!is.list(manifest) || !version(current_version)) return(invalid)
+  if (!is.null(manifest$editions)) {
+    if (!is.list(manifest$editions) || !is.list(manifest$editions[[edition]])) return(invalid)
+    manifest <- manifest$editions[[edition]]
+  } else if (!identical(edition, "free")) return(invalid)
+  latest <- manifest$latest_version %||% manifest$version
+  minimum <- manifest$minimum_version %||% manifest$minimumSupportedVersion
+  if (!version(latest)) return(invalid)
+  if (is.null(minimum)) return(list(valid = TRUE, blocked = FALSE, minimum_version = ""))
+  if (!version(minimum) || statedu_compare_versions(minimum, latest) > 0L) return(invalid)
+  list(valid = TRUE, blocked = statedu_compare_versions(current_version, minimum) < 0L,
+       minimum_version = minimum)
+}
+
+statedu_startup_update_policy <- function(current_version,
+    manifest_url = statedu_update_manifest_url(),
+    cache_path = file.path(statedu_user_settings_dir(), "version-policy.rds"),
+    check = statedu_check_update) {
+  # Do not permit an insecure transport to establish a mandatory policy.
+  result <- tryCatch({
+    if (!grepl("^https://", manifest_url)) stop("HTTPS required")
+    check(current_version, manifest_url = manifest_url, timeout = 8)
+  }, error = function(e) list(status = "error"))
+  if (!identical(result$status, "error") &&
+      isTRUE(statedu_version_policy(result$manifest, current_version)$valid)) {
+    tryCatch({
+      dir.create(dirname(cache_path), recursive = TRUE, showWarnings = FALSE)
+      temporary <- tempfile("policy-", tmpdir = dirname(cache_path))
+      on.exit(unlink(temporary), add = TRUE)
+      saveRDS(list(url = manifest_url, manifest = result$manifest), temporary)
+      if (!file.copy(temporary, cache_path, overwrite = TRUE)) warning("Policy cache write failed")
+    }, error = function(e) warning("Policy cache write failed: ", conditionMessage(e)))
+    result$policy_source <- "network"
+    return(result)
+  }
+  cached <- tryCatch(if (file.exists(cache_path)) readRDS(cache_path) else NULL,
+    error = function(e) NULL)
+  if (is.list(cached) && identical(cached$url, manifest_url)) {
+    policy <- statedu_version_policy(cached$manifest, current_version)
+    if (isTRUE(policy$valid)) {
+      return(list(status = if (policy$blocked) "update_required" else "current",
+        current_version = current_version, minimum_version = policy$minimum_version,
+        manifest = cached$manifest, policy_source = "cache"))
+    }
+  }
+  list(status = "error", current_version = current_version, policy_source = "unavailable")
+}
+
+statedu_required_update_text <- function(language) {
+  if (identical(normalize_app_language(language), "ko")) {
+    list(title = "StatEdu Studio 업데이트 필요",
+      message = "현재 버전의 지원이 종료되었습니다. 계속 사용하려면 지원되는 버전으로 업데이트해 주세요.",
+      download = "업데이트 안내", restart = "업데이트 설치 후 앱을 다시 실행해 주세요.")
+  } else {
+    list(title = "StatEdu Studio update required",
+      message = "This version is no longer supported. Update to a supported version to continue.",
+      download = "Update information", restart = "Restart the app after installing the update.")
+  }
+}
+
+statedu_required_update_ui <- function(result, request = NULL) {
+  if (!isTRUE(statedu_request_token_authorized(request))) return(statedu_token_rejection_response())
+  language <- statedu_initial_language(request)
+  text <- statedu_required_update_text(language)
+  # Use the download landing page, not the old manifest's Windows-only EXE.
+  # Store packages can bake in their own HTTPS store listing through this setting.
+  url <- Sys.getenv("STATEDU_UPDATE_PAGE_URL", if (identical(language, "ko"))
+    "https://studio.statedu.com/download/" else "https://studio.statedu.com/en/download/")
+  if (!grepl("^https://", url)) url <- "https://studio.statedu.com/download/"
+  shiny::fluidPage(
+    shiny::tags$head(shiny::tags$title(text$title)),
+    shiny::tags$main(style = "max-width:680px;margin:80px auto;padding:32px;",
+      shiny::h2(text$title), shiny::p(text$message),
+      shiny::p(statedu_t("update.current_version", language), ": ", result$current_version),
+      shiny::p(statedu_t("update.minimum_supported_version", language), ": ", result$minimum_version),
+      shiny::tags$a(class = "btn btn-primary", href = url, target = "_blank",
+        rel = "noopener noreferrer", text$download), shiny::p(text$restart)))
+}
+
+# Select the whole Shiny application before registering analysis observers.
+# Removing the notice in the browser cannot enable the normal analysis server.
+statedu_guarded_application <- function(result, normal_ui, normal_server) {
+  if (identical(result$status, "update_required")) {
+    return(list(ui = function(request) statedu_required_update_ui(result, request),
+                server = function(input, output, session) {}))
+  }
+  list(ui = normal_ui, server = normal_server)
+}
+
 statedu_update_manifest_url <- function() {
   Sys.getenv(
     "STATEDU_UPDATE_MANIFEST_URL",
@@ -111,7 +208,10 @@ statedu_check_update <- function(
     ))
   }
 
-  latest_version <- statedu_manifest_value(manifest, "version")
+  edition <- Sys.getenv("STATEDU_PRODUCT_EDITION", "free")
+  edition_manifest <- if (is.list(manifest$editions)) manifest$editions[[edition]] else manifest
+  latest_version <- statedu_manifest_value(edition_manifest, "latest_version",
+    statedu_manifest_value(edition_manifest, "version"))
   comparison <- statedu_compare_versions(current_version, latest_version)
   if (is.na(comparison)) {
     return(list(
@@ -124,11 +224,18 @@ statedu_check_update <- function(
     ))
   }
 
-  status <- if (comparison < 0) "update_available" else "current"
+  policy <- statedu_version_policy(manifest, current_version)
+  if (!isTRUE(policy$valid)) {
+    return(list(status = "error", current_version = current_version,
+      latest_version = latest_version, manifest_url = manifest_url,
+      message = "Invalid minimum version policy."))
+  }
+  status <- if (isTRUE(policy$blocked)) "update_required" else if (comparison < 0) "update_available" else "current"
   list(
     status = status,
     current_version = current_version,
     latest_version = latest_version,
+    minimum_version = policy$minimum_version,
     manifest_url = manifest_url,
     manifest = manifest,
     message = statedu_manifest_value(manifest, "messageEn")
@@ -137,6 +244,9 @@ statedu_check_update <- function(
 
 statedu_update_status_title <- function(result, language = statedu_initial_language()) {
   status <- result$status %||% "error"
+  if (identical(status, "update_required")) {
+    return(statedu_required_update_text(language)$title)
+  }
   if (identical(status, "update_available")) {
     return(statedu_t("update.new_version_available", language))
   }
@@ -148,6 +258,9 @@ statedu_update_status_title <- function(result, language = statedu_initial_langu
 
 statedu_update_message <- function(result, language = statedu_initial_language()) {
   manifest <- result$manifest %||% list()
+  if (identical(result$status, "update_required")) {
+    return(statedu_required_update_text(language)$message)
+  }
   if (identical(result$status %||% "", "error")) {
     return(statedu_t("update.keep_using_installed", language))
   }
@@ -180,7 +293,8 @@ statedu_update_modal <- function(result, language = statedu_initial_language()) 
     latest_version <- result$current_version %||% ""
   }
   release_date <- statedu_manifest_value(manifest, "releaseDate")
-  minimum_supported <- statedu_manifest_value(manifest, "minimumSupportedVersion")
+  minimum_supported <- result$minimum_version %||% statedu_manifest_value(manifest, "minimum_version",
+    statedu_manifest_value(manifest, "minimumSupportedVersion"))
   channel <- statedu_manifest_value(manifest, "channel")
 
   rows <- list(

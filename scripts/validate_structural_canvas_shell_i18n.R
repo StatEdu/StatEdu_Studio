@@ -1,0 +1,31 @@
+Sys.setlocale('LC_CTYPE','English_United States.utf8');Sys.setenv(STATEDU_MODULE_CACHE='false')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules()
+out <- 'tmp/structural-canvas-shell-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+info <- data.frame(name=c('Normality','x2'),measurement=c('continuous','continuous'),var_label=c('사용자 라벨','Model'))
+english <- c(cfa='Confirmatory Factor Analysis',cbsem='Structural Equation Modeling',plssem='PLS Structural Equation Modeling')
+for(lang in c('en','ko','ja','zh','es','fr','de','vi')) for(type in names(english)) {
+  # English calls used by result tables must not depend on the UI language.
+  options(statedu.app_language=lang)
+  stopifnot(identical(structural_analysis_title(type,'en'),unname(english[type])))
+  panel <- xml2::read_html(as.character(structural_equation_tab_panel(type,lang)),encoding='UTF-8')
+  title <- xml2::xml_text(xml2::xml_find_first(panel,'//h1'))
+  stopifnot(identical(title,structural_analysis_title(type,lang)))
+  if(!lang %in% c('en','ko'))stopifnot(title!=english[type])
+  html <- as.character(structural_equation_workspace(info$name,info,analysis_type=type,language=lang))
+  doc <- xml2::read_html(html,encoding='UTF-8')
+  root <- xml2::xml_find_first(doc,'//*[@data-i18n]')
+  # Attributes are escaped for embedded JSON by the existing canvas contract.
+  decode <- function(x) xml2::xml_text(xml2::xml_find_first(xml2::read_html(paste0('<p>',x,'</p>'),encoding='UTF-8'),'//p'))
+  labels <- jsonlite::fromJSON(decode(xml2::xml_attr(root,'data-i18n')))
+  variables <- jsonlite::fromJSON(decode(xml2::xml_attr(root,'data-variables')))
+  if(lang=='en' && type=='cfa') { baseline_variables <- variables; baseline_labels <- labels }
+  stopifnot(identical(variables,baseline_variables))
+  stopifnot(grepl('사용자 라벨',html,fixed=TRUE),grepl('Normality',html,fixed=TRUE))
+  for(key in c('role_latent','validation_counts','mode_add_observed','mode_add_latent','mode_add_higher_order','mode_covariance'))stopifnot(nzchar(labels[[key]]))
+  if(!lang %in% c('en','ko'))for(key in c('role_latent','validation_counts','mode_add_observed','mode_add_latent','mode_add_higher_order','mode_covariance'))stopifnot(labels[[key]]!=baseline_labels[[key]])
+  stopifnot(grepl('{errors}',labels$validation_counts,fixed=TRUE),grepl('{warnings}',labels$validation_counts,fixed=TRUE))
+  expected <- gsub('{warnings}','0',gsub('{errors}','0',labels$validation_counts,fixed=TRUE),fixed=TRUE)
+  stopifnot(identical(xml2::xml_text(xml2::xml_find_first(doc,'//*[contains(@class,"structural-validation-status")]')),expected))
+  if(type=='cfa')jsonlite::write_json(labels,file.path(out,paste0(lang,'.json')),auto_unbox=TRUE)
+  cat('PASS:',lang,type,'titles, English result name, canvas labels, count placeholders and user names\n')
+}

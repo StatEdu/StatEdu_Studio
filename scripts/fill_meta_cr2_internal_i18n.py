@@ -1,0 +1,17 @@
+import json
+from pathlib import Path
+keys=['cr_square','cr_psd','cr_type','cr_lengths','cr_confidence','cr_singular','cr_variance','cr_df']
+rows={
+'en':['A square matrix is required.','The CR2 adjustment matrix is not positive semidefinite.','Choose CR1, CR2, or CR3.','The outcome, variance, design matrix, and study cluster must have matching lengths.','The confidence level must be between 0 and 1.','The CR3 leave-one-cluster adjustment is singular.','The CR2 cluster-robust variance could not be estimated.','Satterthwaite degrees of freedom could not be estimated for CR2.'],
+'ko':['정방행렬이 필요합니다.','CR2 보정행렬이 양의 준정부호가 아닙니다.','CR1, CR2 또는 CR3을 선택하세요.','결과변수·분산·설계행렬·연구 군집의 관측치 수가 일치해야 합니다.','신뢰수준은 0보다 크고 1보다 작아야 합니다.','CR3의 군집 하나 제외 보정행렬이 특이행렬입니다.','CR2 군집 강건분산을 추정할 수 없습니다.','CR2의 Satterthwaite 자유도를 추정할 수 없습니다.'],
+'ja':['正方行列が必要です。','CR2の補正行列は半正定値ではありません。','CR1、CR2、またはCR3を選択してください。','アウトカム、分散、計画行列、研究クラスターの観測数が一致する必要があります。','信頼水準は0より大きく1より小さい必要があります。','CR3の1クラスター除外補正行列が特異です。','CR2のクラスターロバスト分散を推定できませんでした。','CR2のSatterthwaite自由度を推定できませんでした。'],
+'zh':['需要方阵。','CR2 校正矩阵不是半正定矩阵。','请选择 CR1、CR2 或 CR3。','结局、方差、设计矩阵和研究聚类的观测数必须一致。','置信水平必须大于 0 且小于 1。','CR3 逐一排除聚类的校正矩阵是奇异矩阵。','无法估计 CR2 聚类稳健方差。','无法估计 CR2 的 Satterthwaite 自由度。'],
+'es':['Se requiere una matriz cuadrada.','La matriz de ajuste CR2 no es semidefinida positiva.','Seleccione CR1, CR2 o CR3.','El resultado, la varianza, la matriz de diseño y los conglomerados de estudios deben tener el mismo número de observaciones.','El nivel de confianza debe ser mayor que 0 y menor que 1.','La matriz de ajuste CR3 al excluir un conglomerado es singular.','No se pudo estimar la varianza robusta por conglomerados CR2.','No se pudieron estimar los grados de libertad de Satterthwaite para CR2.'],
+'fr':['Une matrice carrée est requise.','La matrice d’ajustement CR2 n’est pas semi-définie positive.','Choisissez CR1, CR2 ou CR3.','Le résultat, la variance, la matrice de conception et les clusters d’études doivent avoir le même nombre d’observations.','Le niveau de confiance doit être strictement compris entre 0 et 1.','La matrice d’ajustement CR3 par retrait d’un cluster est singulière.','La variance robuste aux clusters CR2 n’a pas pu être estimée.','Les degrés de liberté de Satterthwaite n’ont pas pu être estimés pour CR2.'],
+'de':['Eine quadratische Matrix ist erforderlich.','Die CR2-Anpassungsmatrix ist nicht positiv semidefinit.','Wählen Sie CR1, CR2 oder CR3.','Ergebnisvariable, Varianz, Designmatrix und Studiencluster müssen dieselbe Anzahl von Beobachtungen aufweisen.','Das Konfidenzniveau muss größer als 0 und kleiner als 1 sein.','Die CR3-Anpassungsmatrix beim Ausschluss eines Clusters ist singulär.','Die clusterrobuste CR2-Varianz konnte nicht geschätzt werden.','Die Satterthwaite-Freiheitsgrade konnten für CR2 nicht geschätzt werden.'],
+'vi':['Cần có ma trận vuông.','Ma trận hiệu chỉnh CR2 không bán xác định dương.','Chọn CR1, CR2 hoặc CR3.','Biến kết quả, phương sai, ma trận thiết kế và cụm nghiên cứu phải có cùng số quan sát.','Mức tin cậy phải lớn hơn 0 và nhỏ hơn 1.','Ma trận hiệu chỉnh CR3 khi loại một cụm là ma trận suy biến.','Không thể ước lượng phương sai vững theo cụm CR2.','Không thể ước lượng bậc tự do Satterthwaite cho CR2.'],
+}
+for lang,values in rows.items():
+ p=Path('i18n')/(lang+'.json');obj=json.loads(p.read_text(encoding='utf-8'))
+ obj['translations'].update({'meta.warning.'+k:v for k,v in zip(keys,values)})
+ p.write_text(json.dumps(obj,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

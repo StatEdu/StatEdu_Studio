@@ -1,0 +1,12 @@
+[
+  "Auxiliary agreement indices",
+  "Raters",
+  "Percent agreement",
+  "Pairwise agreement across available rater pairs.",
+  "Complete paired ratings.",
+  "Nominal agreement coefficient.",
+  "Nominal alpha; missing ratings are allowed.",
+  "Requires the same number of ratings per subject.",
+  "Mean pairwise Cohen's kappa.",
+  "Normality is flagged as satisfied when absolute skewness is less than 2 and absolute kurtosis is less than 7 for every rater variable."
+]

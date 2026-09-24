@@ -1,0 +1,33 @@
+import json,re
+from pathlib import Path
+rows='''Diagnostics|診断|诊断|Diagnósticos|Diagnostics|Diagnostik|Chẩn đoán
+HTMT threshold|HTMT基準|HTMT阈值|Umbral HTMT|Seuil HTMT|HTMT-Schwellenwert|Ngưỡng HTMT
+Strict (.85)|厳格（.85）|严格（.85）|Estricto (.85)|Strict (.85)|Streng (.85)|Nghiêm ngặt (.85)
+Lenient (.90)|緩やか（.90）|宽松（.90）|Flexible (.90)|Souple (.90)|Weniger streng (.90)|Nới lỏng (.90)
+MI output method|MI出力方式|MI输出方式|Método de salida de MI|Méthode de sortie des MI|MI-Ausgabemethode|Phương thức xuất MI
+Theory-allowed MI with cumulative fit|理論上許容されるMIと累積適合度|理论允许的MI与累积拟合|MI permitidos por la teoría con ajuste acumulado|MI autorisés par la théorie avec ajustement cumulé|Theoretisch zulässige MI mit kumulativer Anpassung|MI được lý thuyết cho phép với độ phù hợp tích lũy
+Conventional output (all MI)|通常の出力（すべてのMI）|常规输出（全部MI）|Salida convencional (todos los MI)|Sortie conventionnelle (tous les MI)|Konventionelle Ausgabe (alle MI)|Xuất thông thường (tất cả MI)
+PLS diagnostics distinguish repeated PLSpredict out-of-sample assessment while reviewing residual-based approximate fit, collinearity, and construct-level quality indices.|PLS診断では、反復PLSpredictによる標本外評価と、残差に基づく近似適合度・共線性・構成概念別の品質指標を区別して検討します。|PLS诊断区分重复PLSpredict样本外评估，并检查基于残差的近似拟合、共线性及构念层面质量指标。|Los diagnósticos PLS distinguen la evaluación repetida fuera de muestra PLSpredict del ajuste aproximado basado en residuos, la colinealidad y los índices de calidad por constructo.|Les diagnostics PLS distinguent l’évaluation répétée hors échantillon PLSpredict de l’ajustement approché fondé sur les résidus, de la colinéarité et des indices de qualité par construit.|Die PLS-Diagnostik unterscheidet wiederholte PLSpredict-Bewertungen außerhalb der Stichprobe von residualbasierter approximativer Anpassung, Kollinearität und Qualitätsindizes je Konstrukt.|Chẩn đoán PLS phân biệt đánh giá ngoài mẫu PLSpredict lặp lại với độ phù hợp xấp xỉ dựa trên phần dư, đa cộng tuyến và chỉ số chất lượng theo cấu trúc.
+PLSpredict cross-validation|PLSpredict交差検証|PLSpredict交叉验证|Validación cruzada PLSpredict|Validation croisée PLSpredict|PLSpredict-Kreuzvalidierung|Kiểm định chéo PLSpredict
+PLSpredict repetitions|PLSpredict反復回数|PLSpredict重复次数|Repeticiones PLSpredict|Répétitions PLSpredict|PLSpredict-Wiederholungen|Số lần lặp PLSpredict
+PLSpredict seed|PLSpredict乱数シード|PLSpredict随机种子|Semilla PLSpredict|Graine PLSpredict|PLSpredict-Zufallsstartwert|Hạt giống ngẫu nhiên PLSpredict
+5-fold|5分割|5折|5 particiones|5 plis|5-fach|5 phần
+10-fold|10分割|10折|10 particiones|10 plis|10-fach|10 phần
+The Direct Antecedents scheme compares indicator-level out-of-sample RMSE/MAE against PLS and linear-model benchmarks.|Direct Antecedents方式で、指標ごとの標本外RMSE/MAEをPLSおよび線形モデルの基準と比較します。|Direct Antecedents方案将指标层面的样本外RMSE/MAE与PLS及线性模型基准进行比较。|El esquema Direct Antecedents compara el RMSE/MAE fuera de muestra por indicador con los referentes PLS y de modelos lineales.|Le schéma Direct Antecedents compare les RMSE/MAE hors échantillon par indicateur aux références PLS et de modèles linéaires.|Das Direct-Antecedents-Verfahren vergleicht indikatorbezogene RMSE/MAE außerhalb der Stichprobe mit PLS- und linearen Modellreferenzen.|Cách Direct Antecedents so sánh RMSE/MAE ngoài mẫu theo chỉ báo với chuẩn PLS và mô hình tuyến tính.
+Common Method|共通方法バイアス|共同方法偏差|Método común|Méthode commune|Gemeinsame Methode|Phương pháp chung
+Run common method bias diagnostics|共通方法バイアス診断を実行|运行共同方法偏差诊断|Ejecutar diagnósticos de sesgo de método común|Exécuter les diagnostics de biais de méthode commune|Diagnostik für Methodenverzerrung ausführen|Chạy chẩn đoán sai lệch phương pháp chung
+Common method diagnostics|共通方法の診断方法|共同方法诊断方式|Diagnósticos de método común|Diagnostics de méthode commune|Diagnostik der gemeinsamen Methode|Chẩn đoán phương pháp chung
+Harman single-factor screen|Harman単一因子の点検|Harman单因子检查|Comprobación de un factor de Harman|Examen à un facteur de Harman|Harman-Einfaktorprüfung|Sàng lọc một nhân tố Harman
+Single-factor CFA comparison|単一因子CFAとの比較|单因子CFA比较|Comparación con CFA de un factor|Comparaison avec CFA à un facteur|Vergleich mit Einfaktor-CFA|So sánh CFA một nhân tố
+Common latent factor screen|共通潜在因子の点検|共同潜因子检查|Comprobación del factor latente común|Examen du facteur latent commun|Prüfung eines gemeinsamen latenten Faktors|Sàng lọc nhân tố tiềm ẩn chung
+Design-stage procedural controls|設計段階の手続き的統制|设计阶段程序控制|Controles procedimentales en el diseño|Contrôles procéduraux à la conception|Verfahrenskontrollen in der Designphase|Kiểm soát thủ tục ở giai đoạn thiết kế
+e.g., source/time separation, anonymity, item ordering, scale-format design|例：回答源・測定時点の分離、匿名性、項目順序、尺度形式の設計|例如：来源/时间分离、匿名性、题项顺序及量表格式设计|p. ej., separación de fuente/tiempo, anonimato, orden de ítems, formato de escala|p. ex., séparation des sources/temps, anonymat, ordre des items, format d’échelle|z. B. Quellen-/Zeittrennung, Anonymität, Itemreihenfolge, Skalenformat|Ví dụ: tách nguồn/thời điểm, ẩn danh, thứ tự mục, định dạng thang đo
+Marker variable (record only)|マーカー変数（記録のみ）|标记变量（仅记录）|Variable marcadora (solo registro)|Variable marqueur (consignation seule)|Markervariable (nur Dokumentation)|Biến đánh dấu (chỉ ghi nhận)
+Marker selection and validity rationale|マーカー選定と妥当性の根拠|标记选择及效度依据|Justificación de selección y validez del marcador|Justification du choix et de la validité du marqueur|Begründung für Markerauswahl und Validität|Cơ sở lựa chọn và giá trị của biến đánh dấu
+Common method diagnostics are evidence screens, not proof that bias is absent. Marker information is recorded for audit only.|共通方法診断は証拠を点検するもので、バイアスがないことの証明ではありません。マーカー情報は監査記録のみに使用します。|共同方法诊断用于检查证据，并不能证明不存在偏差。标记信息仅作审计记录。|Los diagnósticos de método común examinan evidencias y no prueban la ausencia de sesgo. La información del marcador se registra solo para auditoría.|Les diagnostics de méthode commune examinent des indices sans prouver l’absence de biais. Les informations du marqueur sont consignées uniquement pour l’audit.|Diagnostik der gemeinsamen Methode prüft Hinweise, beweist aber keine Abwesenheit von Verzerrungen. Markerinformationen dienen nur der Dokumentation für Audits.|Chẩn đoán phương pháp chung sàng lọc bằng chứng, không chứng minh rằng không có sai lệch. Thông tin biến đánh dấu chỉ được ghi để kiểm tra.'''
+for i,lang in enumerate(['ja','zh','es','fr','de','vi']):
+ p=Path('i18n')/(lang+'.json');d=json.loads(p.read_text(encoding='utf-8'))
+ for line in rows.splitlines():
+  row=line.split('|');assert len(row)==7
+  d['translations']['analysis.ui.'+re.sub(r'[^a-z0-9]+','_',row[0].lower()).strip('_')]=row[i+1]
+ p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

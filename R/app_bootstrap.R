@@ -41,6 +41,8 @@ required_packages <- c(
   "plm",
   "mice",
   "survey",
+  "VGAM",
+  "svyVGAM",
   "survival",
   "cmprsk",
   "lavaan",
@@ -188,6 +190,8 @@ app_module_files <- c(
   "result_model_summary.R",
   "result_coefficients.R",
   "setup_analysis_ui.R",
+  "analysis_complex_logistic.R",
+  "analysis_complex_logistic_diagnostics.R",
   "setup_complex_sample_ui.R",
   "setup_ui.R",
   "setup_interrater_agreement_ui.R",
@@ -197,6 +201,8 @@ app_module_files <- c(
   "setup_custom_model_canvas_structural_common_method.R",
   "setup_custom_model_canvas_structural_identification_diagnostics.R",
   "setup_custom_model_canvas_structural_residual_constraints.R",
+  "setup_custom_model_canvas_scores.R",
+  "setup_custom_model_canvas_scores_ui.R",
   "setup_custom_model_canvas_structural_distribution_diagnostics.R",
   "setup_custom_model_canvas_structural_local_fit_diagnostics.R",
   "setup_custom_model_canvas_structural_risk_diagnostics.R",
@@ -358,6 +364,8 @@ utf8_app_module_files <- c(
   "setup_custom_model_canvas_structural_common_method.R",
   "setup_custom_model_canvas_structural_identification_diagnostics.R",
   "setup_custom_model_canvas_structural_residual_constraints.R",
+  "setup_custom_model_canvas_scores.R",
+  "setup_custom_model_canvas_scores_ui.R",
   "setup_custom_model_canvas_structural_distribution_diagnostics.R",
   "setup_custom_model_canvas_structural_local_fit_diagnostics.R",
   "setup_custom_model_canvas_structural_risk_diagnostics.R",
@@ -564,7 +572,13 @@ source_app_modules <- function(files = app_module_files, dir = "R") {
   source_app_modules_individually(files, dir, latent_module_file)
 }
 
-read_app_config <- function(version_file = "VERSION") {
+read_app_config <- function(version_file = NULL) {
+  if(is.null(version_file)) {
+    public <- tolower(Sys.getenv("STATEDU_PUBLIC_RELEASE", "")) %in% c("1","true","yes","on","public")
+    edition <- tolower(Sys.getenv("STATEDU_EDITION", "development"))
+    development <- !public && edition %in% c("", "development")
+    version_file <- if(development && file.exists("VERSION_DEV")) "VERSION_DEV" else "VERSION"
+  }
   list(
     version = trimws(readLines(version_file, warn = FALSE)[1])
   )

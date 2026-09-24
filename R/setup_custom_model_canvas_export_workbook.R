@@ -224,7 +224,7 @@ structural_canvas_workbook_contents <- function(sheet_names) {
   )
 }
 
-structural_canvas_result_workbook_sheets <- function(bundle, table_fn, display_name = identity) {
+structural_canvas_result_workbook_sheets <- function(bundle, table_fn, display_name = identity, language = statedu_initial_language()) {
   analysis_type <- as.character(bundle$analysis_type %||% if (inherits(bundle$fit, "lavaan")) "cfa" else "plssem")
   sheets <- list(
     Overview = table_fn("overview"), Report_Summary = structural_canvas_report_summary(bundle), Fit = table_fn("fit"),
@@ -236,6 +236,16 @@ structural_canvas_result_workbook_sheets <- function(bundle, table_fn, display_n
   # result objects; applying the resolver twice can corrupt a legitimate label
   # that happens to equal another variable's raw key (for example x1 -> "x2").
   display_mapped_sheets <- c("Overview", "Fit", "Validity", "Measurement")
+  if(any(vapply(bundle$snapshot$nodes %||% list(),function(n)!is.null(n$scoreDesign),logical(1)))) {
+    score_audit <- canvas_score_audit(bundle$snapshot)
+    if (nrow(score_audit)) {
+      score_audit$Mode <- vapply(score_audit$Mode,function(v)canvas_score_text(if(v=="single")"Single aggregate-score indicator" else "Parcel",language),character(1))
+      score_audit$Scoring <- vapply(score_audit$Scoring,function(v)canvas_score_text(if(v=="sum")"Sum" else "Mean",language),character(1))
+      score_audit$Method <- vapply(score_audit$Method,function(v)if(!nzchar(v))"" else canvas_score_text(if(v=="alpha")"Cronbach alpha" else "McDonald omega",language),character(1))
+      names(score_audit) <- vapply(names(score_audit),canvas_score_text,character(1),language=language)
+      sheets$Score_Definitions <- score_audit
+    }
+  }
   result_frame <- function(value) if (is.data.frame(value)) value else data.frame()
   display_multigroup_effect_table <- function(value) {
     value <- result_frame(value)

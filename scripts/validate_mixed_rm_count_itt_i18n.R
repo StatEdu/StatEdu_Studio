@@ -1,0 +1,30 @@
+Sys.setlocale('LC_CTYPE','English_United States.utf8');Sys.setenv(STATEDU_MODULE_CACHE='false')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules()
+set.seed(922);n<-60;rate<-exp(rnorm(n,2,.5))
+d<-data.frame(group=rep(c('Review','Normality'),each=n/2),pre=rpois(n,rate),post=rpois(n,rate*1.3),last=rpois(n,rate*1.6))
+info<-data.frame(name=names(d),measurement=c('category',rep('continuous',3)))
+missing<-d;missing$pre[seq(1,n,2)]<-NA_real_;missing$post[seq(2,n,2)]<-NA_real_
+results<-lapply(list(d,missing),function(x)prepare_mixed_rm_anova_results(x,group_variable='group',repeated_variables=c('pre','post','last'),variable_info=info,options=list(assumption_check=TRUE,posthoc=FALSE,analysis_population='itt')))
+phrases<-c('Use the fitted count GLMM as the ITT mixed-model result.','Use the fitted count GLMM as the ITT result.')
+for(i in seq_along(results))stopifnot(nrow(results[[i]]$mixed_model_coefficients)>0,'exp(B)'%in%names(results[[i]]$mixed_model_coefficients),phrases[i]%in%results[[i]]$recommendation$Recommendation)
+stopifnot(nrow(results[[1]]$anova)>0,!is.data.frame(results[[2]]$anova)||nrow(results[[2]]$anova)==0)
+before<-serialize(results,NULL);captured<-list();failures<-character()
+for(lang in c('en','ko','ja','zh','es','fr','de','vi')) {
+ options(statedu.app_language=lang);panels<-list();main<-list()
+ expected<-vapply(phrases,function(p)statedu_localized_text(lang,p,mixed_rm_appendix_korean_text(p)),character(1))
+ if(lang!='en'&&any(expected==phrases))failures<-c(failures,paste(lang,'catalog'))
+ for(i in seq_along(results)) {
+  panels[[i]]<-as.character(mixed_rm_anova_results_ui(results[[i]]));doc<-xml2::read_html(panels[[i]])
+  cells<-xml2::xml_text(xml2::xml_find_all(doc,"//table[@data-result-table-role='appendix']//td"))
+  if(!expected[i]%in%cells)failures<-c(failures,paste(lang,i,'render'))
+  main[[i]]<-xml2::xml_text(xml2::xml_find_all(doc,"//table[@data-result-table-role='main']"));stopifnot(length(main[[i]])>0)
+ }
+ if(lang=='en')baseline<-main else stopifnot(identical(main,baseline))
+ stopifnot(identical(before,serialize(results,NULL)))
+ probe<-mixed_rm_appendix_table(data.frame(Variable=phrases,Reason=phrases));stopifnot(identical(probe[[1]],phrases))
+ captured[[lang]]<-paste(unlist(panels),collapse='\n')
+}
+if(length(failures))stop(paste('Count ITT failures:',paste(failures,collapse=', ')))
+out<-'tmp/mixed-rm-count-itt-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+jsonlite::write_json(captured,file.path(out,'captured.json'),auto_unbox=TRUE)
+cat('PASS actual count GLMM guidance with/without complete cases across eight languages; main/source/user labels preserved\n')

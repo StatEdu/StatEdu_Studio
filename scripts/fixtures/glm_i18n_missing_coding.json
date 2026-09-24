@@ -1,0 +1,17 @@
+[
+  "Factor with treatment contrasts; reference level could not be determined.",
+  "Ordered factor; R ordered-factor contrasts are used unless the variable is recoded as numeric or nominal.",
+  "Binary outcome coded as event = second observed level and reference = first observed level.",
+  "Continuous predictor; coefficient is per one-unit increase.",
+  "No coding summary was generated.",
+  "Rows with originally missing dependent-variable values are excluded from each fitted imputed GLM.",
+  "Rows with imputed dependent-variable values are included as a sensitivity analysis; report this explicitly.",
+  "The dependent variable has no missing values in the selected GLM variables.",
+  "MI was selected, but no missing values were present in selected GLM variables; complete data were fitted.",
+  "IPW was selected, but no complete-case exclusion occurred; unweighted complete data were fitted.",
+  "Inverse-probability weighting was selected for GLM missing-data handling.",
+  "No fully observed predictors were available for the observation model; intercept-only IPW was used. Treat this as a weak IPW sensitivity analysis.",
+  "Observation status had no variation; unit weights were used.",
+  "Review positivity and weight stability; report the observation model and any clipping.",
+  "No rows were excluded for missing values in selected analysis variables."
+]

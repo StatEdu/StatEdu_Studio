@@ -1,0 +1,33 @@
+Sys.setlocale('LC_CTYPE','English_United States.utf8');Sys.setenv(STATEDU_MODULE_CACHE='false')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules()
+set.seed(921)
+d<-data.frame(group=rep(c('Review','Normality'),each=20),pre=sample(1:5,40,TRUE),post=sample(1:5,40,TRUE),last=sample(1:5,40,TRUE))
+info<-data.frame(name=names(d),measurement=c('category',rep('ordered',3)))
+missing<-d;missing$pre[seq(1,40,2)]<-NA_real_;missing$post[seq(2,40,2)]<-NA_real_
+results<-lapply(list(d,missing),function(x)prepare_mixed_rm_anova_results(x,group_variable='group',repeated_variables=c('pre','post','last'),variable_info=info,options=list(assumption_check=TRUE,posthoc=FALSE,analysis_population='itt')))
+phrases<-c('ordinal mixed model','Use an ordinal mixed model path for ITT; automatic fitting was not available.')
+stopifnot(nrow(results[[1]]$anova)>0,!is.data.frame(results[[2]]$anova)||nrow(results[[2]]$anova)==0)
+for(r in results)stopifnot(nrow(r$mixed_model_coefficients)==0,'Not fitted'%in%r$mixed_model_overview$Value,phrases[1]%in%r$mixed_model_overview$Value,phrases[2]%in%r$recommendation$Recommendation)
+before<-serialize(results,NULL);captured<-list();failures<-character()
+for(lang in c('en','ko','ja','zh','es','fr','de','vi')) {
+ options(statedu.app_language=lang);panels<-list();main<-list()
+ expected<-vapply(phrases,function(p)statedu_localized_text(lang,p,mixed_rm_appendix_korean_text(p)),character(1))
+ if(lang!='en'&&any(expected==phrases))failures<-c(failures,paste(lang,'catalog'))
+ for(i in seq_along(results)) {
+  panels[[i]]<-as.character(mixed_rm_anova_results_ui(results[[i]]));doc<-xml2::read_html(panels[[i]])
+  cells<-xml2::xml_text(xml2::xml_find_all(doc,"//table[@data-result-table-role='appendix']//td"))
+  if(!all(expected%in%cells))failures<-c(failures,paste(lang,i,'render'))
+  status<-if(lang=='ko')mixed_rm_appendix_korean_text('Not fitted')else result_appendix_ui_text('Not fitted',lang)
+  stopifnot(status%in%cells)
+  main[[i]]<-xml2::xml_text(xml2::xml_find_all(doc,"//table[@data-result-table-role='main']"))
+ }
+ stopifnot(length(main[[1]])>0,length(main[[2]])==0)
+ if(lang=='en')baseline<-main else stopifnot(identical(main,baseline))
+ stopifnot(identical(before,serialize(results,NULL)))
+ probe<-mixed_rm_appendix_table(data.frame(Variable=phrases,Reason=phrases));stopifnot(identical(probe[[1]],phrases))
+ captured[[lang]]<-paste(unlist(panels),collapse='\n')
+}
+if(length(failures))stop(paste('Ordinal ITT failures:',paste(failures,collapse=', ')))
+out<-'tmp/mixed-rm-ordinal-itt-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+jsonlite::write_json(captured,file.path(out,'captured.json'),auto_unbox=TRUE)
+cat('PASS actual ordinal ITT unsupported-fit guidance with/without complete cases in eight languages; status/main/source preserved\n')

@@ -1,0 +1,10 @@
+area,function,baseline_candidate_count,status,next_check
+사건 코드 매핑,survival_event_map_panel,8,자료 교체 초기화 및 추천 설계 파일 저장·동일 자료 복원·다른 자료 확인 거부와 8언어 UI 통과,네이티브 파일 대화상자와 데이터 편집 조합 확인
+추천 분석명,survival_recommendation_text,27,15개 유형 생성 UI 및 추천 이동과 지원 제한·확인 필요 대표 분기의 8언어 브라우저 통과,입력 오류가 추천을 차단하는 실제 분기 확인
+설정 검증 오류,survival_issue_text,19,28종 번역 연결과 대표 오류·경계 조건 16개 시나리오의 8언어 브라우저 및 10개 수정 후 회복 통과,자료 변경·복원 조합과 기존 오류 코드의 미검증 경로 대조
+추천 근거,survival_recommendation_explanation,34,번역 연결 및 7개 추천 규칙과 기본 안내의 8언어 생성 UI 검사 통과,실제 브라우저에서 연구 목적 변경과 추천 패널 언어 왕복
+추천 결과 패널,survival_design_recommendation_panel,9,추천 이동·지원 제한·오류 복구 및 자료 교체 상태와 추천 설계 파일 복원 8언어 통과,네이티브 저장·열기 및 전체 통합 점검
+경쟁위험 옵션,survival_competing_setup_panel,9,추천 이동 후 수정값 초기화 수정 및 8언어 유지와 파일 입출력·서버 복원 통과,네이티브 파일 대화상자 왕복 확인
+사건 변수 안내,survival_event_variable_note,1,8언어 KM 및 Cox 생성 화면의 안내 번역 확인,실제 브라우저 언어 왕복 확인
+KM 옵션,survival_km_setup_panel,4,생성 UI와 브라우저 유지 및 8언어 파일 입출력과 서버 복원 통과,네이티브 파일 대화상자 왕복 및 나머지 옵션 검증
+Cox 옵션,survival_cox_setup_panel,28,생성 UI와 브라우저 유지 및 8언어 파일 입출력과 서버 복원 및 결과 추가 스모크 통과,네이티브 파일 대화상자 왕복 확인

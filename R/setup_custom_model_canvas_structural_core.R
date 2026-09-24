@@ -799,6 +799,17 @@ structural_canvas_result_snapshot <- function(snapshot, fit, coefficient = "beta
   snapshot$dashNonsignificant <- TRUE
   snapshot$resultCoefficient <- coefficient
   snapshot$resultInferenceSource <- effect_state$source
+  # Keep fitted control effects for export even when controls are assigned from
+  # the variable list and have no editable canvas node. Never refit on save.
+  control_rows <- parameters[parameters$op == "~" &
+    parameters$rhs %in% as.character(snapshot$covariates %||% character()), , drop = FALSE]
+  snapshot$covariateEffects <- lapply(seq_len(nrow(control_rows)), function(index) {
+    row <- control_rows[index, , drop = FALSE]
+    value <- if (coefficient %in% c("b_p", "b_t", "b_beta")) row$est[[1L]] else row$std.all[[1L]]
+    p <- row$pvalue[[1L]]
+    list(variable = row$rhs[[1L]], target = row$lhs[[1L]],
+      label = if (is.finite(p)) sprintf("%s(%s)", format_decimal3(value), format_p(p)) else format_decimal3(value))
+  })
   snapshot
 }
 

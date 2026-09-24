@@ -1,0 +1,16 @@
+out <- 'tmp/basic-power-notes-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+methods <- c(rep('ttest',3),rep('nonparametric',3),rep('proportion',4),rep('correlation',2),rep('chisquare',2))
+designs <- c('two_sample','paired','one_sample','two_independent','paired','one_sample','two_proportion','two_proportion','one_proportion','one_proportion','correlation','correlation','chisquare','chisquare')
+targets <- c(rep('power',6),rep(c('sample_size','power'),4))
+results <- lapply(seq_along(methods),function(i){m<-methods[i];v<-list(target=targets[i],design=designs[i],effect='.3',alpha='.05',power='.8',n='100',ratio='1',alternative='two.sided',dropout='0',p1='.65',p2='.5',r='-.3',df='2');sample_size_calculate(m,setNames(v,paste0('sample_size_',m,'_',names(v))))})
+formula_keys <- paste0('sample_size.result.',c('note_power_t_two','note_power_t_paired','note_power_t_one',rep('note_power_rank',3),'note_prop_two_n','note_prop_two_power','note_prop_one_n','note_prop_one_power',rep('note_correlation_z',2),rep('note_chisquare_ncp',2)))
+for(i in seq_along(results))stopifnot(is.null(results[[i]]$error),identical(results[[i]]$method_note,statedu_t(formula_keys[i],'en')))
+for(i in 1:6){type<-c('two.sample','paired','one.sample')[(i-1)%%3+1];ref<-stats::power.t.test(n=if(i<=3)100 else 95.5,delta=.3,sd=1,sig.level=.05,type=type,alternative='two.sided')$power;stopifnot(isTRUE(all.equal(results[[i]]$power,ref)))}
+za<-qnorm(.975);zb<-qnorm(.8);vn<-.575*.425*2;va<-.65*.35+.5*.5
+stopifnot(results[[7]]$group1==ceiling(((za*sqrt(vn)+zb*sqrt(va))/.15)^2))
+stopifnot(results[[9]]$total==ceiling((za+zb)^2*.65*.35/.15^2))
+stopifnot(results[[11]]$total==ceiling(((za+zb)/atanh(.3))^2+3))
+refs <- c(pnorm((.15*sqrt(100)-za*sqrt(vn))/sqrt(va)), pnorm(.15*sqrt(100/(.65*.35))-za), pnorm(atanh(.3)*sqrt(97)-za), pchisq(qchisq(.95,2),df=2,ncp=100*.3^2,lower.tail=FALSE))
+for(j in seq_along(refs))stopifnot(isTRUE(all.equal(results[[c(8,10,12,14)[j]]]$power,refs[j])))
+for(lang in c('en','ko','ja','zh','es','fr','de','vi'))stopifnot(grepl('ARE = 0.955',statedu_t(formula_keys[4],lang),fixed=TRUE),grepl('p = 0.50',statedu_t(formula_keys[9],lang),fixed=TRUE))
+cat('PASS fourteen actual basic planning/power cases; independent t, ARE, proportion, negative-r and chi-square references\n')

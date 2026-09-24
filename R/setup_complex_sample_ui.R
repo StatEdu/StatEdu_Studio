@@ -390,6 +390,14 @@ complex_sample_correlation_p_adjust_choices <- function(language = statedu_initi
 }
 
 complex_sample_option_control <- function(prefix, key, selected, language, default = FALSE) {
+  if (key == "logistic_parallel") return(shiny::conditionalPanel(sprintf("input['%s_logistic_model'] === 'ordinal'", prefix),
+    complex_sample_option_checkbox(prefix, key, selected, language, default)))
+  if (key %in% c("logistic_model", "logistic_reference", "logistic_order")) {
+    control <- complex_sample_option_select(prefix, key, selected, language, complex_sample_logistic_choices(key, language), default)
+    if (key == "logistic_reference") return(shiny::conditionalPanel(sprintf("input['%s_logistic_model'] === 'multinomial'", prefix), control))
+    if (key == "logistic_order") return(shiny::conditionalPanel(sprintf("input['%s_logistic_model'] === 'ordinal'", prefix), control))
+    return(control)
+  }
   if (identical(key, "crosstab_percent_basis")) {
     return(complex_sample_option_select(prefix, key, selected, language, complex_sample_crosstab_percent_basis_choices(language), default))
   }
@@ -417,7 +425,7 @@ complex_sample_option_keys <- function(analysis_type = NULL) {
     ttest_anova = c("post_hoc", "post_hoc_correction", "ordered_significance", "mean_sd", "trend_analysis", "show_ci", "show_weighted_n", "show_df", "show_precision", "show_effect_size"),
     correlation = c("correlation_method", "correlation_p_adjust", "correlation_matrix", "show_ci", "show_weighted_n", "show_missing", "show_df"),
     regression = c("show_ci", "show_weighted_n", "show_df", "show_model_fit"),
-    logistic = c("show_ci", "show_weighted_n", "show_df", "show_model_fit", "show_wald"),
+    logistic = c("logistic_model", "logistic_reference", "logistic_order", "logistic_parallel", "show_ci", "show_weighted_n", "show_df", "show_model_fit", "show_wald"),
     c("show_ci", "show_weighted_n", "show_df", "show_precision")
   )
 }
@@ -436,6 +444,10 @@ complex_sample_option_groups <- function(analysis_type = NULL) {
 
 complex_sample_option_defaults <- function() {
   list(
+    logistic_model = "binary",
+    logistic_reference = "metadata",
+    logistic_order = "forward",
+    logistic_parallel = TRUE,
     show_ci = TRUE,
     show_weighted_n = FALSE,
     show_missing = TRUE,
@@ -493,7 +505,11 @@ complex_sample_analysis_options <- function(input, prefix, analysis_type = NULL)
   for (key in names(options)) {
     if (key %in% option_keys) {
       value <- input[[paste0(prefix, "_", key)]] %||% defaults[[key]]
-      if (identical(key, "crosstab_percent_basis")) {
+      if (key %in% c("logistic_model", "logistic_reference", "logistic_order")) {
+        value <- as.character(value)
+        if (length(value) != 1L || !value %in% unname(complex_sample_logistic_choices(key, "en"))) value <- defaults[[key]]
+        options[[key]] <- value
+      } else if (identical(key, "crosstab_percent_basis")) {
         value <- as.character(value %||% defaults[[key]])
         if (!value %in% c("row", "column", "total")) value <- defaults[[key]]
         options[[key]] <- value
@@ -1148,7 +1164,8 @@ complex_sample_tab_panel <- function(title_key, value, prefix, setup_output_id, 
           analysis_three_block_action_row(
             class = "frequencies-action-row complex-sample-action-row",
             run_button = actionButton(paste0(prefix, "_run"), complex_sample_ui_text("run", language), class = "btn btn-primary"),
-            reset_control = uiOutput(reset_output_id)
+            reset_control = uiOutput(reset_output_id),
+            save_control = if (identical(title_key, "logistic")) uiOutput(paste0(prefix, "_save_control")) else NULL
           ),
           uiOutput(results_output_id)
         )
@@ -3389,7 +3406,9 @@ complex_sample_term_display <- function(term, term_labels = NULL) {
 }
 
 complex_sample_relevel_factor <- function(values, variable, category_table = NULL) {
-  values <- factor(as.character(values))
+  values <- as.character(values)
+  values[!is.na(values) & !nzchar(trimws(values))] <- NA_character_
+  values <- factor(values)
   reference_values <- regression_reference_values_static(category_table)
   reference <- trimws(named_value(reference_values, variable, ""))
   if (nzchar(reference) && reference %in% levels(values)) {
@@ -3467,6 +3486,8 @@ complex_sample_coef_row <- function(raw, term, ci, exponentiate = FALSE, design_
   data.frame(
     B = complex_sample_num(estimate, 3),
     SE = complex_sample_num(row$SE[[1]], 3),
+    Z = complex_sample_num(estimate / row$SE[[1]], 3),
+    `Wald χ²` = complex_sample_num((estimate / row$SE[[1]])^2, 3),
     OR = if (isTRUE(exponentiate)) complex_sample_num(exp(estimate), 3) else "",
     CI = complex_sample_ci_text(lower, upper, exponentiate),
     Statistic = complex_sample_num(display_statistic, 3),
@@ -3476,9 +3497,9 @@ complex_sample_coef_row <- function(raw, term, ci, exponentiate = FALSE, design_
   )
 }
 
-complex_sample_regression_coef_display_table <- function(raw, fit, predictors, safe_predictors, model_design, logistic = FALSE, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
-  ci <- tryCatch(stats::confint(fit), error = function(e) NULL)
-  design_df <- complex_sample_design_df_value(fit)
+complex_sample_regression_coef_display_table <- function(raw, fit, predictors, safe_predictors, model_design, logistic = FALSE, variable_info = NULL, labels = character(0), category_table = NULL, options = list(), inference = NULL) {
+  ci <- if (is.null(inference)) tryCatch(stats::confint(fit), error = function(e) NULL) else inference$ci
+  design_df <- if (is.null(inference)) complex_sample_design_df_value(fit) else inference$df
   rows <- list()
   used_terms <- "(Intercept)"
   intercept <- complex_sample_coef_row(raw, "(Intercept)", ci, exponentiate = isTRUE(logistic), design_df = design_df)
@@ -3503,6 +3524,8 @@ complex_sample_regression_coef_display_table <- function(raw, fit, predictors, s
         Category = frequency_value_display_labels(predictor, levels[[1]], category_table),
         B = if (isTRUE(logistic)) "" else "reference",
         SE = "",
+        Z = "",
+        `Wald χ²` = "",
         OR = if (isTRUE(logistic)) "reference" else "",
         CI = "",
         Statistic = "",
@@ -3554,7 +3577,7 @@ complex_sample_regression_coef_display_table <- function(raw, fit, predictors, s
   }
   table <- if (length(rows) > 0) do.call(rbind, rows) else data.frame(stringsAsFactors = FALSE)
   if (isTRUE(logistic)) {
-    columns <- c("Variable", "Category", "B", "SE", "OR")
+    columns <- c("Variable", "Category", "B", "SE", "Z", "Wald χ²", "OR")
     if (isTRUE(options$show_ci)) columns <- c(columns, "CI")
     if (isTRUE(options$show_wald)) columns <- c(columns, "Statistic")
     columns <- c(columns, "p")
@@ -3567,10 +3590,46 @@ complex_sample_regression_coef_display_table <- function(raw, fit, predictors, s
   }
 }
 
+complex_sample_logistic_coefficient_note <- function(df) {
+  if (is.finite(df) && df > 0) {
+    paste0("B = log-odds coefficient; SE = design-based standard error; Wald F = (B/SE)². ",
+      "All coefficient tests use F(1, ", complex_sample_num(df, 0),
+      "); p is design-adjusted. Statistics are calculated before rounding.")
+  } else {
+    "B = log-odds coefficient; SE = design-based standard error; Wald χ² = (B/SE)². p uses the asymptotic chi-square reference distribution with 1 degree of freedom."
+  }
+}
+
+complex_sample_logistic_inference_columns <- function(coefficients, df) {
+  if (is.finite(df) && df > 0) {
+    names(coefficients)[names(coefficients) == "Wald χ²"] <- "Wald F"
+  }
+  coefficients[, setdiff(names(coefficients), c("Z", "t", "df1", "df2")), drop = FALSE]
+}
+
+complex_sample_logistic_coefficient_appendix <- function(table, context, language = NULL, df = NA_real_) {
+  # Keep reference rows and user labels aligned with the odds-ratio main table.
+  coefficients <- table[, intersect(c("Variable", "Category", "B", "SE", "Z", "Wald χ²", "p"), names(table)), drop = FALSE]
+  odds_column <- intersect(c("OR", "aOR", "Odds ratio"), names(table))
+  if (length(odds_column)) coefficients$B[table[[odds_column[[1]]]] == "reference"] <- "reference"
+  coefficients <- complex_sample_logistic_inference_columns(coefficients, df)
+  attr(coefficients, "result_user_columns") <- c("Variable", "Category")
+  analysis_result_table_section(
+    paste0("Appendix: log-odds coefficients: ", context),
+    complex_sample_table_data(coefficients, "appendix", "en"),
+    class = "result-section regression-result-panel logistic-result-panel",
+    table_fn = function(x) coefficient_html_table(x, table_role = "appendix", table_language = "en",
+      sheet_orientation = "portrait", note_line = complex_sample_logistic_coefficient_note(df)))
+}
+
 complex_sample_single_regression_result <- function(data, outcome, predictors, input, prefix, logistic = FALSE, variable_info = NULL, labels = character(0), category_table = NULL, language = NULL) {
   if (length(attr(data, "statedu_scope_excluded"))) analysis_scope_prepare_variables(data, environment(), c("outcome", "predictors"))
+  if (isTRUE(logistic) && complex_sample_analysis_options(input, prefix, "logistic")$logistic_model != "binary") {
+    return(complex_sample_categorical_logistic_result(data, outcome, predictors, input, prefix, variable_info, labels, category_table, language))
+  }
   ui_language <- result_appendix_table_language(language)
   variables <- unique(c(outcome, predictors))
+  if (isTRUE(logistic)) ui_language <- "en"
   built <- complex_sample_build_design(data, input, prefix, variables)
   options <- complex_sample_analysis_options(input, prefix, if (isTRUE(logistic)) "logistic" else "regression")
   family <- if (isTRUE(logistic)) stats::quasibinomial() else stats::gaussian()
@@ -3582,9 +3641,10 @@ complex_sample_single_regression_result <- function(data, outcome, predictors, i
   }
   if (isTRUE(logistic)) {
     y <- model_design$variables[[outcome]]
+    y[!is.na(y) & !nzchar(trimws(as.character(y)))] <- NA
     y_values <- frequency_value_order(unique(as.character(y[!is.na(y)])))
     shiny::validate(shiny::need(length(y_values) == 2, "Logistic regression requires a binary dependent variable."))
-    model_design$variables$`..outcome..` <- as.numeric(!is.na(y) & as.character(y) == y_values[[2]])
+    model_design$variables$`..outcome..` <- ifelse(is.na(y), NA_real_, as.numeric(as.character(y) == y_values[[2]]))
     event_category <- y_values[[2]]
   } else {
     event_category <- ""
@@ -3622,6 +3682,9 @@ complex_sample_single_regression_result <- function(data, outcome, predictors, i
     paste("..outcome.. ~", paste(unname(safe_predictors[usable_predictors]), collapse = " + ")),
     env = baseenv()
   )
+  # Retain only internal model columns in the fitting frame, so original data
+  # names cannot mask temporary calls used by survey's replicate-weight method.
+  model_design$variables <- model_design$variables[, c("..outcome..", unname(safe_predictors)), drop = FALSE]
   fit <- tryCatch(
     survey::svyglm(formula, design = model_design, family = family, na.action = stats::na.omit),
     error = function(e) e
@@ -3741,14 +3804,15 @@ complex_sample_single_regression_result <- function(data, outcome, predictors, i
         frequency_variable_display_name(outcome, variable_info, labels, category_table)
       )),
       coefficient_html_table(
-        complex_sample_table_data(coef_table, "main", "en"),
+        complex_sample_table_data(if (isTRUE(logistic)) coef_table[, setdiff(names(coef_table), c("B", "SE", "Z", "Wald χ²")), drop = FALSE] else coef_table, "main", "en"),
         compact = TRUE,
         compact_font_size = 12,
         compact_width = 72,
         compact_first_width = 128,
         compact_min_width = if (isTRUE(logistic)) 680 else 560,
+        sheet_orientation = if (isTRUE(logistic)) "portrait" else "auto",
         note_line = complex_sample_main_note(
-          abbreviations = if (isTRUE(logistic)) "OR = odds ratio; CI = confidence interval" else "B = unstandardized coefficient; SE = standard error; CI = confidence interval",
+          abbreviations = if (isTRUE(logistic)) c("OR = odds ratio", if (isTRUE(options$show_ci)) "95% CI = 95% confidence interval") else "B = unstandardized coefficient; SE = standard error; CI = confidence interval",
           estimation = if (isTRUE(logistic)) "Survey-weighted logistic regression with design-based inference" else "Survey-weighted linear regression with design-based inference",
           reference = "Categorical predictors use the displayed reference category"
         ),
@@ -3756,6 +3820,9 @@ complex_sample_single_regression_result <- function(data, outcome, predictors, i
         table_language = "en"
       )
     ),
+    if (isTRUE(logistic)) complex_sample_logistic_coefficient_appendix(coef_table,
+      frequency_variable_display_name(outcome, variable_info, labels, category_table), ui_language,
+      df = complex_sample_design_df_value(fit)),
     complex_sample_appendix_diagnostics_section(
       items = c("Missing data", "Survey design"),
       details = c(complete_case_note, design_note),
@@ -4281,6 +4348,9 @@ complex_sample_result_panel <- function(prefix, target_specs, target_values, inp
     )
   }
 
+  # Selections are user variable labels or expressions, not translation keys.
+  attr(variable_rows, "result_user_columns") <- names(variable_rows)[2L]
+  attr(design_rows, "result_user_cells") <- cbind(c(1:4, 8L, 11L, 12L), 2L)
   variable_rows <- complex_sample_table_data(variable_rows, "appendix", result_language)
   design_rows <- complex_sample_table_data(design_rows, "appendix", result_language)
 
@@ -4393,6 +4463,10 @@ register_complex_sample_handlers <- function(
       paste0(prefix, "_show_effect_size"),
       paste0(prefix, "_show_model_fit"),
       paste0(prefix, "_show_wald"),
+      paste0(prefix, "_logistic_model"),
+      paste0(prefix, "_logistic_reference"),
+      paste0(prefix, "_logistic_order"),
+      paste0(prefix, "_logistic_parallel"),
       paste0(prefix, "_post_hoc"),
       paste0(prefix, "_post_hoc_correction"),
       paste0(prefix, "_ordered_significance"),
@@ -4406,7 +4480,12 @@ register_complex_sample_handlers <- function(
       paste0(prefix, "_trend_analysis"),
       paste0(prefix, "_design_options_tab")
     )
-    selected <- stats::setNames(lapply(ids, function(id) isolate(input[[id]]) %||% character(0)), ids)
+    option_ids <- paste0(prefix, "_", complex_sample_option_keys(analysis_type))
+    selected <- stats::setNames(lapply(ids, function(id) {
+      # Keep cached HTML in sync before a lazy tab rebinds this form.
+      value <- if (id %in% option_ids) input[[id]] else isolate(input[[id]])
+      value %||% character(0)
+    }), ids)
     if (!is.null(shared_raw)) {
       shared_design <- complex_sample_normalize_design_state(shared_raw)
       design_ids <- complex_sample_design_input_ids(prefix)
@@ -4500,15 +4579,34 @@ register_complex_sample_handlers <- function(
     result_cache()
   })
 
+  if (identical(analysis_type, "logistic")) {
+    language_fn <- function() statedu_current_language(app_language_fn)
+    output[[paste0(prefix, "_save_control")]] <- renderUI({
+      req(result_cache())
+      analysis_save_buttons(html_button_id = paste0(prefix, "_save_html"),
+        pdf_button_id = paste0(prefix, "_save_pdf"), excel_button_id = paste0(prefix, "_save_excel"),
+        add_result_button_id = paste0(prefix, "_add_result"), has_figures = FALSE, language = language_fn())
+    })
+    register_canvas_report_exports(input, session, paste0(prefix, "_save_html"), paste0(prefix, "_save_pdf"),
+      paste0(prefix, "_results"), NULL, function() complex_sample_ui_text("logistic", language_fn()),
+      result_cache, language_fn, excel_id = paste0(prefix, "_save_excel"))
+    register_add_result_snapshot(input, session, paste0(prefix, "_add_result"),
+      function() complex_sample_ui_text("logistic", language_fn()), paste0(prefix, "_results"), app_language_fn = language_fn)
+  }
+
+  previous_options <- NULL
   observeEvent({
     option_ids <- paste0(prefix, "_", complex_sample_option_keys(analysis_type))
     lapply(option_ids, function(id) input[[id]])
   }, {
-    if (!is.null(result_cache())) {
+    current_options <- complex_sample_analysis_options(input, prefix, analysis_type)
+    changed <- !identical(current_options, previous_options)
+    previous_options <<- current_options
+    if (changed && !is.null(result_cache())) {
       result_cache(NULL)
     }
-    if (!is.null(mark_settings_dirty)) mark_settings_dirty()
-  }, ignoreInit = TRUE)
+    if (changed && !is.null(mark_settings_dirty)) mark_settings_dirty()
+  }, ignoreInit = TRUE, priority = 100)
 
   observeEvent(input$main_menu, {
     if (identical(analysis_type, "crosstabs") && !identical(input$main_menu %||% "", "analysis_complex_crosstabs")) {
@@ -4607,6 +4705,9 @@ register_complex_sample_handlers <- function(
   }, ignoreInit = TRUE)
 
   observeEvent(input[[paste0(prefix, "_reset")]], {
+    # Only a positive button count represents a user reset.
+    reset_value <- suppressWarnings(as.numeric(input[[paste0(prefix, "_reset")]]))
+    if (length(reset_value) != 1L || !is.finite(reset_value) || reset_value <= 0) return()
     result_cache(NULL)
     for (key in names(target_ids)) {
       target_values[[key]](character(0))
@@ -4621,6 +4722,10 @@ register_complex_sample_handlers <- function(
     updateCheckboxInput(session, paste0(prefix, "_show_effect_size"), value = TRUE)
     updateCheckboxInput(session, paste0(prefix, "_show_model_fit"), value = TRUE)
     updateCheckboxInput(session, paste0(prefix, "_show_wald"), value = TRUE)
+    updateSelectInput(session, paste0(prefix, "_logistic_model"), selected = "binary")
+    updateSelectInput(session, paste0(prefix, "_logistic_reference"), selected = "metadata")
+    updateSelectInput(session, paste0(prefix, "_logistic_order"), selected = "forward")
+    updateCheckboxInput(session, paste0(prefix, "_logistic_parallel"), value = TRUE)
     updateCheckboxInput(session, paste0(prefix, "_post_hoc"), value = FALSE)
     updateSelectInput(session, paste0(prefix, "_post_hoc_correction"), selected = statedu_multiple_correction_default())
     updateCheckboxInput(session, paste0(prefix, "_ordered_significance"), value = TRUE)
@@ -4661,7 +4766,7 @@ register_complex_sample_design_handlers <- function(
   selected_for_render <- function() {
     ids <- unname(complex_sample_design_input_ids(prefix))
     selected <- stats::setNames(lapply(ids, function(id) isolate(input[[id]]) %||% character(0)), ids)
-    shared_design <- complex_sample_normalize_design_state(isolate(design_state()))
+    shared_design <- complex_sample_normalize_design_state(design_state())
     design_ids <- complex_sample_design_input_ids(prefix)
     for (field in names(design_ids)) {
       selected[[design_ids[[field]]]] <- shared_design[[field]]

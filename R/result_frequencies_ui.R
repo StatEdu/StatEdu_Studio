@@ -225,10 +225,15 @@ frequency_continuous_main_table <- function(result, options) {
     table$Kurtosis <- as.character(descriptive$Kurtosis)
   }
   attr(table, "result_table_orientation") <- "portrait"
-  widths <- c(Variable = 16, n = 8, M = 8, SD = 8, `M ± SD` = 16, Min = 7, Max = 8,
-              Median = 11, `IQR (Q1–Q3)` = 15, Skewness = 13, Kurtosis = 12)
+  # Budget the portrait sheet for complete numeric tokens, including 10.00,
+  # and a complete quartile interval on the second line.
+  widths <- c(Variable = 64, n = 32, M = 44, SD = 44, `M ± SD` = 88, Min = 44, Max = 44,
+              Median = 50, `IQR (Q1–Q3)` = 100, Skewness = 65, Kurtosis = 60)
   selected_widths <- unname(widths[names(table)])
   attr(table, "compact_column_widths") <- 100 * selected_widths / sum(selected_widths)
+  attr(table, "compact_cell_padding") <- "5px 3px"
+  attr(table, "column_display_labels") <- c(`IQR (Q1–Q3)` = "IQR\n(q1-q3)")
+  attr(table, "nowrap_columns") <- setdiff(names(table), c("Variable", "IQR (Q1–Q3)"))
   attr(table, "right_align_columns") <- "n"
   attr(table, "result_table_role") <- "main"
   attr(table, "result_table_language") <- "en"

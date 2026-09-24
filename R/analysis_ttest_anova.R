@@ -2003,6 +2003,16 @@ ttest_result_flat_overview <- function(result) {
 }
 
 ttest_result_overview_tables <- function(result) {
+  # Many outcomes belong in rows, rather than dozens of unreadable narrow columns.
+  flat <- ttest_result_flat_overview(result)
+  if (is.data.frame(flat) && nrow(flat) > 0L &&
+      length(unique(flat$`Dependent variable`)) > 6L) {
+    keys <- intersect(c("Dependent variable", "Independent variable"), names(flat))
+    main <- intersect(c(keys, "N", "Analysis"), names(flat))
+    appendix <- c(keys, setdiff(names(flat), main))
+    return(list(overview = flat[, main, drop = FALSE],
+                assumption_review = flat[, appendix, drop = FALSE]))
+  }
   overview <- result$overview
   assumption_review <- result$assumption_review
   if (is.data.frame(overview) && nrow(overview) > 0) {
@@ -2144,6 +2154,56 @@ prepare_ttest_anova_results_core <- function(
   )
 }
 
+# Compact native display for multiple continuous outcomes sharing two groups.
+# Unsupported layouts retain the existing per-outcome renderer without data loss.
+ttest_grouped_display_item <- function(items) {
+  if (length(items) < 2L) return(NULL)
+  first <- items[[1L]]
+  if (length(first$factors) != 1L) return(NULL)
+  levels <- as.character(first$table$Value)
+  if (length(levels) != 2L || anyDuplicated(levels)) return(NULL)
+  rows <- list(); markers <- list(); notes <- character(); definitions <- list()
+  for (i in seq_along(items)) {
+    item <- items[[i]]; tab <- item$table
+    if (!identical(item$factors, first$factors) || !is.data.frame(tab) ||
+        !identical(as.character(tab$Value), levels) || !is.null(item$mean_sd_extra) ||
+        (is.data.frame(item$posthoc) && nrow(item$posthoc) > 0L)) return(NULL)
+    measures <- intersect(c("M ± SD", "Median(Q1~Q3)"), names(tab))
+    statistics <- intersect(c("t", "z", "Statistic"), names(tab))
+    if (length(measures) != 1L || length(statistics) != 1L) return(NULL)
+    extras <- setdiff(names(tab), c("Variable", "Value", measures, statistics, "p"))
+    if (any(vapply(tab[extras], function(x) any(nzchar(trimws(as.character(x)))), logical(1)))) return(NULL)
+    row <- data.frame(Variable = item$title, Summary = measures,
+                      stringsAsFactors = FALSE, check.names = FALSE)
+    for (j in seq_along(levels)) row[[paste0(first$factors[[1L]], ": ", levels[j])]] <- tab[[measures]][j]
+    row[["Test"]] <- statistics
+    row[["Statistic"]] <- tab[[statistics]][1L]
+    row[["p"]] <- tab[["p"]][1L]
+    mark <- attr(tab, "note_markers", exact = TRUE)
+    if (is.data.frame(mark) && nrow(mark)) {
+      # Keep the original superscripts and refuse ambiguous shared definitions.
+      for (m in unique(as.character(mark$marker))) {
+        parts <- regmatches(item$note, gregexpr("[0-9]+[.] .*?(?= [0-9]+[.] |$)", item$note, perl = TRUE))[[1L]]
+        definition <- parts[startsWith(parts, paste0(m, ". "))]
+        if (length(definition) != 1L) return(NULL)
+        if (!is.null(definitions[[m]]) && !identical(definitions[[m]], definition)) return(NULL)
+        definitions[[m]] <- definition
+      }
+      if (any(mark$row != 1L) || any(!mark$column %in% c(statistics, "p"))) return(NULL)
+      mark$row <- i; mark$column[mark$column == statistics] <- "Statistic"
+      markers[[length(markers)+1L]] <- mark
+    }
+    rows[[i]] <- row; notes <- c(notes, item$note)
+  }
+  table <- do.call(rbind, rows)
+  if (length(markers)) attr(table, "note_markers") <- do.call(rbind, markers)
+  attr(table, "compact_column_widths") <- c(18, 13, 20, 20, 8, 12, 9)
+  attr(table, "result_user_columns") <- "Variable"
+  attr(table, "result_user_headers") <- paste0(first$factors[[1L]], ": ", levels)
+  list(title = paste0("Group comparisons by ", first$factors[[1L]]), table = table,
+       note = paste(unique(notes[nzchar(notes)]), collapse = " "), posthoc = data.frame())
+}
+
 ttest_anova_results_ui <- function(result) {
   if (is.null(result)) {
     return(NULL)
@@ -2272,7 +2332,12 @@ ttest_anova_results_ui <- function(result) {
     )
   )
 
-  for (item in result$results %||% list()) {
+  display_items <- result$results %||% list()
+  if (!identical(result$options$consolidate_groups, FALSE)) {
+    grouped <- ttest_grouped_display_item(display_items)
+    if (!is.null(grouped)) display_items <- list(grouped)
+  }
+  for (item in display_items) {
     main_table <- item$table
     if (is.data.frame(main_table) && "post-hoc" %in% names(main_table)) {
       posthoc_values <- trimws(as.character(main_table[["post-hoc"]] %||% ""))

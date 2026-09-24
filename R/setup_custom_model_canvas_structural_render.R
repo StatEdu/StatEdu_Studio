@@ -837,12 +837,13 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
   for (kind in c("overview")) local({
     result_kind <- kind
     output[[paste0(prefix, "_result_", result_kind)]] <- renderUI({
-      structural_canvas_basic_html_table(
+      tagList(structural_canvas_basic_html_table(
         manuscript_result_table(result_kind),
         class = "table table-striped table-bordered structural-overview-table",
         role = "main",
         orientation = "portrait"
-      )
+      ), if(any(vapply(fit_result()$snapshot$nodes %||% list(),function(n)!is.null(n$scoreDesign),logical(1))))
+        canvas_score_audit_ui(fit_result()$snapshot, statedu_current_language(app_language_fn)))
     })
   })
   output[[paste0(prefix, "_result_structural")]] <- renderUI({

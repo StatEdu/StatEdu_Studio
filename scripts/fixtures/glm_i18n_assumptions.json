@@ -1,0 +1,13 @@
+[
+  "Family / link",
+  "Independent observations",
+  "Poisson dispersion screening",
+  "Residual diagnostics",
+  "Events per variable",
+  "Separation risk",
+  "Sparse categorical cells",
+  "Influential observations",
+  "Collinearity",
+  "Assumption screening did not flag a major issue among the selected GLM checks.",
+  "Assumption screening was not requested or no checks were selected."
+]

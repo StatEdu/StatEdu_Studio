@@ -1,0 +1,10 @@
+{
+  "Rubin pooling requires at least two finite estimates with finite positive within-imputation variances.": "analysis.glm_error.mi_rubin",
+  "A finite positive complete-data residual df is required for Barnard-Rubin pooling.": "analysis.glm_error.mi_df_positive",
+  "Barnard-Rubin degrees of freedom could not be computed.": "analysis.glm_error.mi_df_failed",
+  "The mice package is required for GLM multiple imputation.": "analysis.glm_error.mi_package",
+  "No missing values were present in selected GLM variables; MI is not needed.": "analysis.glm_error.mi_not_needed",
+  "Negative-binomial family was locked for MI, but the model failed to fit in this imputed dataset.": "analysis.glm_error.mi_nb_failed",
+  "MI completion failed; partial pooling is not allowed. %s": "analysis.glm_error.mi_completion",
+  "Count-family selection failed before MI pooling. %s": "analysis.glm_error.mi_count_selection"
+}

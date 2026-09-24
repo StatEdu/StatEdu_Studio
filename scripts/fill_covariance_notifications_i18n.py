@@ -1,0 +1,10 @@
+import json,re
+from pathlib import Path
+rows='''Missing covariance paths between exogenous latent variables: %s. These covariances will be fixed to zero.	外生潜在変数間の共分散経路がありません：%s。これらの共分散は0に固定されます。	外生潜变量之间缺少协方差路径：%s。这些协方差将固定为零。	Faltan trayectorias de covarianza entre variables latentes exógenas: %s. Estas covarianzas se fijarán a cero.	Des chemins de covariance entre variables latentes exogènes sont absents : %s. Ces covariances seront fixées à zéro.	Kovarianzpfade zwischen exogenen latenten Variablen fehlen: %s. Diese Kovarianzen werden auf null fixiert.	Thiếu đường dẫn hiệp phương sai giữa các biến tiềm ẩn ngoại sinh: %s. Các hiệp phương sai này sẽ được cố định bằng không.
+PLS-SEM does not estimate covariance paths; excluded: %s. Associations among exogenous constructs are handled indirectly during structural-model estimation.	PLS-SEMは共分散経路を推定しないため、次を除外しました：%s。外生構成概念間の関連は構造モデル推定中に間接的に扱われます。	PLS-SEM不估计协方差路径；已排除：%s。外生构念间的关联在结构模型估计中间接处理。	PLS-SEM no estima trayectorias de covarianza; se excluyeron: %s. Las asociaciones entre constructos exógenos se tratan indirectamente durante la estimación del modelo estructural.	PLS-SEM n’estime pas les chemins de covariance ; éléments exclus : %s. Les associations entre construits exogènes sont traitées indirectement lors de l’estimation du modèle structurel.	PLS-SEM schätzt keine Kovarianzpfade; ausgeschlossen: %s. Zusammenhänge zwischen exogenen Konstrukten werden bei der Strukturmodellschätzung indirekt berücksichtigt.	PLS-SEM không ước lượng đường dẫn hiệp phương sai; đã loại trừ: %s. Mối liên hệ giữa các khái niệm ngoại sinh được xử lý gián tiếp trong quá trình ước lượng mô hình cấu trúc.'''
+for i,lang in enumerate(['ja','zh','es','fr','de','vi'],1):
+ p=Path('i18n')/(lang+'.json');data=json.loads(p.read_text(encoding='utf-8'))
+ for line in rows.splitlines():
+  f=line.split('\t');assert len(f)==7
+  data['translations']['analysis.ui.'+re.sub(r'[^a-z0-9]+','_',f[0].lower()).strip('_')]=f[i]
+ p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

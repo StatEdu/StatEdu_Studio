@@ -1,0 +1,40 @@
+Sys.setlocale('LC_CTYPE','English_United States.utf8');Sys.setenv(STATEDU_MODULE_CACHE='false')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules()
+options(statedu.output_decimal_digits=3L)
+out<-'tmp/ancova-descriptive-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE);entries<-list()
+set.seed(921);d<-data.frame(group=rep(c('Review','사용자 <&> %s'),each=35),x=rnorm(70));d$y<-2*d$x+rnorm(70)+rep(c(0,1),each=35)
+info<-data.frame(name=c('group','x','y'),measurement=c('category','continuous','continuous'),var_label=c('집단','공변량','Normality'))
+for(kind in c('standard','ranked')){
+ result<-prepare_ancova_results(d,'y','group','x',info,options=list(auto_method='warn',normality_enabled=FALSE,force_ranked=kind=='ranked',plot_adjusted_means=TRUE))
+ stopifnot(length(result$results)==1L)
+ for(language in c('en','ko','ja','zh','es','fr','de','vi')){
+  options(statedu.app_language=language)
+  html<-as.character(ancova_results_ui(result,info));doc<-xml2::read_html(html,encoding='UTF-8')
+  main<-xml2::xml_find_all(doc,'//table[@data-result-table-role="main"]')
+  main_cells<-lapply(main,function(t)xml2::xml_text(xml2::xml_find_all(t,'.//th|.//td')))
+  stopifnot(length(main_cells)>0)
+  if(language=='en')baseline<-main_cells else stopifnot(identical(main_cells,baseline))
+  observed<-xml2::xml_find_all(doc,'//div[contains(@class,"ancova-observed-descriptive-panel")]')
+  original<-xml2::xml_find_all(doc,'//div[contains(@class,"ancova-original-scale-descriptive-panel")]')
+  plots<-xml2::xml_find_all(doc,'//div[contains(@class,"ancova-plots-panel")]')
+  stopifnot(length(observed)==1L,length(plots)==1L)
+  expected<-statedu_localized_text(language,'Unadjusted observed mean ± SD in the complete-case analysis sample.','분석에 사용한 완전 사례의 보정 전 관측 평균 ± 표준편차입니다.')
+  stopifnot(grepl(expected,xml2::xml_text(observed),fixed=TRUE))
+  plot_title<-xml2::xml_text(xml2::xml_find_all(plots,'.//h3'))
+  stopifnot(startsWith(plot_title,ancova_appendix_text('ANCOVA plots',language)))
+  if(language!='en')stopifnot(!startsWith(plot_title,'ANCOVA plots'),expected!='Unadjusted observed mean ± SD in the complete-case analysis sample.')
+  if(kind=='ranked'){
+   stopifnot(length(original)==1L)
+   heading<-xml2::xml_text(xml2::xml_find_all(original,'.//h3'))
+   stopifnot(heading==ancova_appendix_text('Original-scale descriptive estimates',language))
+   note<-ancova_appendix_text('Descriptive only. Estimates come from a separate unranked linear model and do not determine ranked-model inference.',language)
+   normalize<-function(x)gsub('[[:space:];.]+','',x)
+   stopifnot(grepl(normalize(note),normalize(xml2::xml_text(original)),fixed=TRUE))
+   if(language!='en')stopifnot(heading!='Original-scale descriptive estimates',!startsWith(note,'Descriptive only.'))
+  }
+  # Export exactly the affected panels plus the actual main table; unrelated diagnostics remain outside this fixture.
+  if(language=='ja')entries[[kind]]<-list(id=kind,title=kind,html=paste(c(as.character(main[[1]]),as.character(original),as.character(observed),as.character(plots)),collapse='\n'))
+  cat('PASS:',kind,language,'actual ANCOVA panels and English main-table equality\n')
+ }
+}
+saveRDS(unname(entries),file.path(out,'entries.rds'))

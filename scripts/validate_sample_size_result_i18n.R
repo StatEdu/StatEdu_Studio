@@ -1,0 +1,55 @@
+Sys.setlocale('LC_CTYPE','Korean_Korea.utf8');Sys.setenv(STATEDU_MODULE_CACHE='false')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules()
+out<-'tmp/sample-size-result-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+inputs<-list(sample_size_effectsize_mean1='105',sample_size_effectsize_mean2='100',sample_size_effectsize_sd1='10',sample_size_effectsize_sd2='10',sample_size_effectsize_n1='50',sample_size_effectsize_n2='50',sample_size_effectsize_mean_difference='5',sample_size_effectsize_sd_difference='10',sample_size_effectsize_null_mean='100')
+designs<-c('paired_means','one_sample_mean','independent_means')
+results<-lapply(designs,function(design)sample_size_calculate('effectsize',modifyList(inputs,list(sample_size_effectsize_design=design))))
+formula_keys<-paste0('sample_size.result.',c('paired_formula','one_sample_formula','independent_formula'))
+fixture_args<-commandArgs(trailingOnly=TRUE)
+if(length(fixture_args))source(fixture_args[[1]],encoding='UTF-8')
+before<-serialize(results,NULL)
+norm<-function(x)gsub('[[:space:]\u00a0]+','',paste(x,collapse=''),perl=TRUE)
+note_parts<-function(x)unlist(lapply(x,function(value)trimws(strsplit(result_sci_note_text(estimation=value),';',fixed=TRUE)[[1]])),use.names=FALSE)
+for(lang in c('en','ko','ja','zh','es','fr','de','vi')) {
+ panels<-lapply(results,function(result)sample_size_results_ui(result,lang))
+ for(i in seq_along(results)) {
+  expected<-statedu_t(formula_keys[[i]],lang,fallback='')
+  stopifnot(nzchar(expected),is.null(results[[i]]$error))
+  actual<-xml2::xml_text(xml2::read_html(as.character(panels[[i]])))
+  for(part in note_parts(expected))if(!grepl(norm(sub('[.。]$','',part)),norm(actual),fixed=TRUE))stop('Missing formula: ',lang,' ',designs[[i]],' fragment=',part)
+  stopifnot(grepl(sample_size_ui_text(lang,'references'),actual,fixed=TRUE))
+ }
+ for(key in c('group_n_error','groups_error','total_n_error')) {
+  english<-statedu_t(paste0('sample_size.result.',key),'en',fallback='')
+  expected<-statedu_t(paste0('sample_size.result.',key),lang,fallback='')
+  stopifnot(nzchar(english),nzchar(expected),sample_size_result_text(english,lang)==expected)
+ }
+ raw<-'External user <&> %s\nfile abc';stopifnot(identical(sample_size_result_text(raw,lang),raw),identical(before,serialize(results,NULL)))
+ cat('PASS render',lang,'formulas/reference heading; source result unchanged\n')
+ if(!lang %in% c('ko','ja'))next
+ options(statedu.app_language=lang)
+ html<-as.character(tagList(panels))
+ panel<-xml2::read_html(html)
+ expected<-xml2::xml_text(xml2::xml_find_all(panel,'//th|//td|//strong|//li|//*[contains(@class,"result-note")]'))
+ expected<-c(expected,sub('[.。]$','',note_parts(vapply(formula_keys,statedu_t,character(1),language=lang))))
+ entry<-list(id='effect-size',title='Effect size',html=html)
+ for(mode in c('current','accumulated')) {
+  entries<-if(mode=='current')list(entry)else list(entry,modifyList(entry,list(id='second')))
+  stem<-file.path(out,paste(lang,mode,sep='-'))
+  write_result_collection_html(entries,paste0(stem,'.html'))
+  write_result_collection_docx(entries,paste0(stem,'.docx'))
+  save_result_collection_excel_file(entries,paste0(stem,'.xlsx'))
+  write_result_collection_pdf(entries,paste0(stem,'.pdf'))
+  write_result_collection_hwpx(entries,paste0(stem,'.hwpx'))
+  word<-norm(xml2::xml_text(xml2::read_xml(unz(paste0(stem,'.docx'),'word/document.xml'))))
+  members<-unzip(paste0(stem,'.hwpx'),list=TRUE)$Name
+  hwpx<-norm(vapply(members[grepl('Contents/section[0-9]+[.]xml$',members)],function(s)xml2::xml_text(xml2::read_xml(unz(paste0(stem,'.hwpx'),s))),character(1)))
+  wb<-openxlsx::loadWorkbook(paste0(stem,'.xlsx'))
+  excel<-norm(unlist(lapply(seq_along(names(wb)),function(i)as.matrix(openxlsx::read.xlsx(wb,sheet=i,colNames=FALSE)))))
+  saved<-norm(xml2::xml_text(xml2::read_html(paste0(stem,'.html'))))
+  for(value in expected[nzchar(trimws(expected))])for(actual in list(word,hwpx,excel,saved))if(!grepl(norm(value),actual,fixed=TRUE))stop('Missing exported text: ',value)
+  stopifnot(file.info(paste0(stem,'.pdf'))$size>1000,identical(before,serialize(results,NULL)))
+  jsonlite::write_json(expected,paste0(stem,'-expected.json'))
+  cat('PASS',lang,mode,'HTML/DOCX/HWPX/XLSX content; PDF generated\n');flush.console()
+ }
+}

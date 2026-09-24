@@ -298,7 +298,7 @@ Complex-sample menus:
 - **Complex Samples t-test / ANOVA**: design-based mean comparisons, post-hoc output, weighted N, design df, and effect sizes.
 - **Complex Samples Correlation**: Pearson or Spearman correlations, design-based standard errors, p-value adjustment, and a correlation matrix.
 - **Complex Samples Regression**: survey-weighted linear regression, design-based Wald/F tests, and model-fit summaries.
-- **Complex Samples Logistic Regression**: survey-weighted logistic regression, odds ratios, Wald tests, and pseudo R-squared summaries.
+- **Complex Samples Logistic Regression**: select Binary, Multinomial or Ordinal under **Logistic model**. Select the outcome reference for multinomial models; check or reverse the declared category order for ordinal models. Output includes design-based odds ratios, confidence intervals and Wald tests. Pseudo R-squared is available for binary models. Multinomial/ordinal output also reports complete-case counts, missing data, weighted outcome distribution and joint predictor tests. Ordinal models offer a survey-adjusted parallel-slopes diagnostic; inspect its warning before interpreting a common odds ratio. A nonsignificant diagnostic does not prove proportional odds. Use **Add Result** to preserve the native output and export Word/HWPX from Results.
 
 Complex-sample data should not be treated as a simple random sample when the design is informative. Report the design variables, variance method, design degrees of freedom, standard errors, confidence intervals, single-PSU handling, and whether replicate weights were used.
 

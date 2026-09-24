@@ -1,0 +1,32 @@
+import json, re
+from pathlib import Path
+
+# English | Korean | Japanese | Chinese | Spanish | French | German | Vietnamese
+rows = '''Construct|구성개념|構成概念|构念|Constructo|Construit|Konstrukt|Cấu trúc
+Construct type|구성개념 유형|構成概念の種類|构念类型|Tipo de constructo|Type de construit|Konstrukttyp|Loại cấu trúc
+Mode|측정 모드|測定モード|测量模式|Modo de medida|Mode de mesure|Messmodus|Chế độ đo lường
+Evidence role|증거 역할|証拠としての役割|证据作用|Papel de la evidencia|Rôle des éléments probants|Evidenzrolle|Vai trò bằng chứng
+Max HTMT CI lower|최대 HTMT CI 하한|最大HTMTのCI下限|最大HTMT的CI下限|Límite inferior del IC del HTMT máximo|Borne inférieure de l’IC du HTMT maximal|Untere KI-Grenze des maximalen HTMT|Cận dưới CI của HTMT tối đa
+Max HTMT CI upper|최대 HTMT CI 상한|最大HTMTのCI上限|最大HTMT的CI上限|Límite superior del IC del HTMT máximo|Borne supérieure de l’IC du HTMT maximal|Obere KI-Grenze des maximalen HTMT|Cận trên CI của HTMT tối đa
+Max HTMT p|최대 HTMT p값|最大HTMTのp値|最大HTMT的p值|Valor p del HTMT máximo|Valeur p du HTMT maximal|p-Wert des maximalen HTMT|Giá trị p của HTMT tối đa
+Common factor|공통요인|共通因子|共同因子|Factor común|Facteur commun|Gemeinsamer Faktor|Nhân tố chung
+Composite|합성변수|合成変数|复合变量|Compuesto|Composite|Komposit|Biến tổng hợp
+Unspecified|미지정|未指定|未指定|Sin especificar|Non spécifié|Nicht angegeben|Chưa xác định
+Reflective|반영형|反映型|反映式|Reflectivo|Réflexif|Reflektiv|Phản xạ
+Formative|형성형|形成型|形成式|Formativo|Formatif|Formativ|Cấu thành
+N/A - formative|해당 없음 - 형성형|該当なし：形成型|不适用：形成式|No aplicable: formativo|Sans objet : formatif|Nicht anwendbar: formativ|Không áp dụng: cấu thành
+Weights, collinearity, content coverage, and redundancy; internal consistency/AVE/HTMT not applicable|가중치, 공선성, 내용 포괄성과 중복성; 내적일관성/AVE/HTMT는 해당 없음|重み、共線性、内容の網羅性、冗長性；内的一貫性/AVE/HTMTは非適用|权重、共线性、内容覆盖及冗余；内部一致性/AVE/HTMT不适用|Pesos, colinealidad, cobertura de contenido y redundancia; consistencia interna/AVE/HTMT no aplicables|Poids, colinéarité, couverture du contenu et redondance ; cohérence interne/AVE/HTMT sans objet|Gewichte, Kollinearität, Inhaltsabdeckung und Redundanz; interne Konsistenz/AVE/HTMT nicht anwendbar|Trọng số, cộng tuyến, độ bao phủ nội dung và tính dư thừa; không áp dụng nhất quán nội tại/AVE/HTMT
+PLSc common-factor diagnostics; interpretation depends on consistency-correction assumptions|PLSc 공통요인 진단; 해석은 일치성 보정 가정에 의존|PLSc共通因子診断；解釈は一致性補正の仮定に依存|PLSc共同因子诊断；解释取决于一致性校正假设|Diagnósticos de factor común PLSc; interpretación sujeta a los supuestos de corrección de consistencia|Diagnostics de facteur commun PLSc ; interprétation liée aux hypothèses de correction de cohérence|PLSc-Diagnostik gemeinsamer Faktoren; Interpretation abhängig von Annahmen der Konsistenzkorrektur|Chẩn đoán nhân tố chung PLSc; diễn giải phụ thuộc giả định hiệu chỉnh tính nhất quán
+Mode A score-proxy diagnostics; not covariance-based factor-model evidence|Mode A 점수 대리변수 진단; 공분산 기반 요인모형의 증거가 아님|Mode A得点代理変数の診断；共分散ベース因子モデルの証拠ではない|Mode A分数代理变量诊断；并非协方差因子模型的证据|Diagnósticos del sustituto de puntuación Mode A; no evidencia de modelo factorial basado en covarianzas|Diagnostics du score proxy Mode A ; pas une preuve de modèle factoriel fondé sur les covariances|Diagnostik des Mode-A-Score-Proxys; keine Evidenz für ein kovarianzbasiertes Faktormodell|Chẩn đoán điểm đại diện Mode A; không phải bằng chứng mô hình nhân tố dựa trên hiệp phương sai
+Reflective-composite diagnostics; do not infer a latent common cause or explicit measurement-error separation|반영형 합성변수 진단; 잠재 공통원인이나 명시적인 측정오차 분리를 추론하지 않음|反映型合成変数の診断；潜在共通原因や明示的な測定誤差分離は推論しない|反映式复合变量诊断；不推断潜在共同原因或明确的测量误差分离|Diagnósticos de compuestos reflectivos; no inferir causa común latente ni separación explícita del error de medida|Diagnostics de composites réflexifs ; ne pas inférer de cause commune latente ni de séparation explicite de l’erreur de mesure|Diagnostik reflektiver Komposite; keine latente gemeinsame Ursache oder explizite Messfehlertrennung ableiten|Chẩn đoán biến tổng hợp phản xạ; không suy ra nguyên nhân chung tiềm ẩn hoặc sự tách biệt rõ ràng của sai số đo
+Validity supplement: Discriminant-validity guide|타당도 보조표: 판별타당도 가이드|妥当性補助表：弁別的妥当性ガイド|效度辅助表：区分效度指南|Suplemento de validez: guía de validez discriminante|Complément de validité : guide de validité discriminante|Validitätsergänzung: Leitfaden zur Diskriminanzvalidität|Bảng bổ sung tính giá trị: hướng dẫn giá trị phân biệt
+Shared specification for all constructs: %s.|모든 구성개념의 공통 명세: %s.|全構成概念に共通の仕様：%s。|所有构念的共同设定：%s。|Especificación común a todos los constructos: %s.|Spécification commune à tous les construits : %s.|Gemeinsame Spezifikation aller Konstrukte: %s.|Đặc tả chung cho mọi cấu trúc: %s.
+HTMT and Fornell-Larcker are computed only between reflective constructs. They are supplementary rather than standalone pass decisions; also review cross-loadings, construct correlations, theory, and competing measurement models.|HTMT와 Fornell-Larcker는 반영형 구성개념끼리만 계산합니다. 해당 결과는 보조 정보이며 단독 합격판정이 아니므로 교차적재, 구성개념 상관, 이론과 경쟁 측정모형을 함께 검토하십시오.|HTMTとFornell-Larckerは反映型構成概念間でのみ計算します。単独の合格判定ではなく補助情報です。交差負荷量、構成概念間相関、理論、競合する測定モデルも検討してください。|HTMT和Fornell-Larcker仅在反映式构念之间计算。它们是辅助信息，不能单独判定通过；还应审查交叉载荷、构念相关、理论和竞争测量模型。|HTMT y Fornell-Larcker se calculan solo entre constructos reflectivos. Son información complementaria, no decisiones independientes de aprobación; revise también cargas cruzadas, correlaciones, teoría y modelos de medida alternativos.|HTMT et Fornell-Larcker sont calculés uniquement entre construits réflexifs. Ce sont des compléments, pas des critères autonomes de validation ; examinez aussi saturations croisées, corrélations, théorie et modèles de mesure concurrents.|HTMT und Fornell-Larcker werden nur zwischen reflektiven Konstrukten berechnet. Sie sind ergänzende Hinweise, keine eigenständigen Bestehenskriterien; prüfen Sie auch Kreuzladungen, Konstruktkorrelationen, Theorie und konkurrierende Messmodelle.|HTMT và Fornell-Larcker chỉ được tính giữa các cấu trúc phản xạ. Đây là thông tin bổ sung, không phải quyết định đạt độc lập; cần xem xét tải chéo, tương quan cấu trúc, lý thuyết và các mô hình đo lường cạnh tranh.'''
+data_rows = [r.split('|') for r in rows.splitlines()]
+for i, lang in enumerate(['ja','zh','es','fr','de','vi'], 2):
+    p = Path('i18n') / (lang + '.json')
+    data = json.loads(p.read_text(encoding='utf-8'))
+    for row in data_rows:
+        assert len(row) == 8
+        data['translations']['analysis.ui.' + re.sub(r'[^a-z0-9]+','_',row[0].lower()).strip('_')] = row[i]
+    p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

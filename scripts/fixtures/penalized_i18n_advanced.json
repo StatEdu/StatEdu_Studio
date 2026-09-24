@@ -1,0 +1,12 @@
+[
+  "Metric",
+  "Repetitions",
+  "Splits",
+  "Outer CV folds",
+  "Tested",
+  "No variables selected",
+  "Tuning failed",
+  "Insufficient residual degrees of freedom or rank deficiency",
+  "Non-positive residual variance",
+  "Non-finite test statistics"
+]

@@ -606,6 +606,12 @@ structural_canvas_lavaan_syntax <- function(snapshot, data, analysis_type, laten
   }
 
   common_lines <- c(measurement_lines, higher_order_lines, structural_lines, effect_definitions$lines, covariance_lines, covariate_variance_lines, residual_parameter_lines, residual_fix_lines, single_indicator_auto_lines)
+  # Score designs use a unit marker loading, including when std.lv is enabled.
+  score_latents <- Filter(function(node) !is.null(node$scoreDesign), latents)
+  common_lines <- c(common_lines, vapply(score_latents, function(node) {
+    name <- structural_canvas_name(node)
+    paste(name, "~~", paste0("NA*", name))
+  }, character(1)))
   list(
     syntax = paste(c(common_lines, covariate_effect_lines), collapse = "\n"),
     research_syntax = paste(common_lines, collapse = "\n"),

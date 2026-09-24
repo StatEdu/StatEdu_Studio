@@ -1,0 +1,12 @@
+[
+  "If observations are repeated, clustered, matched, or panel data, use GEE, LMM/GLMM, or cluster-robust/design-based analysis instead of ordinary GLM.",
+  "Shapiro-Wilk screening was applied to deviance residuals; this is a diagnostic screen, not a normality requirement for non-Gaussian GLMs.",
+  "Coefficient standard errors use model-based covariance.",
+  "Poisson and negative binomial were treated as one count-family workflow; overdispersion screening selected the final fitted model.",
+  "Coefficient table includes B, SE, p-value, and 95% CI; exp(B) is added for logit/log models when selected.",
+  "Poisson dispersion, zero screen, and supplementary AIC/BIC are reported.",
+  "The selected outcome was not fitted through the Count workflow.",
+  "Footnotes for family/link, standard errors, missing data, offset, and count screening are provided.",
+  "Suggested Methods, Results, Assumptions, and Software text is provided for manuscript drafting.",
+  "Offset applied as log(exposure); exposure values must be strictly positive."
+]

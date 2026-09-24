@@ -1,0 +1,15 @@
+Sys.setenv(STATEDU_MODULE_CACHE="false")
+source("R/app_bootstrap.R",encoding="UTF-8");load_app_packages(check=FALSE);source_app_modules()
+stopifnot(!analysis_reorder_items(c("a","b"),list(order=c("a","a")))$changed,
+ !analysis_reorder_items(c("a","b"),list(order=c("a","c")))$changed,
+ identical(analysis_reorder_items(c("a","b"),list(order=c("b","a")))$order,c("b","a")))
+addResourcePath("qa",normalizePath("www"))
+ui<-fluidPage(tags$head(tags$link(rel="stylesheet",href="qa/style.css"),tags$script(src="qa/easyflow.js")),uiOutput("frequencies_setup"),textOutput("order_check"),penalized_menu_panel("regularized","ko"))
+server<-function(input,output,session){
+ set.seed(7);d<-as.data.frame(matrix(rnorm(700),70,10));names(d)<-paste0("v",1:10)
+ info<-data.frame(name=names(d),measurement="continuous")
+ vars<-reactiveVal(names(d));output$order_check<-renderText(paste(vars(),collapse=","))
+ register_frequencies_handlers(input,output,session,function()d,function()names(d),function()info,function()character(),function()NULL,vars,function(){},function()"ko")
+ register_penalized_menu("regularized",input,output,session,function()d,function()names(d),function()info,function()character(),function()NULL,function()"ko")
+}
+runApp(shinyApp(ui,server),host="127.0.0.1",port=3870,launch.browser=FALSE)

@@ -89,6 +89,7 @@
       edges: clone(state.edges),
       moderations: clone(state.moderations),
       covariates: clone(state.covariates),
+      covariateEffects: clone(state.covariateEffects || []),
       covariateTypes: clone(state.covariateTypes || {}),
       covariateTargets: clone(state.covariateTargets || {}),
       covariateApplyTo: state.covariateApplyTo,
@@ -187,6 +188,7 @@
     });
     state.moderations = clone(snap.moderations || []);
     state.covariates = clone(Array.isArray(snap.covariates) ? snap.covariates : (snap.covariates ? [snap.covariates] : []));
+    state.covariateEffects = clone(snap.covariateEffects || []);
     state.covariateTypes = clone(snap.covariateTypes || {});
     state.covariateTargets = clone(snap.covariateTargets || {});
     state.covariateApplyTo = snap.covariateApplyTo || "all";

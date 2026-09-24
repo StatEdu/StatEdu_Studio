@@ -1,0 +1,16 @@
+{
+  "STATEDU_PENALIZED_BOOTSTRAP_WORKERS/workers must be a positive integer.": "analysis.penalized_error.workers",
+  "Package 'glmnet' is required. Install it with install.packages(\"glmnet\").": "analysis.penalized_error.package",
+  "glmnet was unavailable in a penalized-bootstrap worker.": "analysis.penalized_error.worker_package",
+  "Unknown penalized regression method.": "analysis.penalized_error.method",
+  "Penalized regression requires at least 4 complete cases for cross-validation.": "analysis.penalized_error.cases_cv",
+  "Insufficient finite training data or constant outcome.": "analysis.penalized_error.training",
+  "No valid tuning fit.": "analysis.penalized_error.tuning",
+  "Nested CV requires at least 12 complete cases.": "analysis.penalized_error.nested_cases",
+  "Nested CV produced incomplete predictions.": "analysis.penalized_error.predictions",
+  "Nested CV repetitions must be an integer from 1 to 20.": "analysis.penalized_error.nested_repeats",
+  "Nested CV produced non-finite repeat metrics.": "analysis.penalized_error.metrics",
+  "Multi-split inference is available for LASSO and Elastic Net only.": "analysis.penalized_error.split_method",
+  "Multi-split inference requires at least 20 complete cases.": "analysis.penalized_error.split_cases",
+  "Multi-split repetitions must be an integer from 20 to 500.": "analysis.penalized_error.split_repeats"
+}

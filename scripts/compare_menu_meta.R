@@ -1,0 +1,50 @@
+.libPaths(R.home('library'))
+root<-'output/menu-before-after-20260915/meta';dir.create(root,recursive=TRUE,showWarnings=FALSE);id<-as.integer(commandArgs(TRUE)[1])
+old<-new.env(parent=.GlobalEnv);sys.source('output/meta-three-level-reuse-20260914/baseline.R',old)
+current<-new.env(parent=.GlobalEnv);sys.source('output/menu-before-after-20260915/after/R/analysis_meta.R',current)
+workflow<-function(env,family){
+ set.seed(217);conditions<-list();record<-function(x)list(class=class(x),message=conditionMessage(x))
+ stdout<-capture.output(value<-withCallingHandlers({
+  n<-24L;yi<-rnorm(n,.25,.3);se<-runif(n,.12,.22)
+  effects<-do.call(rbind,lapply(1:n,function(i){
+   study<-ceiling(i/2)
+   values<-list(study_id=paste0('S',study),study_name=paste0('Study ',study),publication_year=2010+study,outcome='Outcome',predictor='Treatment',moderator_categorical=paste0('region=',if(study%%2)'Asia'else'Europe'),moderator_continuous=paste0('age=',30+study),family=family,direction='positive',se=se[i])
+   if(family=='g'){values$input_type<-'g_se';values$g<-yi[i]}
+   if(family=='r'){values$input_type<-'z_se';values$fisher_z<-yi[i]}
+   if(family=='or'){values$input_type<-'logor_se';values$log_or<-yi[i]}
+   env$meta_normalize_effect(values,i)
+  }))
+  model<-env$meta_fit_model(effects,family)
+  three<-env$meta_fit_three_level(model)
+  robust<-env$meta_fit_rve_models(model,compare=TRUE)
+  moderator<-env$meta_fit_moderator(model,'continuous::age',rve_compare=TRUE)
+  categorical<-env$meta_fit_moderator(model,'categorical::region')
+  sensitivity<-env$meta_dependency_sensitivity(model)
+  leave<-env$meta_leave_one_study_out(model)
+  trim<-env$meta_trimfill(model)
+  tables<-lapply(c('ko','en'),function(language)list(
+   model=env$meta_model_summary_table(model,language),
+   heterogeneity=env$meta_heterogeneity_table(model,language),
+   studies=env$meta_study_results_table(model,language),
+   moderator=env$meta_moderator_coefficient_table(moderator,language),
+   robust=env$meta_moderator_robust_comparison_table(moderator,language),
+   subgroups=env$meta_subgroup_results_table(categorical,family,language),
+   sensitivity=env$meta_dependency_sensitivity_table(sensitivity,family,language),
+   leave=env$meta_leave_one_study_out_table(leave,family,language),
+   trim=env$meta_trimfill_results_table(trim,language)))
+  list(effects=effects,model=model,three=three,robust=robust,moderator=moderator,categorical=categorical,sensitivity=sensitivity,leave=leave,trim=trim,catalog=env$meta_moderator_catalog(effects,family),tables=tables)
+ },warning=function(w){conditions[[length(conditions)+1L]]<<-record(w);invokeRestart('muffleWarning')},message=function(m){conditions[[length(conditions)+1L]]<<-record(m);invokeRestart('muffleMessage')}))
+ list(value=value,conditions=conditions,stdout=stdout,rng=.Random.seed)
+}
+timings<-list()
+for(family in c('g','r','or')){
+ a<-workflow(old,family);b<-workflow(current,family)
+ stopifnot(identical(a,b,num.eq=FALSE))
+ for(key in if(id==2)c('current','old')else c('old','current')){
+  gc();elapsed<-system.time(value<-workflow(get(key),family))[['elapsed']]
+  stopifnot(identical(a,value,num.eq=FALSE))
+  timings[[length(timings)+1L]]<-data.frame(id=id,family=family,version=key,elapsed=elapsed);print(tail(timings,1))
+ }
+ saveRDS(a,file.path(root,paste0('result-',family,'-',id,'.rds')))
+}
+write.csv(do.call(rbind,timings),file.path(root,paste0('timing-',id,'.csv')),row.names=FALSE)

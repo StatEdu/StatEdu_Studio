@@ -625,18 +625,15 @@ logistic_result_html_table <- function(result, variable_table = NULL, labels = c
     tags$thead(
       if (isTRUE(split_ci)) {
         tagList(
-          tags$tr(
-            tags$th(style = logistic_header_style(TRUE, bottom = FALSE), ""),
-            tags$th(style = logistic_header_style(FALSE, bottom = FALSE), ""),
-            if (isTRUE(show_b)) tags$th(style = logistic_header_style(FALSE, bottom = FALSE), ""),
-            if (isTRUE(show_se)) tags$th(style = logistic_header_style(FALSE, bottom = FALSE), ""),
-            tags$th(style = logistic_header_style(FALSE, bottom = FALSE), ""),
-            tags$th(class = "coefficient-ci-group-header", style = logistic_header_style(FALSE, bottom = TRUE, center = TRUE), colspan = 2, span(class = "coefficient-ci-group-label", "95% CI")),
-            tags$th(style = logistic_header_style(FALSE, bottom = FALSE), ""),
-            tags$th(style = logistic_header_style(FALSE, bottom = FALSE), "")
-          ),
           tags$tr(lapply(seq_along(headers), function(index) {
-            tags$th(style = logistic_header_style(index == 1), headers[[index]])
+            if (headers[[index]] == "ULCI") return(NULL)
+            if (headers[[index]] == "LLCI") return(tags$th(
+              class = "coefficient-ci-group-header", colspan = 2,
+              style = logistic_header_style(FALSE, bottom = TRUE, center = TRUE), "95% CI"))
+            tags$th(rowspan = 2, style = logistic_header_style(index == 1), headers[[index]])
+          })),
+          tags$tr(lapply(c("LLCI", "ULCI"), function(header) {
+            tags$th(style = logistic_header_style(FALSE), header)
           }))
         )
       } else {

@@ -1,0 +1,9 @@
+[
+  "Elastic Net (cross-validated \u03b1)",
+  "Selection stability bootstrap resamples",
+  "Nested CV repetitions",
+  "Post-selection inference",
+  "Sample-split repetitions",
+  "Performance: repeated outer 5-fold nested CV, up to 10 inner folds. Split variability is not a confidence interval. Main coefficients use full-data \u03bb.1se.",
+  "50:50 splits separate screening and testing. Individual-contrast and omnibus categorical p-values appear in separate tables."
+]

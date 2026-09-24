@@ -1,0 +1,14 @@
+[
+  "Fitted probabilities or coefficients suggest possible complete/quasi-complete separation.",
+  "Collapse sparse categories, reduce predictors, or use Firth/penalized logistic regression.",
+  "No zero/sparse categorical predictor cell flag was detected.",
+  "No sparse-cell action is suggested by this screen.",
+  "Collapse sparse levels or reduce categorical predictors before interpreting logistic coefficients.",
+  "Inspect influential records and report sensitivity analysis if conclusions change.",
+  "No major influence flag by simple Cook's D and leverage screening rules.",
+  "Review correlated predictors or consider penalized regression for prediction-focused models.",
+  "No major VIF signal by the screening threshold.",
+  "Use negative binomial for count outcomes or robust standard errors; investigate model misspecification.",
+  "Event count appears adequate by the common EPV screening rule.",
+  "Estimates may be unstable; reduce predictors, collapse categories, or use penalized/Firth logistic regression."
+]

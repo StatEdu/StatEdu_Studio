@@ -1,5 +1,15 @@
 # Version History
 
+## v1.3.1 - Unreleased — source preparation
+
+- Added startup minimum-version policy checks with separate Free/Pro policies and an offline cache.
+
+- Included SEM score/parcel workflows and complex-sample multinomial/ordinal logistic analysis improvements.
+
+- Improved frequency-table numeric layout, grouped t-test summaries, logistic confidence-interval headers and default export folders; removed added-at timestamps from collected-result presentation.
+
+- Public menus exclude meta-analysis and within-subject treatment repeated-measures ANOVA. No installer has been built or published for this version.
+
 ## v1.3.0 - 2026-09-20
 
 - Added public CFA, SEM and PLS-SEM/PLSc model editing, estimation, diagnostics and supported bootstrap/group comparisons. Survival analysis provides Kaplan–Meier, RMST, Cox and supported competing-risk methods.

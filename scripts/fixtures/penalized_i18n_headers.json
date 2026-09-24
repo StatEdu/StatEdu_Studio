@@ -1,0 +1,21 @@
+[
+  "lambda rule",
+  "Apparent RMSE",
+  "Apparent MAE",
+  "Selected predictors, n",
+  "Rows removed",
+  "Model matrix p",
+  "Selected predictors",
+  "All predictors retained",
+  "Random seed",
+  "Alpha searched",
+  "Selected alpha",
+  "Predictor standardization",
+  "Lambda rules",
+  "Selection bootstrap resamples",
+  "Selected in full model",
+  "Selection frequency",
+  "Selection frequency (%)",
+  "Bootstrap resamples",
+  "Successful resamples"
+]

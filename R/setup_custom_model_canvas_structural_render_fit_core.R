@@ -114,7 +114,7 @@ structural_canvas_fit_table_result_ui <- function(bundle, values) {
     }),
     if ((!is.null(baseline_selection) && baseline_selection$values[[2L]] == 0) || selection$values[[2L]] == 0)
       result_note_paragraph(class = "structural-result-note structural-main-note structural-main-note-3", "Chi-square/df and some fit indices are not interpretable for a saturated model with df = 0.")
-  ), table = values, role = "main", orientation = "landscape")
+  ), table = values, role = "main", orientation = "portrait")
 
 }
 

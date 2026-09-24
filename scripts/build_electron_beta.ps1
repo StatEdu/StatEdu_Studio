@@ -15,8 +15,14 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $version = (Get-Content (Join-Path $repoRoot "VERSION")).Trim()
-if ($Developer -and $version -match "^\d+\.\d+\.\d+$") {
-  $version = "$version-dev"
+if ($Developer) {
+  $developerVersionPath = Join-Path $repoRoot "VERSION_DEV"
+  if (Test-Path -LiteralPath $developerVersionPath) {
+    $version = (Get-Content -LiteralPath $developerVersionPath -Raw).Trim()
+    if ($version -notmatch "^\d+\.\d+\.\d+-dev$") { throw "Invalid developer version: $version" }
+  } elseif ($version -match "^\d+\.\d+\.\d+$") {
+    $version = "$version-dev"
+  }
 }
 $electronDir = Join-Path $repoRoot "packaging\electron"
 $appStage = Join-Path $electronDir "app"
@@ -331,6 +337,8 @@ function Remove-StaleElectronDistArtifacts {
   $artifacts = @(Get-ChildItem -LiteralPath $distDir -File -Force | Where-Object {
     (
       $_.Name -match "^StatEdu_Studio(_Beta|_Dev)?_Setup_.*\.exe(\.blockmap)?$" -and
+      # Keep published public installers when building either edition.
+      -not ($_.Name -match "^StatEdu_Studio_Setup_.*\.exe(\.blockmap)?$") -and
       $_.Name -notin $allowedArtifacts
     ) -or
     $_.Name -match "^EasyFlow_Statistics_Beta_.*" -or
@@ -445,6 +453,13 @@ try {
       $_ -match "^(R/|www/|README_KO\.md|CHANGELOG_[A-Z]{2}\.md|docs/(ANALYSIS_METHODS|METHOD_NOTES)_[A-Z]{2}\.md|docs/i18n/|scripts/validate_localized_about_docs\.R|docs/ANALYSIS_REFERENCE_COMPARISON_PUBLIC(_KO)?\.md|docs/assets/user-guide/(en|ko)/)"
     }
   $appFiles = @($appFiles + $requiredUntrackedAppFiles) | Sort-Object -Unique
+  foreach ($releaseHelper in @(
+    'docs/RELEASE_1_3_1_PREPARATION_KO.md', 'docs/MINIMUM_VERSION_POLICY_KO.md',
+    'scripts/validate_minimum_version_policy.R', 'scripts/validate_public_131_scope.R'
+  )) {
+    if (Test-Path -LiteralPath (Join-Path $repoRoot $releaseHelper)) { $appFiles += $releaseHelper }
+  }
+  $appFiles = @($appFiles | Sort-Object -Unique)
   $documentationManifest = Get-Content -LiteralPath (Join-Path $repoRoot 'docs/i18n/document_specs.json') -Raw -Encoding UTF8 | ConvertFrom-Json
   $documentationFiles = @('docs/i18n/document_specs.json')
   foreach ($languageSpec in $documentationManifest.PSObject.Properties) {

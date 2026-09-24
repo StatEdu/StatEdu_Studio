@@ -1,0 +1,11 @@
+source('scripts/fixtures_model_planning_i18n.R',encoding='UTF-8')
+out <- 'tmp/anova-planning-notes-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+results <- c(results[1:6],power_results[1:6])
+designs <- c(designs[1:6],paste0(designs[1:6],'-power'))
+formula_keys <- rep(paste0('sample_size.result.',c('note_plan_one_way','note_plan_two_way','note_plan_repeated','note_plan_mixed','note_plan_kw','note_plan_friedman')),2)
+for(i in seq_along(results))stopifnot(is.null(results[[i]]$error),identical(results[[i]]$method_note,statedu_t(formula_keys[i],'en')))
+# Independently verify representative F and chi-square noncentralities at N=150.
+stopifnot(isTRUE(all.equal(results[[7]]$power,pf(qf(.95,2,147),2,147,ncp=150*.15^2,lower.tail=FALSE))))
+stopifnot(isTRUE(all.equal(results[[11]]$power,pchisq(qchisq(.95,2),2,ncp=150*.15^2,lower.tail=FALSE))))
+stopifnot(isTRUE(all.equal(results[[12]]$power,pchisq(qchisq(.95,2),2,ncp=150*2*.15,lower.tail=FALSE))))
+cat('PASS twelve ANOVA-family n/power method-note cases and independent F/chi-square references; legacy rank branches are not new menu options\n')

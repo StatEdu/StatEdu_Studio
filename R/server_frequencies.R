@@ -27,7 +27,7 @@ register_frequencies_handlers <- function(
       table_summary = input$frequency_table_summary,
       stat_min_max = input$frequency_stat_min_max %||% TRUE,
       stat_skew_kurtosis = input$frequency_stat_skew_kurtosis %||% TRUE,
-      stat_median_iqr = input$frequency_stat_median_iqr %||% TRUE,
+      stat_median_iqr = input$frequency_stat_median_iqr %||% FALSE,
       plot_pie = input$frequency_plot_pie,
       plot_bar = input$frequency_plot_bar,
       plot_histogram = input$frequency_plot_histogram,

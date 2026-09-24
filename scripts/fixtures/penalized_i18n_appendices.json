@@ -1,0 +1,18 @@
+[
+  "Appendix Table A1. Cross-validated tuning and model performance",
+  "lambda.min minimizes tuning-CV MSE; lambda.1se selects the more parsimonious solution within one standard error. These tuning-CV and apparent indices are not independent validation performance; see Table 1 for nested CV.",
+  "Appendix Table A2. OLS and penalized regression coefficients",
+  "Penalized coefficients use internal predictor standardization and are returned on the original response scale. Zero denotes exclusion by LASSO or Elastic Net.",
+  "Appendix Table A3. Predictors retained by penalized regression",
+  "Ridge regression retains all predictors because it does not perform variable selection.",
+  "Appendix Table A4. Cross-validation settings",
+  "Elastic Net selects alpha by the lowest cross-validated MSE. Bootstrap stability re-tunes alpha over the configured grid and lambda in each resample; identical CV folds are used across alpha candidates.",
+  "Appendix Table A5. Bootstrap selection stability",
+  "Selection frequency is the proportion of successful resamples retaining each predictor. Elastic Net re-tunes alpha and lambda in each resample; displayed alpha is the full-data estimate. A failed alpha candidate makes the resample unsuccessful. Ridge is omitted; selection frequency is not a significance test.",
+  "Appendix Table A6. Sample-split diagnostics",
+  "All requested splits remain in the aggregation denominator. Failed or non-estimable splits are not discarded or replaced.",
+  "Appendix Table A7. Omnibus test diagnostics",
+  "Omnibus tests expand selected categorical terms to all contrasts. Failures remain in the requested split denominator; this test model can differ from the individual-contrast model in Table 4.",
+  "Appendix Table A8. Repeated nested CV variability",
+  "SD = sample standard deviation across repetitions. Mean, SD, minimum and maximum summarize repetition-specific pooled held-out metrics, not folds. Repetitions reuse the same observations and are not independent samples; the range is not a confidence interval. Failed repetitions stop the analysis and are not discarded. Repetition seeds start at the analysis seed + 30000 and increase by 100."
+]

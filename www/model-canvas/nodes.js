@@ -11,6 +11,8 @@
   }
 
   function setVariableUsage(instance) {
+    var scorePanel = document.querySelector(".canvas-score-panel");
+    var selectingScoreItems = scorePanel && scorePanel.getAttribute("data-canvas-root") === instance.root.id;
     var used = {};
     var covariates = {};
     instance.state.nodes.forEach(function(node) {
@@ -27,8 +29,8 @@
       item.classList.toggle("is-used", isAssigned);
       item.classList.toggle("is-covariate", role === "covariate");
       item.classList.toggle("is-selected", isSelected);
-      item.setAttribute("draggable", isAssigned ? "false" : "true");
-      item.setAttribute("aria-disabled", isAssigned && role !== "covariate" ? "true" : "false");
+      item.setAttribute("draggable", isAssigned && !selectingScoreItems ? "false" : "true");
+      item.setAttribute("aria-disabled", isAssigned && role !== "covariate" && !selectingScoreItems ? "true" : "false");
       item.setAttribute("aria-selected", isSelected ? "true" : "false");
       if (role) {
         item.setAttribute("data-role", role);
@@ -243,7 +245,43 @@
       }
       layer.appendChild(element);
     });
+    renderScoreShortcut(instance);
     setVariableUsage(instance);
+  }
+
+  function renderScoreShortcut(instance) {
+    if (isViewingResult(instance) || ["cfa", "cbsem", "sem"].indexOf(instance.analysisType) < 0 ||
+        ["select", "properties"].indexOf(instance.state.mode) < 0) return;
+    var selected = instance.state.selectedNodeIds || [];
+    var latents = instance.state.nodes.filter(function(node) {
+      return node.role === "latent" && (selected.indexOf(node.id) >= 0 || node.id === instance.state.selectedNodeId);
+    });
+    if (latents.length !== 1) return;
+    var latent = latents[0];
+    var indicators = new Set();
+    instance.state.edges.forEach(function(edge) {
+      if (edge.kind === "covariance") return;
+      var other = nodeById(instance, edge.from === latent.id ? edge.to : edge.to === latent.id ? edge.from : null);
+      if (other && other.role === "indicator") indicators.add(other.id);
+    });
+    if (indicators.size !== 1) return;
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "custom-model-score-shortcut";
+    button.textContent = window.StatEduModelCanvas.state.label(instance, "score_editor", "Original items / reliability / parcels");
+    button.setAttribute("aria-label", window.StatEduModelCanvas.layout.displayText(latent) + ": " + button.textContent);
+    button.setAttribute("data-score-node-id", latent.id);
+    button.style.left = Math.max(4, Math.min(Number(latent.x || 0), Number(instance.state.canvas.widthPx || 970) - 234)) + "px";
+    var below = Number(latent.y || 0) + Number(latent.height || instance.state.style.boxHeight) + 8;
+    button.style.top = (below + 32 < instance.state.canvas.heightPx ? below : Math.max(4, Number(latent.y || 0) - 38)) + "px";
+    ["pointerdown", "mousedown", "dblclick"].forEach(function(type) {
+      button.addEventListener(type, function(event) { event.stopPropagation(); });
+    });
+    button.addEventListener("click", function(event) {
+      event.stopPropagation();
+      openScoreEditor(instance, latent.id);
+    });
+    instance.nodeLayer.appendChild(button);
   }
 
   function nodeById(instance, id) {
@@ -400,6 +438,17 @@
       compactMeasurementAfterDeletion(instance, deletionLayout, nodeId);
     }
     window.StatEduModelCanvas.bridge.invalidateResultAfterModelEdit(instance);
+  }
+
+  function scoreEditorEligible(instance, node) {
+    if (!node || node.role !== "latent" || isViewingResult(instance) || ["cfa", "cbsem", "sem"].indexOf(instance.analysisType) < 0) return false;
+    var ids = new Set();
+    instance.state.edges.forEach(function(edge) {
+      if (edge.kind === "covariance") return;
+      var other = nodeById(instance, edge.from === node.id ? edge.to : edge.to === node.id ? edge.from : null);
+      if (other && other.role === "indicator") ids.add(other.id);
+    });
+    return ids.size === 1;
   }
 
   function errorPlacement(instance, errorNode) {
@@ -1034,6 +1083,17 @@
     return fallback;
   }
 
+  function openScoreEditor(instance, nodeId) {
+    var api = window.StatEduModelCanvas;
+    if (!window.Shiny || !scoreEditorEligible(instance, nodeById(instance, nodeId))) return;
+    var snapshot = api.state.snapshot(instance.state);
+    var token = String(Date.now()) + Math.random();
+    instance.scoreRequest = {token: token, base: JSON.stringify(snapshot)};
+    Shiny.setInputValue((instance.root.getAttribute("data-input-prefix") || "custom_model_canvas") + "_score_request",
+      {nodeId: nodeId, snapshot: snapshot, token: token}, {priority: "event"});
+    hideProperties(instance);
+  }
+
   function showNodeProperties(instance, nodeId) {
     var node = nodeById(instance, nodeId);
     if (!node) return;
@@ -1084,6 +1144,17 @@
       '</div>'
     );
     panel.innerHTML = propertyFields.join("");
+
+    if (scoreEditorEligible(instance, node)) {
+      var scoreButton = document.createElement("button");
+      scoreButton.type = "button";
+      scoreButton.className = "btn btn-default btn-sm custom-model-score-editor";
+      scoreButton.textContent = window.StatEduModelCanvas.state.label(instance, "score_editor", "Original items / reliability / parcels");
+      scoreButton.addEventListener("click", function() {
+        openScoreEditor(instance, node.id);
+      });
+      panel.querySelector(".custom-model-property-scroll").appendChild(scoreButton);
+    }
 
     var roleSelect = panel.querySelector(".custom-model-property-role");
     if (["latent", "indicator", "error", "disturbance"].indexOf(node.role) >= 0) {
@@ -1281,6 +1352,30 @@
   }
 
   window.StatEduModelCanvas = window.StatEduModelCanvas || {};
+  function addScorePanelItems(panel, values) {
+    if (window.Shiny) Shiny.setInputValue(panel.getAttribute("data-add-input"),
+      {values: values, nonce: Date.now() + Math.random()}, {priority: "event"});
+  }
+  document.addEventListener("click", function(event) {
+    var button = event.target.closest && event.target.closest(".canvas-score-add-selected");
+    if (!button) return;
+    var panel = button.closest(".canvas-score-panel");
+    var root = document.getElementById(panel.getAttribute("data-canvas-root"));
+    var instance = root && root.__stateduModelCanvas;
+    if (instance) addScorePanelItems(panel, instance.state.selectedVariables || []);
+  });
+  ["dragover", "drop"].forEach(function(type) {
+    document.addEventListener(type, function(event) {
+      var zone = event.target.closest && event.target.closest(".canvas-score-item-drop");
+      if (!zone || !event.dataTransfer || Array.from(event.dataTransfer.types).indexOf("application/x-statedu-variables") < 0) return;
+      event.preventDefault(); event.stopPropagation();
+      if (type === "dragover") { event.dataTransfer.dropEffect = "copy"; return; }
+      var panel = zone.closest(".canvas-score-panel");
+      if (event.dataTransfer.getData("application/x-statedu-canvas-root") !== panel.getAttribute("data-canvas-root")) return;
+      try { addScorePanelItems(panel, JSON.parse(event.dataTransfer.getData("application/x-statedu-variables"))); } catch (_) {}
+    }, true);
+  });
+
   window.StatEduModelCanvas.nodes = {
     variableUsed: variableUsed,
     setVariableUsage: setVariableUsage,
@@ -1306,6 +1401,8 @@
     startDrag: startNodeDrag,
     editLabel: showNodeProperties,
     showProperties: showNodeProperties,
+    openScoreEditor: openScoreEditor,
+    scoreEditorEligible: scoreEditorEligible,
     showEdgeProperties: showEdgeProperties,
     hideProperties: hideProperties
   };

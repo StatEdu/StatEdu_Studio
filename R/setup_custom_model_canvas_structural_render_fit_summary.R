@@ -596,6 +596,8 @@ structural_canvas_additional_fit_metric_label <- function(metric) {
     rmsea.ci.upper.robust = "robust CI upper",
     rmsea.pvalue.robust = "robust p",
     rmsea.notclose.pvalue.robust = "robust not-close p",
+    gfi.ci.lower = "GFI CI lower bound",
+    gfi.ci.upper = "GFI CI upper bound",
     srmr_bentler = "SRMR Bentler",
     srmr_bentler_nomean = "SRMR Bentler no mean",
     crmr_nomean = "CRMR no mean",
@@ -618,6 +620,53 @@ structural_canvas_additional_fit_metric_order <- function(metrics, family) {
   metrics
 }
 
+structural_canvas_additional_fit_note <- function(metrics) {
+  # Define only the metric families present in this captured table; variants
+  # share a full name and receive their own qualifier below.
+  definitions <- c(
+    npar = "npar = Number of free parameters", fmin = "fmin = Minimum fit function value",
+    ntotal = "NTOTAL = Total sample size", chisq = "χ² = Chi-square statistic",
+    df = "df = Degrees of freedom", pvalue = "p = p-value",
+    scaling = "SCALING FACTOR = Test statistic scaling correction factor",
+    cfi = "CFI = Comparative Fit Index", tli = "TLI = Tucker-Lewis Index",
+    nnfi = "NNFI = Non-Normed Fit Index", rfi = "RFI = Relative Fit Index",
+    nfi = "NFI = Normed Fit Index", pnfi = "PNFI = Parsimony Normed Fit Index",
+    ifi = "IFI = Incremental Fit Index", rni = "RNI = Relative Noncentrality Index",
+    rmsea = "RMSEA = Root Mean Square Error of Approximation",
+    gfi = "GFI = Goodness-of-Fit Index", agfi = "AGFI = Adjusted Goodness-of-Fit Index",
+    pgfi = "PGFI = Parsimony Goodness-of-Fit Index", mfi = "MFI = McDonald Fit Index",
+    rmr = "RMR = Root Mean Square Residual", srmr = "SRMR = Standardized Root Mean Square Residual",
+    crmr = "CRMR = Correlation Root Mean Square Residual", wrmr = "WRMR = Weighted Root Mean Square Residual",
+    logl = "logL = Log-likelihood", unrestricted = "unrestricted logL = Unrestricted model log-likelihood",
+    aic = "AIC = Akaike Information Criterion", bic = "BIC = Bayesian Information Criterion",
+    bic2 = "adj BIC = Sample-size adjusted Bayesian Information Criterion",
+    ecvi = "ECVI = Expected Cross-Validation Index", cn = "CN = Hoelter Critical N"
+  )
+  roots <- sub("[._].*$", "", sub("^baseline[.]", "", metrics))
+  notes <- unname(definitions[intersect(unique(roots), names(definitions))])
+  add <- function(pattern, text) if (any(grepl(pattern, metrics))) notes <<- c(notes, text)
+  add("[.]ci[.]", "CI = Confidence interval")
+  add("[.]ci[.]lower", "lower = Lower confidence limit")
+  add("[.]ci[.]upper", "upper = Upper confidence limit")
+  add("[.]ci[.]level", "level = Confidence level")
+  add("^baseline[.]", "base = Baseline model")
+  add("scaled", "scaled = Scaled test statistic or fit index")
+  add("scaling.factor", "scale = Test statistic scaling correction factor")
+  add("robust", "robust = Robust correction")
+  add("^rmsea[.]pvalue", "RMSEA p = p-value for the close-fit test")
+  add("rmsea.*notclose.pvalue", "not-close p = p-value for the not-close-fit test")
+  add("rmsea.*h0", "H0 = Null hypothesis; close H0 / not-close H0 = RMSEA thresholds for the respective tests")
+  add("bentler", "Bentler = Bentler standardization")
+  add("mplus", "Mplus = Mplus residual calculation")
+  add("nomean", "no mean / NOMEAN = Mean residuals excluded")
+  add("lisrel", "LISREL = LISREL formulation")
+  add("within", "WITHIN = Within-group level")
+  add("between", "BETWEEN = Between-group level")
+  add("^cn_05$", "CN_05 = Critical N at α = .05")
+  add("^cn_01$", "CN_01 = Critical N at α = .01")
+  paste0(paste(notes, collapse = "; "), ".")
+}
+
 structural_canvas_additional_fit_indices_wide_tables <- function(additional_fit) {
   if (!nrow(additional_fit)) return(list())
   order <- c("model", "baseline", "incremental", "rmsea", "residual", "likelihood", "other")
@@ -635,6 +684,7 @@ structural_canvas_additional_fit_indices_wide_tables <- function(additional_fit)
         subset$Value[which(match)[[1L]]]
       }, character(1))
     }
+    attr(table, "fit_metrics") <- metrics
     table
   })
   names(result) <- families
@@ -656,6 +706,7 @@ structural_canvas_additional_fit_indices_ui <- function(additional_fit, ko = FAL
         structural_canvas_basic_html_table(
           display,
           role = "appendix",
+          note = structural_canvas_additional_fit_note(attr(display, "fit_metrics")),
           orientation = if (family %in% c("incremental", "rmsea", "residual")) "landscape" else "auto",
           class = "table table-striped table-bordered structural-landscape-table structural-additional-fit-indices-table",
           language = language

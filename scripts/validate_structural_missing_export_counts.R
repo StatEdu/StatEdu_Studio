@@ -1,0 +1,20 @@
+Sys.setlocale('LC_CTYPE','English_United States.utf8')
+out<-Sys.getenv('STATEDU_I18N_EXPORT_FIXTURE','tmp/structural-missing-i18n');entries<-readRDS(file.path(out,'entries.rds'))
+for(mode in c('current','accumulated')){
+ selected<-if(mode=='current')entries else c(entries,list(entries[[1]]))
+ expected<-unlist(lapply(selected,function(entry){
+  doc<-xml2::read_html(entry$html,encoding='UTF-8')
+  vapply(xml2::xml_find_all(doc,'//table'),function(table)xml2::xml_text(xml2::xml_find_first(table,'.//th')),character(1))
+ }))
+ stem<-file.path(out,paste0('ja-',mode))
+ html<-xml2::read_html(paste0(stem,'.html'),encoding='UTF-8')
+ actual<-vapply(xml2::xml_find_all(html,'//table'),function(table)xml2::xml_text(xml2::xml_find_first(table,'.//th')),character(1))
+ stopifnot(identical(expected,actual))
+ word<-xml2::read_xml(unz(paste0(stem,'.docx'),'word/document.xml'))
+ word_tables<-xml2::xml_find_all(word,'//w:tbl')
+ stopifnot(length(word_tables)==length(expected))
+ word_headers<-vapply(word_tables,function(table)xml2::xml_text(xml2::xml_find_first(table,'./w:tr[1]/w:tc[1]')),character(1))
+ stopifnot(identical(expected,word_headers))
+ stopifnot(length(openxlsx::getSheetNames(paste0(stem,'.xlsx')))==length(expected))
+ cat('PASS:',mode,length(expected),'tables: HTML/Word order and Excel sheet count\n')
+}

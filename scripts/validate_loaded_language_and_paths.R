@@ -23,6 +23,21 @@ stopifnot(identical(data_file_source_directory(settings_restored_data_file(legac
 stopifnot(identical(data_file_source_directory(settings_external_data_switch(legacy,project)),directory))
 stopifnot(identical(settings_restored_data_file(legacy,project)$name,"legacy.csv"))
 cat("PASS: existing upload from a previous R session never becomes the dialog folder\n")
+settings_directory <- file.path(dirname(directory), "separate settings folder")
+dir.create(settings_directory, recursive = TRUE, showWarnings = FALSE)
+external_path <- file.path(directory, "external.csv")
+writeLines("x,y\n1,2", external_path)
+separate_project <- file.path(settings_directory, "external.studio")
+external_settings <- list(data_file = "external.csv", data_file_path = external_path)
+for (restored in list(settings_restored_data_file(external_settings, separate_project),
+                      settings_external_data_switch(external_settings, separate_project))) {
+  stopifnot(identical(data_file_source_directory(restored), directory))
+}
+stopifnot(identical(data_file_source_directory(list(path = old_file,
+  original_path = external_path, source_directory = settings_directory)), directory))
+stopifnot(identical(data_file_source_directory(list(path = old_file,
+  source_directory = settings_directory)), normalizePath(settings_directory, winslash = "/")))
+cat("PASS: external data folder takes priority over a separate settings folder; embedded data keeps its fallback\n")
 shiny::testServer(function(input, output, session) {}, {
   original_data <- file.path(directory,"원본.csv")
   writeLines("x,y\n3,4",original_data)

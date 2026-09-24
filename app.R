@@ -48,8 +48,13 @@ try({
 startup_time("source modules", source_app_modules())
 try(shiny::addResourcePath("docs", normalizePath("docs", winslash = "/", mustWork = FALSE)), silent = TRUE)
 
-ui <- function(request) startup_time("build ui", app_ui(app_version, request))
-server <- startup_time("build server", create_app_server(app_version))
+update_policy <- startup_time("check version policy", statedu_startup_update_policy(app_version))
+startup_log(paste("version policy", update_policy$status, update_policy$policy_source))
+guarded_app <- statedu_guarded_application(update_policy,
+  normal_ui = function(request) startup_time("build ui", app_ui(app_version, request)),
+  normal_server = startup_time("build server", create_app_server(app_version)))
+ui <- guarded_app$ui
+server <- guarded_app$server
 startup_log("app.R ready")
 
 shinyApp(ui, server)

@@ -1,0 +1,5 @@
+Sys.setlocale("LC_CTYPE", "English_United States.utf8")
+Sys.setenv(STATEDU_USER_SETTINGS_DIR = normalizePath("tmp/multilingual", winslash = "/"))
+Sys.setenv(STATEDU_MODULE_CACHE = "false", STATEDU_APP_LANGUAGE_FILE = normalizePath("tmp/multilingual", winslash = "/"))
+Sys.setenv(STATEDU_APP_LANGUAGE_FILE = file.path(Sys.getenv("STATEDU_APP_LANGUAGE_FILE"), "app-language.txt"))
+shiny::runApp(".", host = "127.0.0.1", port = 3873, launch.browser = FALSE)

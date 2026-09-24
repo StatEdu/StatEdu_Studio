@@ -1,0 +1,21 @@
+out<-'tmp/precision-rates-planning-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+base<-function(m){v<-list(target='sample_size',alpha='0.05',power='0.8',n='100',ratio='2',alternative='two.sided',dropout='0');setNames(v,paste0('sample_size_',m,'_',names(v)))}
+p<-modifyList(base('precision'),list(sample_size_precision_confidence='0.95',sample_size_precision_half_width='0.1',sample_size_precision_sd='1',sample_size_precision_proportion='0.5',sample_size_precision_r='0.3'))
+m<-modifyList(base('mcnemar'),list(sample_size_mcnemar_p01='0.2',sample_size_mcnemar_p10='0.1'))
+r<-modifyList(base('rates'),list(sample_size_rates_rate1='0.1',sample_size_rates_rate2='0.2',sample_size_rates_half_width='0.05',sample_size_rates_dispersion='0.5'))
+methods<-c(rep('precision',3),'mcnemar',rep('rates',3))
+designs<-c('correlation','proportion','mean','mcnemar','negative_binomial','single_rate_precision','two_rate_ratio')
+inputs<-c(lapply(designs[1:3],function(d)modifyList(p,list(sample_size_precision_parameter=d))),list(m),lapply(designs[5:7],function(d)modifyList(r,list(sample_size_rates_design=d))))
+formula_keys<-paste0('sample_size.result.',c('planning_precision_r','planning_precision_p','planning_precision_mean','planning_mcnemar','planning_rates_nb','planning_rates_single','planning_rates_poisson'))
+results<-lapply(1:7,function(i)sample_size_calculate(methods[i],inputs[[i]]))
+other<-lapply(1:7,function(i){v<-inputs[[i]];v[[paste0('sample_size_',methods[i],'_target')]]<-'power';sample_size_calculate(methods[i],v)})
+results<-c(results,other);designs<-c(paste(designs,'sample-size'),paste(designs,'power-or-precision'));formula_keys<-rep(formula_keys,2)
+for(i in seq_along(results))if(!is.null(results[[i]]$error)||!identical(results[[i]]$formula_note,statedu_t(formula_keys[i],'en')))stop('Unexpected result ',designs[i],': ',results[[i]]$error)
+z<-qnorm(.975)
+stopifnot(results[[2]]$total==ceiling(z^2*.5*.5/.1^2),results[[3]]$total==ceiling((z/.1)^2),results[[6]]$total==ceiling(z^2*.1/.05^2),isTRUE(all.equal(results[[9]]$achieved_half_width,z*sqrt(.25/100))),isTRUE(all.equal(results[[10]]$achieved_half_width,z/10)),isTRUE(all.equal(results[[13]]$achieved_half_width,z*sqrt(.1/100))),results[[5]]$total>results[[7]]$total)
+for(i in c(11,12,14))stopifnot(is.finite(results[[i]]$power),results[[i]]$power>=0,results[[i]]$power<=1)
+tokens<-list(planning_precision_p='n = z^2 p(1-p) / d^2',planning_precision_mean='n = (z SD / d)^2',planning_mcnemar=c('p01','p10'),planning_rates_nb='Var(Y) = mu + dispersion * mu^2')
+for(lang in c('en','ko','ja','zh','es','fr','de','vi'))for(key in names(tokens)){
+ value<-statedu_t(paste0('sample_size.result.',key),lang,fallback='');stopifnot(nzchar(value),all(vapply(tokens[[key]],grepl,logical(1),x=value,fixed=TRUE)))
+}
+cat('PASS 14 actual precision/McNemar/rate cases; reference sizes/half-widths and eight-language mathematical tokens\n')

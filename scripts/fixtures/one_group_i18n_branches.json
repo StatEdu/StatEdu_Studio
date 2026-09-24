@@ -1,0 +1,9 @@
+[
+  "Prioritize treatment comparisons at each time and time comparisons within treatment.",
+  "Listwise deletion was applied.",
+  "Normality flagged; review a robust or mixed-model sensitivity analysis.",
+  "At least one Shapiro-Wilk p < .05.",
+  "Assumption review was not requested.",
+  "Review the returned ANOVA table before interpretation.",
+  "Primary p was not available."
+]

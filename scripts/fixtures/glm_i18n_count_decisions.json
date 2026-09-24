@@ -1,0 +1,8 @@
+[
+  "Negative binomial was locked before MI pooling using the across-imputation dispersion rule.",
+  "Poisson was locked before MI pooling using the across-imputation dispersion rule.",
+  "Poisson dispersion exceeded the prespecified screening threshold and negative-binomial fit was available.",
+  "Poisson dispersion could not be computed; Poisson GLM was retained.",
+  "Poisson dispersion exceeded the prespecified screening threshold, but negative-binomial fit was unavailable; Poisson GLM was retained.",
+  "Poisson dispersion did not exceed the prespecified screening threshold; Poisson GLM was retained."
+]

@@ -1,0 +1,27 @@
+out<-'tmp/gee-numeric-errors-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+base<-list(effect_size_gee_sd_mode='direct',effect_size_gee_sd='2',effect_size_gee_mean1='-1',effect_size_gee_mean2='1',effect_size_gee_pre_mean1='0',effect_size_gee_post_mean1='-1',effect_size_gee_pre_mean2='0',effect_size_gee_post_mean2='1',effect_size_gee_coefficient='-2')
+calc<-function(design,extra=list())suppressWarnings(effect_size_gee_calculate(modifyList(modifyList(base,list(effect_size_gee_design=design)),extra)))
+fields<-c('mean1','mean2','pre_mean1','post_mean1','pre_mean2','post_mean2','coefficient')
+input_designs<-c(rep('continuous_followup_means',2),rep('continuous_change_means',4),'continuous_parameter_b')
+input_keys<-paste0('sample_size.result.',c(rep('error_gee_means_numeric',2),rep('error_gee_change_numeric',4),'error_gee_parameter_numeric'))
+errors<-list();keys<-character()
+for(i in seq_along(fields))for(value in c('bad','NaN','Inf','-Inf')){
+ errors<-c(errors,list(calc(input_designs[i],setNames(list(value),paste0('effect_size_gee_',fields[i])))));keys<-c(keys,input_keys[i])
+}
+before_errors<-serialize(errors,NULL)
+for(lang in c('en','ko','ja','zh','es','fr','de','vi'))for(i in seq_along(errors)){
+ stopifnot(identical(errors[[i]]$error,statedu_t(keys[i],'en')))
+ expected<-statedu_t(keys[i],lang,fallback='')
+ actual<-xml2::xml_text(xml2::xml_find_first(xml2::read_html(as.character(sample_size_results_ui(errors[[i]],lang))),'//div[@class="analysis-warning"]'))
+ stopifnot(nzchar(expected),identical(actual,expected));if(lang!='en')stopifnot(actual!=errors[[i]]$error)
+ unknown<-paste0(errors[[i]]$error,' custom');stopifnot(identical(sample_size_result_text(unknown,lang),unknown))
+}
+stopifnot(length(errors)==28L,identical(before_errors,serialize(errors,NULL)))
+designs<-unique(input_designs)
+zero<-setNames(as.list(rep('0',length(fields))),paste0('effect_size_gee_',fields))
+results<-c(lapply(designs,calc),lapply(designs,function(d)calc(d,zero)))
+expected<-c(rep(-1,3),rep(0,3))
+for(i in seq_along(results))stopifnot(is.null(results[[i]]$error),isTRUE(all.equal(results[[i]]$effect_size_d,expected[i])),isTRUE(all.equal(results[[i]]$mean_difference,expected[i]*2)))
+designs<-c(paste0(designs,'-negative'),paste0(designs,'-zero'))
+formula_keys<-rep(paste0('sample_size.result.',c('gee_means','gee_change','gee_parameter')),2)
+cat('PASS twenty-eight actual GEE numeric errors x eight languages; six valid negative/zero effect-size references\n')

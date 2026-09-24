@@ -1,0 +1,85 @@
+# Data helpers for categorical value label editing.
+
+category_label_value_columns <- function(max_pairs = statedu_category_label_max_pairs()) {
+  as.vector(rbind(paste0("value_", seq_len(max_pairs)), paste0("label_", seq_len(max_pairs))))
+}
+
+category_label_edit_columns <- function(max_pairs = statedu_category_label_max_pairs()) {
+  c("var_label", "reference", "reference_label", category_label_value_columns(max_pairs))
+}
+
+category_label_save_columns <- function(max_pairs = statedu_category_label_max_pairs()) {
+  c("reference", "reference_label", category_label_value_columns(max_pairs))
+}
+
+category_label_display_data <- function(
+  info,
+  selected_names = character(0),
+  dependent = character(0),
+  independent = character(0),
+  controls = character(0),
+  saved_values = NULL,
+  measurement_overrides = character(0),
+  max_pairs = statedu_category_label_max_pairs()
+) {
+  if (is.null(info) || nrow(info) == 0) {
+    return(NULL)
+  }
+
+  info <- apply_measurement_overrides(info, measurement_overrides)
+  info <- info[info$name %in% as.character(selected_names), , drop = FALSE]
+  if (nrow(info) == 0) {
+    return(data.frame(Message = "No categorical variables are selected.", check.names = FALSE))
+  }
+  info$selected <- TRUE
+  info$role <- vapply(
+    info$name,
+    role_for_variable,
+    character(1),
+    dependent = dependent,
+    independent = independent,
+    controls = controls
+  )
+  info <- info[info$measurement %in% c("binary", "category", "ordered"), , drop = FALSE]
+  if (nrow(info) == 0) {
+    return(data.frame(Message = "No categorical variables are selected.", check.names = FALSE))
+  }
+
+  value_columns <- category_label_value_columns(max_pairs)
+  edit_columns <- category_label_edit_columns(max_pairs)
+  for (column in edit_columns) {
+    if (!column %in% names(info)) {
+      info[[column]] <- ""
+    }
+  }
+
+  if (is.data.frame(saved_values) && "name" %in% names(saved_values)) {
+    saved_columns <- edit_columns[edit_columns %in% names(saved_values)]
+    saved_matches <- if (is.character(info$name) && !is.object(info$name) &&
+      is.character(saved_values$name) && !is.object(saved_values$name)) match(info$name, saved_values$name) else NULL
+    # Batch ordinary text only; preserve scalar coercion and diagnostic order for other columns.
+    plain_character <- function(x) is.character(x) && is.null(attributes(x))
+    batch_saved <- !is.null(saved_matches) && identical(class(info), "data.frame") &&
+      identical(class(saved_values), "data.frame") && all(vapply(saved_columns, function(column) {
+        plain_character(info[[column]]) && plain_character(saved_values[[column]])
+      }, logical(1)))
+    if (batch_saved) {
+      saved_rows <- which(!is.na(saved_matches))
+      for (column in saved_columns) {
+        info[[column]][saved_rows] <- saved_values[[column]][saved_matches[saved_rows]]
+      }
+    } else {
+      for (row_index in seq_len(nrow(info))) {
+        saved_index <- if (is.null(saved_matches)) match(info$name[[row_index]], saved_values$name) else saved_matches[[row_index]]
+        if (!is.na(saved_index)) {
+          for (column in saved_columns) {
+            info[[column]][[row_index]] <- as.character(saved_values[[column]][[saved_index]] %||% "")
+          }
+        }
+      }
+    }
+  }
+
+  info[, c("source_order", "name", "var_label", "measurement", "n_unique", "reference", value_columns), drop = FALSE]
+}
+

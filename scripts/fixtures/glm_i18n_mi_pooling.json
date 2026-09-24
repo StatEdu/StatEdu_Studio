@@ -1,0 +1,5 @@
+[
+  "Rows with originally missing dependent-variable values were excluded from each fitted imputed GLM.",
+  "Rows with imputed dependent-variable values were included as a sensitivity analysis.",
+  "Model-fit and assumption diagnostics use the first completed dataset as a transparent representative; coefficient inference uses all imputations."
+]

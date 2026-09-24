@@ -1,0 +1,4 @@
+[
+  "RIV = relative increase in variance; FMI = fraction of missing information. Degrees of freedom use the Barnard-Rubin adjustment.",
+  "All imputed datasets must use the same family, link, term signature, residual df, and standard-error method; otherwise pooling is stopped."
+]

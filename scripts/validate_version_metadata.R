@@ -65,10 +65,12 @@ read_json <- function(path) {
 electron_package <- read_json("packaging/electron/package.json")
 electron_lock <- read_json("packaging/electron/package-lock.json")
 
-assert_equal(electron_package$version, version, "packaging/electron/package.json version")
-assert_equal(electron_lock$version, version, "packaging/electron/package-lock.json root version")
+developer_version <- read_first_line("VERSION_DEV")
+stopifnot(grepl("^[0-9]+[.][0-9]+[.][0-9]+-dev$",developer_version))
+assert_equal(electron_package$version, developer_version, "packaging/electron/package.json version")
+assert_equal(electron_lock$version, developer_version, "packaging/electron/package-lock.json root version")
 root_package <- electron_lock$packages[[which(names(electron_lock$packages) == "")[[1]]]]
-assert_equal(root_package$version, version, "packaging/electron/package-lock.json package version")
+assert_equal(root_package$version, developer_version, "packaging/electron/package-lock.json package version")
 
 readme <- read_text("README.md")
 readme_public <- extract_match(readme, "Current public version: `([^`]+)`", "README current public version")
@@ -79,11 +81,14 @@ if (is_development_version) {
   readme_development <- extract_match(readme, "Current development version: `([^`]+)`", "README current development version")
   assert_equal(readme_development, version, "README current development version")
 } else {
-  assert_equal(readme_public, version, "README current public version")
+  if (grepl("Next public version:", readme, fixed = TRUE)) {
+    assert_equal(extract_match(readme, "Next public version: `([^`]+)`", "README next public version"), version, "README prepared source version")
+    stopifnot(utils::compareVersion(version, readme_public) > 0L)
+  } else assert_equal(readme_public, version, "README current public version")
 }
 
 readme_citation <- extract_match(readme, "\\(Version ([0-9]+\\.[0-9]+\\.[0-9]+)\\) \\[Computer software\\]", "README citation version")
-assert_equal(readme_citation, if (is_development_version) readme_public else version, "README citation version")
+assert_equal(readme_citation, readme_public, "README citation version")
 assert_contains(readme, "scripts\\validate_stabilization.ps1", "README core stabilization validation command")
 assert_contains(readme, "scripts\\validate_stabilization.ps1 -Full", "README full stabilization validation command")
 assert_contains(readme, "scripts\\release_preflight.ps1", "README release preflight command")
@@ -107,7 +112,8 @@ changelog_headings <- regmatches(changelog, gregexpr("(?m)^## v[^\\n]+", changel
 if (length(changelog_headings) < 2) {
   stop("CHANGELOG must contain at least two public release headings.", call. = FALSE)
 }
-assert_equal(sub("^## v([^ ]+).*$", "\\1", changelog_headings[[2]]), if (utils::compareVersion(readme_public, "1.3.0") >= 0) "1.2.0" else "1.1.3", "CHANGELOG previous public version")
+previous_public <- if (utils::compareVersion(version, "1.3.1") >= 0) "1.3.0" else if (utils::compareVersion(readme_public, "1.3.0") >= 0) "1.2.0" else "1.1.3"
+assert_equal(sub("^## v([^ ]+).*$", "\\1", changelog_headings[[2]]), previous_public, "CHANGELOG previous public version")
 assert_not_contains(changelog, "-dev", "CHANGELOG developer-version markers")
 assert_contains(changelog, "Added Shiny startup and Electron release smoke checks", "CHANGELOG smoke validation entry")
 assert_contains(changelog, "Hardened release hygiene checks", "CHANGELOG release hygiene entry")
@@ -118,12 +124,12 @@ if (length(changelog_ko_headings) < 2) {
   stop("CHANGELOG_KO must contain at least two public release headings.", call. = FALSE)
 }
 assert_equal(sub("^## v([^ ]+).*$", "\\1", changelog_ko_headings[[1]]), if (is_development_version) readme_public else version, "CHANGELOG_KO current version")
-assert_equal(sub("^## v([^ ]+).*$", "\\1", changelog_ko_headings[[2]]), if (utils::compareVersion(readme_public, "1.3.0") >= 0) "1.2.0" else "1.1.3", "CHANGELOG_KO previous public version")
+assert_equal(sub("^## v([^ ]+).*$", "\\1", changelog_ko_headings[[2]]), previous_public, "CHANGELOG_KO previous public version")
 assert_not_contains(changelog_ko, "-dev", "CHANGELOG_KO developer-version markers")
 
 citation <- read_text("CITATION.cff")
 citation_version <- extract_match(citation, '(?m)^version: "([^"]+)"', "CITATION.cff version")
-assert_equal(citation_version, if (is_development_version) readme_public else version, "CITATION.cff version")
+assert_equal(citation_version, readme_public, "CITATION.cff published version")
 
 release_checklist <- read_text("docs/RELEASE_CHECKLIST.md")
 assert_contains(release_checklist, "release-candidate preparation pass", "release checklist release-candidate phase")
@@ -203,7 +209,7 @@ if (is_development_version) {
 }
 
 release_readiness <- read_text("docs/RELEASE_READINESS_STATUS.md")
-if (is_development_version) {
+if (is_development_version || grepl("Next public version:", readme, fixed = TRUE)) {
   assert_contains(release_readiness, paste0("Current version: ", readme_public), "release readiness current public version")
 } else {
   assert_contains(release_readiness, paste0("Current version: ", version), "release readiness current version")
@@ -366,7 +372,7 @@ assert_contains(distribution_plan, "statedu-release-plan-reviewed-1.0.0", "distr
 assert_contains(distribution_plan, "docs/RELEASE_1_0_DECISION_LOG.md", "distribution plan decision log reference")
 
 app_bootstrap <- read_text("R/app_bootstrap.R")
-assert_contains(app_bootstrap, 'read_app_config <- function(version_file = "VERSION")', "main read_app_config VERSION default")
+assert_contains(app_bootstrap, 'read_app_config <- function(version_file = NULL)', "main edition-aware version default")
 assert_contains(app_bootstrap, "version = trimws(readLines(version_file, warn = FALSE)[1])", "main read_app_config VERSION reader")
 
 app_entry <- read_text("app.R")
@@ -399,7 +405,7 @@ assert_contains(analysis_menu_ui, 'lazy_tab_panel(custom_model_canvas_title(lang
 easyflow_js <- read_text("www/easyflow.js")
 assert_contains(easyflow_js, "analysis_custom_model_canvas: 'Mediation / Moderation Effects'", "custom model English grouped menu label")
 assert_contains(easyflow_js, "analysis_custom_model_canvas: '매개·조절효과'", "custom model Korean grouped menu label")
-assert_contains(easyflow_js, "values: ['Regression', 'analysis_custom_model_canvas', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']", "custom model included in Regression / Models grouped menu")
+assert_contains(easyflow_js, "values: ['Regression', 'analysis_custom_model_canvas', 'Generalized Linear Model (GLM)', 'analysis_penalized', 'analysis_logistic_regression']", "custom model included in Regression / Models grouped menu")
 
 custom_model_canvas_ui <- paste(
   read_text("R/setup_custom_model_canvas_i18n.R"),
@@ -450,3 +456,13 @@ assert_contains(latent_bootstrap, 'read_app_config <- function(version_file = "V
 assert_contains(latent_bootstrap, "list(version = trimws(readLines(version_file, warn = FALSE)[1]))", "latent read_app_config VERSION reader")
 
 cat(sprintf("Version metadata validation passed: %s\n", version))
+
+source("R/app_bootstrap.R",encoding="UTF-8")
+local({
+ old <- Sys.getenv(c("STATEDU_PUBLIC_RELEASE","STATEDU_EDITION"),unset=NA)
+ on.exit(for(k in names(old))if(is.na(old[[k]]))Sys.unsetenv(k) else do.call(Sys.setenv,setNames(list(old[[k]]),k)))
+ Sys.setenv(STATEDU_PUBLIC_RELEASE="false",STATEDU_EDITION="development")
+ stopifnot(identical(read_app_config()$version,developer_version),identical(read_app_config("VERSION")$version,version))
+ Sys.setenv(STATEDU_PUBLIC_RELEASE="true")
+ stopifnot(identical(read_app_config()$version,version))
+})

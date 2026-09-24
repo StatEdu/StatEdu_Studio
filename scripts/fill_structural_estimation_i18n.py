@@ -1,0 +1,30 @@
+import json,re
+from pathlib import Path
+rows='''Estimation|推定|估计|Estimación|Estimation|Schätzung|Ước lượng
+Estimator|推定法|估计方法|Estimador|Estimateur|Schätzverfahren|Phương pháp ước lượng
+Rule-based recommendation (confirmation required)|規則に基づく推奨（確認が必要）|基于规则的推荐（需确认）|Recomendación según reglas (requiere confirmación)|Recommandation selon des règles (confirmation requise)|Regelbasierte Empfehlung (Bestätigung erforderlich)|Đề xuất theo quy tắc (cần xác nhận)
+I reviewed and accept the PLS/PLSc recommendation based on the construct specification.|構成概念の指定に基づくPLS/PLScの推奨を確認し、適用します。|我已审阅并接受基于构念设定的PLS/PLSc推荐。|He revisado y acepto la recomendación PLS/PLSc basada en la especificación de los constructos.|J’ai examiné et j’accepte la recommandation PLS/PLSc fondée sur la spécification des construits.|Ich habe die PLS/PLSc-Empfehlung anhand der Konstruktspezifikation geprüft und akzeptiere sie.|Tôi đã xem xét và chấp nhận đề xuất PLS/PLSc dựa trên đặc tả cấu trúc.
+Primary analysis objective|主な分析目的|主要分析目的|Objetivo principal del análisis|Objectif principal de l’analyse|Hauptziel der Analyse|Mục tiêu phân tích chính
+Confirmatory theory testing|確認的な理論検証|验证性理论检验|Contrastación confirmatoria de teoría|Test confirmatoire de la théorie|Konfirmatorische Theorieprüfung|Kiểm định lý thuyết khẳng định
+Structural explanation|構造の説明|结构解释|Explicación estructural|Explication structurelle|Strukturelle Erklärung|Giải thích cấu trúc
+Out-of-sample prediction|標本外予測|样本外预测|Predicción fuera de muestra|Prédiction hors échantillon|Vorhersage außerhalb der Stichprobe|Dự báo ngoài mẫu
+Construct-score use|構成概念得点の利用|构念得分应用|Uso de puntuaciones de constructos|Utilisation des scores des construits|Nutzung von Konstruktwerten|Sử dụng điểm cấu trúc
+Analysis-plan status|分析計画の状態|分析计划状态|Estado del plan de análisis|Statut du plan d’analyse|Status des Analyseplans|Trạng thái kế hoạch phân tích
+Not recorded|未記録|未记录|No registrado|Non consigné|Nicht dokumentiert|Chưa ghi nhận
+Preregistered|事前登録済み|已预注册|Prerregistrado|Préenregistré|Präregistriert|Đã đăng ký trước
+Defined in an a-priori protocol|事前プロトコルに規定|已在事先方案中定义|Definido en un protocolo previo|Défini dans un protocole préalable|In einem vorab festgelegten Protokoll definiert|Đã xác định trong đề cương lập trước
+Exploratory analysis|探索的分析|探索性分析|Análisis exploratorio|Analyse exploratoire|Explorative Analyse|Phân tích khám phá
+Preregistration or protocol reference|事前登録・プロトコルの参照|预注册或方案引用|Referencia del prerregistro o protocolo|Référence du préenregistrement ou du protocole|Verweis auf Präregistrierung oder Protokoll|Tham chiếu đăng ký trước hoặc đề cương
+Registration URL/DOI, date, version, or protocol identifier|登録URL/DOI、日付、版、またはプロトコル識別子|注册URL/DOI、日期、版本或方案标识符|URL/DOI del registro, fecha, versión o identificador del protocolo|URL/DOI du registre, date, version ou identifiant du protocole|Registrierungs-URL/DOI, Datum, Version oder Protokollkennung|URL/DOI đăng ký, ngày, phiên bản hoặc mã đề cương
+Missing data|欠測値処理|缺失数据处理|Datos faltantes|Données manquantes|Fehlende Daten|Dữ liệu thiếu
+Listwise deletion|リストワイズ除外|整行删除|Eliminación por lista|Suppression par liste|Listenweiser Ausschluss|Loại bỏ toàn bộ trường hợp
+When ordered indicators or the WLSMV estimator are used, lavaan uses pairwise missing-data handling instead of FIML.|順序指標またはWLSMV推定法を使用する場合、lavaanではFIMLの代わりにペアワイズ欠測値処理を行います。|使用有序指标或WLSMV估计方法时，lavaan采用成对缺失数据处理，而非FIML。|Con indicadores ordinales o WLSMV, lavaan trata los datos faltantes por pares en lugar de usar FIML.|Avec des indicateurs ordinaux ou WLSMV, lavaan traite les données manquantes par paires plutôt que par FIML.|Bei ordinalen Indikatoren oder WLSMV behandelt lavaan fehlende Daten paarweise statt mit FIML.|Khi dùng chỉ báo thứ bậc hoặc WLSMV, lavaan xử lý dữ liệu thiếu theo cặp thay vì FIML.
+PLS/PLSc uses a fixed indicator-mean replacement policy. The main fit uses means from the full analysis sample; every bootstrap resample recomputes its own indicator means. Replaced rows/cells and indicator-level missingness are recorded in the results and Audit JSON.|PLS/PLScでは指標平均による置換を固定的に使用します。本分析は分析標本全体の平均を使用し、各ブートストラップ標本では指標平均を再計算します。置換した行・セル数と指標別欠測率は結果とAudit JSONに記録します。|PLS/PLSc固定采用指标均值替代。主模型使用完整分析样本的指标均值；每次bootstrap重抽样均重新计算各指标均值。替代的行数/单元格数及各指标缺失率记录在结果和Audit JSON中。|PLS/PLSc sustituye los valores faltantes por la media del indicador. El ajuste principal usa las medias de toda la muestra de análisis; cada remuestra bootstrap recalcula sus propias medias. Las filas/celdas sustituidas y la falta de datos por indicador se registran en los resultados y Audit JSON.|PLS/PLSc remplace systématiquement les valeurs manquantes par la moyenne de l’indicateur. L’ajustement principal utilise les moyennes de tout l’échantillon d’analyse ; chaque rééchantillon bootstrap recalcule ses propres moyennes. Les lignes/cellules remplacées et les données manquantes par indicateur sont consignées dans les résultats et Audit JSON.|PLS/PLSc ersetzt fehlende Werte stets durch Indikatormittelwerte. Die Hauptschätzung verwendet Mittelwerte der gesamten Analysestichprobe; jede Bootstrap-Stichprobe berechnet eigene Mittelwerte. Ersetzte Zeilen/Zellen und fehlende Werte je Indikator werden in den Ergebnissen und Audit JSON dokumentiert.|PLS/PLSc luôn thay thế giá trị thiếu bằng trung bình chỉ báo. Mô hình chính dùng trung bình từ toàn bộ mẫu phân tích; mỗi mẫu bootstrap tính lại trung bình riêng. Các hàng/ô được thay thế và mức thiếu theo chỉ báo được ghi trong kết quả và Audit JSON.
+Do not compute|計算しない|不计算|No calcular|Ne pas calculer|Nicht berechnen|Không tính
+{count} resamples|{count}回の再標本化|{count}次重抽样|{count} remuestras|{count} rééchantillonnages|{count} Wiederholungsstichproben|{count} lần lấy mẫu lại'''
+for i,lang in enumerate(['ja','zh','es','fr','de','vi']):
+ p=Path('i18n')/(lang+'.json');d=json.loads(p.read_text(encoding='utf-8'))
+ for line in rows.splitlines():
+  row=line.split('|');assert len(row)==7
+  d['translations']['analysis.ui.'+re.sub(r'[^a-z0-9]+','_',row[0].lower()).strip('_')]=row[i+1]
+ p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

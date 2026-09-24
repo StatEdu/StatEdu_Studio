@@ -501,28 +501,42 @@
     });
   }
 
+  // Validation badges are editor feedback, not part of the saved model figure.
+  // Remove them on the clone only; computed styles have already captured the
+  // warning/error border, so restore the model's configured node stroke too.
+  function stripExportValidation(instance, clone) {
+    clone.querySelectorAll(".structural-validation-badge").forEach(function(element) {
+      element.remove();
+    });
+    clone.querySelectorAll(".custom-model-node.has-validation-error, .custom-model-node.has-validation-warning").forEach(function(element) {
+      var nodeId = element.getAttribute("data-node-id");
+      var node = (instance.state.nodes || []).find(function(item) { return item.id === nodeId; });
+      element.classList.remove("has-validation-error", "has-validation-warning");
+      element.removeAttribute("data-validation-message");
+      var stroke = (node && node.strokeColor) || instance.state.style.boxStrokeColor || "#000000";
+      ["border-color", "border-top-color", "border-right-color", "border-bottom-color", "border-left-color",
+        "border-block-start-color", "border-block-end-color", "border-inline-start-color", "border-inline-end-color"].forEach(function(property) {
+        element.style.setProperty(property, stroke);
+      });
+    });
+  }
+
   function prepareExportClone(instance) {
     var paper = instance && instance.paper ? instance.paper : null;
     if (!paper) return null;
     var clone = paper.cloneNode(true);
     inlineComputedStyles(paper, clone);
     clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-    clone.querySelectorAll(".custom-model-edge-hit, .custom-model-moderation-hit, .custom-model-edge-control, .custom-model-drag-preview, .structural-alignment-guide-layer").forEach(function(element) {
+    clone.querySelectorAll(".custom-model-edge-hit, .custom-model-moderation-hit, .custom-model-edge-control, .custom-model-drag-preview, .structural-alignment-guide-layer, .custom-model-score-shortcut").forEach(function(element) {
       element.remove();
     });
-    clone.querySelectorAll(".structural-validation-badge").forEach(function(element) {
-      element.remove();
-    });
+    stripExportValidation(instance, clone);
     clone.querySelectorAll(".custom-model-node.is-selected, .structural-latent-statistics.is-selected").forEach(function(element) {
       element.classList.remove("is-selected");
     });
     clone.classList.remove("is-grid-visible", "is-delete-mode", "is-connect-mode");
     clone.style.backgroundImage = "none";
     clone.style.backgroundSize = "auto";
-    clone.querySelectorAll(".custom-model-node.has-validation-error, .custom-model-node.has-validation-warning").forEach(function(element) {
-      element.classList.remove("has-validation-error", "has-validation-warning");
-      element.removeAttribute("data-validation-message");
-    });
     clone.style.position = "relative";
     clone.style.left = "0";
     clone.style.top = "0";
@@ -552,11 +566,83 @@
     return element;
   }
 
+  function nodeVariableNames(node) {
+    return [node.name, node.variable, node.variableId, node.dataLabel].filter(Boolean);
+  }
+
+  function covariateNodeIds(instance) {
+    var names = instance.state.covariates || [];
+    return new Set((instance.state.nodes || []).filter(function(node) {
+      return node.role === "covariate" || nodeVariableNames(node).some(function(name) { return names.indexOf(name) >= 0; });
+    }).map(function(node) { return node.id; }));
+  }
+
+  function modelFigureVariants(instance) {
+    return (instance.state.covariates || []).length || covariateNodeIds(instance).size ?
+      ["with_covariates", "without_covariates"] : ["model"];
+  }
+
+  function exportControlEffects(instance, variant) {
+    if (variant === "without_covariates" || !window.StatEduModelCanvas.nodes.isViewingResult(instance)) return [];
+    var names = instance.state.covariates || [];
+    var drawn = (instance.state.nodes || []).reduce(function(names, node) { return names.concat(nodeVariableNames(node)); }, []);
+    return (instance.state.covariateEffects || []).filter(function(effect) {
+      return names.indexOf(effect.variable) >= 0 && drawn.indexOf(effect.variable) < 0;
+    });
+  }
+
+  function exportGeometry(instance, variant) {
+    var width = Number(instance.state.canvas.widthPx || instance.paper.offsetWidth || 0);
+    var height = Number(instance.state.canvas.heightPx || instance.paper.offsetHeight || 0);
+    var effects = exportControlEffects(instance, variant);
+    var controlTop = Math.max.apply(null, [0].concat((instance.state.nodes || []).map(function(node) {
+      return Number(node.y || 0) + Number(node.height || instance.state.style.boxHeight || 50);
+    }))) + 70;
+    return {width: width, height: effects.length ? Math.max(height, controlTop + effects.length * 30 + 24) : height,
+      controlTop: controlTop, effects: effects};
+  }
+
+  // Filter copied elements by their owning model IDs, including coefficient
+  // groups. Never remove correlations from the fitted model or live editor.
+  function stripExportCovariates(instance, clone, variant) {
+    var covariates = covariateNodeIds(instance);
+    var hiddenNodes = new Set(variant === "without_covariates" ? covariates : []);
+    var nodes = instance.state.nodes || [];
+    var edges = instance.state.edges || [];
+    nodes.forEach(function(node) {
+      if (["error", "disturbance"].indexOf(node.role) >= 0 && edges.some(function(edge) {
+        return edge.from === node.id && covariates.has(edge.to);
+      })) hiddenNodes.add(node.id);
+    });
+    var hiddenEdges = new Set(edges.filter(function(edge) {
+      if (hiddenNodes.has(edge.from) || hiddenNodes.has(edge.to)) return true;
+      if (!covariates.has(edge.from) && !covariates.has(edge.to)) return false;
+      return edge.kind === "covariance" || !covariates.has(edge.from) || covariates.has(edge.to);
+    }).map(function(edge) { return edge.id; }));
+    var hiddenModerations = new Set((instance.state.moderations || []).filter(function(item) {
+      return hiddenNodes.has(item.from) || hiddenEdges.has(item.toEdge);
+    }).map(function(item) { return item.id; }));
+    clone.querySelectorAll("[data-node-id], [data-edge-id], [data-moderation-id], [data-label-id]").forEach(function(element) {
+      var labelId = element.getAttribute("data-label-id");
+      if (hiddenNodes.has(element.getAttribute("data-node-id")) ||
+          hiddenEdges.has(element.getAttribute("data-edge-id")) ||
+          hiddenModerations.has(element.getAttribute("data-moderation-id")) ||
+          (element.getAttribute("data-label-type") === "edge" && hiddenEdges.has(labelId)) ||
+          (element.getAttribute("data-label-type") === "moderation" && hiddenModerations.has(labelId))) element.remove();
+    });
+    clone.querySelectorAll(".custom-model-node").forEach(function(element) {
+      if (covariates.has(element.getAttribute("data-node-id"))) {
+        element.querySelectorAll(".structural-latent-statistics").forEach(function(stats) { stats.remove(); });
+      }
+    });
+  }
+
   // Serialize the displayed DOM, including browser text wrapping and SVG paths.
   // Export never changes selection, recomputes layout, or redraws the model.
-  function exportSvg(instance) {
-    var width = Number(instance.state.canvas.widthPx || instance.paper.offsetWidth);
-    var height = Number(instance.state.canvas.heightPx || instance.paper.offsetHeight);
+  function exportSvg(instance, variant) {
+    var geometry = exportGeometry(instance, variant);
+    var width = geometry.width;
+    var height = geometry.height;
     var clone = instance.paper.cloneNode(true);
     var sources = [instance.paper].concat(Array.from(instance.paper.querySelectorAll("*")));
     var copies = [clone].concat(Array.from(clone.querySelectorAll("*")));
@@ -571,7 +657,9 @@
         target.style.setProperty(property, value);
       }
     });
-    clone.querySelectorAll(".custom-model-edge-hit, .custom-model-edge-label-hit, .custom-model-moderation-hit, .custom-model-edge-control, .custom-model-drag-preview, .custom-model-node-resize-handle, .structural-alignment-guide-layer").forEach(function(element) { element.remove(); });
+    stripExportValidation(instance, clone);
+    stripExportCovariates(instance, clone, variant);
+    clone.querySelectorAll(".custom-model-edge-hit, .custom-model-edge-label-hit, .custom-model-moderation-hit, .custom-model-edge-control, .custom-model-drag-preview, .custom-model-node-resize-handle, .structural-alignment-guide-layer, .custom-model-score-shortcut").forEach(function(element) { element.remove(); });
     clone.querySelectorAll(".custom-model-edge-label, .custom-model-edge-label-bg").forEach(function(element) {
       element.style.setProperty("stroke", "none", "important");
       element.style.setProperty("border", "0", "important");
@@ -599,6 +687,18 @@
     var content = svgElement("foreignObject", {x: 0, y: 0, width: width, height: height});
     content.appendChild(clone);
     svg.appendChild(content);
+    // List-only controls have no live diagram nodes. Export their already fitted
+    // effects as clear rows, without generating covariance lines or refitting.
+    geometry.effects.forEach(function(effect, index) {
+      var target = (instance.state.nodes || []).find(function(node) {
+        return nodeVariableNames(node).indexOf(effect.target) >= 0;
+      });
+      var text = svgElement("text", {x: 24, y: geometry.controlTop + index * 30,
+        "font-family": instance.state.style.fontFamily || "Arial", "font-size": 15, fill: "#000000",
+        "data-export-control-effect": effect.variable});
+      text.textContent = effect.variable + " → " + (target ? window.StatEduModelCanvas.layout.displayText(target) : effect.target) + "  " + effect.label;
+      svg.appendChild(text);
+    });
     return new XMLSerializer().serializeToString(svg);
   }
 
@@ -630,10 +730,18 @@
   }
 
   async function exportReportFigure(instance) {
+    var figures = [];
+    for (var variant of modelFigureVariants(instance)) {
+      figures.push(await exportReportFigureVariant(instance, variant));
+    }
+    return figures.join("");
+  }
+
+  async function exportReportFigureVariant(instance, variant) {
     if (!window.StatEduModelCanvas.nodes.isViewingResult(instance)) {
       throw new Error(instance.language === 'ko' ? '결과 모형을 표시한 뒤 저장해 주세요.' : 'Display the result model before saving.');
     }
-    var blob = await exportPng(instance);
+    var blob = await exportPng(instance, variant);
     var pngHeader = new DataView(await blob.slice(0, 24).arrayBuffer());
     var dataUrl = await new Promise(function(resolve, reject) {
       var reader = new FileReader();
@@ -647,7 +755,11 @@
     section.setAttribute('data-result-table-orientation', instance.paper.offsetWidth > instance.paper.offsetHeight ? 'landscape' : 'portrait');
     section.style.cssText = 'break-before:page;break-inside:avoid;background:white;width:100%;max-width:100%;';
     var title = document.createElement('h3');
-    title.textContent = instance.language === 'ko' ? '모형 결과' : 'Model results';
+    title.textContent = window.StatEduModelCanvas.state.label(instance, 'score_model_results', 'Model results');
+    if (variant !== 'model') title.textContent += ' (' + window.StatEduModelCanvas.state.label(instance,
+      variant === 'with_covariates' ? 'score_with_covariates' : 'score_without_covariates',
+      variant === 'with_covariates' ? 'with covariates' : 'without covariates') + ')';
+    section.setAttribute('data-model-figure-variant', variant);
     var image = document.createElement('img');
     image.className = 'analysis-plot-image';
     image.width = pngHeader.getUint32(16);
@@ -658,12 +770,13 @@
     return section.outerHTML;
   }
 
-  function exportPng(instance) {
-    var width = Number(instance.state.canvas.widthPx || instance.paper.offsetWidth || 0);
-    var height = Number(instance.state.canvas.heightPx || instance.paper.offsetHeight || 0);
+  function exportPng(instance, variant) {
+    var geometry = exportGeometry(instance, variant);
+    var width = geometry.width;
+    var height = geometry.height;
     var dpi = Number(instance.root.getAttribute("data-export-dpi")) === 600 ? 600 : 300;
     var scale = dpi / 96;
-    var url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(exportSvg(instance));
+    var url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(exportSvg(instance, variant));
     return new Promise(function(resolve, reject) {
       var image = new Image();
       image.onload = function() {
@@ -877,7 +990,18 @@
       reader.onerror = reject;
       reader.readAsDataURL(modelBlob);
     });
-    files.push({name: 'model.png', data: dataUrl});
+    var variants = modelFigureVariants(instance);
+    files.push({name: variants[0] === 'model' ? 'model.png' : 'model_' + variants[0] + '.png', data: dataUrl});
+    if (variants.length > 1) {
+      var without = await exportPng(instance, 'without_covariates');
+      var withoutUrl = await new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function() { resolve(reader.result); };
+        reader.onerror = reject;
+        reader.readAsDataURL(without);
+      });
+      files.push({name: 'model_without_covariates.png', data: withoutUrl});
+    }
     var prefix = instance.root.getAttribute('data-input-prefix') || 'custom_model_canvas';
     var output = document.getElementById(prefix + '_results') ||
       document.getElementById(prefix.replace(/_canvas$/, '') + '_results');
@@ -924,6 +1048,16 @@
         "Could not create the PNG image. Please try again.");
       return;
     }
+    var variants = modelFigureVariants(instance);
+    for (var index = 0; index < variants.length; index++) {
+      var variant = variants[index];
+      var variantName = variant === 'model' ? filename : filename.replace(/\.png$/, '_' + variant + '.png');
+      var variantPayload = index === 0 ? payload : await exportPng(instance, variant);
+      if (!await savePngPayload(instance, variantName, variantPayload)) return;
+    }
+  }
+
+  async function savePngPayload(instance, filename, payload) {
     var desktop = desktopFilesApi();
     if (desktop) {
       try {
@@ -934,13 +1068,13 @@
           data: new Uint8Array(await payload.arrayBuffer()),
           binary: true
         });
-        if (!desktopResult || desktopResult.canceled) return;
-        return;
+        if (!desktopResult || desktopResult.canceled) return false;
+        return true;
       } catch (error) {
         window.alert(instance.language === "ko" ?
           "PNG 저장 창을 열거나 파일을 저장하지 못했습니다." :
           "Could not open the PNG save dialog or save the file.");
-        return;
+        return false;
       }
     }
     if (window.showSaveFilePicker) {
@@ -952,12 +1086,13 @@
         var writable = await handle.createWritable();
         await writable.write(payload);
         await writable.close();
-        return;
+        return true;
       } catch (error) {
-        if (error && error.name === "AbortError") return;
+        if (error && error.name === "AbortError") return false;
       }
     }
     downloadBlob(filename, payload);
+    return true;
   }
 
   function run(instance) {

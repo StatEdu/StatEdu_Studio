@@ -1,0 +1,12 @@
+[
+  "Auto selected binary logistic GLM because the dependent variable is marked binary or has two observed outcome levels.",
+  "Auto selected the count-family workflow; Poisson overdispersion screening selected negative binomial as the final model.",
+  "Auto selected the count-family workflow because the dependent variable is non-negative integer; Poisson was retained unless screening indicated otherwise.",
+  "Auto selected Gamma GLM because the dependent variable is strictly positive and right-skewed.",
+  "Auto selected Gaussian GLM because the dependent variable is continuous without count/gamma/binary screening flags.",
+  "Use the negative-binomial GLM as the primary count model and report the Poisson overdispersion screening.",
+  "Report Poisson GLM with caution and consider zero-inflated or hurdle sensitivity analysis.",
+  "Use Poisson GLM if count screening remains acceptable; report dispersion and zero-screen diagnostics.",
+  "Use the fitted GLM with caution and report flagged diagnostics; consider sensitivity analysis if conclusions depend on flagged items.",
+  "Use the fitted GLM as the primary analysis and report family, link, standard errors, missing-data strategy, and diagnostics."
+]

@@ -1,0 +1,19 @@
+import json,re
+from pathlib import Path
+rows='''PLSpredict predictive assessment|PLSpredict予測診断|PLSpredict预测诊断|Evaluación predictiva PLSpredict|Évaluation prédictive PLSpredict|PLSpredict-Vorhersagediagnostik|Chẩn đoán dự đoán PLSpredict
+Indicator-level out-of-sample prediction error|指標別の標本外予測誤差|指标层面的样本外预测误差|Error de predicción fuera de muestra por indicador|Erreur de prédiction hors échantillon par indicateur|Vorhersagefehler außerhalb der Stichprobe je Indikator|Sai số dự đoán ngoài mẫu theo chỉ báo
+Construct-level prediction error|構成概念別の予測誤差|构念层面的预测误差|Error de predicción por constructo|Erreur de prédiction par construit|Vorhersagefehler je Konstrukt|Sai số dự đoán theo cấu trúc
+PLS out-of-sample|PLS標本外誤差|PLS样本外误差|Error PLS fuera de muestra|Erreur PLS hors échantillon|PLS-Fehler außerhalb der Stichprobe|Sai số PLS ngoài mẫu
+LM benchmark|LM基準誤差|LM基准误差|Error del modelo LM de referencia|Erreur du modèle LM de référence|LM-Referenzfehler|Sai số LM tham chiếu
+PLS lower %|PLS誤差優位割合(%)|PLS误差较低比例(%)|PLS con menor error (%)|PLS avec erreur moindre (%)|PLS mit geringerem Fehler (%)|Tỷ lệ PLS có sai số thấp hơn (%)
+PLS lower error|PLSの誤差が小さい|PLS误差较低|Menor error PLS|Erreur PLS inférieure|Geringerer PLS-Fehler|Sai số PLS thấp hơn
+LM lower error|LMの誤差が小さい|LM误差较低|Menor error LM|Erreur LM inférieure|Geringerer LM-Fehler|Sai số LM thấp hơn
+Tie|同じ|相同|Igual|Égalité|Gleich|Bằng nhau
+Direct Antecedents scheme, %s-fold, %s independent repetitions (seed = %s). PLS - LM is the mean difference, SD reflects split-to-split variability, and PLS lower %% is the proportion of repetitions favoring PLS over the linear-model benchmark. One repetition is insufficient for a predictive-performance claim.|Direct Antecedents方式、%s分割、独立反復%s回（seed = %s）です。PLS - LMは反復の平均差、SDは分割間の変動、PLS誤差優位割合(%%)は線形モデル基準よりPLSの誤差が小さかった反復の割合です。1回の反復では予測性能を結論づけるには不十分です。|采用Direct Antecedents方案、%s折、%s次独立重复（seed = %s）。PLS - LM为重复的平均差，SD反映划分间变异，PLS误差较低比例(%%)表示PLS误差低于线性模型基准的重复比例。单次重复不足以得出预测性能结论。|Esquema Direct Antecedents, %s particiones y %s repeticiones independientes (seed = %s). PLS - LM es la diferencia media, SD refleja la variabilidad entre particiones y PLS con menor error (%%) es la proporción de repeticiones favorables a PLS frente al modelo lineal de referencia. Una repetición no basta para afirmar rendimiento predictivo.|Schéma Direct Antecedents, %s plis et %s répétitions indépendantes (seed = %s). PLS - LM est la différence moyenne, SD reflète la variabilité entre partitions et PLS avec erreur moindre (%%) est la proportion de répétitions favorables à PLS par rapport au modèle linéaire de référence. Une répétition ne suffit pas pour conclure sur la performance prédictive.|Direct-Antecedents-Schema, %s-fache Aufteilung, %s unabhängige Wiederholungen (seed = %s). PLS - LM ist die mittlere Differenz, SD beschreibt die Variabilität zwischen Aufteilungen und PLS mit geringerem Fehler (%%) den Anteil der Wiederholungen mit geringerem Fehler als beim linearen Referenzmodell. Eine Wiederholung reicht für eine Aussage zur Vorhersageleistung nicht aus.|Phương án Direct Antecedents, %s phần, %s lần lặp độc lập (seed = %s). PLS - LM là chênh lệch trung bình, SD phản ánh biến thiên giữa các lần chia mẫu, và Tỷ lệ PLS có sai số thấp hơn (%%) là tỷ lệ lần lặp mà PLS có sai số thấp hơn mô hình tuyến tính tham chiếu. Một lần lặp không đủ để kết luận về hiệu năng dự đoán.'''
+rows += '\nAssessment|評価|评价|Evaluación|Évaluation|Bewertung|Đánh giá\nError metric|誤差指標|误差指标|Métrica de error|Mesure d’erreur|Fehlermaß|Chỉ số sai số'
+for i,lang in enumerate(['ja','zh','es','fr','de','vi'],1):
+ p=Path('i18n')/(lang+'.json');data=json.loads(p.read_text(encoding='utf-8'))
+ for row in rows.splitlines():
+  f=row.split('|');assert len(f)==7 and f[0].count('%s')==f[i].count('%s')
+  data['translations']['analysis.ui.'+re.sub(r'[^a-z0-9]+','_',f[0].lower()).strip('_')]=f[i]
+ p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

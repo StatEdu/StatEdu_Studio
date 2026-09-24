@@ -554,6 +554,12 @@ result_ci_header <- function(content) {
       }
       if (!length(pairs)) return(node)
       # Existing CI groups already have the required two-tier geometry.
+      # RMSEA can use 90% (or another explicit level); never add a 95% tier
+      # or a 95% definition to a complete, explicitly labelled interval.
+      explicit_group <- if (length(rows) > 1L) as.character(rows[[length(rows)-1L]]) else ""
+      if (length(rows) > 1L && all(keys %in% c("lower", "upper", "llci", "ulci")) &&
+          grepl("[0-9]+(?:[.][0-9]+)?%[[:space:]]*CI", explicit_group, perl = TRUE) &&
+          !grepl("95%", explicit_group, fixed = TRUE)) return(node)
       existing <- length(rows) > 1L && all(keys[seq_along(keys)] %in% c("lower", "upper", "llci", "ulci")) &&
         grepl("95%", as.character(rows[[length(rows)-1L]]), fixed = TRUE)
       if (existing) {
@@ -1049,7 +1055,7 @@ result_cell_content <- function(value, marker = "", column = "") {
   if (grepl("^[[:space:]]*[-+.0-9]+[[:space:]]*±[[:space:]]*[-+.0-9]+$", value)) {
     return(tags$span(style = "white-space:nowrap!important;", value, suffix))
   }
-  if (grepl("^[[:space:]]*[-+.0-9]+[[:space:]]*\\([-+.0-9]+[[:space:]]*,[[:space:]]*[-+.0-9]+\\)$", value)) {
+  if (grepl("^[[:space:]]*[-+.0-9]+[[:space:]]*\\([-+.0-9]+[[:space:]]*[,~][[:space:]]*[-+.0-9]+\\)$", value)) {
     bracket <- regexpr("(", value, fixed = TRUE)[[1L]]
     return(tags$span(tags$span(style = "white-space:nowrap!important;", trimws(substr(value, 1L, bracket - 1L))),
       " ", tags$wbr(), tags$span(style = "white-space:nowrap!important;", substr(value, bracket, nchar(value))), suffix))
@@ -1460,6 +1466,7 @@ coefficient_html_table <- function(
                 compact_first_width = compact_first_width
               ),
               compact_column_width_style(index),
+              if (!is.null(attr(table, "compact_cell_padding", exact = TRUE))) paste0("padding:", attr(table, "compact_cell_padding", exact = TRUE), " !important;"),
               if (isTRUE(display_meta$marker[[index]])) "" else coefficient_show_df_width_style(table, display_meta$source[[index]]),
               if (isTRUE(display_meta$marker[[index]])) "padding-left:2px;padding-right:8px;min-width:16px;width:16px;text-align:left;" else "",
               if (!isTRUE(display_meta$marker[[index]]) && index < nrow(display_meta) && isTRUE(display_meta$marker[[index + 1L]])) "padding-right:2px;" else ""
@@ -1483,6 +1490,9 @@ coefficient_html_table <- function(
               if (nzchar(marker)) tags$sup(class = "coefficient-note-cell-marker", marker) else ""
             } else {
               result_cell_content(value, marker, column)
+            }
+            if (!isTRUE(marker_column) && column %in% attr(table, "nowrap_columns", exact = TRUE)) {
+              content <- tags$span(style = "white-space:nowrap!important;", content)
             }
             bold_style <- if (isTRUE(result_cell_bold(table, row_index, column)) && nzchar(as.character(table[[column]][[row_index]] %||% ""))) "font-weight:700;" else ""
             colspan <- if (!is.null(span)) {
@@ -1509,6 +1519,7 @@ coefficient_html_table <- function(
                   compact_first_width = compact_first_width
                 ),
                 compact_column_width_style(column_index),
+                if (!is.null(attr(table, "compact_cell_padding", exact = TRUE))) paste0("padding:", attr(table, "compact_cell_padding", exact = TRUE), " !important;"),
                 bold_style,
                 result_cell_style_extra(table, row_index, column),
                 span_style

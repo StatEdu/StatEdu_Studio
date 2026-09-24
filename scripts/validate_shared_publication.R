@@ -1,0 +1,22 @@
+source('R/app_bootstrap.R', encoding='UTF-8')
+load_app_packages(check=FALSE)
+source_app_modules()
+levels <- c('a','b','c')
+means <- c(a=1,b=3,c=2)
+comparisons <- data.frame(Contrast=c('a - b','a - c','b - c'), 'p adjusted'=c('.001','.002','.500'),check.names=FALSE)
+stopifnot(identical(paired_rm_posthoc_notation(levels,comparisons,means), 'b,c>a'))
+comparisons$`p adjusted`[3] <- '.001'
+stopifnot(identical(paired_rm_posthoc_notation(levels,comparisons,means), 'b>c>a'))
+comparisons$`p adjusted` <- '.500'
+stopifnot(identical(paired_rm_posthoc_notation(levels,comparisons,means), ''))
+note <- result_publication_note('Note. ES = effect size. 1. Welch test was used because homogeneity of variance was not satisfied. M ± SD = mean ± standard deviation. Post-hoc: Games-Howell.')
+stopifnot(startsWith(note,'M ± SD ='), !grepl('Note.',note,fixed=TRUE), grepl('1. Welch',note,fixed=TRUE), regexpr('ES =',note)<regexpr('Welch',note), regexpr('ES =',note)<regexpr('Post-hoc:',note))
+stopifnot(identical(note,result_publication_note(note)), identical(result_publication_note(''),''))
+ci <- result_publication_note('VIF = variance inflation factor; ULCI = upper confidence limit; SE = standard error; LLCI = lower confidence limit.')
+stopifnot(regexpr('SE =',ci)<regexpr('LLCI =',ci),regexpr('LLCI =',ci)<regexpr('ULCI =',ci),regexpr('ULCI =',ci)<regexpr('VIF =',ci))
+state <- ancova_setup_state(selected_names=c('x','y'))
+panel <- htmltools::div(class='analysis-three-block-workspace workspace-panel', ancova_setup_panel(state),
+ analysis_three_block_action_row(shiny::actionButton('run_ancova','Run'), class='ttest-anova-action-row ancova-action-row'))
+dir.create('tmp/shared-publication',recursive=TRUE,showWarnings=FALSE)
+writeLines(paste0('<!doctype html><html><head><meta charset="UTF-8"><link rel="stylesheet" href="../../www/style.css"></head><body>',as.character(panel),'</body></html>'),'tmp/shared-publication/actions.html',useBytes=TRUE)
+cat('PASS: shared post-hoc relations, note order, markers, and idempotence.\n')

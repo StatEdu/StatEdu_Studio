@@ -1,5 +1,7 @@
 # **StatEdu Studio**
 
+Development source version: **1.3.1-dev**. See [developer release notes](docs/RELEASE_1_3_1_DEV_20260920.md).
+
 **StatEdu Studio** is a local Shiny application for assumption-guided statistical analysis and publication-ready result tables.
 
 The app runs on the user's own Windows PC and opens in a local browser session. Data are analyzed locally and are not sent to an external server.
@@ -11,6 +13,8 @@ Version 1.3.0 adds CFA, SEM and PLS-SEM/PLSc to the public analysis scope and pr
 ## Current Version
 
 Current public version: `1.3.0`
+
+Next public version: `1.3.1` — source preparation only; no new installer has been built or published. See [1.3.1 scope](docs/RELEASE_1_3_1_PREPARATION_KO.md). Meta-analysis and within-subject treatment repeated-measures ANOVA remain excluded from the public menus.
 
 
 Version 1.3.0 adds public PDF, Word and Excel result saving and incorporates result-table, model-canvas and validation-page improvements. Meta-analysis and within-subject treatment repeated-measures ANOVA are excluded from this installer.

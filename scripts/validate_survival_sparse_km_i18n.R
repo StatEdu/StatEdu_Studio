@@ -1,0 +1,36 @@
+Sys.setlocale('LC_CTYPE','English_United States.utf8');Sys.setenv(STATEDU_MODULE_CACHE='false')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules()
+d<-data.frame(time=1:20,status=rep(c(1,0,0,0,1,0,0,0,1,0),2),group=rep(c('Review: events = 99','Normality'),each=10))
+result<-prepare_km_single_analysis_result(d,'time','status',group='group')
+before<-serialize(result,NULL)
+phrase<-'Emphasize uncertainty in stratum curves and comparison tests.'
+out<-'tmp/survival-sparse-km-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+captured<-list();missing<-character()
+for(lang in c('en','ko','ja','zh','es','fr','de','vi')) {
+ options(statedu.app_language=lang)
+ review<-survival_stability_review(result,lang)
+ sparse<-review[review$Code=='few_events_in_stratum',,drop=FALSE]
+ stopifnot(nrow(sparse)==2,any(grepl('Review',sparse$Evidence,fixed=TRUE)),any(grepl('Normality',sparse$Evidence,fixed=TRUE)))
+ if(lang!='en')stopifnot(!any(grepl(': events = 3$',sparse$Evidence)))
+ template<-statedu_localized_text(lang,'%s: events = %s','%s: 사건 수 = %s')
+ for(label in c('Review','Normality','사용자 <&> %s: events = 99','first\nsecond')) {
+  evidence<-paste0(label,': events = 3')
+  stopifnot(identical(survival_stability_evidence_text('few_events_in_stratum',evidence,lang),sprintf(template,label,'3')))
+ }
+ stopifnot(identical(survival_stability_evidence_text('few_events_in_stratum','Unknown external detail',lang),'Unknown external detail'))
+ html<-as.character(survival_simple_table(review,table_language=lang))
+ rendered<-xml2::xml_text(xml2::xml_find_all(xml2::read_html(html),'//tbody/tr/td[3]'))
+ stopifnot(all(sparse$Evidence %in% rendered),any(grepl('Review: events = 99',rendered,fixed=TRUE)))
+ expected<-statedu_localized_text(lang,phrase,'집단별 곡선과 비교검정의 불확실성을 강조하세요.')
+ if(lang!='en'&&identical(expected,phrase))missing<-c(missing,lang)
+ stopifnot(grepl(expected,xml2::xml_text(xml2::read_html(html)),fixed=TRUE))
+ doc<-xml2::read_html(as.character(survival_km_result_panel(result,language=lang)))
+ stopifnot(grepl(expected,xml2::xml_text(doc),fixed=TRUE))
+ main<-xml2::xml_text(xml2::xml_find_all(doc,"//table[@data-result-table-role='main']"));stopifnot(length(main)>0)
+ if(lang=='en')baseline<-main else stopifnot(identical(main,baseline))
+ captured[[lang]]<-as.character(tagList(tags$h4(statedu_localized_text(lang,'Analysis stability review','분석 안정성 검토')),HTML(html)))
+ stopifnot(identical(before,serialize(result,NULL)))
+}
+if(length(missing))stop(paste('Untranslated sparse KM guidance:',paste(missing,collapse=', ')))
+jsonlite::write_json(captured,file.path(out,'captured.json'),auto_unbox=TRUE)
+cat('PASS actual sparse KM guidance in eight languages; user group labels, English main tables and source preserved\n')

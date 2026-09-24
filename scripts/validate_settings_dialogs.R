@@ -56,21 +56,21 @@ message("Checking settings file dialog contract...")
 settings_dialog_lines <- read_lines("R/settings_dialogs.R")
 open_settings_body <- extract_line_range(
   settings_dialog_lines,
-  "open_settings_file <- function() {",
-  "open_data_file <- function() {"
+  "open_settings_file <- function(language = statedu_initial_language()) {",
+  "open_data_file <- function(language = statedu_initial_language()) {"
 )
 save_settings_body <- extract_line_range(
   settings_dialog_lines,
-  "save_settings_file <- function(initial_dir = NULL) {"
+  "save_settings_file <- function(initial_dir = NULL, language = statedu_initial_language()) {"
 )
 
-assert_contains(open_settings_body, "{{StatEdu Studio Settings} {.studio}}", "open settings .studio filter")
-assert_contains(open_settings_body, '"StatEdu Studio Settings", "*.studio"', "Windows open settings .studio filter")
+assert_contains(open_settings_body, 'paste0("{{", label, "} {.studio}}")', "open settings .studio filter")
+assert_contains(open_settings_body, 'label, "*.studio"', "Windows open settings .studio filter")
 assert_not_contains(open_settings_body, "*.efs-settings", "legacy .efs-settings open filter")
 assert_not_contains(open_settings_body, "*.json", "legacy JSON open filter")
 
 assert_contains(save_settings_body, 'defaultextension = ".studio"', "save settings default extension")
-assert_contains(save_settings_body, 'filetypes = "{{StatEdu Studio Settings} {.studio}}"', "save settings .studio filter")
+assert_contains(save_settings_body, 'filetypes = paste0("{{", label, "} {.studio}}")', "save settings .studio filter")
 assert_contains(save_settings_body, 'initialfile = ""', "blank save settings filename")
 assert_contains(save_settings_body, 'args$initialdir <- initial_dir', "save settings initial directory")
 assert_contains(save_settings_body, 'utils::choose.files(', "Windows save settings fallback")

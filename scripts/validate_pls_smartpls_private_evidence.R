@@ -21,8 +21,10 @@ if (!grepl("^(?:[A-Za-z]:[\\\\/]|/|[\\\\]{2})", private_root_value, perl = TRUE)
 }
 private_root <- normalizePath(private_root_value, winslash = "/", mustWork = TRUE)
 
-# The 1.3.0 rerun has its own seals; never substitute new files for historical hashes.
-if (identical(trimws(readLines("VERSION", warn = FALSE)[[1L]]), "1.3.0")) {
+# Releases from 1.3.0 onward reuse the sealed 1.3.0 reference evidence.
+# Validate the original seals; never substitute new files for historical hashes.
+release_version <- sub("-.*$", "", trimws(readLines("VERSION", warn = FALSE)[[1L]]))
+if (utils::compareVersion(release_version, "1.3.0") >= 0L) {
   source(file.path("scripts", "validate_pls_smartpls_130_evidence.R"), encoding = "UTF-8")
   validate_pls_smartpls_130_evidence(private_root)
   quit(save = "no", status = 0L)

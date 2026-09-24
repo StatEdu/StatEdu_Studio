@@ -1,0 +1,20 @@
+out <- 'tmp/gee-method-note-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+base<-list(sample_size_gee_alpha='.05',sample_size_gee_power='.8',sample_size_gee_n='40',sample_size_gee_ratio='1',sample_size_gee_alternative='two.sided',sample_size_gee_dropout='0',sample_size_gee_effect='.5',sample_size_gee_p1='.5',sample_size_gee_p2='.65',sample_size_gee_time_points='3',sample_size_gee_rho='.3',sample_size_gee_correlations='.3,.2,.3')
+cases<-expand.grid(structure=c('exchangeable','ar1','unstructured'),target=c('sample_size','power'),outcome=c('continuous','binary'),stringsAsFactors=FALSE)
+results<-lapply(1:12,function(i)sample_size_calculate('gee',modifyList(base,list(sample_size_gee_correlation_structure=cases$structure[i],sample_size_gee_target=cases$target[i],sample_size_gee_outcome=cases$outcome[i]))))
+designs<-paste(cases$structure,cases$target,cases$outcome);formula_keys<-rep('sample_size.result.planning_gee',12)
+de<-c(exchangeable=1.6,ar1=1+2*(2*.3+.3^2)/3,unstructured=1+2*.8/3)
+for(i in 1:12)stopifnot(is.null(results[[i]]$error),isTRUE(all.equal(results[[i]]$design_effect,unname(de[cases$structure[i]]))))
+clean<-function(x)gsub('[[:space:]\u00a0]+','',x,perl=TRUE)
+for(lang in c('en','ko','ja','zh','es','fr','de','vi')){
+ template<-statedu_t('sample_size.result.note_gee_design_structure',lang)
+ for(i in 1:12){label<-statedu_t(paste0('sample_size.result.note_value_',cases$structure[i]),lang);expected<-sprintf(template,sprintf('%.3f',de[cases$structure[i]]),label)
+ stopifnot(identical(sample_size_result_text(results[[i]]$method_note,lang),expected))
+ actual<-xml2::xml_text(xml2::read_html(as.character(sample_size_results_ui(results[[i]],lang))))
+ for(part in trimws(strsplit(result_sci_note_text(estimation=expected),';',fixed=TRUE)[[1]]))stopifnot(grepl(clean(sub('[.。]$','',part)),clean(actual),fixed=TRUE))
+ }
+ en<-sprintf(statedu_t('sample_size.result.note_gee_design_structure','en'),'001.600','AR(1)')
+ stopifnot(identical(sample_size_result_text(en,lang),sprintf(template,'001.600',statedu_t('sample_size.result.note_value_ar1',lang))))
+ for(unknown in c(paste0(en,' extra'),sub('AR(1)','custom',en,fixed=TRUE),sub('001.600','1.6',en,fixed=TRUE)))stopifnot(identical(sample_size_result_text(unknown,lang),unknown))
+}
+cat('PASS twelve GEE structure/outcome/target cases, design-effect references and strict numeric/categorical translation\n')

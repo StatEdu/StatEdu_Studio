@@ -1,0 +1,26 @@
+Sys.setlocale('LC_CTYPE','English_United States.utf8');Sys.setenv(STATEDU_MODULE_CACHE='false')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules()
+d<-data.frame(Review=1:5,Normality=2:6,same=1:5)
+info<-data.frame(name=names(d),measurement='continuous')
+r<-prepare_nonparametric_paired_results(d,c('Review','Review'),c('Normality','same'),info,options=list(effect_size=TRUE,median_iqr=TRUE))
+phrase<-'Tied absolute differences were present; the large-sample Wilcoxon approximation was used.'
+stopifnot(any(r$warnings$Warning==phrase),nrow(r$skipped)>0)
+before<-serialize(r,NULL);captured<-list()
+for(lang in c('en','ko','ja','zh','es','fr','de','vi')) {
+ options(statedu.app_language=lang)
+ expected<-paired_appendix_text(phrase,lang)
+ if(lang!='en')stopifnot(expected!=phrase)
+ tab<-paired_appendix_table(r$warnings)
+ stopifnot(any(vapply(tab,function(x)any(x==expected),logical(1))))
+ html<-as.character(nonparametric_paired_results_ui(r));doc<-xml2::read_html(html)
+ cells<-xml2::xml_text(xml2::xml_find_all(doc,'//td'))
+ stopifnot(expected%in%cells,'Review - Normality'%in%cells,'Review - same'%in%cells)
+ reason<-paired_appendix_text(r$skipped$Reason[1],lang);stopifnot(reason%in%cells)
+ main<-xml2::xml_text(xml2::xml_find_all(doc,"//table[@data-result-table-role='main']"));stopifnot(length(main)>0)
+ if(lang=='en')baseline<-main else stopifnot(identical(main,baseline))
+ stopifnot(identical(before,serialize(r,NULL)))
+ captured[[lang]]<-html
+}
+out<-'tmp/nonparametric-ties-warning-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+jsonlite::write_json(captured,file.path(out,'captured.json'),auto_unbox=TRUE)
+cat('PASS actual nonparametric ties and skipped pair in eight languages; full warning, labels, English main tables and source preserved\n')

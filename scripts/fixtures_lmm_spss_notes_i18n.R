@@ -1,0 +1,17 @@
+out <- 'tmp/lmm-spss-notes-i18n'; dir.create(out,recursive=TRUE,showWarnings=FALSE)
+base <- list(effect_size_lmm_design='spss_output',effect_size_lmm_f_statistic='28.061',effect_size_lmm_df_effect='3',effect_size_lmm_df_error='23.057',effect_size_lmm_mean_difference='-.824',effect_size_lmm_variance_i='.326',effect_size_lmm_variance_j='.199',effect_size_lmm_covariance_ij='.117')
+omnibus <- modifyList(base,list(effect_size_lmm_mean_difference='',effect_size_lmm_variance_i='',effect_size_lmm_variance_j='',effect_size_lmm_covariance_ij=''))
+pairwise <- modifyList(base,list(effect_size_lmm_f_statistic='',effect_size_lmm_df_effect='',effect_size_lmm_df_error=''))
+inputs <- list(omnibus,pairwise,base,modifyList(pairwise,list(effect_size_lmm_mean_difference='0')),modifyList(pairwise,list(effect_size_lmm_mean_difference='.824',effect_size_lmm_covariance_ij='-.05')))
+designs <- c('omnibus','pairwise','combined','zero_difference','negative_covariance')
+results <- lapply(inputs,effect_size_lmm_calculate)
+formula_keys <- paste0('sample_size.result.',c('note_lmm_spss_omnibus','note_lmm_spss_pairwise','note_lmm_spss_combined','note_lmm_spss_pairwise','note_lmm_spss_pairwise'))
+eta <- 28.061*3/(28.061*3+23.057); dz <- -.824/sqrt(.326+.199-2*.117)
+expected <- c(eta,dz,eta,0,.824/sqrt(.326+.199+.1))
+for(i in seq_along(results)) stopifnot(is.null(results[[i]]$error),identical(results[[i]]$method_note,statedu_t(formula_keys[i],'en')),isTRUE(all.equal(results[[i]]$primary_effect_size,expected[i])))
+stopifnot(isTRUE(all.equal(results[[3]]$cohens_dz,dz)),isTRUE(all.equal(results[[1]]$cohen_f,sqrt(28.061*3/23.057))),is.null(results[[1]]$cohens_dz),is.null(results[[2]]$partial_eta_squared))
+for(lang in c('en','ko','ja','zh','es','fr','de','vi')) {
+ a <- statedu_t(formula_keys[1],lang); b <- statedu_t(formula_keys[2],lang); both <- statedu_t(formula_keys[3],lang)
+ stopifnot(identical(both,paste(a,b)),grepl('F * df_effect / (F * df_effect + df_error)',a,fixed=TRUE),grepl('mean difference / sqrt(Var_i + Var_j - 2Cov_ij)',b,fixed=TRUE))
+}
+cat('PASS five LMM SPSS cases: omnibus, pairwise, combined, zero difference, negative covariance; formula tokens and combined notes x eight languages\n')

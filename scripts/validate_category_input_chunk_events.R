@@ -1,0 +1,41 @@
+.libPaths(R.home('library'))
+source('R/app_bootstrap.R');load_app_packages(check=FALSE);source_app_modules()
+root<-'output/category-input-chunks-20260915';dir.create(root,recursive=TRUE,showWarnings=FALSE)
+tab<-data.frame(source_order=seq_len(129L),name=paste0('v',seq_len(129L)))
+tab$name[65L]<-'v1'
+values<-setNames(as.list(paste0('label',seq_len(129L))),paste0('category_var_label_input_',seq_len(129L)))
+run<-function(chunked){
+ env<-new.env(parent=.GlobalEnv)
+ sys.source('R/server_selection.R',env)
+ if(!chunked)env$collect_category_label_event_inputs<-collect_category_label_inputs_from_table
+ result<-new.env(parent=emptyenv());result$payloads<-list();result$counts<-integer()
+ server<-function(input,output,session){
+  env$register_category_label_observers(input,function(...)NULL,function(...)NULL,
+   apply_category_label_snapshot=function(payload){result$payloads[[length(result$payloads)+1L]]<-payload},
+   category_label_table_data_fn=function()tab,
+   collect_measurement_inputs_fn=function()c(v1='category'),
+   collect_var_label_inputs_fn=function()c(v1='label'))
+ }
+ shiny::testServer(server,{
+  do.call(session$setInputs,values)
+  session$setInputs(apply_category_labels_button=1)
+  result$counts<-c(result$counts,length(result$payloads))
+  session$setInputs(category_var_label_input_129='edited')
+  result$counts<-c(result$counts,length(result$payloads))
+  session$setInputs(apply_category_labels_button=2)
+  result$counts<-c(result$counts,length(result$payloads))
+  session$freezeValue(input,'category_var_label_input_129')
+  session$setInputs(apply_category_labels_button=3)
+  result$counts<-c(result$counts,length(result$payloads))
+  session$setInputs(apply_category_labels_button=4)
+  result$counts<-c(result$counts,length(result$payloads))
+ })
+ list(payloads=result$payloads,counts=result$counts)
+}
+set.seed(20260915);seed<-.Random.seed
+a<-run(FALSE);.Random.seed<-seed;b<-run(TRUE)
+stopifnot(identical(a,b,num.eq=FALSE),identical(a$counts,c(1L,1L,2L,2L,3L)))
+stopifnot(identical(a$payloads[[1L]]$category_labels$v1$var_label,'label65'))
+stopifnot(identical(a$payloads[[2L]]$category_labels$v129$var_label,'edited'))
+saveRDS(list(old=a,new=b),file.path(root,'event-comparison.rds'))
+cat('PASS: actual event registration, 3 identical payloads, duplicate across chunks, edit without reapply, frozen late input abort, thawed retry\n')

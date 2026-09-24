@@ -1,5 +1,15 @@
 # Historial de versiones
 
+## v1.3.1 - Sin publicar — preparación del código
+
+- Se añadió la comprobación de versión mínima al iniciar, con políticas Free/Pro separadas y caché sin conexión.
+
+- Incluye funciones de puntuación y agrupación de ítems SEM y mejoras de regresión logística multinomial y ordinal para muestras complejas.
+
+- Se mejoraron las tablas numéricas, los resúmenes de pruebas t, los encabezados de intervalos y las carpetas de guardado; se eliminó la fecha de incorporación de resultados acumulados.
+
+- Los menús públicos excluyen el metaanálisis y el ANOVA de tratamientos repetidos en el mismo individuo. Aún no se ha creado ni publicado un instalador.
+
 ## v1.3.0 - 2026-09-20
 
 - Se incorporan a la edición pública la edición, estimación y diagnóstico CFA, SEM y PLS-SEM/PLSc, con bootstrap y comparaciones grupales compatibles. Supervivencia ofrece Kaplan–Meier, RMST, Cox y riesgos competitivos compatibles.

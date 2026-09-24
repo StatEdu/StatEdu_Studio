@@ -1,0 +1,10 @@
+Sys.setenv(STATEDU_MODULE_CACHE="false")
+source("R/app_bootstrap.R",encoding="UTF-8");load_app_packages(check=FALSE);source_app_modules()
+shiny::testServer(create_app_server("1.3.0"), {
+ session$flushReact()
+ session$setInputs(main_menu="data_editor_cases");session$flushReact()
+ stopifnot(grepl("scope_cases",output$lazy_data_editor_cases$html))
+ session$setInputs(main_menu="data_editor_split");session$flushReact()
+ stopifnot(grepl("scope_split",output$lazy_data_editor_split$html))
+})
+message("PASS: full app server and both lazy Data Editor menu panels")

@@ -1,0 +1,27 @@
+Sys.setlocale('LC_CTYPE','English_United States.utf8');Sys.setenv(STATEDU_MODULE_CACHE='false')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules()
+set.seed(99);n<-40;subject<-rnorm(n,0,3)
+d<-data.frame(group=rep(c('Review','Normality'),each=n/2),age=rnorm(n,50,5),pre=10+subject+rnorm(n),post=12+subject+rnorm(n),last=14+subject+rnorm(n))
+d$post[seq(1,n,2)]<-NA_real_;d$pre[seq(2,n,2)]<-NA_real_
+info<-data.frame(name=names(d),measurement=c('category',rep('continuous',4)))
+r<-prepare_mixed_rm_anova_results(d,group_variable='group',repeated_variables=c('pre','post','last'),covariates='age',variable_info=info,options=list(assumption_check=TRUE,posthoc=FALSE,analysis_population='itt'))
+phrases<-c('Subjects with complete group/covariate values and at least one observed repeated outcome.','Long-format observed outcome rows used by the ITT mixed-model path.','Complete-case RM ANOVA was not produced.','Complete-case RM ANOVA could not be computed for the selected variables.','ITT keeps available repeated records through a mixed-model path.','A long-format subject-random-intercept model was fitted from the RM selections.')
+stopifnot(identical(r$analysis_population,'itt'),nrow(r$mixed_model_coefficients)>0,!is.data.frame(r$anova)||nrow(r$anova)==0,all(phrases%in%c(unlist(r$recommendation),unlist(r$assumption))))
+stopifnot(r$assumption$Result[r$assumption$Item=='Available subjects']=='40',r$assumption$Result[r$assumption$Item=='Available repeated records']=='80')
+before<-serialize(r,NULL);captured<-list();failures<-character()
+for(lang in c('en','ko','ja','zh','es','fr','de','vi')) {
+ options(statedu.app_language=lang)
+ expected<-vapply(phrases,function(p)if(lang=='ko')mixed_rm_appendix_korean_text(p)else result_appendix_ui_text(p,lang),character(1))
+ if(lang!='en'&&any(expected==phrases))failures<-c(failures,paste(lang,'catalog'))
+ html<-as.character(mixed_rm_anova_results_ui(r));doc<-xml2::read_html(html)
+ cells<-xml2::xml_text(xml2::xml_find_all(doc,"//table[@data-result-table-role='appendix']//td"));stopifnot(all(expected%in%cells),'40'%in%cells,'80'%in%cells)
+ main<-xml2::xml_text(xml2::xml_find_all(doc,"//table[@data-result-table-role='main']"));stopifnot(length(main)>0)
+ if(lang=='en')baseline<-main else stopifnot(identical(main,baseline))
+ stopifnot(identical(before,serialize(r,NULL)))
+ probe<-mixed_rm_appendix_table(data.frame(Variable=phrases,Reason=phrases));stopifnot(identical(probe[[1]],phrases))
+ captured[[lang]]<-html
+}
+if(length(failures))stop(paste('ITT guidance failures:',paste(failures,collapse=', ')))
+out<-'tmp/mixed-rm-itt-guidance-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+jsonlite::write_json(captured,file.path(out,'captured.json'),auto_unbox=TRUE)
+cat('PASS actual ITT LMM with no complete cases in eight languages; main/source/counts/user labels preserved\n')

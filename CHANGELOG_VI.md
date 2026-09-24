@@ -1,5 +1,15 @@
 # Lịch sử phiên bản
 
+## v1.3.1 - Chưa phát hành — chuẩn bị mã nguồn
+
+- Thêm kiểm tra phiên bản tối thiểu khi khởi động, chính sách Free/Pro riêng và bộ nhớ đệm ngoại tuyến.
+
+- Bao gồm điểm số, nhóm câu hỏi SEM và cải tiến hồi quy logistic đa thức, thứ bậc cho mẫu phức tạp.
+
+- Cải thiện bố cục số, tóm tắt kiểm định t, tiêu đề khoảng tin cậy và thư mục lưu; bỏ thời gian thêm trong kết quả tích lũy.
+
+- Menu công khai không có phân tích tổng hợp và ANOVA xử lý đo lặp trong cùng cá thể. Chưa tạo hoặc phát hành bộ cài đặt.
+
 ## v1.3.0 - 2026-09-20
 
 - Bổ sung công khai chỉnh sửa, ước lượng và chẩn đoán CFA, SEM, PLS-SEM/PLSc cùng bootstrap và so sánh nhóm được hỗ trợ. Phân tích sống còn cung cấp Kaplan–Meier, RMST, Cox và nguy cơ cạnh tranh được hỗ trợ.

@@ -1,0 +1,18 @@
+import json,re
+from pathlib import Path
+rows='''not specified|未指定|未指定|no especificado|non précisé|nicht angegeben|chưa chỉ định
+a Cox proportional hazards model|Cox比例ハザードモデル|Cox比例风险模型|un modelo de riesgos proporcionales de Cox|un modèle à risques proportionnels de Cox|ein proportionales Cox-Hazards-Modell|mô hình nguy cơ tỷ lệ Cox
+a Cox proportional hazards model with delayed entry|遅延エントリーを考慮したCox比例ハザードモデル|考虑延迟进入的Cox比例风险模型|un modelo de riesgos proporcionales de Cox con entrada tardía|un modèle à risques proportionnels de Cox avec entrée différée|ein proportionales Cox-Hazards-Modell mit verzögertem Eintritt|mô hình nguy cơ tỷ lệ Cox có vào nghiên cứu muộn
+a time-dependent Cox proportional hazards model with subject-cluster robust standard errors|対象者でクラスタ化した頑健標準誤差を用いる時間依存Cox比例ハザードモデル|使用受试者聚类稳健标准误的时间依赖Cox比例风险模型|un modelo de riesgos proporcionales de Cox dependiente del tiempo con errores estándar robustos por conglomerados de sujetos|un modèle de Cox dépendant du temps avec erreurs standards robustes regroupées par sujet|ein zeitabhängiges proportionales Cox-Hazards-Modell mit personenweise geclusterten robusten Standardfehlern|mô hình nguy cơ tỷ lệ Cox phụ thuộc thời gian với sai số chuẩn vững theo cụm đối tượng
+stratified by %s with stratum-specific baseline hazards|（層別変数：%s、層固有のベースラインハザード）|（分层变量：%s，各层具有独立基线风险）|estratificado por %s con riesgos basales específicos por estrato|stratifié selon %s avec risques de base propres à chaque strate|stratifiziert nach %s mit stratumsspezifischen Baseline-Hazards|phân tầng theo %s với nguy cơ nền riêng cho từng tầng
+with sandwich robust standard errors clustered by %s|（%sでクラスタ化したサンドイッチ頑健標準誤差）|（按%s聚类的三明治稳健标准误）|con errores estándar robustos de tipo sándwich agrupados por %s|avec erreurs standards robustes sandwich regroupées selon %s|mit nach %s geclusterten robusten Sandwich-Standardfehlern|với sai số chuẩn vững sandwich theo cụm %s
+with %s modeled using a natural cubic spline with %d degrees of freedom|（%sに自由度%dの自然三次スプラインを使用）|（%s使用自由度为%d的自然三次样条）|con %s modelado mediante un spline cúbico natural con %d grados de libertad|avec %s modélisé par une spline cubique naturelle à %d degrés de liberté|mit %s als natürlichem kubischem Spline mit %d Freiheitsgraden|với %s được mô hình hóa bằng spline bậc ba tự nhiên có %d bậc tự do
+with the coefficient for %s varying over log(1 + time)|（%sの係数はlog(1 + time)に応じて変化）|（%s的系数随log(1 + time)变化）|con el coeficiente de %s variable según log(1 + time)|avec le coefficient de %s variant selon log(1 + time)|mit einem über log(1 + time) variierenden Koeffizienten für %s|với hệ số của %s thay đổi theo log(1 + time)
+using the %s method for tied event times|（同時イベントの処理：%s法）|（并列事件处理：%s法）|utilizando el método %s para tiempos de evento empatados|utilisant la méthode %s pour les temps d’événement ex æquo|unter Verwendung der Methode %s für gebundene Ereigniszeiten|sử dụng phương pháp %s cho thời gian biến cố trùng nhau
+Time was measured from '%s' in units of '%s', and %s was used.|時間は「%s」を起点に「%s」単位で測定し、%sを使用しました。|时间以“%s”为起点，单位为“%s”，使用%s。|El tiempo se midió desde '%s' en unidades de '%s', y se utilizó %s.|Le temps a été mesuré à partir de '%s', en unités de '%s', et %s a été utilisé.|Die Zeit wurde ab '%s' in Einheiten von '%s' gemessen; verwendet wurde %s.|Thời gian được đo từ '%s' theo đơn vị '%s', và sử dụng %s.'''
+for i,lang in enumerate(['ja','zh','es','fr','de','vi'],1):
+ p=Path('i18n')/(lang+'.json');data=json.loads(p.read_text(encoding='utf-8'))
+ for row in rows.splitlines():
+  f=row.split('|');assert len(f)==7
+  data['translations']['analysis.ui.'+re.sub(r'[^a-z0-9]+','_',f[0].lower()).strip('_')]=f[i]
+ p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

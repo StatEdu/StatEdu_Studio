@@ -1,0 +1,13 @@
+import json,re
+from pathlib import Path
+phrases={
+'No cross-tabulation table was computed for %s.':['%s에 대한 교차분석 표를 계산하지 못했습니다.','%sのクロス集計表は計算されませんでした。','未计算%s的交叉表。','No se calculó ninguna tabla cruzada para %s.','Aucun tableau croisé n’a été calculé pour %s.','Für %s wurde keine Kreuztabelle berechnet.','Không tính được bảng chéo cho %s.'],
+'%s by %s excluded %s row(s) with missing row or column values after survey design/subpopulation filtering.':['%s × %s 분석에서 조사설계 및 부-모집단 필터링 후 행 또는 열 값이 결측인 %s개 행을 제외했습니다.','%s × %sでは、調査設計・部分母集団の絞り込み後に行変数または列変数が欠損している%s行を除外しました。','%s × %s在应用调查设计及子总体筛选后，排除了行变量或列变量缺失的%s行。','En %s por %s se excluyeron %s filas con valores perdidos en la variable de fila o columna tras aplicar el diseño de encuesta y el filtro de subpoblación.','Pour %s par %s, %s lignes avec une valeur manquante dans la variable de ligne ou de colonne ont été exclues après application du plan de sondage et du filtre de sous-population.','Für %s nach %s wurden nach Anwendung des Erhebungsdesigns und Teilpopulationsfilters %s Zeilen mit fehlenden Zeilen- oder Spaltenvariablen ausgeschlossen.','Với %s theo %s, đã loại %s dòng có giá trị thiếu ở biến hàng hoặc cột sau khi áp dụng thiết kế khảo sát và bộ lọc tiểu quần thể.'],
+'%s by %s was not computed: %s':['%s × %s 분석을 계산하지 못했습니다: %s','%s × %sは計算されませんでした：%s','未计算%s × %s：%s','No se calculó %s por %s: %s','%s par %s n’a pas été calculé : %s','%s nach %s wurde nicht berechnet: %s','Không tính được %s theo %s: %s'],
+'No complete cases are available for the selected cross-tabulation variables.':['선택한 교차분석 변수에 완전한 사례가 없습니다.','選択したクロス集計変数に完全なケースがありません。','所选交叉表变量没有完整个案。','No hay casos completos para las variables seleccionadas de la tabla cruzada.','Aucun cas complet n’est disponible pour les variables sélectionnées du tableau croisé.','Für die ausgewählten Kreuztabellenvariablen sind keine vollständigen Fälle verfügbar.','Không có trường hợp đầy đủ cho các biến bảng chéo đã chọn.'],
+'Complex-sample cross-tabulation diagnostics':['복합표본 교차분석 진단','複雑標本クロス集計の診断','复杂抽样交叉表诊断','Diagnósticos de tablas cruzadas de muestras complejas','Diagnostics des tableaux croisés pour échantillons complexes','Diagnostik der Kreuztabellen für komplexe Stichproben','Chẩn đoán bảng chéo mẫu phức tạp']}
+for index,lang in enumerate(['ko','ja','zh','es','fr','de','vi']):
+ path=Path('i18n')/(lang+'.json');data=json.loads(path.read_text(encoding='utf-8'))
+ for source,values in phrases.items():
+  data['translations']['analysis.ui.'+re.sub(r'[^a-z0-9]+','_',source.lower()).strip('_')]=values[index]
+ path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

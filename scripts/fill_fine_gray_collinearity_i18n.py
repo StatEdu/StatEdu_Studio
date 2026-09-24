@@ -1,0 +1,15 @@
+import json,re
+from pathlib import Path
+rows='''Survival sparse evidence Maximum Fine-Gray VIF =|Fine-Grayの最大VIF =|Fine-Gray最大VIF =|VIF máximo de Fine-Gray =|VIF maximal de Fine-Gray =|Maximaler Fine-Gray-VIF =|VIF Fine-Gray lớn nhất =
+Survival sparse evidence Fine-Gray design condition number =|Fine-Gray計画行列の条件数 =|Fine-Gray设计矩阵条件数 =|Número de condición del diseño de Fine-Gray =|Nombre de condition de la matrice de Fine-Gray =|Konditionszahl der Fine-Gray-Designmatrix =|Số điều kiện của ma trận thiết kế Fine-Gray =
+At least one Fine-Gray design-column VIF is not finite.|少なくとも1つのFine-Gray計画行列の列のVIFが有限ではありません。|至少一个Fine-Gray设计矩阵列的VIF不是有限值。|Al menos un VIF de una columna del diseño de Fine-Gray no es finito.|Au moins un VIF d’une colonne de la matrice de Fine-Gray n’est pas fini.|Mindestens ein VIF einer Fine-Gray-Designspalte ist nicht endlich.|Ít nhất một VIF của cột thiết kế Fine-Gray không hữu hạn.
+Review exact collinearity or non-estimable columns in the Fine-Gray design matrix.|Fine-Gray計画行列の完全共線性や推定できない列を確認してください。|请检查Fine-Gray设计矩阵中的完全共线性或无法估计的列。|Revise la colinealidad exacta o las columnas no estimables de la matriz de diseño de Fine-Gray.|Examinez la colinéarité exacte ou les colonnes non estimables de la matrice de Fine-Gray.|Prüfen Sie exakte Kollinearität oder nicht schätzbare Spalten in der Fine-Gray-Designmatrix.|Kiểm tra cộng tuyến hoàn toàn hoặc các cột không thể ước lượng trong ma trận thiết kế Fine-Gray.
+Review instability in Fine-Gray coefficients and standard errors.|Fine-Gray係数と標準誤差の不安定性を確認してください。|请检查Fine-Gray系数和标准误的不稳定性。|Revise la inestabilidad de los coeficientes y errores estándar de Fine-Gray.|Examinez l’instabilité des coefficients et erreurs standards de Fine-Gray.|Prüfen Sie die Instabilität von Fine-Gray-Koeffizienten und Standardfehlern.|Xem xét tính không ổn định của hệ số và sai số chuẩn Fine-Gray.
+Review Fine-Gray covariate redundancy and model specification.|Fine-Gray共変量の重複性とモデル指定を確認してください。|请检查Fine-Gray协变量冗余和模型设定。|Revise la redundancia de covariables y la especificación del modelo de Fine-Gray.|Examinez la redondance des covariables et la spécification du modèle de Fine-Gray.|Prüfen Sie die Redundanz der Kovariaten und die Spezifikation des Fine-Gray-Modells.|Xem xét sự dư thừa hiệp biến và đặc tả mô hình Fine-Gray.
+Review numerical instability in the Fine-Gray design matrix.|Fine-Gray計画行列の数値的不安定性を確認してください。|请检查Fine-Gray设计矩阵的数值不稳定性。|Revise la inestabilidad numérica de la matriz de diseño de Fine-Gray.|Examinez l’instabilité numérique de la matrice de Fine-Gray.|Prüfen Sie die numerische Instabilität der Fine-Gray-Designmatrix.|Xem xét tính không ổn định về số của ma trận thiết kế Fine-Gray.'''
+for i,lang in enumerate(['ja','zh','es','fr','de','vi'],1):
+ p=Path('i18n')/(lang+'.json');data=json.loads(p.read_text(encoding='utf-8'))
+ for row in rows.splitlines():
+  f=row.split('|');assert len(f)==7
+  data['translations']['analysis.ui.'+re.sub(r'[^a-z0-9]+','_',f[0].lower()).strip('_')]=f[i]
+ p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

@@ -1,0 +1,11 @@
+[
+  "Apparent (in-sample); descriptive only",
+  "Log loss (apparent)",
+  "Ranked probability score (apparent)",
+  "Multiclass Brier score (apparent)",
+  "Functional form",
+  "Multinomial IIA",
+  "Performance statistics are apparent (in-sample) diagnostics and do not establish external predictive validity.",
+  "The independence of irrelevant alternatives (IIA) is not established automatically; justify the outcome categories and consider sensitivity analyses if alternatives may be substitutable.",
+  "Linearity in the logit is not established automatically for continuous predictor(s): %s. Inspect nonlinear terms or spline sensitivity analyses when scientifically plausible."
+]

@@ -1,0 +1,21 @@
+[
+  "Family and link reported",
+  "Missing data described",
+  "Variable coding described",
+  "Effect estimate and 95% CI reported",
+  "Standard error method reported",
+  "Assumptions checked",
+  "Count screening reported",
+  "Publication table notes generated",
+  "Software/package version reported",
+  "Manuscript-ready text generated",
+  "Complete-case rows",
+  "Raw rows",
+  "Complete model rows",
+  "Rows excluded by complete-case screen",
+  "Rows with missing dependent variable",
+  "Rows with any missing independent variable",
+  "Rows with missing exposure / offset",
+  "Distinct missingness patterns",
+  "Most common missingness pattern"
+]

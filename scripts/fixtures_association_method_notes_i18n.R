@@ -1,0 +1,13 @@
+out<-'tmp/association-method-notes-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+p<-list(effect_size_proportion_design='cohens_h',effect_size_proportion_p1='0.25',effect_size_proportion_p2='0.5')
+x<-list(effect_size_chisquare_statistic='12',effect_size_chisquare_n='120',effect_size_chisquare_rows='3',effect_size_chisquare_columns='3',effect_size_chisquare_observed='2, 5, 3',effect_size_chisquare_expected='1, 1, 1')
+cinput<-list(effect_size_correlation_r='-0.3',effect_size_correlation_r1='-0.3',effect_size_correlation_r2='0.09',effect_size_correlation_f='6.25',effect_size_correlation_df='98')
+cinput$effect_size_correlation_r2_compare<-'0.2'
+designs<-c('cohens_h','cohens_w_from_probs','phi','cohens_w','point_biserial','pearson_r','cohens_q','r_from_r2','r_from_f')
+results<-c(list(effect_size_proportion_calculate(p)),lapply(designs[2:4],function(d)effect_size_chisquare_calculate(modifyList(x,list(effect_size_chisquare_design=d)))),lapply(designs[5:9],function(d)effect_size_correlation_calculate(modifyList(cinput,list(effect_size_correlation_design=d)))))
+formula_keys<-paste0('sample_size.result.',c('note_proportion_transform','note_w_categories','note_phi','note_w_planning','note_point_biserial','note_pearson','note_cohens_q','note_r_squared','note_r_f'))
+for(i in seq_along(results))if(!is.null(results[[i]]$error)||!identical(results[[i]]$method_note,statedu_t(formula_keys[i],'en')))stop('Unexpected method note ',designs[i],': ',results[[i]]$error)
+tokens<-list(character(),character(),'Phi = sqrt(chi-square / N)',"Cohen's w = sqrt(chi-square / N)",'d = 2r / sqrt(1 - r^2)',"Fisher's z = atanh(r)",character(),'r = sqrt(R-squared)','r = sqrt(F / [F + df_error])')
+for(lang in c('en','ko','ja','zh','es','fr','de','vi'))for(i in seq_along(tokens))stopifnot(all(vapply(tokens[[i]],grepl,logical(1),x=statedu_t(formula_keys[i],lang),fixed=TRUE)))
+stopifnot(isTRUE(all.equal(results[[1]]$cohens_h,2*asin(sqrt(.25))-2*asin(sqrt(.5)))),isTRUE(all.equal(results[[2]]$cohens_w,sqrt(sum((c(.2,.5,.3)-1/3)^2/(1/3))))),isTRUE(all.equal(results[[3]]$phi,sqrt(.1))),isTRUE(all.equal(results[[4]]$cohens_w,sqrt(.1))),isTRUE(all.equal(results[[5]]$effect_size_d,-.6/sqrt(.91))),isTRUE(all.equal(results[[6]]$correlation_r,-.3)),isTRUE(all.equal(results[[7]]$cohens_q,atanh(-.3)-atanh(.2))),isTRUE(all.equal(results[[8]]$correlation_r,.3)),isTRUE(all.equal(results[[9]]$correlation_r,sqrt(6.25/(6.25+98)))))
+cat('PASS nine actual association method notes; proportions normalized, signed r/q/d and formula tokens x eight languages\n')

@@ -1,0 +1,11 @@
+{
+  "Select exactly one outcome variable for GLM.": "analysis.glm_error.outcome",
+  "Select at least one predictor variable for GLM.": "analysis.glm_error.predictor",
+  "At least 3 complete cases are required.": "analysis.glm_error.cases",
+  "Gamma GLM requires strictly positive outcome values.": "analysis.glm_error.gamma",
+  "Count GLM requires non-negative integer outcome values.": "analysis.glm_error.count",
+  "Exposure / offset values must be strictly positive because GLM uses offset(log(exposure)).": "analysis.glm_error.exposure",
+  "Exposure / offset must be a continuous positive variable.": "analysis.glm_error.exposure_type",
+  "GLM supports continuous or binary dependent variables. Use the logistic regression menu for categorical or ordinal dependent variables.": "analysis.glm_error.outcome_type",
+  "Binary logistic GLM requires exactly two observed outcome levels.": "analysis.glm_error.binary"
+}

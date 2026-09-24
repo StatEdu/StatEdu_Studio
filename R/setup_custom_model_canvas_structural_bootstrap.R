@@ -627,7 +627,7 @@ structural_canvas_effect_bootstrap_workers <- function(value = NULL) {
   max(1L, min(as.integer(requested), as.integer(available)))
 }
 
-# lavaan 0.7-2 validates every newly-created object against the installed
+# Supported lavaan versions validate newly-created objects against the installed
 # DESCRIPTION file.  On Windows this means repeated system.file()/read.dcf()
 # calls from lavInspect() plus packageDescription() calls while every bootstrap
 # fit is assembled.  Concurrent workers can spend substantially more wall time
@@ -636,7 +636,7 @@ structural_canvas_effect_bootstrap_workers <- function(value = NULL) {
 # This optimization is deliberately installed only by isolated callr/PSOCK
 # bootstrap workers.  It does not alter the Shiny process, model options,
 # resamples, estimates, admissibility gates, or CI calculations.  The current
-# package version and the two lavaan source contracts must match exactly; any
+# package version and the audited lavaan source contracts must match exactly; any
 # mismatch returns an unapplied state and leaves the public fallback untouched.
 structural_canvas_lavaan_worker_metadata_fast_path_install <- function() {
   no_op_state <- function(reason) list(
@@ -653,7 +653,9 @@ structural_canvas_lavaan_worker_metadata_fast_path_install <- function() {
     as.character(utils::packageVersion("lavaan")),
     error = function(error) ""
   )
-  if (!identical(installed_version, "0.7.2")) {
+  if (!installed_version %in% c("0.6.21", "0.7.2") ||
+      (identical(installed_version, "0.6.21") &&
+       !isTRUE(getOption("statedu.internal.sem_metadata_0621", TRUE)))) {
     return(no_op_state(sprintf("unsupported lavaan version: %s", installed_version)))
   }
   namespace <- asNamespace("lavaan")
@@ -669,7 +671,7 @@ structural_canvas_lavaan_worker_metadata_fast_path_install <- function() {
   if (!is.function(current_check) || !is.function(current_package_description)) {
     return(no_op_state("lavaan metadata functions are unavailable"))
   }
-  marker <- "statedu_lavaan_worker_metadata_fast_path_0_7_2"
+  marker <- paste0("statedu_lavaan_worker_metadata_fast_path_", gsub(".", "_", installed_version, fixed = TRUE))
   state_option <- "statedu.internal.lavaan_worker_metadata_fast_path_state"
   check_lock_state <- bindingIsLocked("lav_object_check_version", namespace)
   description_lock_state <- bindingIsLocked("packageDescription", imports)
@@ -740,7 +742,7 @@ structural_canvas_lavaan_worker_metadata_fast_path_install <- function() {
     return(no_op_state("inconsistent pre-existing lavaan metadata fast-path state"))
   }
   step17 <- tryCatch(
-    get("lav_step17_lavaan", namespace, inherits = FALSE),
+    get(if (identical(installed_version, "0.6.21")) "lav_lavaan_step17_lavaan" else "lav_step17_lavaan", namespace, inherits = FALSE),
     error = function(error) NULL
   )
   list_builder <- tryCatch(
@@ -753,7 +755,11 @@ structural_canvas_lavaan_worker_metadata_fast_path_install <- function() {
     } else "",
     error = function(error) ""
   )
-  expected_body_digests <- c(
+  expected_body_digests <- if (identical(installed_version, "0.6.21")) c(
+    lav_object_check_version = "98e1db0df4f86bf0eba010eb178a61f40abefd155892112d800969c2e0c9eb07",
+    lav_step17_lavaan = "01488fe9d53c02319298e6a828900404008af2e2ed14567b431b7c8ed6fd2e6f",
+    lavaanList = "935712acf18237d126d4ebb311b01d29ae757deb2450e858c65cd54aa55c0ed3"
+  ) else c(
     lav_object_check_version = "edcad4ef5169a36c8dbfc0bbafcea87218cef760d6f230e0add34066119761b8",
     lav_step17_lavaan = "3c1428c1f82c453cbc342f464c0a3fee4b0f337d1e48f567bac9a08ff212eff8",
     lavaanList = "a613bda6aeef261393a4e52d05492f47fc7b774967412e463d2f8d6fdaaeeebe"
@@ -864,7 +870,7 @@ structural_canvas_lavaan_worker_metadata_fast_path_install <- function() {
     return(no_op_state("lavaan metadata lease state could not be registered"))
   }
   list(
-    applied = TRUE, owned = TRUE, reason = "lavaan 0.7-2 metadata contract",
+    applied = TRUE, owned = TRUE, reason = paste("lavaan", installed_version, "metadata contract"),
     restore = release_lease(shared_state)
   )
 }
@@ -1266,7 +1272,8 @@ structural_canvas_effect_bootstrap_worker_cleanup <- function() {
   TRUE
 }
 
-structural_canvas_effect_bootstrap_worker_install_metadata <- function(install) {
+structural_canvas_effect_bootstrap_worker_install_metadata <- function(install, legacy_enabled = NULL) {
+  if (!is.null(legacy_enabled)) options(statedu.internal.sem_metadata_0621 = isTRUE(legacy_enabled))
   state <- install()
   assign(".statedu_lavaan_metadata_fast_path_state", state, envir = .GlobalEnv)
   list(applied = isTRUE(state$applied), reason = as.character(state$reason))
@@ -1333,11 +1340,11 @@ structural_canvas_effect_bootstrap_fixed_index_worker <- function(block) {
       simpleError("injected fixed-index item failure")
     } else {
       suppressWarnings(tryCatch(
-        lavaan::lavaan(
-          slot_options = fit_options,
-          slot_par_table = context$partable,
-          data = frame
-        ),
+        if (isTRUE(context$legacy_slot_names)) {
+          lavaan::lavaan(slotOptions = fit_options, slotParTable = context$partable, data = frame)
+        } else {
+          lavaan::lavaan(slot_options = fit_options, slot_par_table = context$partable, data = frame)
+        },
         error = function(error) error
       ))
     }
@@ -1461,7 +1468,7 @@ structural_canvas_effect_bootstrap_prepared <- function(
       installer <- structural_canvas_lavaan_worker_metadata_fast_path_install
       cluster_metadata_fast_path <- parallel::clusterCall(
         cluster, structural_canvas_effect_bootstrap_worker_install_metadata,
-        installer
+        installer, legacy_enabled = isTRUE(getOption("statedu.internal.sem_metadata_0621", TRUE))
       )
     }
   }
@@ -1505,14 +1512,30 @@ structural_canvas_effect_bootstrap_prepared <- function(
     tolower(as.character(fit_template@Options$missing[[1L]])),
     error = function(error) ""
   )
-  fixed_index_common_supported <- workers > 1L && isTRUE(metadata_fast_path_state$applied) &&
+  # MLR retains its full robust covariance and observed-information gate. Only
+  # scheduling changes: send indices to persistent workers instead of serializing
+  # every replicated data frame through lavaanList's static batches.
+  mlr_variables <- tryCatch(lavaan::lavNames(fit_template, "ov"), error = function(error) character(0))
+  fixed_index_mlr <- isTRUE(getOption("statedu.internal.sem_mlr_fixed_index", TRUE)) &&
+    workers > 1L && template_version %in% c("0.6-21", "0.7-2") &&
+    identical(gsub("-", ".", template_version, fixed = TRUE), as.character(utils::packageVersion("lavaan"))) &&
+    identical(template_se, "robust.huber.white") && identical(template_estimator, "ML") &&
+    template_likelihood %in% c("normal", "wishart") && !template_categorical &&
+    identical(template_groups, 1L) && identical(template_levels, 1L) &&
+    is.finite(template_random_starts) && template_random_starts == 0L &&
+    length(prepared$product_specs %||% list()) == 0L &&
+    template_missing %in% c("listwise", "ml", "fiml") &&
+    length(mlr_variables) > 0L && all(mlr_variables %in% names(prepared$data)) &&
+    all(vapply(prepared$data[mlr_variables], is.numeric, logical(1))) &&
+    !isTRUE(getOption("statedu.internal.disable_sem_bootstrap_fixed_index", FALSE))
+  fixed_index_common_supported <- fixed_index_mlr || (workers > 1L && isTRUE(metadata_fast_path_state$applied) &&
     all_worker_fast_paths_applied && identical(template_version, "0.7-2") &&
     identical(template_se, "standard") && identical(template_estimator, "ML") &&
     template_likelihood %in% c("normal", "wishart") && !template_categorical &&
     identical(template_groups, 1L) && identical(template_levels, 1L) &&
     is.finite(template_random_starts) && template_random_starts == 0L &&
     all(vapply(prepared$data, is.numeric, logical(1))) &&
-    !isTRUE(getOption("statedu.internal.disable_sem_bootstrap_fixed_index", FALSE))
+    !isTRUE(getOption("statedu.internal.disable_sem_bootstrap_fixed_index", FALSE)))
   fixed_index_product_aware <- fixed_index_common_supported &&
     length(prepared$product_specs %||% list()) > 0L &&
     template_missing %in% c("listwise", "ml", "fiml") &&
@@ -1555,7 +1578,7 @@ structural_canvas_effect_bootstrap_prepared <- function(
     fixed_partable$start <- fixed_partable$est <- fixed_partable$se <- NULL
     fixed_options <- fit_template@Options
     fixed_options$fit.by.level <- FALSE
-    fixed_expected_information_active <- fixed_index_nonproduct &&
+    fixed_expected_information_active <- fixed_index_nonproduct && !fixed_index_mlr &&
       anyNA(prepared$data) && identical(fixed_information_mode, "expected")
     if (fixed_expected_information_active) {
       # Bootstrap inference below uses the replicate estimates, not each
@@ -1580,7 +1603,8 @@ structural_canvas_effect_bootstrap_prepared <- function(
     )
     if (!fixed_failure_mode %in% c("block", "item")) fixed_failure_mode <- ""
     fixed_context <- list(
-      data = prepared$data,
+      legacy_slot_names = fixed_index_mlr && identical(template_version, "0.6-21"),
+      data = if (fixed_index_mlr) prepared$data[mlr_variables] else prepared$data,
       options = fixed_options,
       screen_options = fixed_screen_options,
       partable = fixed_partable,
@@ -2071,6 +2095,7 @@ structural_canvas_effect_bootstrap_prepared <- function(
       legacy_fit_seconds = legacy_fit_seconds
     ),
     fixed_index = list(
+      mlr = fixed_index_mlr,
       supported = fixed_index_supported,
       active = fixed_index_active,
       product_aware = fixed_index_product_aware,

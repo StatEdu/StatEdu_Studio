@@ -328,7 +328,7 @@
     });
     var variableNames = instance.state.variables.map(function(variable) { return variable.name; });
     instance.state.nodes.filter(function(node) { return node.role === "indicator"; }).forEach(function(node) {
-      if (node.variableId && variableNames.indexOf(node.variableId) < 0) add("error", node.id, "missing_variable", "현재 데이터에 없는 변수");
+      if (node.variableId && !node.scoreSpec && variableNames.indexOf(node.variableId) < 0) add("error", node.id, "missing_variable", "현재 데이터에 없는 변수");
     });
     var indicatorUsage = {};
     instance.state.nodes.filter(function(node) { return node.role === "indicator" && node.variableId; }).forEach(function(node) {
@@ -382,6 +382,16 @@
       ) : window.StatEduModelCanvas.state.roleLabel(instance, single.role || "independent")
     ) : (ko ? nodes.length + "개 선택" : nodes.length + " selected");
     container.appendChild(heading);
+
+    var scoreTarget = single;
+    if (window.StatEduModelCanvas.nodes.scoreEditorEligible(instance, scoreTarget)) {
+      var scoreButton = document.createElement("button");
+      scoreButton.type = "button";
+      scoreButton.className = "btn btn-default btn-sm structural-score-editor";
+      scoreButton.textContent = window.StatEduModelCanvas.state.label(instance, "score_editor", "Original items / reliability / parcels");
+      scoreButton.addEventListener("click", function() { window.StatEduModelCanvas.nodes.openScoreEditor(instance, scoreTarget.id); });
+      heading.appendChild(scoreButton);
+    }
 
     function field(labelText, input) {
       var label = document.createElement("label");
@@ -719,7 +729,7 @@
     return Array.from(instance.root.querySelectorAll(".custom-model-variable-item"));
   }
 
-  function reflowMeasurementModel(instance) {
+  function reflowMeasurementModel(instance, targetIds) {
     if (!isStructuralCanvas(instance)) return;
     stripPlsResidualNodes(instance);
     var structuralEdges = instance.state.edges.filter(function(edge) {
@@ -772,7 +782,7 @@
         nextTop = group.bottom + groupGap;
       });
     }
-    if (instance.analysisType === "cfa") {
+    if (instance.analysisType === "cfa" && !targetIds) {
       var cfaLatents = instance.state.nodes.filter(function(node) { return node.role === "latent"; }).sort(function(a, b) {
         return Number(a.y || 0) - Number(b.y || 0);
       });
@@ -784,6 +794,7 @@
       avoidVerticalMeasurementOverlap(cfaLatents);
     }
     if (!isPlsCanvas(instance)) instance.state.nodes.filter(function(node) { return node.role === "latent"; }).forEach(function(latent) {
+      if (targetIds && targetIds.indexOf(latent.id) < 0) return;
       var hasIncoming = structuralEdges.some(function(edge) { return edge.to === latent.id; });
       var disturbanceEdge = instance.state.edges.find(function(edge) {
         var source = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
@@ -803,6 +814,10 @@
     });
     instance.state.nodes.filter(function(node) { return node.role === "latent"; }).forEach(function(latent) {
       var incoming = structuralEdges.some(function(edge) { return edge.to === latent.id; });
+      if (targetIds && targetIds.indexOf(latent.id) < 0) {
+        errorNotationCounters[incoming ? "epsilon" : "delta"] += measurementEdgesForLatent(latent).length;
+        return;
+      }
       var outgoing = structuralEdges.some(function(edge) { return edge.from === latent.id; });
       var placement = latent.measurementPlacement || (incoming && outgoing ? "top" : (incoming ? "right" : "left"));
       latent.effectiveMeasurementPlacement = placement;
@@ -1406,7 +1421,8 @@
   function bindVariableDrag(instance) {
     instance.root.querySelectorAll(".custom-model-variable-item").forEach(function(item) {
       item.addEventListener("dragstart", function(event) {
-        if (item.classList.contains("is-used")) {
+        var scorePanel = document.querySelector(".canvas-score-panel");
+        if (item.classList.contains("is-used") && !(scorePanel && scorePanel.getAttribute("data-canvas-root") === instance.root.id)) {
           event.preventDefault();
           return;
         }
@@ -1415,6 +1431,7 @@
         var selected = selectedVariableNames(instance);
         if (selected.indexOf(draggedName) < 0) selected = [draggedName];
         event.dataTransfer.setData("application/x-statedu-variables", JSON.stringify(selected));
+        event.dataTransfer.setData("application/x-statedu-canvas-root", instance.root.id);
         event.dataTransfer.effectAllowed = "copy";
       });
     });
@@ -1500,6 +1517,7 @@
 
   function bindCanvasPointer(instance) {
     instance.paper.addEventListener("pointerdown", function(event) {
+      if (event.target.closest && event.target.closest(".custom-model-score-shortcut")) return;
       window.StatEduModelCanvas.activeInstance = instance;
       flushActiveSetting(instance);
       var propertyPanel = event.target.closest ? event.target.closest(".custom-model-property-popover") : null;
@@ -2157,7 +2175,7 @@
 
   function zoom(instance, factor) {
     if (isStructuralCanvas(instance)) {
-      instance.state.canvas.modelZoom = Math.max(0.5, Math.min(2, Number(instance.state.canvas.modelZoom || 1) * factor));
+      instance.state.canvas.modelZoom = Math.max(0.01, Math.min(2, Number(instance.state.canvas.modelZoom || 1) * factor));
     } else {
       instance.state.canvas.zoom = Math.max(0.5, Math.min(2, instance.state.canvas.zoom * factor));
     }
@@ -2165,9 +2183,37 @@
     window.StatEduModelCanvas.bridge.sendState(instance);
   }
 
-  function centerModelOnPaper(instance) {
+  // Measure visible objects, not the paper/layer or invisible pointer hit areas.
+  // Undo both view and model zoom so bounds stay in editable model coordinates.
+  function renderedModelBounds(instance) {
+    if (!instance || !instance.paper) return null;
+    var paperRect = instance.paper.getBoundingClientRect();
+    var view = paperViewZoom(instance);
+    var model = isStructuralCanvas(instance) ? Number(instance.state.canvas.modelZoom || 1) : 1;
+    var cx = Number(instance.state.canvas.widthPx || instance.paper.offsetWidth) / 2;
+    var cy = Number(instance.state.canvas.heightPx || instance.paper.offsetHeight) / 2;
+    var bounds = {left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity};
+    instance.paper.querySelectorAll('.custom-model-node, .custom-model-node-label, .structural-latent-statistics, .structural-validation-badge, .custom-model-edge, .custom-model-moderation, .custom-model-edge-label').forEach(function(element) {
+      var style = window.getComputedStyle(element);
+      if (style.display === 'none' || style.visibility === 'hidden') return;
+      var rect = element.getBoundingClientRect();
+      if (!rect.width && !rect.height) return;
+      bounds.left = Math.min(bounds.left, ((rect.left - paperRect.left) / view - cx) / model + cx);
+      bounds.right = Math.max(bounds.right, ((rect.right - paperRect.left) / view - cx) / model + cx);
+      bounds.top = Math.min(bounds.top, ((rect.top - paperRect.top) / view - cy) / model + cy);
+      bounds.bottom = Math.max(bounds.bottom, ((rect.bottom - paperRect.top) / view - cy) / model + cy);
+    });
+    // DOM bounds exclude SVG marker tips and strokes.
+    var padding = Math.max(12, Number(instance.state.style.edgeWidth || 2) * 5);
+    if (![bounds.left, bounds.right, bounds.top, bounds.bottom].every(Number.isFinite)) return null;
+    bounds.left -= padding; bounds.right += padding;
+    bounds.top -= padding; bounds.bottom += padding;
+    return bounds;
+  }
+
+  function centerModelOnPaper(instance, renderedBounds) {
     if (!instance || !instance.state || !Array.isArray(instance.state.nodes) || !instance.state.nodes.length) return false;
-    var bounds = instance.state.nodes.reduce(function(result, node) {
+    var bounds = renderedBounds || instance.state.nodes.reduce(function(result, node) {
       var x = Number(node.x || 0);
       var y = Number(node.y || 0);
       var width = Math.max(0, Number(node.width || 0));
@@ -2200,11 +2246,22 @@
   }
 
   function fit(instance) {
-    centerModelOnPaper(instance);
+    render(instance);
+    var bounds = renderedModelBounds(instance);
+    if (bounds) window.StatEduModelCanvas.state.pushHistory(instance);
+    centerModelOnPaper(instance, bounds);
     if (isStructuralCanvas(instance)) {
-      instance.state.canvas.modelZoom = 1;
+      var width = Number(instance.state.canvas.widthPx || instance.paper.offsetWidth);
+      var height = Number(instance.state.canvas.heightPx || instance.paper.offsetHeight);
+      if (bounds) {
+        // Preserve relative positions and never enlarge an already fitting model.
+        // Do not impose the manual zoom floor on very large fitted diagrams.
+        instance.state.canvas.modelZoom = Math.min(Number(instance.state.canvas.modelZoom || 1), 1,
+          Math.max(1, width - 48) / Math.max(1, bounds.right - bounds.left),
+          Math.max(1, height - 48) / Math.max(1, bounds.bottom - bounds.top));
+      }
     }
-    instance.state.canvas.paperViewMode = "width";
+    instance.state.canvas.paperViewMode = "fit";
     fitPaperToViewport(instance);
     render(instance);
     var scroll = instance.root.querySelector(".custom-model-canvas-scroll");
@@ -2390,6 +2447,13 @@
     return instance;
   }
 
+  var canvasInitPending = false;
+  function scheduleInitAll() {
+    if (canvasInitPending) return;
+    canvasInitPending = true;
+    window.setTimeout(function() { canvasInitPending = false; initAll(); }, 0);
+  }
+
   function initAll() {
     document.querySelectorAll(".custom-model-canvas-root").forEach(function(root) {
       var instance = init(root);
@@ -2458,7 +2522,7 @@
         (event.target.querySelector && event.target.querySelector(".custom-model-canvas-root"))
       )
     ) {
-      window.setTimeout(initAll, 0);
+      scheduleInitAll();
     }
   });
   if (window.MutationObserver && document.documentElement) {
@@ -2471,7 +2535,7 @@
           );
         });
       });
-      if (shouldInit) window.setTimeout(initAll, 0);
+      if (shouldInit) scheduleInitAll();
     }).observe(document.documentElement, {childList: true, subtree: true});
   }
 })();

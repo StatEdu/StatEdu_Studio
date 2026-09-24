@@ -1,0 +1,15 @@
+out<-'tmp/ttest-method-notes-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+b<-list(effect_size_ttest_mean1='4',effect_size_ttest_mean2='5',effect_size_ttest_sd1='2',effect_size_ttest_sd2='3',effect_size_ttest_n1='40',effect_size_ttest_n2='60',effect_size_ttest_mean_difference='-1',effect_size_ttest_sd_difference='2',effect_size_ttest_null_mean='0',effect_size_ttest_t='-2.5',effect_size_ttest_df='98',effect_size_ttest_n='50',effect_size_ttest_r='-0.3')
+designs<-c('independent_t_n','independent_t_df_equal','one_sample_t','paired_t','independent_r','independent_means','hedges_g')
+results<-lapply(designs,function(d)effect_size_ttest_calculate(modifyList(b,list(effect_size_ttest_design=d))))
+# The common harness checks expected rendered descriptions; these keys refer
+# to method_note, as this wrapper does not attach formula_note.
+formula_keys<-paste0('sample_size.result.',c('note_t_independent','note_t_equal','note_t_one','note_t_paired','note_t_r','note_t_pooled','note_t_pooled'))
+tokens<-c('t * sqrt(1/n1 + 1/n2)','2t / sqrt(df + 2)','t / sqrt(n)','t / sqrt(number of pairs)','d = 2r / sqrt(1 - r^2)','J = 1 - 3 / (4df - 1)','J = 1 - 3 / (4df - 1)')
+for(i in seq_along(results))stopifnot(is.null(results[[i]]$error),identical(results[[i]]$method_note,statedu_t(formula_keys[i],'en')))
+pooled<-sqrt((39*4+59*9)/98)
+expected_d<-c(-2.5*sqrt(1/40+1/60),-5/sqrt(100),-2.5/sqrt(50),-2.5/sqrt(50),-.6/sqrt(1-.3^2),-1/pooled,-1/pooled)
+for(i in seq_along(results))stopifnot(isTRUE(all.equal(results[[i]]$effect_size_d,expected_d[i])))
+stopifnot(isTRUE(all.equal(results[[7]]$primary_effect_size,expected_d[7]*(1-3/(4*98-1)))))
+for(lang in c('en','ko','ja','zh','es','fr','de','vi'))for(i in seq_along(tokens))stopifnot(grepl(tokens[i],statedu_t(formula_keys[i],lang),fixed=TRUE))
+cat('PASS seven actual t-effect wrappers; signed d/g, unequal group sizes, six descriptions and preserved formulas x eight languages\n')

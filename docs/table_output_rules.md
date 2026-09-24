@@ -4,6 +4,8 @@ These rules apply to every analysis result table in **StatEdu Studio**.
 
 ## Language and Publication Roles
 
+- Complex-sample binary, multinomial, and ordinal logistic regression main tables use B5 portrait and show OR/aOR, optional 95% CI and Wald statistics, and p-values. Separate appendix tables with finite positive inference df show B, SE, Wald F = (B/SE)² and p (common F(1, df2) in the note; omit redundant Z/t and row-level df columns), including ordinal thresholds (user-approved refinement, 2026-09-24). Preserve design-based p-values and explain their F/t reference distribution. The existing asymptotic fallback is explicitly labelled Wald χ² instead. These logistic tables use English titles and headers regardless of UI language (user override, 2026-09-23), retaining user variable/category labels and reference/equation labels. Coefficient definitions belong only to the appendix; preserve captured roles and orientation in current and accumulated HTML/PDF/Word/HWPX/Excel exports.
+
 - Main result tables are publication-ready SCI journal tables and are always written in English, regardless of the UI language.
 - Appendix, diagnostic, sensitivity, and input-review tables follow the current UI language.
 - Analysis menus, setup blocks, options, and appendix headings follow the UI language. Main-table titles, headers, system-generated cells, and notes remain English, including when the UI is Korean.
@@ -48,6 +50,7 @@ These rules apply to every analysis result table in **StatEdu Studio**.
 
 ## Table Notes
 
+- SEM/CFA supplementary fit tables define the full English names of the displayed indices (including AIC, BIC, adjusted BIC and ECVI) below each table. Generate these notes in the shared analysis result renderer and retain the captured notes in HTML, PDF, Word, HWPX and Excel, for both current and accumulated results. Do not reconstruct notes or tables specifically for PDF.
 - Regression's note convention applies to every analysis and every table. Omit the redundant `Note.` / `주.` prefix.
 - Put definitions before estimation methods, reference coding, adjustments, and explanations. Use the shared order M/SD, SE (including robust/bootstrap variants), 95% CI, LLCI, ULCI, Tol, VIF, d, z(p), χ²(p), f², sr²; retain the relative order of other definitions and explanatory clauses.
 - Explain only statistics displayed in the relevant table. Optional columns and their definitions must appear/disappear together. Preserve numerical footnote markers, HTML superscripts, symbols, and all substantive explanations.

@@ -1,0 +1,6 @@
+source('scripts/fixtures_precision_rates_planning_i18n.R',encoding='UTF-8')
+out <- 'tmp/precision-rates-notes-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+formula_keys <- rep(paste0('sample_size.result.',c('note_precision_correlation','note_precision_proportion','note_precision_mean','note_mcnemar_normal','note_rate_nb','note_rate_single','note_rate_poisson')),2)
+for(i in seq_along(results))stopifnot(is.null(results[[i]]$error),identical(results[[i]]$method_note,statedu_t(formula_keys[i],'en')))
+for(lang in c('en','ko','ja','zh','es','fr','de','vi'))stopifnot(grepl('p01',statedu_t(formula_keys[4],lang),fixed=TRUE),grepl('p10',statedu_t(formula_keys[4],lang),fixed=TRUE))
+cat('PASS fourteen precision/McNemar/rate method-note snapshots and eight-language paired-probability tokens\n')

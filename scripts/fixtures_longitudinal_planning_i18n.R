@@ -1,0 +1,18 @@
+out<-'tmp/longitudinal-planning-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+g<-list(sample_size_gee_target='power',sample_size_gee_alpha='0.05',sample_size_gee_power='0.8',sample_size_gee_n='40',sample_size_gee_ratio='1',sample_size_gee_alternative='two.sided',sample_size_gee_dropout='0',sample_size_gee_outcome='continuous',sample_size_gee_effect='0.5',sample_size_gee_p1='0.5',sample_size_gee_p2='0.65',sample_size_gee_time_points='3',sample_size_gee_rho='0.3',sample_size_gee_correlations='0.3, 0.2, 0.3')
+l<-list(sample_size_lmm_target='power',sample_size_lmm_alpha='0.05',sample_size_lmm_power='0.8',sample_size_lmm_n='30',sample_size_lmm_dropout='0',sample_size_lmm_mode='simple',sample_size_lmm_design='two_group_repeated',sample_size_lmm_effect='0.5',sample_size_lmm_time_points='3',sample_size_lmm_icc='0.3',sample_size_lmm_simulations='20',sample_size_lmm_group1_means='0, 0.2, 0.4',sample_size_lmm_group2_means='0, 0.1, 0.8',sample_size_lmm_residual_sd='1',sample_size_lmm_rho='0.3',sample_size_lmm_correlation_structure='exchangeable',sample_size_lmm_correlations='0.3, 0.2, 0.3')
+stopifnot(requireNamespace('longpower',quietly=TRUE),requireNamespace('nlme',quietly=TRUE))
+gc<-expand.grid(structure=c('exchangeable','ar1','unstructured'),target=c('sample_size','power'),stringsAsFactors=FALSE)
+results<-lapply(seq_len(nrow(gc)),function(i)sample_size_calculate('gee',modifyList(g,list(sample_size_gee_correlation_structure=gc$structure[i],sample_size_gee_target=gc$target[i]))))
+li<-list(l,modifyList(l,list(sample_size_lmm_target='sample_size')),modifyList(l,list(sample_size_lmm_design='one_group_repeated')),modifyList(l,list(sample_size_lmm_mode='glimmpse',sample_size_lmm_design='one_group_repeated')),modifyList(l,list(sample_size_lmm_mode='glimmpse',sample_size_lmm_correlation_structure='unstructured')))
+results<-c(results,lapply(li,function(v)sample_size_calculate('lmm',v)))
+designs<-c(paste('gee',gc$structure,gc$target),'longpower-power','longpower-sample','lme-one-group','gls-one-group','gls-unstructured-two-group')
+formula_keys<-paste0('sample_size.result.',c(rep('planning_gee',6),rep('planning_lmm_longpower',2),'planning_lmm_lme',rep('planning_lmm_gls',2)))
+for(i in seq_along(results))if(!is.null(results[[i]]$error)||!identical(results[[i]]$formula_note,statedu_t(formula_keys[i],'en')))stop('Unexpected branch: ',designs[i],' ',results[[i]]$error,' / ',results[[i]]$formula_note)
+stopifnot(results[[7]]$engine=='longpower',results[[8]]$engine=='longpower')
+for(i in c(4:7,9:11))stopifnot(is.finite(results[[i]]$power),results[[i]]$power>=0,results[[i]]$power<=1)
+tokens<-list(planning_gee=c('r12','r13','r23'),planning_lmm_gls=c('nlme::gls','r12','r13','r23'),planning_lmm_longpower='longpower::diggle.linear.power',planning_lmm_lme=c('nlme::lme','ICC'))
+for(lang in c('en','ko','ja','zh','es','fr','de','vi'))for(key in names(tokens)){
+ value<-statedu_t(paste0('sample_size.result.',key),lang,fallback='');stopifnot(nzchar(value),all(vapply(tokens[[key]],grepl,logical(1),x=value,fixed=TRUE)))
+}
+cat('PASS 11 actual GEE/LMM cases, all four formula branches and engine/correlation tokens x eight languages\n')

@@ -212,6 +212,8 @@ $fullOnlyValidations = @(
   "scripts\validate_sem_micom_stage3_multigroup.R",
   "scripts\validate_sem_missing_sensitivity.R",
   "scripts\validate_sem_missing_fiml_fixed_index.R",
+  "scripts\validate_sem_mlr_fixed_index.R",
+  "scripts\validate_sem_metadata_cache.R",
   "scripts\validate_sem_multigroup_inference.R",
   "scripts\validate_sem_multigroup_b5_layout.R",
   "scripts\validate_sem_multigroup_moderation.R",

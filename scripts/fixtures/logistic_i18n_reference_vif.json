@@ -1,0 +1,11 @@
+[
+  "Reference for %s was not set; minimum value %s was used.",
+  "max VIF=%s",
+  "No multicollinearity problem",
+  "Multicollinearity warning",
+  "Multicollinearity risk",
+  "No notable issues",
+  "Odds-ratio confidence intervals use the large-sample Wald method.",
+  "Multicollinearity warning: VIF exceeds 10 (max VIF = %s). Consider reducing predictors or using penalized logistic regression.",
+  "Multicollinearity caution: VIF exceeds 5 (max VIF = %s). Interpret individual coefficients cautiously."
+]

@@ -1,0 +1,50 @@
+.libPaths(R.home('library'))
+source('R/app_bootstrap.R');load_app_packages(check=FALSE);source_app_modules()
+root<-'output/category-input-profile-20260915'
+dir.create(root,recursive=TRUE,showWarnings=FALSE)
+run<-as.integer(commandArgs(trailingOnly=TRUE)[1L]);if(is.na(run))run<-1L
+collector<-compiler::cmpfun(collect_category_label_inputs_from_table)
+make_case<-function(n){
+ tab<-data.frame(source_order=seq_len(n),name=paste0('v',seq_len(n)))
+ fields<-category_label_edit_columns()
+ ids<-unlist(lapply(seq_len(n),function(i)paste0('category_',fields,'_input_',i)),use.names=FALSE)
+ values<-setNames(rep(list('label'),length(ids)),ids)
+ list(tab=tab,values=values)
+}
+timings<-list()
+for(n in c(200L,1000L)){
+ case<-make_case(n)
+ inputs<-list(list=case$values,environment=list2env(case$values,parent=emptyenv()),reactive=do.call(shiny::reactiveValues,case$values))
+ expected<-collector(case$tab,case$values)
+ for(surface in if(run%%2L)names(inputs)else rev(names(inputs))){
+  # Warm the same input object once before the timed call.
+  stopifnot(identical(expected,shiny::isolate(collector(case$tab,inputs[[surface]])),num.eq=FALSE))
+  gc();start<-Sys.time()
+  actual<-shiny::isolate(collector(case$tab,inputs[[surface]]))
+  elapsed<-as.numeric(difftime(Sys.time(),start,units='secs'))
+  stopifnot(identical(expected,actual,num.eq=FALSE))
+  timings[[length(timings)+1L]]<-data.frame(run,n,surface,seconds=elapsed)
+  cat('Measured',n,surface,elapsed,'seconds\n')
+ }
+ if(n==1000L){
+  gc();profile_path<-file.path(root,paste0('reactive-',run,'.out'))
+  Rprof(profile_path,interval=0.01)
+  actual<-shiny::isolate(collector(case$tab,inputs$reactive))
+  Rprof(NULL)
+  stopifnot(identical(expected,actual,num.eq=FALSE))
+  profile<-summaryRprof(profile_path)
+  saveRDS(profile,file.path(root,paste0('profile-',run,'.rds')))
+  write.csv(profile$by.self,file.path(root,paste0('self-',run,'.csv')))
+  write.csv(profile$by.total,file.path(root,paste0('total-',run,'.csv')))
+  print(head(profile$by.self,12L))
+  cat('Sampled time:',profile$sampling.time,'seconds\n')
+ }
+}
+write.csv(do.call(rbind,timings),file.path(root,paste0('times-',run,'.csv')),row.names=FALSE)
+writeLines(capture.output(print(shiny::isolate),print(getS3method('[[','reactivevalues'))),file.path(root,'shiny-read-functions.txt'))
+writeLines(capture.output(
+ print(packageVersion('shiny')),
+ print(get('Context',asNamespace('shiny'))$public_methods$onInvalidate),
+ print(get('Dependents',asNamespace('shiny'))$public_methods$register),
+ print(get('ReactiveValues',asNamespace('shiny'))$public_methods$get)
+),file.path(root,'shiny-dependency-functions.txt'))

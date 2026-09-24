@@ -589,8 +589,12 @@
   }
 
   function displayLabel(owner) {
+    // Round only the automatic display; keep the constraint at full precision.
+    var fixed = owner && owner.fixedValue;
+    var fixedLabel = fixed !== null && fixed !== undefined && String(fixed).trim() !== "" && Number.isFinite(Number(fixed))
+      ? String(Number(Number(fixed).toFixed(3))) : String(fixed == null ? "" : fixed);
     var automaticLabel = owner && (owner.equalityLabel || owner.parameterName) ? (owner.equalityLabel || owner.parameterName) :
-      owner && owner.free === false && owner.fixedValue !== null && owner.fixedValue !== undefined ? String(owner.fixedValue) : "";
+      owner && owner.free === false ? fixedLabel : "";
     return String(owner && owner.label ? owner.label : automaticLabel).trim();
   }
 

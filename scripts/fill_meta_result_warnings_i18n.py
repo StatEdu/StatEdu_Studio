@@ -1,0 +1,17 @@
+import json
+from pathlib import Path
+keys=['dependency','leave_one','trimfill','cr2','rho','leave_min','trim_min','title']
+rows={
+'en':['Dependency sensitivity analysis was unavailable: ','Leave-one-study-out analysis was unavailable: ','Trim-and-fill was unavailable: ','Moderator CR2 inference was unavailable: ','The assumed within-study correlation must be from 0 up to, but not including, 1.','Leave-one-study-out analysis requires at least three studies.','Trim-and-fill requires at least three independent study-level effects.','Interpretation and assumptions'],
+'ko':['효과 의존성 민감도 분석을 수행할 수 없습니다: ','연구 단위 순차 제외 분석을 수행할 수 없습니다: ','Trim-and-fill을 수행할 수 없습니다: ','조절효과 CR2 추론을 수행할 수 없습니다: ','가정한 연구 내 상관계수는 0 이상 1 미만이어야 합니다.','연구 단위 순차 제외 분석에는 최소 3개 연구가 필요합니다.','Trim-and-fill에는 최소 3개의 독립적인 연구 수준 효과가 필요합니다.','해석 및 가정 확인'],
+'ja':['効果の依存性に関する感度分析を実行できませんでした：','研究単位の逐次除外分析を実行できませんでした：','Trim-and-fillを実行できませんでした：','調整効果のCR2推論を実行できませんでした：','仮定する研究内相関係数は0以上1未満である必要があります。','研究単位の逐次除外分析には少なくとも3件の研究が必要です。','Trim-and-fillには少なくとも3つの独立した研究レベルの効果が必要です。','解釈と仮定の確認'],
+'zh':['无法进行效应依赖性敏感性分析：','无法进行逐一排除研究分析：','无法进行剪补法分析：','无法进行调节效应 CR2 推断：','假定的研究内相关系数必须大于等于 0 且小于 1。','逐一排除研究分析至少需要三项研究。','剪补法至少需要三个独立的研究水平效应。','解释与假设'],
+'es':['No se pudo realizar el análisis de sensibilidad a la dependencia: ','No se pudo realizar el análisis de exclusión de un estudio a la vez: ','No se pudo realizar trim-and-fill: ','No se pudo realizar la inferencia CR2 del moderador: ','La correlación intraestudio supuesta debe ser mayor o igual que 0 y menor que 1.','El análisis de exclusión de un estudio a la vez requiere al menos tres estudios.','Trim-and-fill requiere al menos tres efectos independientes a nivel de estudio.','Interpretación y supuestos'],
+'fr':['L’analyse de sensibilité à la dépendance n’était pas disponible : ','L’analyse par retrait successif d’une étude n’était pas disponible : ','Trim-and-fill n’était pas disponible : ','L’inférence CR2 du modérateur n’était pas disponible : ','La corrélation intraétude supposée doit être supérieure ou égale à 0 et inférieure à 1.','L’analyse par retrait successif d’une étude nécessite au moins trois études.','Trim-and-fill nécessite au moins trois effets indépendants au niveau des études.','Interprétation et hypothèses'],
+'de':['Die Sensitivitätsanalyse zur Abhängigkeit war nicht verfügbar: ','Die Analyse mit jeweils einer ausgeschlossenen Studie war nicht verfügbar: ','Trim-and-fill war nicht verfügbar: ','Die CR2-Inferenz für den Moderator war nicht verfügbar: ','Die angenommene Korrelation innerhalb einer Studie muss mindestens 0 und kleiner als 1 sein.','Die Analyse mit jeweils einer ausgeschlossenen Studie erfordert mindestens drei Studien.','Trim-and-fill erfordert mindestens drei unabhängige Effekte auf Studienebene.','Interpretation und Annahmen'],
+'vi':['Không thể thực hiện phân tích độ nhạy về tính phụ thuộc: ','Không thể thực hiện phân tích lần lượt loại từng nghiên cứu: ','Không thể thực hiện trim-and-fill: ','Không thể thực hiện suy luận CR2 cho biến điều tiết: ','Tương quan giả định trong nghiên cứu phải lớn hơn hoặc bằng 0 và nhỏ hơn 1.','Phân tích lần lượt loại từng nghiên cứu cần ít nhất ba nghiên cứu.','Trim-and-fill cần ít nhất ba hiệu ứng độc lập ở cấp nghiên cứu.','Diễn giải và giả định'],
+}
+for lang,values in rows.items():
+ p=Path('i18n')/(lang+'.json');obj=json.loads(p.read_text(encoding='utf-8'))
+ obj['translations'].update({'meta.warning.'+k:v for k,v in zip(keys,values)})
+ p.write_text(json.dumps(obj,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

@@ -1,0 +1,27 @@
+Sys.setlocale('LC_CTYPE','English_United States.utf8');Sys.setenv(STATEDU_MODULE_CACHE='false')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules()
+set.seed(920);n<-60;subject<-c(rnorm(n-2,0,2),-30,40)
+d<-data.frame(group=rep(c('Review','Normality'),each=n/2),age=rnorm(n,50,5),pre=10+subject+rnorm(n),post=12+subject+rnorm(n),last=14+subject+rnorm(n))
+d$post[1:6]<-NA_real_
+info<-data.frame(name=names(d),measurement=c('category',rep('continuous',4)))
+r<-prepare_mixed_rm_anova_results(d,group_variable='group',repeated_variables=c('pre','post','last'),covariates='age',variable_info=info,options=list(assumption_check=TRUE,posthoc=FALSE,analysis_population='itt'))
+phrases<-c('Use the fitted LMM as the ITT mixed-model result.','ITT keeps available repeated records through a mixed-model path; complete-case RM ANOVA remains a PP reference.','Normality was flagged in at least one RM cell.')
+stopifnot(nrow(r$anova)>0,nrow(r$mixed_model_coefficients)>0,mixed_rm_normality_issue(r$normality),all(vapply(phrases,function(p)any(grepl(p,c(unlist(r$recommendation),unlist(r$mixed_model_overview)),fixed=TRUE)),logical(1))))
+before<-serialize(r,NULL);captured<-list();failures<-character()
+for(lang in c('en','ko','ja','zh','es','fr','de','vi')) {
+ options(statedu.app_language=lang)
+ expected<-vapply(phrases,function(p)statedu_localized_text(lang,p,mixed_rm_appendix_korean_text(p)),character(1))
+ if(lang!='en'&&any(expected==phrases))failures<-c(failures,paste(lang,'catalog'))
+ html<-as.character(mixed_rm_anova_results_ui(r));doc<-xml2::read_html(html)
+ cells<-xml2::xml_text(xml2::xml_find_all(doc,"//table[@data-result-table-role='appendix']//td"))
+ if(!all(expected[1:2]%in%cells)||!any(grepl(expected[3],cells,fixed=TRUE)))failures<-c(failures,paste(lang,'render'))
+ main<-xml2::xml_text(xml2::xml_find_all(doc,"//table[@data-result-table-role='main']"));stopifnot(length(main)>=2)
+ if(lang=='en')baseline<-main else stopifnot(identical(main,baseline))
+ stopifnot(identical(before,serialize(r,NULL)))
+ probe<-mixed_rm_appendix_table(data.frame(Variable=phrases,Reason=phrases));stopifnot(identical(probe[[1]],phrases))
+ captured[[lang]]<-html
+}
+if(length(failures))stop(paste('ITT with PP reference failures:',paste(failures,collapse=', ')))
+out<-'tmp/mixed-rm-itt-pp-guidance-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+jsonlite::write_json(captured,file.path(out,'captured.json'),auto_unbox=TRUE)
+cat('PASS actual ITT LMM and PP RM ANOVA guidance in eight languages; main/source/user labels preserved\n')

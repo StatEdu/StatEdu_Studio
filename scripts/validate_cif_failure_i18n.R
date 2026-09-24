@@ -1,0 +1,21 @@
+Sys.setlocale('LC_CTYPE','English_United States.utf8');Sys.setenv(STATEDU_MODULE_CACHE='false')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules()
+out<-'tmp/cif-failure-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE);entries<-list()
+d<-read.csv('scripts/fixtures/survival_validation.csv');idx<-which(d$status==1);d$status[idx[seq(1,length(idx),by=2)]]<-2
+result<-prepare_competing_risk_result(d,'time','status',group='sex',rate_times=c(100,250,500))
+stopifnot(!'cif_integrity_failure'%in%survival_stability_review(result,'en')$Code)
+bad<-result;bad$curve$CIF<-.8;bad$cif_integrity<-survival_cif_integrity_table(bad$curve)
+bad$cif_integrity$Group<-rep(c('Review','사용자 <&> %s'),length.out=nrow(bad$cif_integrity))
+for(language in c('en','ko','ja','zh','es','fr','de','vi')){
+ rows<-survival_stability_review(bad,language);rows<-rows[rows$Code=='cif_integrity_failure',,drop=FALSE];stopifnot(nrow(rows)==1)
+ html<-as.character(survival_simple_table(rows,table_language=language));doc<-xml2::read_html(html,encoding='UTF-8')
+ evidence<-trimws(xml2::xml_text(xml2::xml_find_all(doc,'//tbody/tr/td[3]')))
+ for(g in bad$cif_integrity$Group)stopifnot(grepl(g,evidence,fixed=TRUE))
+ stopifnot(identical(survival_stability_evidence_text('cif_integrity_failure','사용자 <&> %s',language),'사용자 <&> %s'))
+ if(language!='en')stopifnot(!grepl('CIF integrity failed for groups:|Do not report the CIF curves',xml2::xml_text(doc)))
+ main<-as.character(survival_simple_table(survival_competing_rate_table(result),table_role='main',table_language='en'))
+ if(language=='en')baseline<-main else stopifnot(identical(main,baseline))
+ if(language=='ja')entries[[1]]<-list(id='failure',title='failure',html=html)
+ cat('PASS:',language,'CIF failure trigger, localized evidence/guidance, group names and English main table\n')
+}
+saveRDS(entries,file.path(out,'entries.rds'))

@@ -1,0 +1,12 @@
+import json,re
+from pathlib import Path
+rows='''Cause-specific collinearity review|原因別の共線性検討|原因别共线性审查|Revisión de colinealidad por causa|Examen de la colinéarité par cause|Ursachenspezifische Kollinearitätsprüfung|Xem xét cộng tuyến theo nguyên nhân
+Fine-Gray design-matrix collinearity review|Fine-Gray計画行列の共線性検討|Fine-Gray设计矩阵共线性审查|Revisión de colinealidad de la matriz de diseño de Fine-Gray|Examen de la colinéarité de la matrice de Fine-Gray|Kollinearitätsprüfung der Fine-Gray-Designmatrix|Xem xét cộng tuyến của ma trận thiết kế Fine-Gray
+Design-matrix condition number: %s. VIF and condition-number thresholds are heuristic screening rules.|計画行列の条件数: %s。VIFと条件数の閾値は経験的なスクリーニング基準です。|设计矩阵条件数：%s。VIF和条件数阈值是经验性筛查规则。|Número de condición de la matriz de diseño: %s. Los umbrales de VIF y del número de condición son reglas heurísticas de detección.|Nombre de condition de la matrice de conception : %s. Les seuils de VIF et du nombre de condition sont des règles heuristiques de dépistage.|Konditionszahl der Designmatrix: %s. Schwellen für VIF und Konditionszahl sind heuristische Prüfregeln.|Số điều kiện của ma trận thiết kế: %s. Ngưỡng VIF và số điều kiện là các quy tắc sàng lọc theo kinh nghiệm.
+Design-matrix condition number: %s. VIF and condition-number thresholds are heuristic screening rules; they do not select or delete covariates automatically.|計画行列の条件数: %s。VIFと条件数の閾値は経験的なスクリーニング基準であり、共変量を自動的に選択・削除しません。|设计矩阵条件数：%s。VIF和条件数阈值是经验性筛查规则，不会自动选择或删除协变量。|Número de condición de la matriz de diseño: %s. Los umbrales de VIF y del número de condición son reglas heurísticas de detección; no seleccionan ni eliminan covariables automáticamente.|Nombre de condition de la matrice de conception : %s. Les seuils de VIF et du nombre de condition sont des règles heuristiques de dépistage ; ils ne sélectionnent ni ne suppriment automatiquement les covariables.|Konditionszahl der Designmatrix: %s. Schwellen für VIF und Konditionszahl sind heuristische Prüfregeln; sie wählen Kovariaten nicht automatisch aus und entfernen sie nicht.|Số điều kiện của ma trận thiết kế: %s. Ngưỡng VIF và số điều kiện là quy tắc sàng lọc theo kinh nghiệm; chúng không tự động chọn hoặc xóa hiệp biến.'''
+for i,lang in enumerate(['ja','zh','es','fr','de','vi'],1):
+ p=Path('i18n')/(lang+'.json');data=json.loads(p.read_text(encoding='utf-8'))
+ for row in rows.splitlines():
+  f=row.split('|');assert len(f)==7
+  data['translations']['analysis.ui.'+re.sub(r'[^a-z0-9]+','_',f[0].lower()).strip('_')]=f[i]
+ p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

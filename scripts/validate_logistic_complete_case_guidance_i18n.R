@@ -1,0 +1,25 @@
+Sys.setlocale('LC_CTYPE','English_United States.utf8');Sys.setenv(STATEDU_MODULE_CACHE='false')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules()
+set.seed(928);d<-data.frame(y=ordered(rep(1:3,each=40)),x=rnorm(120),z=rnorm(120));d$z[81:120]<-NA_real_
+info<-data.frame(name=c('y','x','z'),measurement=c('ordered','continuous','continuous'),var_label=c('Review','Normality','Basis'))
+results<-prepare_logistic_analysis_results(d,'y','x','z',variable_info=info)
+phrases<-c('Hierarchical models were fitted on the complete cases of the final model (listwise across all blocks); all steps share the same N.','Two outcome levels remained in the final complete-case sample; binary logistic regression was used.')
+stopifnot(length(results)==2,all(vapply(results,function(r)r$n==80&&r$method=='Binary logistic regression',logical(1))))
+for(r in results)stopifnot(all(phrases%in%logistic_result_notes(r)))
+before<-serialize(results,NULL);captured<-list();failures<-character()
+for(lang in c('en','ko','ja','zh','es','fr','de','vi')) {
+ options(statedu.app_language=lang);expected<-vapply(phrases,logistic_appendix_text,character(1),language=lang)
+ if(lang!='en'&&any(expected==phrases))failures<-c(failures,paste(lang,'catalog'))
+ html<-as.character(htmltools::renderTags(logistic_results_panel(results,info))$html);doc<-xml2::read_html(html)
+ cells<-xml2::xml_text(xml2::xml_find_all(doc,"//table[@data-result-table-role='appendix']//td"))
+ if(!all(vapply(expected,function(p)any(grepl(p,cells,fixed=TRUE)),logical(1))))failures<-c(failures,paste(lang,'render'))
+ main<-xml2::xml_text(xml2::xml_find_all(doc,"//table[@data-result-table-role='main']"));stopifnot(length(main)>0)
+ if(lang=='en')baseline<-main else stopifnot(identical(main,baseline))
+ stopifnot(identical(before,serialize(results,NULL)))
+ probe<-logistic_appendix_table(data.frame(Variable=phrases,Message=phrases),lang);stopifnot(identical(probe[[1]],phrases))
+ captured[[lang]]<-html
+}
+if(length(failures))stop(paste('Complete-case guidance failures:',paste(failures,collapse=', ')))
+out<-'tmp/logistic-complete-case-guidance-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+jsonlite::write_json(captured,file.path(out,'captured.json'),auto_unbox=TRUE)
+cat('PASS actual two-block complete-case binary fallback in eight languages; common N/main/source/user labels preserved\n')

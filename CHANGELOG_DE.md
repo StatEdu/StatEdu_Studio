@@ -1,5 +1,15 @@
 # Versionsverlauf
 
+## v1.3.1 - Unveröffentlicht — Quellcodevorbereitung
+
+- Versionsprüfung beim Start mit getrennten Free/Pro-Richtlinien und Offline-Cache ergänzt.
+
+- SEM-Score- und Item-Parcel-Funktionen sowie Verbesserungen der multinomialen und ordinalen logistischen Analyse komplexer Stichproben aufgenommen.
+
+- Zahlenlayout, t-Test-Zusammenfassungen, Konfidenzintervall-Kopfzeilen und Speicherordner verbessert; Hinzufügezeit in gesammelten Ergebnissen entfernt.
+
+- Öffentliche Menüs schließen Meta-Analyse und die Messwiederholungs-ANOVA für Behandlungen innerhalb derselben Person aus. Noch kein Installationspaket erstellt oder veröffentlicht.
+
 ## v1.3.0 - 2026-09-20
 
 - Öffentliche CFA-, SEM- und PLS-SEM/PLSc-Modellbearbeitung, Schätzung, Diagnostik sowie unterstützte Bootstrap-/Gruppenvergleiche wurden ergänzt. Überlebenszeitanalyse bietet Kaplan–Meier, RMST, Cox und unterstützte konkurrierende Risiken.

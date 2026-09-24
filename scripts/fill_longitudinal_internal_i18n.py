@@ -1,0 +1,16 @@
+import json
+from pathlib import Path
+keys=['duplicate','variance','correlation','coefficient_variance','mmrm','comparison','singular']
+rows={
+'en':['duplicate subject/time','invalid variance','unestimable correlation','Invalid adjusted GEE coefficient variances.','Repeated LMM requires the mmrm package.','No comparable coefficient standard errors were returned.','GEE working correlation is singular or numerically non-positive-definite; estimates were not accepted. Check within-subject outcome variation and repeated measurements.'],
+'ko':['대상자·시점 조합이 중복됩니다.','분산이 유효하지 않습니다.','상관을 추정할 수 없습니다.','보정 GEE 계수의 분산이 유효하지 않습니다.','반복측정 LMM에는 mmrm 패키지가 필요합니다.','비교 가능한 계수 표준오차가 반환되지 않았습니다.','GEE 작업상관행렬이 특이행렬이거나 수치적으로 양의 정부호가 아니어서 추정값을 채택하지 않았습니다. 대상자 내 결과 변동과 반복측정을 확인하세요.'],
+'ja':['対象者と時点の組合せが重複しています。','分散が無効です。','相関を推定できません。','補正GEEの係数分散が無効です。','反復測定LMMにはmmrmパッケージが必要です。','比較可能な係数の標準誤差が返されませんでした。','GEEの作業相関行列が特異または数値的に正定値でないため、推定値を採用しませんでした。対象者内のアウトカムの変動と反復測定を確認してください。'],
+'zh':['受试者与时间组合重复。','方差无效。','无法估计相关性。','校正 GEE 的系数方差无效。','重复测量 LMM 需要 mmrm 软件包。','未返回可比较的系数标准误。','GEE 工作相关矩阵奇异或数值上非正定，未接受估计值。请检查受试者内结局变异和重复测量。'],
+'es':['Combinación sujeto/tiempo duplicada.','Varianza no válida.','No se puede estimar la correlación.','Varianzas de coeficientes de GEE ajustado no válidas.','LMM de medidas repetidas requiere el paquete mmrm.','No se devolvieron errores estándar de coeficientes comparables.','La correlación de trabajo GEE es singular o numéricamente no definida positiva; no se aceptaron las estimaciones. Revise la variación del resultado dentro de los sujetos y las medidas repetidas.'],
+'fr':['Paire sujet/temps dupliquée.','Variance non valide.','Corrélation non estimable.','Variances des coefficients de GEE ajusté non valides.','Le LMM à mesures répétées nécessite le package mmrm.','Aucune erreur standard de coefficient comparable n’a été renvoyée.','La corrélation de travail GEE est singulière ou numériquement non définie positive ; les estimations ont été rejetées. Vérifiez la variation du résultat intra-sujet et les mesures répétées.'],
+'de':['Doppeltes Personen-Zeit-Paar.','Ungültige Varianz.','Korrelation nicht schätzbar.','Ungültige Koeffizientenvarianzen des angepassten GEE.','LMM für Messwiederholungen erfordert das Paket mmrm.','Es wurden keine vergleichbaren Koeffizientenstandardfehler zurückgegeben.','Die GEE-Arbeitskorrelation ist singulär oder numerisch nicht positiv definit; die Schätzwerte wurden verworfen. Prüfen Sie die Variation der Zielvariable innerhalb der Personen und die Messwiederholungen.'],
+'vi':['Cặp đối tượng/thời điểm bị trùng lặp.','Phương sai không hợp lệ.','Không thể ước lượng tương quan.','Phương sai hệ số GEE hiệu chỉnh không hợp lệ.','LMM đo lặp yêu cầu gói mmrm.','Không có sai số chuẩn hệ số có thể so sánh được trả về.','Tương quan làm việc GEE suy biến hoặc không xác định dương về mặt số học; các ước lượng không được chấp nhận. Kiểm tra biến thiên kết quả trong đối tượng và các phép đo lặp.']}
+for lang,values in rows.items():
+ p=Path('i18n')/(lang+'.json');obj=json.loads(p.read_text(encoding='utf-8'))
+ obj['translations'].update({'longitudinal.internal_error.'+k:v for k,v in zip(keys,values)})
+ p.write_text(json.dumps(obj,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

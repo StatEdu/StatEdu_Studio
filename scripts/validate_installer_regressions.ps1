@@ -262,6 +262,14 @@ $regressions = @(
     Path = "scripts\validate_structural_bootstrap_performance.R"
   },
   [pscustomobject]@{
+    Label = "MLR bootstrap scheduling equivalence and recovery"
+    Path = "scripts\validate_sem_mlr_fixed_index.R"
+  },
+  [pscustomobject]@{
+    Label = "Lavaan metadata cache compatibility and restoration"
+    Path = "scripts\validate_sem_metadata_cache.R"
+  },
+  [pscustomobject]@{
     Label = "Mediation and moderation calculations"
     Path = "scripts\validate_mediation_moderation.R"
   },

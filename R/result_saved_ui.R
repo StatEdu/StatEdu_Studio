@@ -50,6 +50,7 @@ saved_results_app_version <- function(version_file = "VERSION") {
   if (nzchar(version)) {
     return(version)
   }
+  if(missing(version_file) && exists("read_app_config",mode="function"))return(read_app_config()$version)
   if (file.exists(version_file)) {
     version <- trimws(readLines(version_file, warn = FALSE)[1])
     if (nzchar(version)) {
@@ -1253,7 +1254,6 @@ saved_result_entry_ui <- function(entry, index, total = index, language = "ko") 
         span(sprintf("%02d", index), class = "saved-result-index"),
         span(entry$title)
       ),
-      div(entry$saved_at, class = "saved-result-time"),
       div(class = "saved-result-entry-actions",
         control("up", statedu_t("result.management.move_up", language), index == 1L),
         control("down", statedu_t("result.management.move_down", language), index == total),
@@ -1323,7 +1323,6 @@ result_collection_content <- function(entries) {
       tags$section(
         class = "result-collection-export-entry",
         tags$h2(sprintf("%02d. %s", index, entry$title)),
-        tags$div(sprintf("Added to Result: %s", entry$saved_at), class = "saved-results-meta"),
         htmltools::HTML(result_entry_body_html(entry))
       )
     })
@@ -1458,6 +1457,15 @@ saved_result_sheet_document <- function(title, content, css_path = file.path("ww
   pending <- list()
   pages <- list()
   orientation <- "portrait"
+  page_group <- ""
+  # Consecutive supplementary fit families share a landscape page. Scope the
+  # group to their source container so separate accumulated entries never merge.
+  fit_page_group <- function(sheet) {
+    family <- xml2::xml_find_first(sheet, "ancestor::*[contains(concat(' ',normalize-space(@class),' '),' structural-additional-fit-family ')][1]")
+    if (inherits(family, "xml_missing")) return("")
+    if (!grepl("landscape-table-panel", xml2::xml_attr(family, "class"), fixed = TRUE)) return("")
+    xml2::xml_path(xml2::xml_parent(family))
+  }
   wrap_fragment <- function(sheet) {
     node <- sheet
     fragment <- htmltools::HTML(result_node_html(sheet))
@@ -1491,10 +1499,15 @@ saved_result_sheet_document <- function(title, content, css_path = file.path("ww
       } else fragments[[length(fragments) + 1L]] <- wrap_fragment(sheet)
       next
     }
-    flush_page()
-    orientation <- xml2::xml_attr(sheet, "data-result-table-orientation")
-    if (is.na(orientation) || !orientation %in% c("portrait", "landscape")) orientation <- "portrait"
-    fragments <- c(pending, list(wrap_fragment(sheet)))
+    next_orientation <- xml2::xml_attr(sheet, "data-result-table-orientation")
+    if (is.na(next_orientation) || !next_orientation %in% c("portrait", "landscape")) next_orientation <- "portrait"
+    next_group <- fit_page_group(sheet)
+    share_page <- nzchar(next_group) && identical(next_group, page_group) &&
+      identical(orientation, "landscape") && identical(next_orientation, "landscape")
+    if (!share_page) flush_page()
+    orientation <- next_orientation
+    page_group <- next_group
+    fragments <- c(fragments, pending, list(wrap_fragment(sheet)))
     pending <- list()
   }
   fragments <- c(fragments, pending)
@@ -1515,6 +1528,7 @@ saved_result_sheet_document <- function(title, content, css_path = file.path("ww
     ".statedu-output-page [data-result-table-sheet='true']{page:auto!important;break-before:auto!important;page-break-before:auto!important;break-after:auto!important;page-break-after:auto!important;overflow:visible!important;}",
     ".statedu-output-page .regression-result-panel,.statedu-output-page .result-section{page:auto!important;break-before:auto!important;page-break-before:auto!important;break-after:auto!important;page-break-after:auto!important;}",
     ".statedu-output-page .statedu-output-content{display:block;}",
+    ".statedu-output-page .structural-additional-fit-family{page:auto!important;break-before:auto!important;break-after:auto!important;margin-bottom:5mm!important;}",
     ".statedu-output-page .statedu-output-content div{overflow:visible!important;}",
     ".statedu-output-page .statedu-output-content div{border:0!important;border-radius:0!important;box-shadow:none!important;}",
     ".statedu-output-page .regression-results,.statedu-output-page .regression-result-panel,.statedu-output-page .result-section{width:100%!important;min-width:0!important;max-width:none!important;box-sizing:border-box;padding:0!important;}",
@@ -1917,7 +1931,6 @@ result_collection_index_table <- function(entries) {
   data.frame(
     No = seq_along(entries),
     Result = vapply(entries, function(entry) entry$title, character(1)),
-    Added = vapply(entries, function(entry) entry$saved_at, character(1)),
     check.names = FALSE
   )
 }

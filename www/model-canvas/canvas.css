@@ -1294,6 +1294,39 @@
   width: 238px;
 }
 
+.custom-model-score-shortcut {
+  position: absolute;
+  z-index: 30;
+  pointer-events: auto;
+  max-width: 230px;
+  padding: 5px 9px;
+  border: 1px solid #2563eb;
+  border-radius: 5px;
+  background: #fff;
+  color: #174ea6;
+  font: 12px/1.4 Arial, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 2px 5px #0002;
+}
+.custom-model-score-shortcut:hover { background: #eff6ff; }
+.custom-model-score-shortcut:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+@media print { .custom-model-score-shortcut { display: none !important; } }
+.canvas-score-panel {
+  position: fixed; z-index: 1050; top: 70px; right: 18px;
+  width: min(620px, calc(100vw - 340px)); min-width: 300px;
+  max-height: calc(100vh - 90px); overflow-y: auto;
+  padding: 18px; background: white; border: 1px solid #b8c8d6;
+  border-radius: 8px; box-shadow: 0 5px 24px #0003;
+}
+.canvas-score-panel h4 { margin-top: 0; color: #123c60; }
+.canvas-score-panel .shiny-input-container { width: 100% !important; }
+.canvas-score-panel .analysis-transfer-listbox { width: 100% !important; min-width: 0 !important; max-width: none !important; }
+.canvas-score-item-drop { border: 1px dashed #6092bb; border-radius: 6px; padding: 10px; margin-bottom: 8px; background: #f5faff; }
+.canvas-score-panel-footer { position: sticky; bottom: -18px; padding: 12px 0; background: white; text-align: right; border-top: 1px solid #ddd; }
+.canvas-score-panel-footer .btn + .btn { margin-left: 8px; }
+@media print { .canvas-score-panel { display: none !important; } }
+
 .custom-model-node {
   position: absolute;
   z-index: 2;
@@ -1713,6 +1746,10 @@
 }
 
 .structural-selection-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
   margin-bottom: 8px;
   color: #1e3a8a;
   font-weight: 700;
@@ -2915,6 +2952,7 @@
 .custom-model-sidebar-save .analysis-save-action .analysis-save-button-add_result {
   width: calc((100% - 8px) / 2) !important;
 }
+.structural-selection-summary .structural-score-editor { font-size: 10px; padding: 4px 5px; white-space: normal; max-width: 65%; }
 .custom-model-sidebar-actions .analysis-primary-actions {
   width: 100% !important;
   max-width: 100% !important;

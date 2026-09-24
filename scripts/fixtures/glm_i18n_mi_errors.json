@@ -1,0 +1,10 @@
+{
+  "Standard-error methods differed across imputed datasets; MI pooling was stopped.": "analysis.glm_error.mi_se",
+  "Family or link differed across imputed datasets; MI pooling was stopped.": "analysis.glm_error.mi_family",
+  "Analyzed N or residual df differed across imputed datasets; MI pooling was stopped.": "analysis.glm_error.mi_n",
+  "Coefficient term signatures differed across imputed datasets; MI pooling was stopped.": "analysis.glm_error.mi_terms",
+  "Complete-data residual df was not supplied for MI pooling.": "analysis.glm_error.mi_df",
+  "MI pooling requires all %s fitted coefficient tables; partial pooling is not allowed.": "analysis.glm_error.mi_tables",
+  "Coefficient term signatures differed across imputed datasets (imputation(s): %s); intersection pooling is not allowed.": "analysis.glm_error.mi_term_details",
+  "MI model fitting failed; partial pooling is not allowed. %s": "analysis.glm_error.mi_fit"
+}

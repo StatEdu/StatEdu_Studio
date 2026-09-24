@@ -5,7 +5,9 @@ load_app_packages(check = FALSE)
 source_app_modules()
 
 Sys.setenv(STATEDU_PUBLIC_RELEASE = "1", STATEDU_EDITION = "free")
-stopifnot(read_app_config()$version == "1.3.0")
+public_version <- trimws(readLines("VERSION", warn = FALSE)[[1]])
+stopifnot(identical(read_app_config()$version, public_version),
+  utils::compareVersion(public_version, "1.3.0") >= 0L)
 for (format in c("pdf", "word", "excel")) {
   stopifnot(analysis_save_feature_visible(format), analysis_save_feature_enabled(format),
     statedu_feature_enabled(paste0(format, "_export")))
@@ -30,4 +32,4 @@ read_app_config <- original_config
 Sys.setenv(STATEDU_PUBLIC_RELEASE = "0", STATEDU_EDITION = "development")
 stopifnot(enabled_analysis_tabs()[["meta"]], enabled_analysis_tabs()[["one_group_rm_anova"]],
   analysis_document_export_available(), analysis_figure_dpi() == 600L)
-cat("PASS: 1.3.0 public export policy, Free DPI, eight-language menu exclusions, development retention and 1.2.x compatibility.\n")
+cat("PASS:", public_version, "public export policy, Free DPI, eight-language menu exclusions, development retention and 1.2.x compatibility.\n")

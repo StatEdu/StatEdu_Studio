@@ -602,10 +602,14 @@ Complex-sample analysis uses `survey`-based design objects to account for strati
 
 ### Complex Samples Logistic Regression
 
-- Survey-weighted logistic regression for binary dependent variables.
+- Survey-weighted binary, multinomial and ordinal logistic regression. Binary remains the default model selection.
+- Multinomial models use `svyVGAM::svy_vglm` with `VGAM::multinomial`; choose the variable's reference setting or the first/last category. Each non-reference outcome has its own comparison table.
+- Ordinal models use the proportional-odds model in `survey::svyolr`. Category metadata order takes precedence, followed by factor levels or value order; the order can be reversed. Odds ratios describe higher versus lower cumulative categories. Thresholds appear in a separate appendix. The optional parallel-slopes diagnostic fits stacked cumulative binary logits with the original survey IDs/replicate weights, retaining cross-threshold covariance, and tests equality of slopes using a design-based Wald F test. This is not the ordinary Brant or likelihood-ratio test. Nonestimable diagnostics are explicitly reported; a nonsignificant result does not prove proportional odds.
 - Coefficients, odds ratios, confidence intervals, and Wald tests.
-- Descriptive pseudo R-squared fit indices.
+- Multinomial/ordinal inference uses design df for coefficient Wald F tests and t confidence intervals, plus a joint Wald F test of all slopes. Taylor and replicate-weight designs are supported.
+- Descriptive pseudo R-squared fit indices remain available for binary models.
 - Weighted N, design df, and model-fit summaries.
+- Multinomial/ordinal models require at least three observed outcome categories. Empty categories after complete-case filtering and rank-deficient predictor matrices are rejected.
 
 
 ## CFA and Structural Equation Models: 1.2.4-dev

@@ -1,0 +1,32 @@
+Sys.setlocale('LC_CTYPE','English_United States.utf8');Sys.setenv(STATEDU_MODULE_CACHE='false')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules()
+set.seed(924)
+y<-cbind(pre=c(rnorm(30,0,.1),rnorm(30,0,8)),post=c(rnorm(30,1,.1),rnorm(30,1,8)),last=c(rnorm(30,2,.1),rnorm(30,2,8)))
+d<-data.frame(group=rep(c('Review','Normality'),each=30),y)
+info<-data.frame(name=names(d),measurement=c('category',rep('continuous',3)))
+r<-prepare_mixed_rm_anova_results(d,group_variable='group',repeated_variables=colnames(y),variable_info=info,options=list(assumption_check=TRUE,posthoc=FALSE))
+stopifnot(any(grepl('Levene: potential violation',r$recommendation$Reason,fixed=TRUE)))
+# Exercise the diagnostic helper's untestable branch directly: a singleton group
+# is rejected earlier by the full analysis and is not claimed as a full UI run.
+untestable<-mixed_rm_levene_by_time(y[1:3,],factor(c('A','A','B')))
+stopifnot(untestable$Result=='Not testable')
+probe<-data.frame(Reason=paste0('Levene: ',tolower(untestable$Result),' (',untestable$Detail,')'))
+before<-serialize(list(r,untestable,probe),NULL);records<-list()
+for(lang in c('en','ko','ja','zh','es','fr','de','vi')) {
+ options(statedu.app_language=lang)
+ status<-vapply(c('Potential violation','Not testable'),function(p)if(lang=='ko')mixed_rm_appendix_korean_text(p)else result_appendix_ui_text(tolower(p),lang),character(1))
+ html<-as.character(mixed_rm_anova_results_ui(r));doc<-xml2::read_html(html)
+ cells<-xml2::xml_text(xml2::xml_find_all(doc,"//table[@data-result-table-role='appendix']//td"))
+ expected<-paste0('Levene: ',if(lang=='en')'potential violation'else status[1])
+ stopifnot(any(grepl(expected,cells,fixed=TRUE)))
+ localized<-mixed_rm_appendix_table(probe)[[1]]
+ stopifnot(grepl(paste0('Levene: ',if(lang=='en')'not testable'else status[2]),localized,fixed=TRUE))
+ if(lang!='en')stopifnot(!grepl('potential violation|not testable',paste(c(cells,localized),collapse=' ')))
+ main<-xml2::xml_text(xml2::xml_find_all(doc,"//table[@data-result-table-role='main']"));stopifnot(length(main)>0)
+ if(lang=='en')baseline<-main else stopifnot(identical(main,baseline))
+ stopifnot(identical(before,serialize(list(r,untestable,probe),NULL)))
+ records[[lang]]<-data.frame(language=lang,violation=expected,untestable=localized)
+}
+out<-'tmp/mixed-rm-levene-remaining-review';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+write.csv(do.call(rbind,records),file.path(out,'review.csv'),row.names=FALSE,fileEncoding='UTF-8')
+cat('PASS actual Levene violation panel and direct untestable diagnostic helper across eight languages; no product change needed\n')

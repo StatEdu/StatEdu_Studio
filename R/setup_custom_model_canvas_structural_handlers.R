@@ -47,6 +47,8 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
     run_input <- paste0(prefix, "_canvas_run_request")
     confirm_input <- paste0(prefix, "_canvas_run_confirm")
     fit_result <- analysis_scope_result_val(NULL)
+    register_canvas_score_editor(input, output, session, dataset_fn, prefix, canvas_input,
+      analysis_type, fit_result, mark_settings_dirty, app_language_fn)
     pls_bootstrap_job <- analysis_scope_result_val(NULL, job = TRUE)
     pls_bootstrap_progress_mtime <- reactiveVal(NA_real_)
     pls_bootstrap_progress_cache <- reactiveVal(NULL)

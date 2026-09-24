@@ -1,0 +1,27 @@
+Sys.setlocale('LC_CTYPE','English_United States.utf8');Sys.setenv(STATEDU_MODULE_CACHE='false')
+source('R/app_bootstrap.R',encoding='UTF-8');load_app_packages(check=FALSE);source_app_modules()
+d<-read.csv('scripts/fixtures/survival_validation.csv')
+r<-prepare_cox_analysis_result(d,'time','status',c('age','sex'),event_value='1')
+tab<-survival_cox_overview_table(r);stopifnot(nrow(tab)==21L)
+out<-'tmp/survival-cox-overview-i18n';dir.create(out,recursive=TRUE,showWarnings=FALSE)
+before<-serialize(tab,NULL);missing<-list();captured<-list()
+for(lang in c('en','ko','ja','zh','es','fr','de','vi')) {
+ options(statedu.app_language=lang)
+ translated<-survival_appendix_localize_table(tab,lang)
+ same_spelling<-if(lang=='fr')c('Variance','Package')else character()
+ absent<-which(tab$Item==translated[[1]] & !tab$Item%in%same_spelling)
+ if(lang!='en' && length(absent))for(i in absent)missing[[length(missing)+1L]]<-data.frame(language=lang,english=tab$Item[i])
+ numeric_rows<-tab$Item%in%c('Source rows','Analysis rows','Excluded rows','Events','Parameters','Events / parameter','LR chi-square (df)','LR p','Concordance (95% CI)','Package')
+ stopifnot(identical(tab$Value[numeric_rows],translated[[2]][numeric_rows]),identical(before,serialize(tab,NULL)))
+ appendix<-survival_simple_table(tab,table_language=lang)
+ main<-survival_simple_table(tab,table_role='main',table_language='en')
+ main_text<-xml2::xml_text(xml2::read_html(as.character(main)))
+ if(lang=='en')baseline<-main_text else stopifnot(identical(main_text,baseline))
+ captured[[lang]]<-as.character(tagList(appendix,main))
+}
+if(length(missing)) {
+ missing<-unique(do.call(rbind,missing));write.csv(missing,file.path(out,'missing.csv'),row.names=FALSE,fileEncoding='UTF-8')
+ cat(paste(unique(missing$english),collapse='\n'),'\n');stop('Untranslated Cox overview labels',call.=FALSE)
+}
+jsonlite::write_json(captured,file.path(out,'captured.json'),auto_unbox=TRUE)
+cat('PASS actual Cox overview in eight languages; numerical values, package version, source table and English main rendering preserved\n')

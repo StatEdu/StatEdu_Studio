@@ -1,0 +1,18 @@
+import json
+from pathlib import Path
+keys=['poisson_reason','nb_label','nb_reason','decision','zero_ratio','zero_screen','zero_clear','poisson_aic','poisson_bic','nb_aic','nb_bic']
+rows={
+'en':['Poisson dispersion did not exceed the prespecified screening threshold.','Negative binomial / log','Poisson overdispersion exceeded the prespecified screening threshold and negative binomial fit was available.','Count decision','Zero-inflation ratio','Zero-inflation screen','No excess-zero flag by the simple Poisson zero screen.','Poisson screening AIC','Poisson screening BIC','Negative binomial screening AIC','Negative binomial screening BIC'],
+'ko':['Poisson 산포가 사전에 지정한 선별 기준을 초과하지 않았습니다.','음이항 / log','Poisson 과산포가 사전에 지정한 선별 기준을 초과했고 음이항 모형 적합이 가능했습니다.','카운트 분포 판정','영과잉 비율','영과잉 선별','단순 Poisson 영값 선별에서 영값 과다 징후가 없었습니다.','Poisson 선별 AIC','Poisson 선별 BIC','음이항 선별 AIC','음이항 선별 BIC'],
+'ja':['Poissonの分散は事前に指定したスクリーニング閾値を超えませんでした。','負の二項 / log','Poissonの過分散が事前に指定したスクリーニング閾値を超え、負の二項モデルを適合できました。','カウント分布の判定','ゼロ過剰比','ゼロ過剰のスクリーニング','単純なPoissonのゼロ値スクリーニングではゼロ過剰の兆候はありませんでした。','PoissonスクリーニングAIC','PoissonスクリーニングBIC','負の二項スクリーニングAIC','負の二項スクリーニングBIC'],
+'zh':['Poisson 离散程度未超过预先指定的筛查阈值。','负二项 / log','Poisson 过度离散超过预先指定的筛查阈值，且负二项模型可成功拟合。','计数分布判定','零膨胀比率','零膨胀筛查','简单 Poisson 零值筛查未提示零值过多。','Poisson 筛查 AIC','Poisson 筛查 BIC','负二项筛查 AIC','负二项筛查 BIC'],
+'es':['La dispersión de Poisson no superó el umbral de evaluación preespecificado.','Binomial negativa / log','La sobredispersión de Poisson superó el umbral de evaluación preespecificado y se pudo ajustar un modelo binomial negativo.','Decisión sobre la distribución de conteo','Razón de inflación de ceros','Evaluación de inflación de ceros','La evaluación simple de ceros de Poisson no señaló exceso de ceros.','AIC de evaluación de Poisson','BIC de evaluación de Poisson','AIC de evaluación binomial negativa','BIC de evaluación binomial negativa'],
+'fr':['La dispersion de Poisson n’a pas dépassé le seuil de dépistage prédéfini.','Binomiale négative / log','La surdispersion de Poisson a dépassé le seuil de dépistage prédéfini et un ajustement binomial négatif était disponible.','Décision sur la distribution de comptage','Rapport d’inflation de zéros','Dépistage de l’inflation de zéros','Le dépistage simple des zéros de Poisson n’a pas signalé d’excès de zéros.','AIC de dépistage de Poisson','BIC de dépistage de Poisson','AIC de dépistage binomial négatif','BIC de dépistage binomial négatif'],
+'de':['Die Poisson-Dispersion überschritt den vorab festgelegten Prüfgrenzwert nicht.','Negative Binomialverteilung / log','Die Poisson-Überdispersion überschritt den vorab festgelegten Prüfgrenzwert und ein negatives Binomialmodell konnte angepasst werden.','Entscheidung zur Zählverteilung','Nullinflationsverhältnis','Prüfung auf Nullinflation','Die einfache Poisson-Nullwertprüfung zeigte keinen Nullwertüberschuss an.','Poisson-Prüf-AIC','Poisson-Prüf-BIC','Negativ-Binomial-Prüf-AIC','Negativ-Binomial-Prüf-BIC'],
+'vi':['Độ phân tán Poisson không vượt ngưỡng sàng lọc đã định trước.','Nhị thức âm / log','Độ phân tán quá mức Poisson vượt ngưỡng sàng lọc đã định trước và có thể khớp mô hình nhị thức âm.','Quyết định phân phối đếm','Tỷ số lạm phát số không','Sàng lọc lạm phát số không','Sàng lọc số không Poisson đơn giản không báo hiệu dư thừa số không.','AIC sàng lọc Poisson','BIC sàng lọc Poisson','AIC sàng lọc nhị thức âm','BIC sàng lọc nhị thức âm'],
+}
+for lang,values in rows.items():
+ assert len(values)==len(keys)
+ p=Path('i18n')/(lang+'.json');obj=json.loads(p.read_text(encoding='utf-8'))
+ obj['translations'].update({'longitudinal.auto_count.'+k:v for k,v in zip(keys,values)})
+ p.write_text(json.dumps(obj,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

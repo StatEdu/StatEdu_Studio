@@ -1,0 +1,14 @@
+[
+  "Item analysis",
+  "Corrected item-total correlation",
+  "Item-total correlation",
+  "Cronbach's alpha if item deleted",
+  "Pearson omega if item deleted",
+  "Skewness and kurtosis are reported for the normality option.",
+  "Item-deleted columns show Cronbach's alpha and Pearson omega after removing each item.",
+  "Corrected item-total correlation uses the total score excluding the item; item-total correlation uses the full total score.",
+  "A dash (-) indicates that the coefficient could not be estimated for that item-deleted model.",
+  "alpha = Cronbach's alpha or ordinal alpha",
+  "omega = Pearson omega or ordinal omega",
+  "r = correlation"
+]

@@ -1,0 +1,6 @@
+[
+  "Exposure / offset",
+  "Poisson overdispersion exceeded the prespecified screening threshold of 1.5; negative binomial GLM was fitted.",
+  "Poisson overdispersion exceeded the prespecified screening threshold of 1.5, but negative binomial GLM did not converge; Poisson GLM was retained.",
+  "Poisson family was prespecified and held fixed across all imputed datasets."
+]

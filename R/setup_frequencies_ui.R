@@ -10,7 +10,7 @@ frequencies_setup_state <- function(
   table_summary = FALSE,
   stat_min_max = TRUE,
   stat_skew_kurtosis = TRUE,
-  stat_median_iqr = TRUE,
+  stat_median_iqr = FALSE,
   plot_pie = FALSE,
   plot_bar = FALSE,
   plot_histogram = FALSE,
