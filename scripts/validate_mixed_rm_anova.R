@@ -507,7 +507,7 @@ stopifnot(grepl("셀 수준 Shapiro-Wilk 검정에서 p &lt; .05가 나타나지
 stopifnot(grepl("반복 결과를 연속형 가우시안 변수로 처리하며, 혼합모형은 불균형 반복측정 기록을 다룹니다.", html, fixed = TRUE))
 # Group-adjusted residual covariance satisfies sphericity for this fixture.
 stopifnot(grepl("구형성: 충족", html, fixed = TRUE))
-stopifnot(grepl("p 열: Sphericity assumed", html, fixed = TRUE))
+stopifnot(grepl("p 열: 구형성 가정", html, fixed = TRUE))
 stopifnot(grepl("Levene: 충족", html, fixed = TRUE))
 stopifnot(!grepl("Use the correction decision shown in the ANOVA table.", html, fixed = TRUE))
 stopifnot(!grepl("Cell-level Shapiro-Wilk checks did not flag p &lt; .05.", html, fixed = TRUE))

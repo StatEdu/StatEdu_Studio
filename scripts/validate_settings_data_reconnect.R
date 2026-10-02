@@ -7,6 +7,12 @@ root <- tempfile('settings-reconnect-'); dir.create(root)
 source_path <- file.path(root, 'uploaded.csv')
 data <- data.frame(group = rep(1:2, 20), x = 1:40, y = 1:40 + sin(1:40))
 write.csv(data, source_path, row.names = FALSE)
+upload_path <- file.path(root, 'temporary-upload.csv')
+file.copy(source_path, upload_path)
+stopifnot(identical(settings_data_source_path(list(path = upload_path, original_path = source_path)),
+                    normalizePath(source_path, winslash = '/')),
+          identical(settings_data_source_path(list(path = upload_path, original_path = file.path(root, 'missing.csv'))),
+                    normalizePath(upload_path, winslash = '/')))
 original <- readBin(source_path, 'raw', n = file.info(source_path)$size)
 settings <- list(data_file = 'uploaded.csv', data_file_path = source_path,
   data_file_options = list(csv_header = TRUE), selected_variables = names(data),

@@ -258,7 +258,9 @@ log_data <- data.frame(x = rnorm(140), group = factor(rep(c("A", "B"), 70)))
 log_data$y <- factor(rbinom(140, 1, plogis(-0.4 + 0.7 * log_data$x + ifelse(log_data$group == "B", 0.5, 0))))
 log_info <- make_info(c("y", "x", "group"), c("binary", "continuous", "binary"))
 log_app <- prepare_logistic_analysis_results(log_data, "y", c("x", "group"), variable_info = log_info)[[1]]
-log_ref <- summary(stats::glm(y ~ x + group, data = log_data, family = binomial()))$coefficients
+# Match the app's stricter IRLS convergence, including covariance stabilization.
+log_ref <- summary(stats::glm(y ~ x + group, data = log_data, family = binomial(),
+  control = stats::glm.control(epsilon = 1e-14, maxit = 100)))$coefficients
 log_cmp <- compare_coef_table(log_app$coef_table$Term, log_app$coef_table$B, log_app$coef_table$SE, rownames(log_ref), log_ref[, "Estimate"], log_ref[, "Std. Error"])
 add_row("Logistic Regression", "Binary logistic", 0, 0, "max |B diff|", log_cmp$b, 1e-10)
 add_row("Logistic Regression", "Binary logistic", 0, 0, "max |SE diff|", log_cmp$se, 1e-10)
@@ -471,7 +473,10 @@ gee_app <- prepare_longitudinal_analysis_result(
   data = ohi, outcome = "resp", id = "id", time = "age", predictors = "smoke",
   model_type = "gee", family = "binomial", corstr = "exchangeable", variable_info = ohi_info
 )[[1]]
-gee_ref <- coef(summary(geepack::geeglm(resp ~ age + smoke, id = id, waves = age, data = ohi, family = stats::binomial(), corstr = "exchangeable")))
+ohi <- ohi[order(ohi$id, ohi$age), , drop = FALSE]
+gee_ref <- coef(summary(geepack::geeglm(resp ~ age + smoke, id = id, waves = age,
+  data = ohi, family = stats::binomial(), corstr = "exchangeable",
+  control = geepack::geese.control(epsilon = 1e-10, maxit = 100))))
 gee_cmp <- compare_coef_table(gee_app$coef_table$Term, gee_app$coef_table$B, gee_app$coef_table$SE, rownames(gee_ref), gee_ref[, "Estimate"], gee_ref[, "Std.err"])
 add_row("Longitudinal / Panel", "GEE binomial", 0, 0, "max |B diff|", gee_cmp$b, 1e-10)
 add_row("Longitudinal / Panel", "GEE binomial", 0, 0, "max |SE diff|", gee_cmp$se, 1e-10)

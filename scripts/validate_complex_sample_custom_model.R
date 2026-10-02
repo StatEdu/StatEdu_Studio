@@ -4,12 +4,13 @@ script_path <- if (length(file_arg)) sub("^--file=", "", file_arg[[1]]) else "sc
 repo_root <- normalizePath(file.path(dirname(script_path), ".."), winslash = "/", mustWork = FALSE)
 if (!file.exists(file.path(repo_root, "R", "app_bootstrap.R"))) repo_root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
 setwd(repo_root)
-invisible(Sys.setlocale("LC_CTYPE", "English_United States.utf8"))
+invisible(Sys.setlocale("LC_CTYPE", if (.Platform$OS.type == "windows") "English_United States.utf8" else ""))
 
 library(shiny)
 library(survey)
 `%||%` <- function(x, y) if (is.null(x)) y else x
 source("R/labels.R", encoding = "UTF-8")
+source("R/utils.R", encoding = "UTF-8")
 source("R/result_table_ui.R", encoding = "UTF-8")
 source("R/setup_custom_model_canvas_snapshot.R", encoding = "UTF-8")
 source("R/setup_complex_sample_ui.R", encoding = "UTF-8")
