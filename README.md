@@ -1,10 +1,10 @@
 # **StatEdu Studio**
 
-Development source version: **1.3.1-dev**. See [developer release notes](docs/RELEASE_1_3_1_DEV_20260920.md).
+This branch ports the **1.3.1 public release** to macOS. See the [Mac build instructions](docs/MACOS_BUILD_KO.md) and [validation report](docs/MACOS_VALIDATION_1_3_1_KO.md).
 
 **StatEdu Studio** is a local Shiny application for assumption-guided statistical analysis and publication-ready result tables.
 
-The app runs on the user's own Windows PC and opens in a local browser session. Data are analyzed locally and are not sent to an external server.
+Windows uses a local browser session; macOS uses a desktop application with bundled R. Data are analyzed locally and are not sent to an external server.
 
 All statistical analyses use CRAN packages only.
 
@@ -12,10 +12,9 @@ Version 1.3.0 adds CFA, SEM and PLS-SEM/PLSc to the public analysis scope and pr
 
 ## Current Version
 
-Current public version: `1.3.0`
+Public source baseline: `1.3.1` (`v1.3.1`, `782ce64`). The Mac application also reports `1.3.1` and uses public menus. Meta-analysis and within-subject treatment repeated-measures ANOVA are excluded.
 
-Next public version: `1.3.1` — source preparation only; no new installer has been built or published. See [1.3.1 scope](docs/RELEASE_1_3_1_PREPARATION_KO.md). Meta-analysis and within-subject treatment repeated-measures ANOVA remain excluded from the public menus.
-
+Mac execution, analysis and export checks have passed. Developer ID signing and Apple notarization still require release credentials before general distribution.
 
 Version 1.3.0 adds public PDF, Word and Excel result saving and incorporates result-table, model-canvas and validation-page improvements. Meta-analysis and within-subject treatment repeated-measures ANOVA are excluded from this installer.
 
@@ -24,6 +23,7 @@ The public Free edition supports HTML, PDF, Word and Excel results, 300 dpi tran
 ## Current Scope
 
 - Local Windows launcher through `StatEdu_Studio.bat`
+- Apple Silicon macOS app with R 4.5.3 and 251 pinned packages; no external R or Chrome installation needed
 - Local data import for SPSS SAV, SAS, Stata, Excel XLS/XLSX, CSV, and DAT files
 - Cloud-synced file handling by copying data files to a temporary local read path before import
 - Data workflow with file loading, variable selection, measurement-level review, variable labels, and categorical value labels
@@ -55,7 +55,8 @@ For the full current method inventory, see [docs/ANALYSIS_METHODS_EN.md](docs/AN
 
 ## Runtime Environment
 
-- Tested development environment: R 4.5.3 on Windows
+- Windows reference environment: R 4.5.3
+- Mac validation: Apple Silicon, macOS 27.0.1, bundled R 4.5.3. Intel and macOS 13 have not been tested on hardware
 - App framework: Shiny local app
 - Package source: declared runtime and analysis dependencies are CRAN packages
 - Execution model: local browser session on `127.0.0.1`; data remain on the user's PC

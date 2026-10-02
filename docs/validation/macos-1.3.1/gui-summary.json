@@ -1,0 +1,39 @@
+{
+  "version": "1.3.1",
+  "publicLanguages": 8,
+  "projectRestore": true,
+  "resultHistoryRestore": true,
+  "nativeDialogSelections": "automated Electron dialog responses; visual panel check separate",
+  "exports": [
+    "html",
+    "pdf",
+    "xlsx",
+    "docx",
+    "hwpx",
+    "studio"
+  ],
+  "status": "passed",
+  "readyMs": 11242,
+  "records": [
+    {
+      "id": "correlation_results",
+      "tables": 4,
+      "plots": 2,
+      "elapsedMs": 1879
+    },
+    {
+      "id": "survival_km_results",
+      "tables": 12,
+      "plots": 4,
+      "elapsedMs": 5987
+    },
+    {
+      "id": "survival_cox_results",
+      "tables": 14,
+      "plots": 3,
+      "elapsedMs": 3234
+    }
+  ],
+  "errors": [],
+  "shutdownConfirmed": true
+}
