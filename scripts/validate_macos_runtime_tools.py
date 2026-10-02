@@ -95,7 +95,7 @@ class RuntimeTests(unittest.TestCase):
                 self.skipTest('Host cannot create symlinks')
             destination = root/'stage/R.framework'
             copy_framework(source, destination)
-            self.assertEqual((destination/'Resources').resolve(), destination/'Versions/4.5-arm64/Resources')
+            self.assertEqual((destination/'Resources').resolve(), (destination/'Versions/4.5-arm64/Resources').resolve())
             self.assertTrue((source/'Resources').is_symlink())
             (source/'escape').symlink_to(root, target_is_directory=True)
             with self.assertRaisesRegex(ValueError, 'External symlink'):

@@ -692,6 +692,13 @@ normalize_survival_settings <- function(value = NULL) {
   defaults
 }
 
+settings_data_source_path <- function(file) {
+  if (is.null(file)) return("")
+  original <- settings_scalar(file$original_path %||% "")
+  path <- if (nzchar(original) && valid_data_file_path(original)) original else file$path %||% ""
+  if (!nzchar(path)) "" else normalizePath(path, winslash = "/", mustWork = FALSE)
+}
+
 create_current_settings_fn <- function(
   app_version,
   app_language_fn = NULL,
@@ -762,7 +769,7 @@ create_current_settings_fn <- function(
       active_step = active_step_fn(),
       data_view = data_view_fn(),
       data_file = if (is.null(file)) restored_data_file_fn() else file$name,
-      data_file_path = if (is.null(file)) "" else normalizePath(file$path, winslash = "/", mustWork = FALSE),
+      data_file_path = settings_data_source_path(file),
       data_file_options = data_file_options,
       variable_info = variable_info,
       measurement_overrides = measurement_overrides(),

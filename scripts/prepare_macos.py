@@ -1,4 +1,4 @@
-"""Prepare an isolated Apple Silicon developer build; never publish a release."""
+"""Prepare an isolated Apple Silicon 1.3.1 public build; publishing is separate."""
 import argparse
 import hashlib
 import json
@@ -11,7 +11,7 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-TOOLS = ("prepare_macos.py", "macos_runtime.py", "relocate_macos_runtime.py", "validate_macos_runtime.R", "verify_macos_app.py", "doctor_macos.py", "archive_macos_preparation.py", "check_macos_packages.py", "bundled_validation_packages.expected.csv")
+TOOLS = ("prepare_macos.py", "normalize_macos_framework.py", "macos_runtime.py", "relocate_macos_runtime.py", "validate_macos_runtime.R", "verify_macos_app.py", "doctor_macos.py", "archive_macos_preparation.py", "check_macos_packages.py", "bundled_validation_packages.expected.csv")
 
 
 def verify_stage(stage):
@@ -47,29 +47,34 @@ def prepare(destination):
     destination.mkdir(parents=True)
     electron = ROOT / "packaging/macos"
     package = json.loads((electron / "package.json").read_text(encoding="utf-8-sig"))
-    version = (ROOT / "VERSION").read_text().strip().split("-")[0] + "-dev"
+    version = (ROOT / "VERSION").read_text().strip()
     package["version"] = version
     (destination / "package.json").write_text(json.dumps(package, indent=2) + "\n")
     lock = json.loads((electron / "package-lock.json").read_text(encoding="utf-8"))
     lock["version"] = version
     lock["packages"][""]["version"] = version
     (destination / "package-lock.json").write_text(json.dumps(lock, indent=2) + "\n", encoding="utf-8")
-    for name in ("main.js", "preload.js"):
+    for name in ("main.js", "preload.js", "desktop-bridge.js"):
         shutil.copy2(electron / name, destination / name)
     (destination / "build").mkdir()
+    for name in ("release.json", "release-sign.cjs", "bundle-notices.cjs", "runtime-packages.lock.csv", "build/entitlements.mac.plist"):
+        shutil.copy2(electron / name, destination / name)
     shutil.copy2(electron / "build/icon.png", destination / "build/icon.png")
     # Only application source/assets: do not ship personal data, logs or evidence.
     files = subprocess.check_output(
         ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"], cwd=ROOT
     ).decode("utf-8").split("\0")
-    tops = {"app.R", "run_app.R", "LICENSE", "SOURCE-OFFER.txt", "VERSION"}
+    tops = {"app.R", "run_app.R", "LICENSE", "SOURCE-OFFER.txt", "THIRD-PARTY-NOTICES.txt", "VERSION", "license_report.csv"}
     documentation = json.loads((ROOT / "docs/i18n/document_specs.json").read_text(encoding="utf-8-sig"))
     for language in documentation.values():
         for document in language.values():
             tops.add(document["path"])
     tops.update({"docs/i18n/document_specs.json", "docs/ANALYSIS_REFERENCE_COMPARISON_PUBLIC.md",
                  "docs/ANALYSIS_REFERENCE_COMPARISON_PUBLIC_KO.md"})
-    prefixes = ("R/", "www/", "i18n/", "docs/assets/user-guide/en/", "docs/assets/user-guide/ko/")
+    for name in ("docs/MACOS_BUILD_KO.md", "docs/MACOS_VALIDATION_1_3_1_KO.md"):
+        if (ROOT / name).is_file():
+            tops.add(name)
+    prefixes = ("LICENSES/", "sample/", "R/", "www/", "i18n/", "docs/assets/user-guide/en/", "docs/assets/user-guide/ko/")
     manifest = []
     for name in sorted(set(files) | tops):
         if not name or not (name in tops or name.startswith(prefixes) or
@@ -82,6 +87,17 @@ def prepare(destination):
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
         manifest.append(name)
+    notices = electron / "notices"
+    if notices.is_dir():
+        for source in sorted(notices.rglob("*")):
+            if not source.is_file() or source.is_symlink():
+                continue
+            name = source.relative_to(notices).as_posix()
+            target = destination / "app" / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+            manifest.append(name)
+    manifest = sorted(set(manifest))
     (destination / "app/VERSION").write_text(version + "\n")
     (destination / "source-manifest.json").write_text(json.dumps(manifest, indent=2))
     (destination / "runtime").mkdir()
@@ -102,8 +118,8 @@ def prepare(destination):
 def check_runtime(stage):
     stage = assert_macos_destination(stage)
     package = json.loads((stage / "package.json").read_text(encoding="utf-8-sig"))
-    if package.get("build", {}).get("appId") != "com.statedu.studio.mac.dev":
-        raise ValueError("Not a StatEdu macOS developer stage")
+    if package.get("build", {}).get("appId") != "com.statedu.studio.mac":
+        raise ValueError("Not a StatEdu macOS release stage")
     verify_stage(stage)
     if platform.system() != "Darwin" or platform.machine() != "arm64":
         raise RuntimeError("Runtime checks/build require native Apple Silicon macOS")
@@ -146,7 +162,7 @@ def main():
     else:
         stage = prepare(args.output or (Path(tempfile.mkdtemp(prefix="statedu-mac-")) / "stage"))
     print(stage)
-    print("Developer preparation only; no signed/notarized release has been produced.")
+    print("Release source prepared; signing/notarization status must be verified separately.")
 
 
 if __name__ == "__main__":

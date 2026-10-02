@@ -478,7 +478,7 @@ register_settings_save_handler <- function(
       return("")
     }
     file <- current_data_file_fn()
-    path <- if (is.list(file)) as.character(file$path %||% "") else ""
+    path <- if (is.list(file)) settings_data_source_path(file) else ""
     if (!nzchar(path)) {
       return("")
     }

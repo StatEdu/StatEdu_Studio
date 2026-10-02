@@ -245,6 +245,7 @@ choose_windows_directory <- function(caption) {
 }
 
 choose_tk_save_file <- function(default_name, title, extension, filetypes) {
+  if (exists("macos_desktop_available", mode = "function") && macos_desktop_available()) return(macos_file_dialog("save", title, file.path(result_save_directory(), default_name), filetypes))
   if (requireNamespace("tcltk", quietly = TRUE)) {
     path <- tryCatch(
       as.character(tcltk::tkgetSaveFile(
@@ -264,6 +265,7 @@ choose_tk_save_file <- function(default_name, title, extension, filetypes) {
 }
 
 choose_tk_open_file <- function(title, filetypes) {
+  if (exists("macos_desktop_available", mode = "function") && macos_desktop_available()) return(macos_file_dialog("open", title, result_save_directory(), filetypes))
   if (requireNamespace("tcltk", quietly = TRUE)) {
     path <- tryCatch(
       as.character(tcltk::tkgetOpenFile(
@@ -667,6 +669,14 @@ find_pdf_chromium <- function() {
 }
 
 write_pdf_from_html <- function(html, file) {
+  if (exists("macos_desktop_available", mode = "function") && macos_desktop_available()) {
+    html_file <- tempfile("statedu_pdf_", fileext = ".html")
+    on.exit(unlink(html_file), add = TRUE)
+    writeLines(html, html_file, useBytes = TRUE)
+    macos_desktop_request("pdf", htmlPath = normalizePath(html_file), pdfPath = normalizePath(file, mustWork = FALSE))
+    if (!file.exists(file) || !identical(rawToChar(readBin(file, "raw", n = 5L)), "%PDF-")) stop("PDF export failed.")
+    return(invisible(file))
+  }
   browser <- find_pdf_chromium()
   if (!nzchar(browser)) {
     stop("Chrome or Edge was not found. Install Chrome/Edge or set STATEDU_CHROME.")
@@ -697,6 +707,7 @@ write_pdf_from_html <- function(html, file) {
 }
 
 choose_figure_save_dir <- function(language = getOption("statedu.app_language", statedu_initial_language())) {
+  if (exists("macos_desktop_available", mode = "function") && macos_desktop_available()) return(macos_file_dialog("directory", statedu_t("file_dialog.figure_folder", language), result_save_directory()))
   caption <- statedu_t("file_dialog.figure_folder", language)
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_directory(caption)

@@ -61,13 +61,20 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
   // Quitting must remain blocked until R exit is confirmed, and permit retry on failure.
   const handlers = {}, errors = [];
   let resolveStop, rejectStop, quits = 0;
-  const context = {shutdownComplete: false, shutdownPending: false, isQuitting: false,
+  const context = {mainWindow: null, shutdownComplete: false, shutdownPending: false, isQuitting: false,
     pendingStudioFile: 'queued.studio', app: {on: (name, fn) => { handlers[name] = fn; }, quit: () => { quits++; }},
     stopShiny: () => new Promise((resolve, reject) => { resolveStop = resolve; rejectStop = reject; }),
     logStartup: () => {}, appDisplayName: () => 'Studio', dialog: {showErrorBox: (_, text) => errors.push(text)}};
   vm.runInNewContext(source.slice(source.indexOf('app.on("before-quit"')), context);
   let prevented = 0;
   const event = {preventDefault: () => { prevented++; }};
+  let closes = 0;
+  context.mainWindow = {isDestroyed: () => false, close: () => closes++};
+  handlers['before-quit'](event);
+  assert.equal(closes, 1);
+  assert.equal(context.isQuitting, false, 'canceling unsaved-project close must leave R running');
+  context.mainWindow = null;
+  prevented = 0;
   handlers['before-quit'](event);
   assert.equal(quits, 0);
   assert.equal(context.isQuitting, true);

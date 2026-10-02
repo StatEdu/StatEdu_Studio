@@ -1501,6 +1501,7 @@
     "about.contact": "連絡先",
     "about.runtime": "実行環境",
     "about.local_windows_shiny": "ローカル Windows Shiny アプリ",
+    "about.local_macos_shiny": "ローカル macOS Shiny アプリ",
     "about.data_handling": "データ処理",
     "about.data_handling_detail": "データはユーザーの PC 上でローカルに分析され、外部サーバーへ送信されません。",
     "about.repository": "リポジトリ",

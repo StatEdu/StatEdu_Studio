@@ -1614,6 +1614,7 @@ statedu_translation_table <- local({
       about.contact = row("Contact", h("ec97b0eb9dbdecb298")),
       about.runtime = row("Runtime", h("ec8ba4ed968920ed9998eab2bd")),
       about.local_windows_shiny = row("Local Windows Shiny app", h("eba19cecbbac2057696e646f7773205368696e7920ec95b1")),
+      about.local_macos_shiny = row("Local macOS Shiny app", "로컬 macOS Shiny 앱"),
       about.data_handling = row("Data handling", h("eb8db0ec9db4ed84b020ecb298eba6ac")),
       about.data_handling_detail = row("Data are analyzed locally on the user's PC and are not sent to an external server.", h("eb8db0ec9db4ed84b0eb8a9420ec82acec9aa9ec9e90205043ec9790ec849c20eba19cecbbaceba19c20ebb684ec849deb9098eba9b020ec99b8ebb68020ec849cebb284eba19c20eca084ec86a1eb9098eca78020ec958aec8ab5eb8b88eb8ba42e")),
       about.repository = row("Repository", h("eca080ec9ea5ec868c")),

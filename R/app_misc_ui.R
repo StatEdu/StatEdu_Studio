@@ -318,7 +318,7 @@ about_application_document <- function(version, language = "ko") {
       about_info_row(statedu_t("about.developer", language), "IL HYUN LEE"),
       about_info_row(statedu_t("about.organization", language), "StatEdu"),
       about_info_row(statedu_t("about.contact", language), tags$a(href = "mailto:dr.leeilhyun@gmail.com", "dr.leeilhyun@gmail.com")),
-      about_info_row(statedu_t("about.runtime", language), statedu_t("about.local_windows_shiny", language)),
+      about_info_row(statedu_t("about.runtime", language), (if (identical(Sys.info()[["sysname"]], "Darwin")) statedu_t("about.local_macos_shiny", language) else statedu_t("about.local_windows_shiny", language))),
       about_info_row(statedu_t("about.data_handling", language), statedu_t("about.data_handling_detail", language)),
       about_info_row(statedu_t("about.repository", language), tags$a(href = repository, target = "_blank", rel = "noopener noreferrer", repository)),
       about_info_row(

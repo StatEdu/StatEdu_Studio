@@ -96,6 +96,7 @@ load_app_packages <- function(
 
 app_module_files <- c(
   "utils.R",
+  "macos_desktop.R",
   "labels.R",
   "update_check.R",
   "settings_io.R",
@@ -343,6 +344,7 @@ utf8_app_module_files <- c(
   "analysis_ipa.R",
   "server_ipa.R",
   "utils.R",
+  "macos_desktop.R",
   "labels.R",
   "codebook_io.R",
   "server_codebook.R",

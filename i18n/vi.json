@@ -90,6 +90,7 @@
     "about.developer": "Nhà phát triển",
     "about.info_subtitle": "Phiên bản, thông tin nhà phát triển và tài liệu.",
     "about.local_windows_shiny": "Ứng dụng Shiny Windows cục bộ",
+    "about.local_macos_shiny": "Ứng dụng Shiny macOS cục bộ",
     "about.organization": "Tổ chức",
     "about.oss_license_subtitle": "Thông báo giấy phép bên thứ ba cho thành phần runtime đi kèm.",
     "about.pending_registration": "Đang chờ đăng ký",

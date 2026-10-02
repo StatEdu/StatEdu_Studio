@@ -1501,6 +1501,7 @@
     "about.contact": "联系方式",
     "about.runtime": "运行环境",
     "about.local_windows_shiny": "本地 Windows Shiny 应用",
+    "about.local_macos_shiny": "本地 macOS Shiny 应用",
     "about.data_handling": "数据处理",
     "about.data_handling_detail": "数据在用户 PC 本地分析，不会发送到外部服务器。",
     "about.repository": "代码仓库",

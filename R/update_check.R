@@ -282,6 +282,9 @@ statedu_update_modal <- function(result, language = statedu_initial_language()) 
     default_en = "https://studio.statedu.com/en/download/",
     use_generic = identical(language, "ko")
   )
+  # Desktop distributions can provide their platform's download page.
+  platform_page <- Sys.getenv("STATEDU_UPDATE_PAGE_URL", "")
+  if (grepl("^https://", platform_page)) download_url <- platform_page
   release_notes_url <- statedu_manifest_language_value(
     manifest,
     "releaseNotesUrl",

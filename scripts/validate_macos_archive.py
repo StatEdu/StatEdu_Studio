@@ -16,7 +16,7 @@ class ArchiveTests(unittest.TestCase):
         self.base = Path(temp.name)
         self.stage = self.base/'한글 Mac stage'
         self.stage.mkdir()
-        package = {'devDependencies': {}, 'build': {'appId': 'com.statedu.studio.mac.dev'}}
+        package = {'devDependencies': {}, 'build': {'appId': 'com.statedu.studio.mac'}}
         files = {'package.json': json.dumps(package),
                  'package-lock.json': json.dumps({'packages': {'': {'devDependencies': {}}}}),
                  'build.command': '#!/bin/sh\nset -eu\n', 'app/run_app.R': '# fixture\n'}

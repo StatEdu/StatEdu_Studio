@@ -1001,7 +1001,7 @@ create_app_server <- function(app_version) {
   save_settings_to_file <- register_settings_save_handler(
     input = input,
     current_settings_fn = current_settings,
-    current_data_file_fn = current_data_file,
+    current_data_file_fn = session$userData$result_data_file,
     sync_table_state_fn = sync_table_state,
     collect_var_label_inputs_fn = collect_var_label_inputs,
     merge_var_label_overrides_fn = merge_var_label_overrides,
@@ -2796,7 +2796,7 @@ create_app_server <- function(app_version) {
     app_version = app_version,
     app_language_fn = app_language,
     input = input,
-    current_data_file_fn = current_data_file,
+    current_data_file_fn = session$userData$result_data_file,
     current_data_step_fn = current_data_step,
     active_step_fn = active_step,
     data_view_fn = data_view,

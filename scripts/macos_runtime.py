@@ -20,7 +20,7 @@ def runtime_environment(home, inherited=None):
     source = os.environ if inherited is None else inherited
     env = {key: value for key, value in source.items()
            if not key.startswith(('R_', 'DYLD_')) and key not in {'LD_LIBRARY_PATH', 'LD_PRELOAD'}}
-    env.update(R_HOME=str(home), R_SHARE_DIR=str(home/'share'), R_INCLUDE_DIR=str(home/'include'),
+    env.update(RHOME=str(home), R_HOME=str(home), R_SHARE_DIR=str(home/'share'), R_INCLUDE_DIR=str(home/'include'),
                R_DOC_DIR=str(home/'doc'), R_LIBS=str(home/'library'),
                R_LIBS_USER=str(home/'library'), R_LIBS_SITE=str(home/'library'),
                PATH=str(home/'bin') + ':/usr/bin:/bin:/usr/sbin:/sbin',
@@ -111,7 +111,7 @@ def audit_framework(root, runner=subprocess.check_output):
     errors = check_links(root)
     binaries = []
     for entry in sorted(root.rglob('*')):
-        if entry.is_symlink() or not entry.is_file():
+        if entry.is_symlink() or not entry.is_file() or entry.suffix == '.class' or any(part.endswith('.dSYM') for part in entry.parts):
             continue
         with entry.open('rb') as handle:
             magic = handle.read(4)
@@ -163,8 +163,8 @@ def main():
     args = parser.parse_args()
     stage = assert_macos_destination(args.stage)
     package = json.loads((stage/'package.json').read_text(encoding='utf-8-sig'))
-    if package.get('build', {}).get('appId') != 'com.statedu.studio.mac.dev':
-        raise ValueError('Not a macOS developer stage')
+    if package.get('build', {}).get('appId') != 'com.statedu.studio.mac':
+        raise ValueError('Not a macOS release stage')
     if platform.system() != 'Darwin' or platform.machine() != 'arm64':
         raise RuntimeError('Run on native Apple Silicon macOS with Xcode Command Line Tools')
     runtime = stage/'runtime'

@@ -1,0 +1,15 @@
+{
+  "appId": "com.statedu.studio.mac",
+  "productName": "StatEdu Studio",
+  "artifactName": "StatEdu_Studio_macOS_${version}_${arch}.${ext}",
+  "afterPack": "./release-sign.cjs",
+  "mac": {
+    "target": [{"target":"dmg", "arch":["arm64"]}, {"target":"zip", "arch":["arm64"]}],
+    "identity": "${env.STATEDU_MAC_SIGN_IDENTITY}",
+    "hardenedRuntime": true,
+    "entitlements": "build/entitlements.mac.plist",
+    "entitlementsInherit": "build/entitlements.mac.plist",
+    "notarize": true
+  },
+  "dmg": {"sign": true}
+}

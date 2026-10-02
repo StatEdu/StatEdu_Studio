@@ -14,13 +14,14 @@ function setup() {
     logStartup: noop, logStartupEnvironment: noop, appDisplayName: () => 'Studio',
     windowTitle: () => 'Studio', configureDownloadSavePath: noop, installRendererDiagnostics: noop,
     focusMainWindow: noop, stopShiny: () => { stops++; },
+    confirmDiscardChanges: () => true,
     dialog: {showErrorBox: (_, text) => errors.push(text)},
     app: {setName: noop, quit: () => { context.isQuitting = true; }},
     path, __dirname, shell: {openExternal: noop}, setTimeout,
     formatStartupError: e => e.message,
     startShiny: () => new Promise((resolve, reject) => starts.push({file: context.launchStudioFile, resolve, reject})),
     BrowserWindow: class {
-      constructor() { this.webContents = {setWindowOpenHandler: noop, on: noop}; }
+      constructor() { this.webContents = {setWindowOpenHandler: noop, on: noop, executeJavaScript: async () => false}; }
       on() {}
       async loadURL(url) { loads.push(url); }
     }

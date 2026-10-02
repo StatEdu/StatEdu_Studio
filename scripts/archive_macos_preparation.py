@@ -13,8 +13,8 @@ def archive_stage(stage, output):
     output = assert_macos_destination(output)
     verify_stage(stage)
     package = json.loads((stage/'package.json').read_text(encoding='utf-8'))
-    if package.get('build', {}).get('appId') != 'com.statedu.studio.mac.dev':
-        raise ValueError('Expected a Mac developer preparation')
+    if package.get('build', {}).get('appId') != 'com.statedu.studio.mac':
+        raise ValueError('Expected a Mac release preparation')
     if output == stage or stage in output.parents or output.suffix.lower() != '.zip':
         raise ValueError('ZIP must be outside the stage and end with .zip')
     checksum = output.with_suffix('.zip.sha256')

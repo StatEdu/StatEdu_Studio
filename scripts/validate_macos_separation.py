@@ -15,14 +15,14 @@ class SeparationTests(unittest.TestCase):
             (mac / "build").mkdir(parents=True)
             template = json.loads((prep.ROOT / "packaging/macos/package.json").read_text())
             (mac / "package.json").write_text(json.dumps(template))
-            for name in ("main.js", "preload.js", "build/icon.png", "package-lock.json", "build.command", "PREPARATION_README_KO.md"):
+            for name in ("main.js", "preload.js", "desktop-bridge.js", "release.json", "release-sign.cjs", "bundle-notices.cjs", "runtime-packages.lock.csv", "build/entitlements.mac.plist", "build/icon.png", "package-lock.json", "build.command", "PREPARATION_README_KO.md"):
                 (mac / name).write_bytes((prep.ROOT / "packaging/macos" / name).read_bytes())
             (root / "scripts").mkdir()
             for name in prep.TOOLS:
                 (root / "scripts" / name).write_bytes((prep.ROOT / "scripts" / name).read_bytes())
             (root / "docs/i18n").mkdir(parents=True)
             (root / "docs/i18n/document_specs.json").write_text('{}')
-            for name in ("app.R", "run_app.R", "LICENSE", "SOURCE-OFFER.txt", "VERSION",
+            for name in ("app.R", "run_app.R", "LICENSE", "SOURCE-OFFER.txt", "THIRD-PARTY-NOTICES.txt", "license_report.csv", "VERSION",
                          "docs/ANALYSIS_REFERENCE_COMPARISON_PUBLIC.md",
                          "docs/ANALYSIS_REFERENCE_COMPARISON_PUBLIC_KO.md"):
                 (root / name).write_text('1.3.0' if name == 'VERSION' else 'fixture')

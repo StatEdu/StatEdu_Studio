@@ -16,23 +16,25 @@ class BundleTests(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
-        root = Path(temp.name)
+        root = Path(temp.name).resolve()
         self.stage = root/'stage'
         self.stage.mkdir()
         self.bundle = root/'이동 경로/My App.app'
         self.contents = self.bundle/'Contents'
         (self.contents/'MacOS').mkdir(parents=True)
         (self.contents/'MacOS/Studio').write_bytes(b'fixture')
-        self.info = {'CFBundleIdentifier': 'com.statedu.studio.mac.dev',
-                     'CFBundleShortVersionString': '1.3.0-dev', 'CFBundleExecutable': 'Studio'}
+        self.info = {'CFBundleIdentifier': 'com.statedu.studio.mac',
+                     'CFBundleShortVersionString': '1.3.1', 'CFBundleExecutable': 'Studio'}
         self.save_info()
-        (self.stage/'package.json').write_text(json.dumps({'version': '1.3.0-dev'}))
+        (self.stage/'package.json').write_text(json.dumps({'version': '1.3.1'}))
         self.unpacked = self.contents/'Resources/app.asar.unpacked'
         (self.unpacked/'app').mkdir(parents=True)
+        for name in ('LICENSE.electron.txt','LICENSES.chromium.html'):
+            (self.contents/'Resources'/name).write_text('fixture license')
         (self.unpacked/'app/run_app.R').write_bytes(b'source')
         (self.stage/'stage-integrity.json').write_text(json.dumps({'sha256': {
             'app/run_app.R': hashlib.sha256(b'source').hexdigest()}}))
-        self.home = self.unpacked/'runtime/R.framework/Resources'
+        self.home = (self.unpacked/'runtime/R.framework/Resources').resolve()
         (self.home/'bin').mkdir(parents=True)
         (self.home/'bin/Rscript').write_bytes(bytes.fromhex('cffaedfe') + b'fixture')
 
@@ -63,7 +65,7 @@ class BundleTests(unittest.TestCase):
             check_bundle(self.stage, self.bundle)
 
     def test_packaged_file_association(self):
-        package = {'version': '1.3.0-dev', 'build': {'mac': {'fileAssociations': [
+        package = {'version': '1.3.1', 'build': {'mac': {'fileAssociations': [
             {'ext': 'studio', 'role': 'Editor', 'rank': 'Alternate'}]}}}
         (self.stage/'package.json').write_text(json.dumps(package))
         with self.assertRaisesRegex(ValueError, 'association'):
@@ -72,6 +74,11 @@ class BundleTests(unittest.TestCase):
                                              'CFBundleTypeRole': 'Editor', 'LSHandlerRank': 'Alternate'}]
         self.save_info()
         self.assertEqual(check_bundle(self.stage, self.bundle)[2], 1)
+
+    def test_vendor_notices_required(self):
+        (self.contents/'Resources/LICENSE.electron.txt').unlink()
+        with self.assertRaisesRegex(ValueError, 'vendor license notice missing'):
+            check_bundle(self.stage,self.bundle)
 
     def test_bundle_identity_version_and_path_rejected(self):
         for key, value in [('CFBundleIdentifier', 'com.statedu.studio'),

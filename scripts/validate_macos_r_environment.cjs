@@ -14,11 +14,11 @@ const inherited = {
   TMPDIR: '/tmp/app', STATEDU_CHROME: '/custom/Chrome', STATEDU_APP_LANGUAGE: 'ko'
 };
 const original = {...inherited};
-let probe;
+let probe, probeArgs;
 const context = {
   process: {env: inherited}, path: path.posix,
   bundledRHomePath: () => home, bundledRLibraryPath: () => home + '/library', bundledRBinPath: () => home + '/bin',
-  spawnSync: (exe, args, options) => { probe = options; return {status: 0, stdout: 'R version'}; }, logStartup: () => {}
+  spawnSync: (exe, args, options) => { probe = options; probeArgs = Array.from(args); return {status: 0, stdout: 'R version'}; }, logStartup: () => {}
 };
 vm.createContext(context);
 vm.runInContext(functions, context);
@@ -34,6 +34,7 @@ for (const [key, directory] of [['R_SHARE_DIR', 'share'], ['R_INCLUDE_DIR', 'inc
 for (const key of ['HOME', 'LANG', 'TMPDIR', 'STATEDU_CHROME', 'STATEDU_APP_LANGUAGE']) assert.equal(env[key], inherited[key]);
 assert.equal(env.PATH, home + '/bin:/usr/bin:/bin:/usr/sbin:/sbin');
 context.runRscriptProbe(home + '/bin/Rscript', '/app');
+assert.deepEqual(probeArgs, ['--version'], 'Rscript version is a top-level option');
 assert.equal(probe.env.R_LIBS_SITE, home + '/library');
 assert.match(source, /spawn\(rscript, \["--vanilla", "run_app.R"\]/);
 assert.match(source, /const env = \{\s*\.\.\.macREnvironment\(\),/);

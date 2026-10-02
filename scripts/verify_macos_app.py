@@ -1,4 +1,4 @@
-"""Check the built Mac developer bundle and execute its bundled R preflight."""
+"""Check the built Mac release bundle and execute its bundled R preflight."""
 import argparse
 import hashlib
 import json
@@ -21,8 +21,8 @@ def check_bundle(stage, bundle):
     with (bundle/'Contents/Info.plist').open('rb') as handle:
         info = plistlib.load(handle)
     package = json.loads((stage/'package.json').read_text(encoding='utf-8'))
-    if info.get('CFBundleIdentifier') != 'com.statedu.studio.mac.dev':
-        raise ValueError('Not the macOS developer application')
+    if info.get('CFBundleIdentifier') != 'com.statedu.studio.mac':
+        raise ValueError('Not the macOS release application')
     if info.get('CFBundleShortVersionString') != package['version']:
         raise ValueError('Built application version differs from stage')
     for association in package.get('build', {}).get('mac', {}).get('fileAssociations', []):
@@ -41,6 +41,9 @@ def check_bundle(stage, bundle):
     executable = (bundle/'Contents/MacOS'/name).resolve(strict=True)
     if not inside(executable, bundle) or not executable.is_file():
         raise ValueError('Bundle executable missing or outside application')
+    for notice in ('LICENSE.electron.txt', 'LICENSES.chromium.html'):
+        if not (bundle/'Contents/Resources'/notice).is_file():
+            raise ValueError(f'Packaged vendor license notice missing: {notice}')
     unpacked = bundle/'Contents/Resources/app.asar.unpacked'
     manifest = json.loads((stage/'stage-integrity.json').read_text(encoding='utf-8'))['sha256']
     app_files = {name: digest for name, digest in manifest.items() if name.startswith('app/')}
@@ -82,7 +85,7 @@ def check_app(stage, bundle, runner=subprocess.check_output, run=subprocess.run)
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--stage', required=True)
-    parser.add_argument('--app', required=True, help='Built or relocated developer .app')
+    parser.add_argument('--app', required=True, help='Built or relocated release .app')
     args = parser.parse_args()
     stage = assert_macos_destination(args.stage)
     verify_stage(stage)

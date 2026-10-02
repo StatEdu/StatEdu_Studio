@@ -1,4 +1,4 @@
-"""Relocate internal R.framework references in a Mac developer stage only."""
+"""Relocate internal R.framework references in a Mac release stage only."""
 import argparse
 from datetime import datetime, timezone
 import hashlib
@@ -91,7 +91,7 @@ def relocation_plan(framework, prefixes, runner=subprocess.check_output):
         raise ValueError('\n'.join(links))
     edits = []
     for binary in sorted(framework.rglob('*')):
-        if binary.is_symlink() or not binary.is_file():
+        if binary.is_symlink() or not binary.is_file() or binary.suffix == '.class' or any(part.endswith('.dSYM') for part in binary.parts):
             continue
         with binary.open('rb') as handle:
             magic = handle.read(4)
@@ -168,8 +168,8 @@ def main():
     stage = assert_macos_destination(args.stage)
     verify_stage(stage)
     package = json.loads((stage/'package.json').read_text())
-    if package.get('build', {}).get('appId') != 'com.statedu.studio.mac.dev':
-        raise ValueError('Not a macOS developer stage')
+    if package.get('build', {}).get('appId') != 'com.statedu.studio.mac':
+        raise ValueError('Not a macOS release stage')
     if platform.system() != 'Darwin' or platform.machine() != 'arm64':
         raise RuntimeError('Relocation must run on native Apple Silicon macOS')
     framework = stage/'runtime/R.framework'

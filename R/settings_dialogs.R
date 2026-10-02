@@ -214,6 +214,10 @@ windows_select_directory_dialog <- function(title, initial_dir = "") {
 }
 
 open_file_dialog <- function(title, filetypes) {
+  if (exists("macos_desktop_available", mode = "function") && macos_desktop_available()) {
+    path <- macos_file_dialog("open", title, filetypes = filetypes)
+    return(if (length(path)) path else NULL)
+  }
   windows_filters <- attr(filetypes, "windows_filters", exact = TRUE)
   if (!is.null(windows_filters)) {
     windows_result <- windows_open_file_dialog(title, windows_filters)
@@ -326,6 +330,10 @@ settings_save_initial_dir <- function(initial_dir = NULL) {
 }
 
 save_settings_file <- function(initial_dir = NULL, language = statedu_initial_language()) {
+  if (exists("macos_desktop_available", mode = "function") && macos_desktop_available()) {
+    path <- macos_file_dialog("save", statedu_t("file_dialog.save_settings", language), file.path(settings_save_initial_dir(initial_dir), "project.studio"), ".studio")
+    return(if (length(path)) normalize_settings_save_path(path) else NULL)
+  }
   initial_dir <- settings_save_initial_dir(initial_dir)
   title <- statedu_t("file_dialog.save_settings", language)
   label <- statedu_t("file_dialog.settings_files", language)
@@ -412,6 +420,10 @@ open_complex_sample_design_file <- function(language = statedu_initial_language(
 }
 
 save_complex_sample_design_file <- function(initial_dir = NULL, language = statedu_initial_language()) {
+  if (exists("macos_desktop_available", mode = "function") && macos_desktop_available()) {
+    path <- macos_file_dialog("save", statedu_t("file_dialog.save_design", language), file.path(settings_save_initial_dir(initial_dir), "design.stdesign"), ".stdesign")
+    return(if (length(path)) normalize_complex_sample_design_save_path(path) else NULL)
+  }
   initial_dir <- settings_save_initial_dir(initial_dir)
   title <- statedu_t("file_dialog.save_design", language)
   label <- statedu_t("file_dialog.design_files", language)
@@ -468,6 +480,10 @@ save_complex_sample_design_file <- function(initial_dir = NULL, language = state
 }
 
 choose_default_save_dir <- function(initial_dir = NULL, language = statedu_initial_language()) {
+  if (exists("macos_desktop_available", mode = "function") && macos_desktop_available()) {
+    path <- macos_file_dialog("directory", statedu_t("file_dialog.choose_default_folder", language), settings_save_initial_dir(initial_dir))
+    return(if (length(path)) path else NULL)
+  }
   title <- statedu_t("file_dialog.choose_default_folder", language)
   initial_dir <- settings_save_initial_dir(initial_dir)
   windows_result <- windows_select_directory_dialog(title, initial_dir)

@@ -1,0 +1,11 @@
+.DS_Store
+.macos-work/
+node_modules/
+dist/
+output/
+tmp/
+__pycache__/
+*.pyc
+.Rhistory
+.RData
+packaging/macos/runtime/

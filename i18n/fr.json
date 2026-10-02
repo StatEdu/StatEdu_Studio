@@ -90,6 +90,7 @@
     "about.developer": "Développeur",
     "about.info_subtitle": "Version, informations développeur et documentation.",
     "about.local_windows_shiny": "Application Shiny locale Windows",
+    "about.local_macos_shiny": "Application Shiny locale macOS",
     "about.organization": "Organisation",
     "about.oss_license_subtitle": "Avis de licences tierces pour les composants d’exécution intégrés.",
     "about.pending_registration": "Enregistrement en attente",
