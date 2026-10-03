@@ -2,6 +2,8 @@
 
 검증일: 2026년 10월 3일, 한국 시간. 정식 공개판 `v1.3.1` (`782ce64`)에서 시작한 `macos` 브랜치입니다. 앱 이름은 StatEdu Studio, 표시 버전은 **1.3.1**, ID는 `com.statedu.studio.mac`입니다.
 
+2026년 10월 3일 TestFlight 검사 준비에서 기본 Applications 경로에 TestFlight가 없음을 확인하고 설치 페이지를 열었습니다. 현재 설치된 StatEdu Studio는 ad-hoc 서명·내부 버전 1.3.1로 확인돼 업로드한 빌드 2의 TestFlight 설치본으로 인정하지 않습니다. [준비 상태](validation/macos-1.3.1/testflight-preparation-summary.json)와 [실제 설치·실행 검사 절차](../packaging/macos/app-store/testflight-validation-plan.txt)를 기록했습니다. 마지막 저장 상태는 `MISSING_EXPORT_COMPLIANCE`이며 이번에는 App Store Connect 서버 상태를 다시 읽지 못했습니다. Apple 안내에 따라 필요한 수출 규정 응답·문서를 해결하고 내부 테스트 가능 상태를 확인한 뒤 검사를 시작합니다. TestFlight 설치·실행 검사는 아직 미실행입니다.
+
 ## 구현·실행 검증
 
 | 항목 | 확인 결과 |

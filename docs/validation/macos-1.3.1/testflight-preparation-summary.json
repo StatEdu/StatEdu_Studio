@@ -1,0 +1,35 @@
+{
+  "checked_at": "2026-10-03T16:41:28+09:00",
+  "version": "1.3.1",
+  "target_build_version": "2",
+  "app_id": "6818689787",
+  "bundle_id": "com.statedu.studio.mac",
+  "status": "prepared_actual_testflight_execution_not_run",
+  "testflight_found_at_standard_applications_path": false,
+  "testflight_store_page_open_command_succeeded": true,
+  "testflight_installation_confirmed": false,
+  "installed_statedu_at_standard_applications_path": {
+    "version": "1.3.1",
+    "build_version": "1.3.1",
+    "signature": "adhoc",
+    "team_identifier": null,
+    "accepted_as_target_testflight_installation": false
+  },
+  "app_store_connect_live_status_refreshed": false,
+  "last_recorded_build_status": "MISSING_EXPORT_COMPLIANCE",
+  "last_recorded_status_source": "docs/validation/macos-1.3.1/app-store-review-preparation-summary.json",
+  "accessibility_inspection": "osascript_denied_by_macos_error_-25211",
+  "testflight_install_run_verified": false,
+  "validation_plan": "packaging/macos/app-store/testflight-validation-plan.txt",
+  "fixture": "scripts/fixtures/survival_validation.csv",
+  "existing_mas_gui_evidence_is_testflight_evidence": false,
+  "user_files_or_installed_app_modified": false,
+  "new_tester_invitation_sent": false,
+  "export_compliance_answers_changed": false,
+  "next_requirements": [
+    "install_testflight_client",
+    "refresh_build_status_and_complete_required_export_compliance",
+    "confirm_internal_test_access",
+    "install_target_build_through_testflight_and_execute_validation_plan"
+  ]
+}
