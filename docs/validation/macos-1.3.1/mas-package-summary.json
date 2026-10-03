@@ -36,7 +36,7 @@
   },
   "strict_signature_verified": true,
   "gui_verified": false,
-  "app_store_uploaded": false,
+  "app_store_uploaded": true,
   "app": "StatEdu Studio.app",
   "bundle_preparation": {
     "removed_debug_bundles": [
@@ -191,6 +191,7 @@
     1024
   ],
   "python_regression_checks": 50,
-  "app_store_upload_status": "pending_resubmission",
-  "previous_upload_summary": "mas-upload-rejection-summary.json"
+  "app_store_upload_status": "uploaded_processing",
+  "previous_upload_summary": "mas-upload-rejection-summary.json",
+  "upload_summary": "mas-upload-summary.json"
 }
