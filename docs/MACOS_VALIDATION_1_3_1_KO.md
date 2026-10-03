@@ -58,13 +58,15 @@ PDF는 내장 Electron에서 생성한 4페이지를 이미지로 렌더링해 �
 
 시작 오류 수정이 포함된 최신 웹 배포용 Developer ID 빌드도 엄격한 앱 서명과 [실제 GUI·6개 출력·재실행 검사](validation/macos-1.3.1/release-gui-summary.json)를 통과했습니다. 새 앱 공증 요청 `91a19d11-457a-4d0e-adad-d438131402c6`은 **Accepted**이며 앱 티켓 검증과 Gatekeeper 실행 검사를 통과했습니다. 공증된 앱이 포함된 ZIP의 압축 무결성도 확인했습니다. ZIP SHA-256은 `734ce3ca17bed5586d45aa220f8766cf6a084567f2c12156f70c302189ec1fee`입니다.
 
-DMG 제출 직전 일시적으로 Keychain 프로필을 찾지 못해 작업이 멈췄으나, 같은 프로필로 다시 인증에 성공하고 기존 DMG를 제출했습니다. DMG 요청 `6bec7e60-85c3-487d-a60d-e27c2eee4171`은 현재 **In Progress**입니다. 승인 후 티켓 첨부·Gatekeeper 검증을 완료하는 작업이 대기 중입니다. [읽기 전용 DMG 실행 검사](validation/macos-1.3.1/release-dmg-language-summary.json)는 앱 초기 한국어와 프랑스어 선택·재실행·안내서 표시를 확인했습니다. DMG 전체의 공증 완료와 깨끗한 다른 Mac 검증은 구분합니다.
+DMG 제출 직전 일시적으로 Keychain 프로필을 찾지 못해 작업이 멈췄으나, 같은 프로필로 다시 인증에 성공하고 기존 DMG를 제출했습니다. DMG 요청 `6bec7e60-85c3-487d-a60d-e27c2eee4171`도 **Accepted**입니다. DMG 티켓 첨부·검증과 Gatekeeper의 디스크 이미지 열기 검사를 통과했습니다. DMG SHA-256은 `044fa48349d5b5dd4b0b7acbee87050d9d9418c8981a94560541911ee1735cb7`입니다. [최신 배포 파일 검증·해시](validation/macos-1.3.1/release-distribution-summary.json)에 앱·DMG 공증 결과와 ZIP 해시를 보관했습니다. 최종 파일은 로컬 `output/macos-release`에 있으며 아직 GitHub Release나 스토어에 게시하지 않았습니다.
+
+[읽기 전용 DMG 실행 검사](validation/macos-1.3.1/release-dmg-language-summary.json)는 앱 초기 한국어와 프랑스어 선택·재실행·안내서 표시를 확인했습니다. 현재 Mac에서의 공증·실행 성공과 깨끗한 다른 Mac 검증은 구분합니다.
 
 Mac App Store용 Studio 전용 App ID·배포 프로필을 생성하고 앱·설치 인증서로 정식 **1.3.1 (빌드 1)** arm64 패키지를 서명했습니다. 엄격한 앱 서명과 설치 패키지 서명은 통과했습니다. 결과는 [패키지 검사 요약](validation/macos-1.3.1/mas-package-summary.json)에 기록했습니다. 최신 `.pkg` SHA-256은 `c9999cc1d3afa890d8902ce8752407512d0192a530459e01e80e3f7a2045a942`입니다.
 
 같은 소스의 로컬 Developer ID 서명 MAS 시험본에서 실제 App Sandbox·내장 R·8개 안내서·상관/Kaplan–Meier/Cox·HTML/PDF/XLSX/DOCX/HWPX/프로젝트·재시작 복원·R 종료가 통과했습니다. [MAS GUI 요약](validation/macos-1.3.1/mas-gui-summary.json)은 자동 선택창 응답을 사용했고, [실제 외부 파일 검사](validation/macos-1.3.1/mas-native-summary.json)는 사용자의 실제 macOS 열기·저장 조작과 재실행 후 두 파일의 권한 복원을 확인했습니다. Store 배포 서명 패키지 자체의 Apple 처리·TestFlight 실행은 아직 미검증입니다.
 
-App Store Connect 앱 **6818689787**, 기본 영어(미국), macOS 버전 **1.3.1**을 등록했습니다. 8개 언어의 이름·부제·설명·키워드를 저장하고 다시 읽어 일치를 확인했습니다. [등록 확인 요약](validation/macos-1.3.1/app-store-metadata-summary.json)과 [등록·빌드 안내](../packaging/macos/app-store/README_KO.md)를 참고하십시오. 빌드 업로드·심사 제출·스토어 출시는 아직 진행하지 않았습니다. Transporter/Xcode 업로드 도구, 지원·개인정보 URL과 개인정보 응답, 가격·배포 지역, 연령 등급 및 심사 연락처가 남아 있습니다.
+App Store Connect 앱 **6818689787**, 기본 영어(미국), macOS 버전 **1.3.1**을 등록했습니다. 8개 언어의 이름·부제·설명·키워드를 저장하고 다시 읽어 일치를 확인했습니다. [등록 확인 요약](validation/macos-1.3.1/app-store-metadata-summary.json)과 [등록·빌드 안내](../packaging/macos/app-store/README_KO.md)를 참고하십시오. Transporter 1.4.5를 설치하고 개발자 계정 로그인·제출 패키지 추가를 확인했습니다. 제출 빌드에는 `CFBundleIconFile=icon.icns`와 실제 StatEdu 아이콘이 포함됩니다. 현재 빌드 업로드 완료·Apple 처리·심사 제출·스토어 출시는 아직 확인하지 않았습니다. 지원·개인정보 URL과 개인정보 응답, 가격·배포 지역, 연령 등급 및 심사 연락처도 남아 있습니다.
 
 8개 언어의 실제 안내서 화면을 1280×800 스크린샷으로 저장하고 스토어 초안의 각 언어에 업로드했습니다. 페이지를 다시 열어 모든 언어에서 해당 파일의 표시를 확인했습니다. [스크린샷 등록 확인](validation/macos-1.3.1/app-store-screenshot-summary.json)은 공개 스토어 게시를 의미하지 않습니다.
 

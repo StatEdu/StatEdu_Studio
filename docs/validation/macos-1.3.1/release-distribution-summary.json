@@ -1,0 +1,35 @@
+{
+  "status": "passed",
+  "version": "1.3.1",
+  "app_id": "com.statedu.studio.mac",
+  "architecture": "arm64",
+  "source_files_verified": 617,
+  "strict_signature_verified": true,
+  "app_notarization": {
+    "id": "91a19d11-457a-4d0e-adad-d438131402c6",
+    "status": "Accepted"
+  },
+  "app_staple_verified": true,
+  "app_gatekeeper_accepted": true,
+  "dmg_notarization": {
+    "message": "Processing complete",
+    "id": "6bec7e60-85c3-487d-a60d-e27c2eee4171",
+    "status": "Accepted"
+  },
+  "dmg_staple_verified": true,
+  "dmg_gatekeeper_accepted": true,
+  "artifacts": [
+    {
+      "file": "StatEdu_Studio_macOS_1.3.1_arm64.dmg",
+      "size": 546948905,
+      "sha256": "044fa48349d5b5dd4b0b7acbee87050d9d9418c8981a94560541911ee1735cb7"
+    },
+    {
+      "file": "StatEdu_Studio_macOS_1.3.1_arm64.zip",
+      "size": 556359200,
+      "sha256": "734ce3ca17bed5586d45aa220f8766cf6a084567f2c12156f70c302189ec1fee"
+    }
+  ],
+  "store_uploaded": false,
+  "scope": "This Mac only; clean-Mac download and macOS 13 execution remain unverified"
+}
