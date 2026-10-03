@@ -73,6 +73,10 @@ App Store Connect 앱 **6818689787**, 기본 영어(미국), macOS 버전 **1.3.
 
 빌드 상태는 **수출 규정 관련 문서 누락**입니다. 포함된 표준 암호화와 프랑스 배포 조건에서 Apple 첨부란은 프랑스 암호화 신고 승인서를 요구했습니다. [기술 설명 초안](../packaging/macos/app-store/encryption-technical-draft.txt)을 준비했지만 신고·승인·업로드는 하지 않았습니다. 앱의 서명 인증서와 별개입니다. 개인정보 응답은 업데이트 요청의 서버 로그 보관 설정을 확인한 뒤 확정해야 합니다. [응답 준비 자료](../packaging/macos/app-store/privacy-responses-draft.txt)와 [macOS 방침 보완 초안](../packaging/macos/app-store/privacy-macos-addendum.txt)은 미게시 상태입니다. 규제 문서·개인정보 응답을 임의로 완결 처리하지 않습니다.
 
+암호화 문서 준비를 위해 [실측 목록](validation/macos-1.3.1/crypto-inventory-summary.json)을 추가했습니다. R openssl의 AES CBC·CTR·GCM 128·192·256비트 왕복 검사 9개와 EC 키 생성(P-256·384·521) 3개가 통과했습니다. Node 암호화 API 항목 28개와 native EVP 등록 정의 136개를 [CSV](validation/macos-1.3.1/crypto-cipher-inventory.csv)에 기록했습니다. R curl은 libcurl 8.14.1 및 LibreSSL/3.3.6 (SecureTransport)를 보고했습니다. 이는 전송 구성요소의 정보이며 특정 요청의 TLS 협상 확인은 아닙니다. 시험용 런타임의 R openssl.so·curl.so·Electron Framework 실행 코드 섹션 SHA-256이 빌드 2와 일치하지만 전체 서명 바이너리 일치나 스토어 설치 성공을 의미하지 않습니다. 가변 키 알고리즘의 기본 길이와 RSA 기본 2048비트를 최대 길이로 보고하지 않습니다.
+
+확인된 주소 정정을 반영한 개인 영문 준비 자료(3페이지)와 프랑스어 신고 양식 작성안(4페이지)을 로컬에서 생성하고 7페이지 모두 렌더링·검수했습니다. 공식 XFA 양식은 수정하지 않았으며 작성안은 미서명·미신고·미승인입니다. 개인 정보가 포함된 PDF와 신고인 JSON은 공개 저장소에서 제외했습니다.
+
 8개 언어의 실제 안내서 화면을 1280×800 스크린샷으로 저장하고 스토어 초안의 각 언어에 업로드했습니다. 페이지를 다시 열어 모든 언어에서 해당 파일의 표시를 확인했습니다. [스크린샷 등록 확인](validation/macos-1.3.1/app-store-screenshot-summary.json)은 공개 스토어 게시를 의미하지 않습니다.
 
 macOS 13 실기, 시스템 R이 없는 별도 깨끗한 Mac, 인터넷 다운로드 후 Gatekeeper 설치·실행은 미검증입니다. Intel 앱은 이번에 만들지 않았습니다. macOS 27.0.1에서의 실제 성공과 바이너리 감사를 근거로 하위 OS·Intel 지원 또는 일반 배포 완료를 선언하지 않습니다.

@@ -12,6 +12,10 @@ App Store Connect에는 각 언어의 이름·부제·설명·키워드를 별�
 
 빌드 2는 **수출 규정 관련 문서 누락** 상태입니다. 표준 암호화와 프랑스 배포를 선택한 Apple 문서 양식은 **프랑스 암호화 신고 승인서** 사본을 요구합니다. 실제 패키지의 R openssl 라이브러리에는 OpenSSL 3.5.4와 암호화 심볼이 포함돼 OS 암호화만 사용하는 앱이라고 설명할 수 없습니다. [암호화 기술 설명 초안](encryption-technical-draft.txt)은 신고 준비 자료이며 승인서가 아닙니다. 신고인의 정보·서명과 알고리즘/키 길이 목록을 확정하고 필요한 공식 절차를 마쳐 승인 문서를 확보해야 합니다. 문서 업로드나 면제 선언은 하지 않았습니다. 근거: [Apple 암호화 문서 표](https://developer.apple.com/help/app-store-connect/reference/app-information/export-compliance-documentation-for-encryption).
 
+[암호화 측정 요약](../../../docs/validation/macos-1.3.1/crypto-inventory-summary.json)과 [알고리즘 목록](../../../docs/validation/macos-1.3.1/crypto-cipher-inventory.csv)에 Node 28개 암호화 항목, R OpenSSL EVP 등록 정의 136개를 기록했습니다. R AES CBC·CTR·GCM의 128·192·256비트 왕복 검사 9개와 EC 키 생성 3개가 통과했습니다. 시험 런타임의 세 구성요소 실행 코드 해시가 업로드한 빌드 2와 일치합니다. 코드 섹션 일치는 TestFlight 실행 검증이 아니며 등록된 암호화 정의는 모든 provider의 사용 가능성을 보장하지 않습니다. 일부 가변 키 알고리즘과 RSA의 빌드별 최대 키 길이는 아직 확인해야 합니다.
+
+신고인의 주소 정정을 반영해 로컬 `output/pdf`의 영문 준비 자료 3페이지와 프랑스어 공식 양식 작성안 4페이지를 만들고 전체 페이지를 렌더링해 검수했습니다. 개인 주소가 포함된 파일은 GitHub에 올리지 않습니다. 작성안은 공식 XFA 양식·서명본·ANSSI 승인서를 대신하지 않습니다. 공식 양식의 작성·검수, 신고 자격과 적용 절차 확인, 서명·신고·승인 확보가 남아 있습니다. 근거: [ANSSI 공식 절차](https://cyber.gouv.fr/reglementation/reglementation-identite-confiance-numerique/controles-reglementaires-cryptographie/controle-moyen-de-cryptologie/).
+
 개인정보 수집 응답도 아직 게시하지 않았습니다. 업데이트 요청의 서버 로그 보관 여부는 운영자가 모른다고 답해 호스팅 설정 확인이 필요합니다. [응답 준비 자료](privacy-responses-draft.txt)와 [macOS 방침 보완 초안](privacy-macos-addendum.txt)을 준비했으며 웹사이트에는 게시하지 않았습니다. 서버 로그를 확인해 실제 수집·이용 목적과 일치하는 응답을 확정해야 합니다. 근거: [Apple 개인정보 응답 기준](https://developer.apple.com/app-store/app-privacy-details/).
 
 8개 언어의 실제 앱 안내서 화면을 1280×800으로 캡처해 각 언어의 스토어 스크린샷으로 저장했습니다. 페이지 재접속 후 각 언어에 해당 파일이 표시되는 것도 확인했습니다. 지원 언어에서 영어 화면을 공통으로 재사용하지 않습니다.
