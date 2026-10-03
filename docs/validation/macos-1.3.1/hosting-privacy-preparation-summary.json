@@ -159,5 +159,37 @@
   },
   "provider_inquiry_prepared_locally": true,
   "provider_inquiry_sent": false,
-  "provider_inquiry_file": "packaging/macos/app-store/cafe24-log-policy-inquiry-draft.txt"
+  "provider_inquiry_file": "packaging/macos/app-store/cafe24-log-policy-inquiry-draft.txt",
+  "provider_public_document_review": {
+    "checked_on": "2026-10-03",
+    "web_ftp_log_guide_url": "https://help.cafe24.com/faq/web-hosting/introduce/setup-management/web_ftp_log_download/",
+    "generated_files_count_toward_account_HDD": true,
+    "generated_files_operator_deletion_recommended": true,
+    "generated_files_automatic_deletion_confirmed": false,
+    "member_privacy_policy_url": "https://img.cafe24.com/txt/rule/common/cafe24_privacy_20260923.html",
+    "member_privacy_policy_effective_date": "2026-09-23",
+    "general_service_visit_record_retention_months": 3,
+    "general_member_policy_applies_to_customer_site_visitors_verified": false,
+    "generic_policy_purposes_applied_to_app_users": false,
+    "product_log_total_retention_finalized": false
+  },
+  "provider_inquiry_prepared_in_browser": true,
+  "provider_inquiry_review": {
+    "destination": "Cafe24_authenticated_1_to_1_support",
+    "form_url": "https://new-help.cafe24.com/newcs/new_cs_qna_write.php?A=a",
+    "product": "뉴매니지드 워드프레스 비즈니스",
+    "category": "매니지드워드프레스 / 설정·관리",
+    "domain": "studio.statedu.com",
+    "title": "뉴매니지드 워드프레스 웹 접근 로그의 이용 목적과 전체 보관·삭제 기준 확인",
+    "raw_access_log_attachment": false,
+    "credentials_attachment": false,
+    "site_test_consent": false,
+    "AI_source_analysis_consent": false,
+    "required_inquiry_privacy_consent_checked": false,
+    "email_reply_selected": true,
+    "SMS_reply_selected": false,
+    "support_history_retention_years_shown": 5,
+    "awaiting_explicit_user_send_instruction": true,
+    "private_contact_fields_included_in_repository": false
+  }
 }
