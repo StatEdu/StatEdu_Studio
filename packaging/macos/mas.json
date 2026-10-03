@@ -1,0 +1,19 @@
+{
+  "appId": "com.statedu.studio.mac",
+  "productName": "StatEdu Studio",
+  "buildVersion": "1",
+  "artifactName": "StatEdu_Studio_MAS_${version}_${arch}.${ext}",
+  "afterPack": "./release-sign.cjs",
+  "mac": {
+    "target": [{"target":"mas", "arch":["arm64"]}],
+    "identity": null,
+    "notarize": false
+  },
+  "mas": {
+    "type": "distribution",
+    "hardenedRuntime": false,
+    "entitlements": "build/entitlements.mas.plist",
+    "entitlementsInherit": "build/entitlements.mas.inherit.plist",
+    "signIgnore": ["/Contents/Resources/app\\.asar\\.unpacked/(app|runtime)(/|$)"]
+  }
+}

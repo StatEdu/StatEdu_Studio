@@ -10,6 +10,8 @@ module.exports = async context => {
   if (!identity) throw new Error('STATEDU_MAC_SIGN_IDENTITY is required for a signed release');
   const framework = path.join(context.appOutDir, context.packager.appInfo.productFilename+'.app',
     'Contents/Resources/app.asar.unpacked/runtime/R.framework');
+  const mas = context.electronPlatformName === 'mas';
+  const sandboxEntitlements = path.join(context.packager.projectDir,'build/entitlements.mas.inherit.plist');
   const magic = new Set(['feedface','cefaedfe','feedfacf','cffaedfe','cafebabe','bebafeca','cafebabf','bfbafeca']);
   const binaries = [];
   function walk(directory) {
@@ -26,7 +28,8 @@ module.exports = async context => {
   }
   walk(framework);
   for (const binary of binaries) {
-    execFileSync('codesign',['--force','--timestamp','--options','runtime','--sign',identity,binary]);
+    const options = mas ? ['--entitlements',sandboxEntitlements] : ['--options','runtime'];
+    execFileSync('codesign',['--force','--timestamp',...options,'--sign',identity,binary]);
     execFileSync('codesign',['--verify','--strict',binary]);
   }
   // Apple's framework seal accepts standard root aliases. CRAN's optional
@@ -39,7 +42,8 @@ module.exports = async context => {
     }
     fs.unlinkSync(librariesAlias);
   }
-  execFileSync('codesign',['--force','--timestamp','--options','runtime','--sign',identity,framework]);
+  const frameworkOptions = mas ? [] : ['--options','runtime'];
+  execFileSync('codesign',['--force','--timestamp',...frameworkOptions,'--sign',identity,framework]);
   execFileSync('codesign',['--verify','--deep','--strict',framework]);
   console.log(`Signed ${binaries.length} bundled R Mach-O files and sealed R.framework.`);
 };

@@ -91,5 +91,28 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
   assert.equal(quits, 1);
   handlers['before-quit'](event);
   assert.equal(prevented, 2);
+  // Closing the window while R starts must not navigate a destroyed window
+  // or show a misleading localhost failure dialog during a normal shutdown.
+  const creation=source.slice(source.indexOf('async function createWindow()'),source.indexOf('app.on("open-file"'));
+  for(const outcome of ['closed-success','closed-error','real-error']) {
+    let resolveStartup,rejectStartup,loads=0,failures=0;
+    const window={webContents:{on:()=>{},setWindowOpenHandler:()=>{}},on:()=>{},isDestroyed:()=>false,
+      loadURL:async()=>{loads++;}};
+    const c={mainWindow:null,isQuitting:false,pendingStudioFile:'',isReloadingStudioFile:false,
+      BrowserWindow:function(){return window;},windowTitle:()=>'',path,__dirname,process:{mas:false},
+      logStartupEnvironment:()=>{},configureDownloadSavePath:()=>{},installRendererDiagnostics:()=>{},
+      logStartup:()=>{},confirmDiscardChanges:()=>false,shell:{openExternal:()=>{}},
+      startShiny:()=>new Promise((resolve,reject)=>{resolveStartup=resolve;rejectStartup=reject;}),
+      reloadStudioFile:async()=>{},appDisplayName:()=>'',formatStartupError:e=>e.message,
+      dialog:{showErrorBox:()=>{failures++;}},app:{quit:()=>{}}};
+    vm.createContext(c);vm.runInContext(creation,c);
+    const creating=c.createWindow();
+    if(outcome.startsWith('closed')) {c.isQuitting=true;c.mainWindow=null;}
+    if(outcome==='closed-success')resolveStartup('http://127.0.0.1:1234');
+    else rejectStartup(new Error('ERR_FAILED'));
+    await creating;
+    assert.equal(loads,0);
+    assert.equal(failures,outcome==='real-error'?1:0,'Keep real failures visible; ignore normal shutdown cancellation');
+  }
   console.log('PASS: confirmed exit, TERM/KILL escalation, timeout, retry, deduplication and quit gate');
 })().catch(error => { console.error(error); process.exitCode = 1; });

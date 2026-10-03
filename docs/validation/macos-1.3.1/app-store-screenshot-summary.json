@@ -1,0 +1,50 @@
+{
+  "app_id": "6818689787",
+  "version": "1.3.1",
+  "dimensions": "1280x800",
+  "status": "saved_to_app_store_connect_draft",
+  "localizations": [
+    {
+      "locale": "en-US",
+      "file": "store-en.png",
+      "saved": true
+    },
+    {
+      "locale": "ko",
+      "file": "store-ko.png",
+      "saved": true
+    },
+    {
+      "locale": "ja",
+      "file": "store-ja.png",
+      "saved": true
+    },
+    {
+      "locale": "zh-Hans",
+      "file": "store-zh.png",
+      "saved": true
+    },
+    {
+      "locale": "es-ES",
+      "file": "store-es.png",
+      "saved": true
+    },
+    {
+      "locale": "fr-FR",
+      "file": "store-fr.png",
+      "saved": true
+    },
+    {
+      "locale": "de-DE",
+      "file": "store-de.png",
+      "saved": true
+    },
+    {
+      "locale": "vi",
+      "file": "store-vi.png",
+      "saved": true
+    }
+  ],
+  "review_submitted": false,
+  "storefront_published": false
+}

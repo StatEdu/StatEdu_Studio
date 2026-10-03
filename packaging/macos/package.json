@@ -32,7 +32,8 @@
       "package.json",
       "app/**/*",
       "runtime/**/*",
-      "desktop-bridge.js"
+      "desktop-bridge.js",
+      "sandbox-files.js"
     ],
     "mac": {
       "target": [

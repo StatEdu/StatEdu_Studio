@@ -15,7 +15,7 @@ class SeparationTests(unittest.TestCase):
             (mac / "build").mkdir(parents=True)
             template = json.loads((prep.ROOT / "packaging/macos/package.json").read_text())
             (mac / "package.json").write_text(json.dumps(template))
-            for name in ("main.js", "preload.js", "desktop-bridge.js", "release.json", "release-sign.cjs", "bundle-notices.cjs", "runtime-packages.lock.csv", "build/entitlements.mac.plist", "build/icon.png", "package-lock.json", "build.command", "PREPARATION_README_KO.md"):
+            for name in ("main.js", "preload.js", "desktop-bridge.js", "sandbox-files.js", "release.json", "mas.json", "mas-local-sign.cjs", "release-sign.cjs", "bundle-notices.cjs", "runtime-packages.lock.csv", "build/entitlements.mac.plist", "build/entitlements.mas.plist", "build/entitlements.mas.inherit.plist", "build/icon.png", "package-lock.json", "build.command", "PREPARATION_README_KO.md"):
                 (mac / name).write_bytes((prep.ROOT / "packaging/macos" / name).read_bytes())
             (root / "scripts").mkdir()
             for name in prep.TOOLS:

@@ -54,10 +54,10 @@ def prepare(destination):
     lock["version"] = version
     lock["packages"][""]["version"] = version
     (destination / "package-lock.json").write_text(json.dumps(lock, indent=2) + "\n", encoding="utf-8")
-    for name in ("main.js", "preload.js", "desktop-bridge.js"):
+    for name in ("main.js", "preload.js", "desktop-bridge.js", "sandbox-files.js"):
         shutil.copy2(electron / name, destination / name)
     (destination / "build").mkdir()
-    for name in ("release.json", "release-sign.cjs", "bundle-notices.cjs", "runtime-packages.lock.csv", "build/entitlements.mac.plist"):
+    for name in ("release.json", "mas.json", "mas-local-sign.cjs", "release-sign.cjs", "bundle-notices.cjs", "runtime-packages.lock.csv", "build/entitlements.mac.plist", "build/entitlements.mas.plist", "build/entitlements.mas.inherit.plist"):
         shutil.copy2(electron / name, destination / name)
     shutil.copy2(electron / "build/icon.png", destination / "build/icon.png")
     # Only application source/assets: do not ship personal data, logs or evidence.

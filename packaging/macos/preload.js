@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 contextBridge.exposeInMainWorld("stateduDesktopFiles", {
+  securityScopedFiles: process.argv.includes("--statedu-mas"),
   setDataDirectory(directory) {
     ipcRenderer.send("statedu:data-directory", directory);
   },

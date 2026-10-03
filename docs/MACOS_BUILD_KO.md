@@ -53,7 +53,9 @@ python3 scripts/build_macos_release.py --stage .macos-work/stage
 
 ## Mac App Store 등록 준비
 
-위 배포 명령은 GitHub·웹 다운로드용 Developer ID DMG/ZIP을 생성합니다. Mac App Store 제출 패키지는 별도로 Electron MAS 빌드·App Sandbox·스토어 서명·프로비저닝과 내장 R·파일 접근 검증이 필요합니다. [8개 언어 등록 문구와 준비 상태](../packaging/macos/app-store/README_KO.md)를 참고하십시오. 영어(미국)가 기본 등록 언어이며 스토어는 사용자 언어와 지역에 따라 등록된 번역을 표시합니다. 현재 등록 문구는 초안이며 실제 스토어 등록·심사 제출은 완료하지 않았습니다.
+위 배포 명령은 GitHub·웹 다운로드용 Developer ID DMG/ZIP을 생성합니다. Mac App Store용은 `scripts/build_macos_store.py`로 별도의 Electron MAS 빌드·App Sandbox·스토어 서명·Studio 전용 프로비저닝을 적용합니다. [MAS 빌드 명령과 8개 언어 등록 상태](../packaging/macos/app-store/README_KO.md)를 참고하십시오. 영어(미국)가 기본 등록 언어이며 App Store Connect에 앱 6818689787과 버전 1.3.1의 8개 언어 문구를 저장했습니다. 심사 제출·스토어 출시는 아직 진행하지 않았습니다.
+
+샌드박스 안의 실제 내장 R·분석·6개 출력 형식과 외부 파일 선택·저장·재시작 권한 복원을 검증했습니다. MAS 전용 OpenMP 18.1.8 교체는 고정 R 4.5.3 및 전체 R 패키지 버전을 유지하며 Word 저장 중 샌드박스 임시 파일 제한으로 R이 중단되는 문제를 해결합니다. 스토어 제출 `.pkg`의 서명 검사는 로컬 MAS 시험본의 기능 검증과 구분합니다. 최종 Store 실행은 Apple 업로드 처리·TestFlight에서 추가 확인해야 합니다.
 
 ## 검증한 환경과 남은 배포 확인
 

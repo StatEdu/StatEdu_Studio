@@ -1,0 +1,95 @@
+{
+  "checked_at": "2026-10-03T02:39:18.751Z",
+  "app_id": "6818689787",
+  "bundle_id": "com.statedu.studio.mac",
+  "version": "1.3.1",
+  "primary_locale": "en-US",
+  "status": "saved_to_app_store_connect_draft",
+  "version_localizations": [
+    {
+      "locale": "en-US",
+      "description": true,
+      "keywords": true
+    },
+    {
+      "locale": "de-DE",
+      "description": true,
+      "keywords": true
+    },
+    {
+      "locale": "vi",
+      "description": true,
+      "keywords": true
+    },
+    {
+      "locale": "es-ES",
+      "description": true,
+      "keywords": true
+    },
+    {
+      "locale": "ja",
+      "description": true,
+      "keywords": true
+    },
+    {
+      "locale": "zh-Hans",
+      "description": true,
+      "keywords": true
+    },
+    {
+      "locale": "fr-FR",
+      "description": true,
+      "keywords": true
+    },
+    {
+      "locale": "ko",
+      "description": true,
+      "keywords": true
+    }
+  ],
+  "app_info_localizations": [
+    {
+      "locale": "en-US",
+      "name": true,
+      "subtitle": true
+    },
+    {
+      "locale": "de-DE",
+      "name": true,
+      "subtitle": true
+    },
+    {
+      "locale": "vi",
+      "name": true,
+      "subtitle": true
+    },
+    {
+      "locale": "es-ES",
+      "name": true,
+      "subtitle": true
+    },
+    {
+      "locale": "ja",
+      "name": true,
+      "subtitle": true
+    },
+    {
+      "locale": "zh-Hans",
+      "name": true,
+      "subtitle": true
+    },
+    {
+      "locale": "fr-FR",
+      "name": true,
+      "subtitle": true
+    },
+    {
+      "locale": "ko",
+      "name": true,
+      "subtitle": true
+    }
+  ],
+  "build_uploaded": false,
+  "review_submitted": false,
+  "storefront_published": false
+}

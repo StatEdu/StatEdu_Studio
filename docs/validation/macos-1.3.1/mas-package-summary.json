@@ -1,0 +1,43 @@
+{
+  "status": "built",
+  "mode": "distribution",
+  "version": "1.3.1",
+  "app_id": "com.statedu.studio.mac",
+  "identity": "3rd Party Mac Developer Application: IL HYUN LEE (X7GH3WW947)",
+  "profile": {
+    "name": "StatEdu Studio Mac App Store",
+    "uuid": "270f4c68-c40c-404c-b902-e4e899dedcf6",
+    "expires": "2027-10-03T00:28:58"
+  },
+  "sandbox_entitlements": {
+    "com.apple.application-identifier": "X7GH3WW947.com.statedu.studio.mac",
+    "com.apple.developer.team-identifier": "X7GH3WW947",
+    "com.apple.security.app-sandbox": true,
+    "com.apple.security.application-groups": [
+      "X7GH3WW947.com.statedu.studio.mac"
+    ],
+    "com.apple.security.cs.allow-jit": true,
+    "com.apple.security.files.bookmarks.app-scope": true,
+    "com.apple.security.files.user-selected.read-write": true,
+    "com.apple.security.network.client": true,
+    "com.apple.security.network.server": true
+  },
+  "openmp_runtime": {
+    "openmp_version": "18.1.8",
+    "source_url": "https://mac.r-project.org/openmp/openmp-18.1.8-darwin20-Release.tar.gz",
+    "source_sha256": "05cc631ece7a8559ddcb580fbef6b0017f221bef9e07fd638edf2b1649e9aea6",
+    "source_sha1": "b8e7b79d265310ba12672e117df48ccfd9ce0366",
+    "previous_library_sha256": "8aed5b34afab9a33999ca6d3179cc7ab1fb22dd0f5f89ff00b3a8cb604ac4654",
+    "library_sha256": "9339503d4b34f7a6e38795298118979e9d9bdb38d28818fc2a0a542162a46515",
+    "architecture": "arm64",
+    "reason": "Sandbox-compatible upstream library registration fallback",
+    "r_version": "4.5.3",
+    "r_package_versions_changed": false
+  },
+  "strict_signature_verified": true,
+  "gui_verified": false,
+  "app_store_uploaded": false,
+  "app": "StatEdu Studio.app",
+  "package": "StatEdu_Studio_MAS_1.3.1_arm64.pkg",
+  "package_sha256": "c9999cc1d3afa890d8902ce8752407512d0192a530459e01e80e3f7a2045a942"
+}

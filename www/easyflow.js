@@ -62,6 +62,16 @@
           new MutationObserver(bind).observe(document.documentElement, {childList:true, subtree:true});
         }
       })();
+      // MAS file input selection must use the native dialog bridge so its
+      // security-scoped bookmark survives restart and restores before R starts.
+      document.addEventListener('click', function(event) {
+        var input = event.target;
+        var desktop = window.stateduDesktopFiles;
+        if (!input || input.id !== 'file' || input.type !== 'file' ||
+            !desktop || desktop.securityScopedFiles !== true || !window.Shiny) return;
+        event.preventDefault();
+        window.Shiny.setInputValue('browse_data_file', Date.now(), {priority:'event'});
+      }, true);
       // Shiny uploads retain a temporary copy. Keep the selected desktop source
       // path separately for native picture and report save dialogs.
       document.addEventListener('change', function(event) {

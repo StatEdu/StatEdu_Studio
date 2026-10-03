@@ -17,12 +17,13 @@ function setup() {
     confirmDiscardChanges: () => true,
     dialog: {showErrorBox: (_, text) => errors.push(text)},
     app: {setName: noop, quit: () => { context.isQuitting = true; }},
-    path, __dirname, shell: {openExternal: noop}, setTimeout,
+    path, process:{mas:false}, __dirname, shell: {openExternal: noop}, setTimeout,
     formatStartupError: e => e.message,
     startShiny: () => new Promise((resolve, reject) => starts.push({file: context.launchStudioFile, resolve, reject})),
     BrowserWindow: class {
       constructor() { this.webContents = {setWindowOpenHandler: noop, on: noop, executeJavaScript: async () => false}; }
       on() {}
+      isDestroyed() { return false; }
       async loadURL(url) { loads.push(url); }
     }
   };

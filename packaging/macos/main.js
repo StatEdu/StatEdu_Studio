@@ -5,6 +5,9 @@ const fs = require("fs");
 const net = require("net");
 const path = require("path");
 app.setName("StatEdu Studio");
+const sandboxFiles = require("./sandbox-files").createSecurityScopedAccess({app, enabled:process.mas === true, log:message => logStartup(message)});
+sandboxFiles.wrapDialogs(dialog);
+app.once("will-quit", () => sandboxFiles.release());
 
 const enableHardwareAcceleration = /^(1|true|yes)$/i.test(process.env.STATEDU_ENABLE_HARDWARE_ACCELERATION || "");
 const enableRendererDiagnostics = /^(1|true|yes)$/i.test(process.env.STATEDU_RENDERER_DIAGNOSTICS || "");
@@ -428,6 +431,7 @@ function waitForShiny(port, timeoutMs = DEFAULT_SHINY_STARTUP_TIMEOUT_MS) {
   const startedAt = Date.now();
   return new Promise((resolve, reject) => {
     const probe = () => {
+      if (isQuitting) { reject(new Error("Startup cancelled during shutdown")); return; }
       const socket = net.connect({ host: "127.0.0.1", port }, () => {
         socket.end();
         resolve();
@@ -497,6 +501,7 @@ async function startShiny() {
   runRscriptProbe(rscript, appDir);
 
   const port = await getFreePort();
+  if (isQuitting) throw new Error("Startup cancelled during shutdown");
   const token = crypto.randomBytes(32).toString("hex");
   const initialLanguage = initialAppLanguage();
   const env = {
@@ -663,7 +668,7 @@ async function reloadStudioFile(filePath) {
       const url = await startShiny();
       if (!pendingStudioFile && !isQuitting) { await mainWindow.loadURL(url); focusMainWindow(); }
     }
-  } catch (error) { dialog.showErrorBox(appDisplayName(), error.message); }
+  } catch (error) { if (!isQuitting) dialog.showErrorBox(appDisplayName(), error.message); }
   finally { isReloadingStudioFile = false; }
 }
 
@@ -671,7 +676,8 @@ async function createWindow() {
   isReloadingStudioFile = true;
   logStartupEnvironment();
   mainWindow = new BrowserWindow({width:1536, height:1000, minWidth:1000, minHeight:700, title:windowTitle(),
-    webPreferences:{preload:path.join(__dirname,"preload.js"), contextIsolation:true, nodeIntegration:false, sandbox:true}});
+    webPreferences:{preload:path.join(__dirname,"preload.js"), contextIsolation:true, nodeIntegration:false, sandbox:true,
+      additionalArguments:process.mas === true ? ["--statedu-mas"] : []}});
   configureDownloadSavePath(mainWindow.webContents);
   mainWindow.webContents.on("will-prevent-unload", event => {
     if (confirmDiscardChanges()) event.preventDefault();
@@ -685,8 +691,12 @@ async function createWindow() {
   mainWindow.on("closed", () => { mainWindow = null; });
   try {
     const url = await startShiny();
-    if (!pendingStudioFile) await mainWindow.loadURL(url);
-  } catch (error) { dialog.showErrorBox(appDisplayName(), formatStartupError(error)); app.quit(); }
+    if (!pendingStudioFile && !isQuitting && mainWindow && !mainWindow.isDestroyed()) await mainWindow.loadURL(url);
+  } catch (error) {
+    if (!isQuitting && mainWindow && !mainWindow.isDestroyed()) {
+      dialog.showErrorBox(appDisplayName(), formatStartupError(error)); app.quit();
+    } else logStartup(`startup cancelled during window shutdown: ${error.message}`);
+  }
   finally { isReloadingStudioFile = false; }
   if (pendingStudioFile) await reloadStudioFile(pendingStudioFile);
 }
@@ -715,7 +725,7 @@ if (!singleInstanceLock) {
     focusMainWindow();
   });
 
-  app.whenReady().then(createWindow);
+  app.whenReady().then(() => { sandboxFiles.restore(); return createWindow(); });
 }
 
 app.on("activate", () => { if (mainWindow) focusMainWindow(); else if (!isQuitting) createWindow(); });
