@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-03T15:54:07+09:00",
+  "checked_at": "2026-10-03T16:03:28+09:00",
   "status": "partial_official_xfa_saved_and_verified",
   "viewer": "Adobe Acrobat",
   "viewer_version": "26.002.21901",
@@ -50,6 +50,13 @@
   "supporting_annex_pages_visually_verified": 10,
   "supporting_annex_sha256": "1befbe756b26373efa5eca76835fcc0083aeac765058dd121fed0281e5e23293",
   "technical_inquiry_draft_prepared_locally": true,
-  "technical_inquiry_sent": false,
-  "market_date_pending": true
+  "technical_inquiry_sent": true,
+  "market_date_pending": true,
+  "technical_inquiry_sent_at": "2026-10-03T16:01:04+09:00",
+  "technical_inquiry_sent_label_confirmed": true,
+  "technical_inquiry_headers_and_body_readback_verified": true,
+  "technical_inquiry_attachment_readback_sha256_verified": true,
+  "technical_inquiry_attachment_sha256": "1befbe756b26373efa5eca76835fcc0083aeac765058dd121fed0281e5e23293",
+  "technical_inquiry_response_received": false,
+  "technical_inquiry_is_formal_filing": false
 }
