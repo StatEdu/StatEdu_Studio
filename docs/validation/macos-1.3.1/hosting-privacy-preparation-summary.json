@@ -21,7 +21,7 @@
   "website_privacy_policy_modified": false,
   "raw_access_logs_included_in_repository": false,
   "next_requirements": [
-    "retrieve_requested_web_access_log_via_FTP_after_generation",
+    "retrieve_target_studio_statedu_com_web_log_from_verified_hosting_FTP_account",
     "inspect_latest_json_request_log_fields_locally",
     "confirm_provider_total_retention_and_operator_separate_storage_and_usage",
     "verify_NinjaFirewall_scope_and_retention_against_actual_configuration"
@@ -63,5 +63,49 @@
     "account_matches_verified_hosting_id": false,
     "raw_file_or_account_names_included_in_repository": false,
     "supports_no_collection_claim": false
+  },
+  "additional_received_files_inspection": {
+    "authentication_log_copy_identical": true,
+    "additional_authentication_log_bytes": 349,
+    "additional_authentication_log_lines": 3,
+    "provided_http_access_log": {
+      "classification": "HTTP_combined_access_log",
+      "source_domain_from_filename": "statedu.com",
+      "sha256": "6859bc9ddfde1e284bf628a9a70864189f0b2b35fa83cff76fac01e90eb75e97",
+      "bytes": 5454143,
+      "lines": 19224,
+      "counts": {
+        "parsed": 19224,
+        "client_ip_present": 19224,
+        "timestamp_present": 19224,
+        "request_target_present": 19224,
+        "user_agent_present": 18852,
+        "referrer_present": 5274
+      },
+      "methods": {
+        "GET": 15253,
+        "POST": 3861,
+        "HEAD": 110
+      },
+      "first_timestamp": "2026-10-01T23:50:28+09:00",
+      "last_timestamp": "2026-10-02T23:50:22+09:00",
+      "unparsed_line_count": 0,
+      "referrers_for_statedu_com": 5110,
+      "referrers_for_www_statedu_com": 108,
+      "referrers_for_studio_statedu_com": 0,
+      "explicit_target_virtual_host_field": false,
+      "target_update_endpoint_found": false,
+      "target_studio_host_verified": false,
+      "absence_proves_no_collection": false
+    },
+    "target_host_http_access_log_received_verified": false,
+    "actual_client_ips_user_agents_referrers_included_in_repository": false
+  },
+  "correct_target_ftp_connection_verified": {
+    "evidence": "authenticated_Cafe24_service_connection_info_UI",
+    "host": "studio.statedu.com",
+    "ftp_port": 21,
+    "target_hosting_id_matches_earlier_service_verification": true,
+    "password_observed_or_recorded": false
   }
 }
