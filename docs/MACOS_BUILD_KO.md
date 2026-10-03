@@ -21,6 +21,8 @@ python3 scripts/verify_macos_app.py --stage .macos-work/stage --app '.macos-work
 
 앱 생성 결과는 `.app`입니다. 앱은 내장 R을 사용하고 개인 R 설정·라이브러리를 읽지 않습니다. PDF도 내장 Electron으로 생성합니다. 데이터·프로젝트·결과 선택창은 macOS 선택창이며, 로그와 캐시는 사용자 Application Support 경로에 저장합니다. 외부 Mplus 모듈은 공개판 맥 범위에서 비활성화됩니다.
 
+처음 실행하면 macOS 선호 언어 목록에서 영어·한국어·일본어·중국어·스페인어·프랑스어·독일어·베트남어 중 지원하는 첫 언어를 사용합니다. 지원하는 언어가 없으면 영어입니다. 환경설정에서 선택한 언어는 재실행에도 보존하며 내장 안내서와 변경 사항 폐기 확인창에 적용합니다. 번들의 기본 언어는 영어이고 Electron 언어 리소스도 이 8개 언어로 제한합니다. 중국어 리소스와 안내서는 간체입니다.
+
 ## 실제 앱 검증
 
 Playwright를 사용할 수 있는 환경에서 다음을 실행합니다. 이 검사는 격리된 임시 프로필과 저장 폴더를 만들며 원래 사용자 프로젝트를 변경하지 않습니다.
@@ -48,6 +50,10 @@ python3 scripts/build_macos_release.py --stage .macos-work/stage
 도구는 자격 증명을 먼저 확인하고, 내장 R의 모든 Mach-O 파일과 Electron 앱을 서명합니다. Hardened Runtime, Electron JIT 권한, 앱 공증과 티켓 검증, Gatekeeper 검사, DMG 별도 공증·티켓 첨부까지 수행합니다. DMG와 ZIP은 `release-dist`에 생성되며 자동 게시하지 않습니다. `.app` 검사와 공증 결과는 JSON으로 기록합니다. 필요한 인증서·프로필이 없으면 배포 빌드가 실패하고, 서명 없는 결과를 성공한 정식 배포본으로 처리하지 않습니다.
 
 근거: [electron-builder macOS 설정](https://www.electron.build/mac/), [Apple 공증 문서](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution).
+
+## Mac App Store 등록 준비
+
+위 배포 명령은 GitHub·웹 다운로드용 Developer ID DMG/ZIP을 생성합니다. Mac App Store 제출 패키지는 별도로 Electron MAS 빌드·App Sandbox·스토어 서명·프로비저닝과 내장 R·파일 접근 검증이 필요합니다. [8개 언어 등록 문구와 준비 상태](../packaging/macos/app-store/README_KO.md)를 참고하십시오. 영어(미국)가 기본 등록 언어이며 스토어는 사용자 언어와 지역에 따라 등록된 번역을 표시합니다. 현재 등록 문구는 초안이며 실제 스토어 등록·심사 제출은 완료하지 않았습니다.
 
 ## 검증한 환경과 남은 배포 확인
 
