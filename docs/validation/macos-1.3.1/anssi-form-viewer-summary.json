@@ -1,0 +1,29 @@
+{
+  "checked_at": "2026-10-03T15:46:18+09:00",
+  "status": "partial_official_xfa_saved_and_verified",
+  "viewer": "Adobe Acrobat",
+  "viewer_version": "26.002.21901",
+  "source_sha256": "149cf1324cc144c5891b085ed0ace5e8b90888bba61db7a4faf5822ee7ebf8e7",
+  "source_unmodified": true,
+  "partial_copy_sha256": "8b6a4de111f354e5416aff0448cc63c2d4575f88b0a04ccbbde3f3163b4347ba",
+  "editable_xfa_preserved": true,
+  "expected_fields": 24,
+  "saved_dataset_values_verified": 24,
+  "live_viewer_values_verified_after_reopen": 24,
+  "viewer_pages": 9,
+  "pages_visually_verified": 9,
+  "applicant_capacity_confirmed": "individual",
+  "signing_date_blank": true,
+  "applicant_signature_added": false,
+  "official_form_completed": false,
+  "regulatory_filing_sent": false,
+  "approval_received": false,
+  "private_personal_details_included_in_repository": false,
+  "remaining": [
+    "applicable_formality_and_classification",
+    "final_cryptographic_scope_and_maximum_key_lengths",
+    "supporting_attachments",
+    "applicant_final_review_date_and_signature"
+  ],
+  "validation_method": "Saved XFA datasets readback, exact named XFA fields in reopened Acrobat, and viewer window screenshots of all nine pages; changed attestation page reinspected after capacity update."
+}
