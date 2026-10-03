@@ -22,7 +22,7 @@ class SeparationTests(unittest.TestCase):
                 (root / "scripts" / name).write_bytes((prep.ROOT / "scripts" / name).read_bytes())
             (root / "docs/i18n").mkdir(parents=True)
             (root / "docs/i18n/document_specs.json").write_text('{}')
-            for name in ("app.R", "run_app.R", "LICENSE", "SOURCE-OFFER.txt", "THIRD-PARTY-NOTICES.txt", "license_report.csv", "VERSION",
+            for name in ("app.R", "run_app.R", "LICENSE", "SOURCE-OFFER.txt", "THIRD-PARTY-NOTICES.txt", "license_report.csv", "VERSION", "CITATION.cff",
                          "docs/ANALYSIS_REFERENCE_COMPARISON_PUBLIC.md",
                          "docs/ANALYSIS_REFERENCE_COMPARISON_PUBLIC_KO.md"):
                 (root / name).write_text('1.3.0' if name == 'VERSION' else 'fixture')
@@ -34,6 +34,7 @@ class SeparationTests(unittest.TestCase):
                 actual = json.loads((stage / "package.json").read_text())
                 self.assertEqual(actual['build'], template['build'])
                 self.assertEqual(actual['devDependencies'], template['devDependencies'])
+                self.assertEqual((stage/'app/CITATION.cff').read_text(), 'fixture')
                 self.assertFalse((root / 'packaging/electron').exists())
                 self.assertGreater(prep.verify_stage(stage), 0)
                 (stage/'app/app.R').write_text('changed')

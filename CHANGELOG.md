@@ -1,6 +1,6 @@
 # Version History
 
-## v1.3.1 - Unreleased — source preparation
+## v1.3.1 - 2026-10-02
 
 - Added startup minimum-version policy checks with separate Free/Pro policies and an offline cache.
 
@@ -8,7 +8,7 @@
 
 - Improved frequency-table numeric layout, grouped t-test summaries, logistic confidence-interval headers and default export folders; removed added-at timestamps from collected-result presentation.
 
-- Public menus exclude meta-analysis and within-subject treatment repeated-measures ANOVA. No installer has been built or published for this version.
+- Public menus exclude meta-analysis and within-subject treatment repeated-measures ANOVA.
 
 ## v1.3.0 - 2026-09-20
 

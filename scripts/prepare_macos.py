@@ -64,7 +64,7 @@ def prepare(destination):
     files = subprocess.check_output(
         ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"], cwd=ROOT
     ).decode("utf-8").split("\0")
-    tops = {"app.R", "run_app.R", "LICENSE", "SOURCE-OFFER.txt", "THIRD-PARTY-NOTICES.txt", "VERSION", "license_report.csv"}
+    tops = {"app.R", "run_app.R", "LICENSE", "SOURCE-OFFER.txt", "THIRD-PARTY-NOTICES.txt", "VERSION", "CITATION.cff", "license_report.csv"}
     documentation = json.loads((ROOT / "docs/i18n/document_specs.json").read_text(encoding="utf-8-sig"))
     for language in documentation.values():
         for document in language.values():

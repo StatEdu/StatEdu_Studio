@@ -29,4 +29,17 @@ module.exports = async context => {
     execFileSync('codesign',['--force','--timestamp','--options','runtime','--sign',identity,binary]);
     execFileSync('codesign',['--verify','--strict',binary]);
   }
+  // Apple's framework seal accepts standard root aliases. CRAN's optional
+  // Libraries alias points at Resources/lib and prevents a strict framework seal.
+  const librariesAlias = path.join(framework, 'Libraries');
+  if (fs.existsSync(librariesAlias)) {
+    if (!fs.lstatSync(librariesAlias).isSymbolicLink() ||
+        fs.realpathSync(librariesAlias) !== fs.realpathSync(path.join(framework, 'Resources/lib'))) {
+      throw new Error('Unexpected R.framework Libraries alias');
+    }
+    fs.unlinkSync(librariesAlias);
+  }
+  execFileSync('codesign',['--force','--timestamp','--options','runtime','--sign',identity,framework]);
+  execFileSync('codesign',['--verify','--deep','--strict',framework]);
+  console.log(`Signed ${binaries.length} bundled R Mach-O files and sealed R.framework.`);
 };

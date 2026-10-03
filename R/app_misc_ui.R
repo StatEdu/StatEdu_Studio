@@ -294,7 +294,7 @@ about_update_document <- function(language = statedu_initial_language()) {
 
 about_application_document <- function(version, language = "ko") {
   language <- normalize_app_language(language)
-  release_date <- about_citation_field("date-released", "2026-05-26")
+  release_date <- about_citation_field("date-released", "")
   doi <- about_citation_field("doi", "")
   repository <- about_citation_field("repository-code", "https://github.com/StatEdu/StatEdu_Studio")
   citation <- sprintf(

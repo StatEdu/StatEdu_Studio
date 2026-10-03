@@ -1,6 +1,6 @@
 # StatEdu Studio User Guide
 
-This guide describes how to use **StatEdu Studio 1.3.0** in practice: starting the app, loading data, checking variable settings, running analyses, reviewing results, saving output, and using planning calculators. The app runs locally on Windows. Loaded data are analyzed on the user's PC and are not sent to an external server.
+This guide describes how to use **StatEdu Studio 1.3.1** in practice: starting the app, loading data, checking variable settings, running analyses, reviewing results, saving output, and using planning calculators. The app runs locally on Mac and Windows. Loaded data are analyzed on the user's PC and are not sent to an external server.
 
 For a menu-by-menu inventory of implemented analyses, see **Analyses**. For method-selection rules, assumptions, warnings, and interpretation notes, see **Method Notes**.
 
@@ -8,11 +8,9 @@ Version 1.3.0 adds CFA, SEM and PLS-SEM/PLSc to the public analysis scope and pr
 
 ## 1. Start the App
 
-1. Open the **StatEdu Studio** folder.
-2. Double-click `StatEdu_Studio.bat` or the packaged StatEdu Studio executable.
-3. When the local browser window opens, use the app at `127.0.0.1:7894`.
+StatEdu Studio 1.3.1 is the public release for Mac. Open StatEdu Studio from Applications. The first launch follows your preferred macOS language among the eight supported languages; English is used when none is supported. A language selected in Preferences is preserved, and the built-in guide follows that selection. R is bundled; data are analyzed locally.
 
-If another StatEdu Studio session is already using the same local port, the launcher may close the old session and start a new one. Because the app runs locally, the browser is only the user interface; the statistical work is performed by the local R process bundled with the app.
+On Windows, open the StatEdu Studio folder and run `StatEdu_Studio.bat` or the packaged executable.
 
 ![Data workflow](docs/assets/user-guide/en/data-workflow.png)
 
@@ -392,11 +390,9 @@ Effect Size tools focus on effect sizes that can be used for interpretation or s
 
 ## 11. StatEdu Studio 1.3.0 — User Guide
 
-The developer installer is StatEdu Studio Dev 1.3.0-dev, with a separate app name and development menus retained. The public edition excludes meta-analysis and within-subject treatment repeated-measures ANOVA; mixed repeated-measures ANOVA and paired tests remain available.
-
 ### 11.1 Start and prepare data
 
-After installation, open StatEdu Studio Dev from the Start menu. Load data and check variable names, measurement levels, missing values and category codes. Check active case selection and split settings before analysis. Assign variables, choose options and run. Changing the UI language preserves original user variable names and data values.
+StatEdu Studio 1.3.1 is the public release for Mac. Open StatEdu Studio from Applications. The first launch follows your preferred macOS language among the eight supported languages; English is used when none is supported. A language selected in Preferences is preserved, and the built-in guide follows that selection. R is bundled; data are analyzed locally.
 
 ### 11.2 CFA
 

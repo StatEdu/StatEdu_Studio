@@ -220,10 +220,11 @@ function appLanguageFile() {
 }
 
 function normalizeAppLanguage(value) {
-  const language = String(value || "").trim().toLowerCase();
+  const language = String(value || "").trim().toLowerCase().replace(/_/g, "-");
   if (language === "english" || language === "eng") return "en";
   if (language === "korean" || language === "korea" || language === "kr") return "ko";
-  return /^[a-z][a-z0-9_-]*$/.test(language) ? language : "";
+  const code = language.split("-")[0];
+  return ["en", "ko", "ja", "zh", "es", "fr", "de", "vi"].includes(code) ? code : "";
 }
 
 function readAppLanguage() {
@@ -232,6 +233,20 @@ function readAppLanguage() {
   } catch (error) {
     return "";
   }
+}
+
+function initialAppLanguage() {
+  const chosen = normalizeAppLanguage(process.env.STATEDU_APP_LANGUAGE) || readAppLanguage();
+  if (chosen) return chosen;
+  try {
+    for (const language of app.getPreferredSystemLanguages()) {
+      const code = normalizeAppLanguage(language);
+      if (code) return code;
+    }
+  } catch (error) {
+    // Startup still works when the system language list is unavailable.
+  }
+  return "en";
 }
 
 function resultZoomFile() {
@@ -483,7 +498,7 @@ async function startShiny() {
 
   const port = await getFreePort();
   const token = crypto.randomBytes(32).toString("hex");
-  const initialLanguage = normalizeAppLanguage(process.env.STATEDU_APP_LANGUAGE) || readAppLanguage() || "ko";
+  const initialLanguage = initialAppLanguage();
   const env = {
     ...macREnvironment(),
     STATEDU_PORT: String(port),
@@ -610,12 +625,21 @@ function focusMainWindow() {
 }
 
 function confirmDiscardChanges() {
-  const korean = (normalizeAppLanguage(process.env.STATEDU_APP_LANGUAGE) || readAppLanguage() || "ko") === "ko";
+  const messages = {
+    en: ["There are unsaved project changes.", "Discard the changes and continue?", "Cancel", "Discard changes"],
+    ko: ["저장하지 않은 프로젝트 변경 사항이 있습니다.", "변경 사항을 버리고 계속하시겠습니까?", "취소", "변경 사항 버리기"],
+    ja: ["プロジェクトに未保存の変更があります。", "変更を破棄して続行しますか？", "キャンセル", "変更を破棄"],
+    zh: ["项目有未保存的更改。", "要放弃更改并继续吗？", "取消", "放弃更改"],
+    es: ["Hay cambios sin guardar en el proyecto.", "¿Descartar los cambios y continuar?", "Cancelar", "Descartar cambios"],
+    fr: ["Le projet contient des modifications non enregistrées.", "Abandonner les modifications et continuer ?", "Annuler", "Abandonner les modifications"],
+    de: ["Das Projekt enthält ungespeicherte Änderungen.", "Änderungen verwerfen und fortfahren?", "Abbrechen", "Änderungen verwerfen"],
+    vi: ["Dự án có các thay đổi chưa được lưu.", "Bỏ các thay đổi và tiếp tục?", "Hủy", "Bỏ các thay đổi"]
+  };
+  const [message, detail, cancel, discard] = messages[readAppLanguage() || initialAppLanguage()];
   return dialog.showMessageBoxSync(mainWindow, {
     type: "question", title: appDisplayName(),
-    message: korean ? "저장하지 않은 프로젝트 변경 사항이 있습니다." : "There are unsaved project changes.",
-    detail: korean ? "변경 사항을 버리고 계속하시겠습니까?" : "Discard the changes and continue?",
-    buttons: korean ? ["취소", "변경 사항 버리기"] : ["Cancel", "Discard changes"],
+    message, detail,
+    buttons: [cancel, discard],
     defaultId: 0, cancelId: 0
   }) === 1;
 }

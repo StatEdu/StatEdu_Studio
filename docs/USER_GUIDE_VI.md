@@ -1,12 +1,14 @@
-# Hướng dẫn sử dụng — StatEdu Studio 1.3.0
+# Hướng dẫn sử dụng — StatEdu Studio 1.3.1
 
 Phiên bản 1.3.0 bổ sung CFA, SEM và PLS-SEM/PLSc vào phạm vi công khai, đồng thời cung cấp RMST và nguy cơ cạnh tranh trong phân tích sống còn. Các chức năng này đi cùng khung trung gian/điều tiết, phân tích chung, mô hình dọc/bảng, mẫu phức tạp và công cụ lập kế hoạch. Lịch sử phân biệt tính năng mới công khai với cải tiến tính năng cũ.
 
-Bộ cài phát triển là StatEdu Studio Dev 1.3.0-dev, có tên ứng dụng riêng và giữ các menu phát triển. Bản công khai không gồm phân tích tổng hợp và ANOVA điều trị lặp lại trên cùng đối tượng; vẫn có ANOVA hỗn hợp đo lặp và kiểm định cặp.
+StatEdu Studio 1.3.1 là bản phát hành công khai cho Mac. Mở StatEdu Studio trong thư mục Ứng dụng. Khi chạy lần đầu, ứng dụng chọn ngôn ngữ macOS ưu tiên đầu tiên được hỗ trợ trong tám ngôn ngữ; nếu không có, ứng dụng dùng tiếng Anh. Ngôn ngữ chọn trong Tùy chọn được giữ lại và hướng dẫn tích hợp dùng cùng ngôn ngữ. R được tích hợp và dữ liệu được phân tích trên máy.
+
+Bản công khai không gồm phân tích tổng hợp và ANOVA điều trị lặp lại trên cùng đối tượng; vẫn có ANOVA hỗn hợp đo lặp và kiểm định cặp.
 
 ## 1. Khởi động và chuẩn bị dữ liệu
 
-Sau khi cài, mở StatEdu Studio Dev từ menu Start. Nạp dữ liệu, kiểm tra tên biến, mức đo, giá trị thiếu và mã nhóm. Kiểm tra chọn trường hợp và chia dữ liệu đang bật, gán biến, chọn tùy chọn rồi chạy. Đổi ngôn ngữ giữ nguyên tên biến và giá trị người dùng.
+Nạp dữ liệu, kiểm tra tên biến, mức đo, giá trị thiếu và mã nhóm. Kiểm tra chọn trường hợp và chia dữ liệu đang bật, gán biến, chọn tùy chọn rồi chạy. Đổi ngôn ngữ giữ nguyên tên biến và giá trị người dùng.
 
 ## 2. CFA
 

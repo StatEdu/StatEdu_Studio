@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 from prepare_macos import assert_macos_destination, check_runtime, verify_stage
@@ -18,8 +19,15 @@ def release(stage):
         raise RuntimeError('Set STATEDU_MAC_SIGN_IDENTITY and APPLE_KEYCHAIN_PROFILE. '
                            'Import a Developer ID Application certificate and store notarytool credentials in Keychain first.')
     identities = subprocess.check_output(['security','find-identity','-v','-p','codesigning'],text=True)
-    if identity not in identities or 'Developer ID Application' not in identity:
+    if not identity.startswith('Developer ID Application: '):
+        raise RuntimeError('A Developer ID Application identity is required for distribution outside the Mac App Store.')
+    matches = re.findall(r'^\s*\d+\)\s+([0-9A-Fa-f]{40})\s+"' + re.escape(identity) + r'"\s*$',
+                         identities, re.MULTILINE)
+    if len(matches) != 1:
         raise RuntimeError('The requested valid Developer ID Application identity is unavailable in Keychain.')
+    # electron-builder rejects the certificate-type prefix in mac.identity.
+    # Pin both signers to the verified certificate hash instead of an ambiguous name.
+    identity_hash = matches[0]
     # Validate the profile without printing credentials or submitting artifacts.
     subprocess.run(['xcrun','notarytool','history','--keychain-profile',profile],check=True,capture_output=True)
     check_runtime(stage)
@@ -28,12 +36,13 @@ def release(stage):
         raise ValueError('Expected the 1.3.1 public release source')
     base = package['build']
     override = json.loads((stage/'release.json').read_text())
-    config = {**base, **override, 'mac': {**base['mac'], **override['mac'], 'identity':identity},
+    config = {**base, **override, 'mac': {**base['mac'], **override['mac'], 'identity':identity_hash},
               'forceCodeSigning': True, 'directories': {**base['directories'], 'output':'release-dist'}}
     config_path = stage/'release-effective.json'
     config_path.write_text(json.dumps(config,indent=2)+'\n')
     env = dict(os.environ)
     env.pop('CSC_IDENTITY_AUTO_DISCOVERY',None)
+    env['STATEDU_MAC_SIGN_IDENTITY'] = identity_hash
     subprocess.run(['npm','ci','--no-audit','--no-fund'],cwd=stage,env=env,check=True)
     subprocess.run(['npx','--no-install','electron-builder','--config',str(config_path),'--mac','--arm64','--publish','never'],
                    cwd=stage,env=env,check=True)

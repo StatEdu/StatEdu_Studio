@@ -45,8 +45,13 @@
       ],
       "icon": "build/icon.png",
       "minimumSystemVersion": "13.0",
+      "electronLanguages": ["en", "ko", "ja", "zh_CN", "es", "fr", "de", "vi"],
       "identity": null,
       "hardenedRuntime": false,
+      "extendInfo": {
+        "CFBundleDevelopmentRegion": "en",
+        "CFBundleLocalizations": ["en", "ko", "ja", "zh-Hans", "es", "fr", "de", "vi"]
+      },
       "fileAssociations": [
         {
           "ext": "studio",

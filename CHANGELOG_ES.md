@@ -1,6 +1,6 @@
 # Historial de versiones
 
-## v1.3.1 - Sin publicar — preparación del código
+## v1.3.1 - 2026-10-02
 
 - Se añadió la comprobación de versión mínima al iniciar, con políticas Free/Pro separadas y caché sin conexión.
 
@@ -8,7 +8,7 @@
 
 - Se mejoraron las tablas numéricas, los resúmenes de pruebas t, los encabezados de intervalos y las carpetas de guardado; se eliminó la fecha de incorporación de resultados acumulados.
 
-- Los menús públicos excluyen el metaanálisis y el ANOVA de tratamientos repetidos en el mismo individuo. Aún no se ha creado ni publicado un instalador.
+- Los menús públicos excluyen el metaanálisis y el ANOVA de tratamientos repetidos en el mismo individuo.
 
 ## v1.3.0 - 2026-09-20
 

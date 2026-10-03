@@ -9,7 +9,8 @@
     "hardenedRuntime": true,
     "entitlements": "build/entitlements.mac.plist",
     "entitlementsInherit": "build/entitlements.mac.plist",
-    "notarize": true
+    "notarize": true,
+    "signIgnore": ["/Contents/Resources/app\\.asar\\.unpacked/(app|runtime)(/|$)"]
   },
   "dmg": {"sign": true}
 }

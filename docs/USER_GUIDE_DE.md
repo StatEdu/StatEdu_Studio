@@ -1,12 +1,14 @@
-# Benutzerhandbuch — StatEdu Studio 1.3.0
+# Benutzerhandbuch — StatEdu Studio 1.3.1
 
 Version 1.3.0 ergänzt CFA, SEM und PLS-SEM/PLSc im öffentlichen Analyseumfang sowie RMST und konkurrierende Risiken in der Überlebensanalyse. Hinzu kommen bestehende Mediations-/Moderationsmodelle, allgemeine Analysen, Längsschnitt-/Panelmodelle, komplexe Stichproben und Planungswerkzeuge. Der Versionsverlauf unterscheidet neue öffentliche Funktionen von Verbesserungen.
 
-Die Entwicklerversion heißt StatEdu Studio Dev 1.3.0-dev und verwendet einen separaten App-Namen mit Entwicklungsmenüs. Die öffentliche Ausgabe schließt Metaanalyse und die ANOVA wiederholter Behandlungen innerhalb derselben Personen aus; gemischte Messwiederholungs-ANOVA und gepaarte Tests bleiben verfügbar.
+StatEdu Studio 1.3.1 ist die öffentliche Version für Mac. Öffnen Sie StatEdu Studio im Ordner Programme. Beim ersten Start wird die erste unterstützte Sprache aus den macOS-Spracheinstellungen unter den acht verfügbaren Sprachen gewählt; andernfalls wird Englisch verwendet. Die in den Einstellungen gewählte Sprache bleibt erhalten und wird auch im integrierten Handbuch verwendet. R ist enthalten; die Daten werden lokal analysiert.
+
+Die öffentliche Ausgabe schließt Metaanalyse und die ANOVA wiederholter Behandlungen innerhalb derselben Personen aus; gemischte Messwiederholungs-ANOVA und gepaarte Tests bleiben verfügbar.
 
 ## 1. Start und Datenvorbereitung
 
-Öffnen Sie nach der Installation StatEdu Studio Dev im Startmenü. Laden Sie Daten und prüfen Sie Namen, Skalenniveaus, fehlende Werte und Kategorien. Prüfen Sie aktive Fallauswahl und Datenaufteilung, weisen Sie Variablen zu und starten Sie die Analyse. Sprachwechsel erhalten ursprüngliche Variablennamen und Datenwerte.
+Laden Sie Daten und prüfen Sie Namen, Skalenniveaus, fehlende Werte und Kategorien. Prüfen Sie aktive Fallauswahl und Datenaufteilung, weisen Sie Variablen zu und starten Sie die Analyse. Sprachwechsel erhalten ursprüngliche Variablennamen und Datenwerte.
 
 ## 2. CFA
 

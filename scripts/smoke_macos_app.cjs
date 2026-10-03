@@ -11,6 +11,7 @@ const output = fs.mkdtempSync(path.join(root, 'tmp', 'packaged-smoke-'));
 assert(output.toLowerCase().startsWith(path.join(root,'tmp','packaged-smoke-').toLowerCase()),'Only isolated smoke profiles may be restored');
 const profile = path.join(output, 'profile');
 const sourceData=path.join(root,'scripts/fixtures/survival_validation.csv');
+const documentSpecs=JSON.parse(fs.readFileSync(path.join(root,'docs/i18n/document_specs.json'),'utf8').replace(/^\uFEFF/,''));
 (async () => {
   let app;
   const started = Date.now();
@@ -43,6 +44,14 @@ const sourceData=path.join(root,'scripts/fixtures/survival_validation.csv');
     await window.locator('#data_steps input[type="file"]').waitFor({state:'attached',timeout:120000});
     await window.waitForFunction(() => !document.querySelector('#data_steps.recalculating'), null, {timeout:120000});
     assert.equal(await app.evaluate(({app})=>app.getVersion()), '1.3.1');
+    await window.locator('.navbar-nav a[data-value="about"]').evaluate(e=>e.click());
+    const about = window.locator('.about-application-document');
+    await about.waitFor({state:'visible'});
+    const aboutText = await about.innerText();
+    for (const value of ['v1.3.1','2026-10-02','10.22934/statedu.studio']) {
+      assert(aboutText.includes(value), `Packaged About page missing public release metadata: ${value}`);
+    }
+    await about.screenshot({path:path.join(output,'about-1.3.1.png')});
     for(const language of ['en','ja','zh','es','fr','de','vi','ko']) {
       await window.locator('.navbar-nav a[data-value="about_preferences"]').evaluate(e=>e.click());
       await window.locator('#app_language').selectOption(language);
@@ -50,6 +59,15 @@ const sourceData=path.join(root,'scripts/fixtures/survival_validation.csv');
       assert.equal(await window.locator('.navbar-nav a[data-value="analysis_meta"]').count(),0);
       assert.equal(await window.locator('.navbar-nav a[data-value="One-group repeated-measures ANOVA"]').count(),0);
       assert.equal(await window.locator('.navbar-nav a[data-value="Repeated-measures ANOVA"]').count(),1);
+      await window.locator('.navbar-nav a[data-value="about_user_guide"]').evaluate(e=>e.click());
+      const guide=window.locator('#lazy_about_user_guide');
+      await guide.waitFor({state:'visible'});
+      await window.waitForFunction(title=>document.querySelector('#lazy_about_user_guide h1')?.textContent===title,
+        documentSpecs[language].user_guide.title,{timeout:30000});
+      const guideText=await guide.innerText();
+      assert(guideText.includes('StatEdu Studio 1.3.1'),`Public Mac guide missing: ${language}`);
+      assert(!guideText.includes('StatEdu Studio Dev'),`Developer installer instructions in public guide: ${language}`);
+      await guide.screenshot({path:path.join(output,`guide-${language}.png`)});
     }
     await window.locator('#main_menu > li > a').first().evaluate(e=>e.click());
     await window.locator('body').screenshot({ path: path.join(output,'startup.png') });
@@ -196,7 +214,7 @@ const sourceData=path.join(root,'scripts/fixtures/survival_validation.csv');
     restoredClosed=app.waitForEvent('close',{timeout:20000});
     await app.evaluate(({app})=>setTimeout(()=>app.quit(),0));
     await restoredClosed;app=null;
-    const result={version:'1.3.1',publicLanguages:8,projectRestore:true,resultHistoryRestore:true,nativeDialogSelections:'automated Electron dialog responses; visual panel check separate',exports:['html','pdf','xlsx','docx','hwpx','studio'],status:'passed',readyMs,records,errors,shutdownConfirmed:true,output};
+    const result={version:'1.3.1',aboutPublicReleaseMetadata:true,publicLanguages:8,localizedPublicGuides:8,projectRestore:true,resultHistoryRestore:true,nativeDialogSelections:'automated Electron dialog responses; visual panel check separate',exports:['html','pdf','xlsx','docx','hwpx','studio'],status:'passed',readyMs,records,errors,shutdownConfirmed:true,output};
     fs.writeFileSync(path.join(output,'result.json'),JSON.stringify(result,null,2));console.log(JSON.stringify(result));
   } catch(error) {
     console.error('Primary validation failure:',error);

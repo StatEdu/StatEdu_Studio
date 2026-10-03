@@ -1,6 +1,6 @@
 # Historique des versions
 
-## v1.3.1 - Non publié — préparation du code
+## v1.3.1 - 2026-10-02
 
 - Ajout du contrôle de version minimale au démarrage, de politiques Free/Pro distinctes et d’un cache hors ligne.
 
@@ -8,7 +8,7 @@
 
 - Amélioration des tableaux numériques, résumés des tests t, en-têtes des intervalles et dossiers d’enregistrement ; suppression de l’heure d’ajout des résultats cumulés.
 
-- Les menus publics excluent la méta-analyse et l’ANOVA des traitements répétés chez un même individu. Aucun installateur n’a encore été créé ou publié.
+- Les menus publics excluent la méta-analyse et l’ANOVA des traitements répétés chez un même individu.
 
 ## v1.3.0 - 2026-09-20
 

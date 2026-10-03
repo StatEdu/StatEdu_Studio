@@ -25,6 +25,17 @@ def check_bundle(stage, bundle):
         raise ValueError('Not the macOS release application')
     if info.get('CFBundleShortVersionString') != package['version']:
         raise ValueError('Built application version differs from stage')
+    mac = package.get('build', {}).get('mac', {})
+    for key in ('CFBundleDevelopmentRegion', 'CFBundleLocalizations'):
+        expected = mac.get('extendInfo', {}).get(key)
+        if expected is not None and info.get(key) != expected:
+            raise ValueError(f'Packaged language declaration differs from stage: {key}')
+    expected_locales = mac.get('electronLanguages')
+    if expected_locales:
+        resources = bundle/'Contents/Resources'
+        actual_locales = {item.stem for item in resources.glob('*.lproj')}
+        if actual_locales != set(expected_locales):
+            raise ValueError(f'Packaged Electron languages differ from stage: {sorted(actual_locales)}')
     for association in package.get('build', {}).get('mac', {}).get('fileAssociations', []):
         extensions = association['ext']
         if isinstance(extensions, str):

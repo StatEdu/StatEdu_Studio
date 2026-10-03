@@ -1,6 +1,6 @@
 # Versionsverlauf
 
-## v1.3.1 - Unveröffentlicht — Quellcodevorbereitung
+## v1.3.1 - 2026-10-02
 
 - Versionsprüfung beim Start mit getrennten Free/Pro-Richtlinien und Offline-Cache ergänzt.
 
@@ -8,7 +8,7 @@
 
 - Zahlenlayout, t-Test-Zusammenfassungen, Konfidenzintervall-Kopfzeilen und Speicherordner verbessert; Hinzufügezeit in gesammelten Ergebnissen entfernt.
 
-- Öffentliche Menüs schließen Meta-Analyse und die Messwiederholungs-ANOVA für Behandlungen innerhalb derselben Person aus. Noch kein Installationspaket erstellt oder veröffentlicht.
+- Öffentliche Menüs schließen Meta-Analyse und die Messwiederholungs-ANOVA für Behandlungen innerhalb derselben Person aus.
 
 ## v1.3.0 - 2026-09-20
 

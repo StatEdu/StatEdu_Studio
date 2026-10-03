@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "status": "draft_not_uploaded",
+  "platform": "MAC_OS",
+  "version": "1.3.1",
+  "primary_locale": "en-US",
+  "localizations": [
+    {
+      "language": "en",
+      "locale": "en-US",
+      "name": "StatEdu Studio",
+      "subtitle": "Statistical analysis",
+      "description": "Analyze data locally on your Mac with StatEdu Studio 1.3.1. Bundled R provides statistical analyses, tables and figures without a separate R installation.\n\nExplore descriptive statistics, group comparisons, correlation, regression, reliability, factor analysis and survival analysis. Review method notes and collect results for export to HTML, PDF, Word and Excel.\n\nThe interface and built-in guides support English, Korean, Japanese, Simplified Chinese, Spanish, French, German and Vietnamese. Statistical table headings remain in English. The first launch follows supported macOS preferred languages, with English as the fallback. Your selected language is preserved.",
+      "keywords": "statistics,data,analysis,regression,correlation,survival,research",
+      "guide_path": "docs/USER_GUIDE_EN.md"
+    },
+    {
+      "language": "ko",
+      "locale": "ko",
+      "name": "StatEdu Studio",
+      "subtitle": "통계 분석",
+      "description": "StatEdu Studio 1.3.1로 Mac에서 데이터를 로컬 분석하세요. R이 내장되어 별도 R 설치 없이 통계 분석과 표·그림을 사용할 수 있습니다.\n\n기술통계, 집단 비교, 상관, 회귀, 신뢰도, 요인 및 생존분석을 제공합니다. 방법론 안내를 확인하고 결과를 모아 HTML, PDF, Word와 Excel로 저장할 수 있습니다.\n\nUI와 내장 안내서는 영어, 한국어, 일본어, 중국어 간체, 스페인어, 프랑스어, 독일어와 베트남어를 지원합니다. 통계표 제목은 영어로 유지됩니다. 처음 실행할 때 지원하는 macOS 선호 언어를 사용하고, 지원 언어가 없으면 영어로 표시합니다. 사용자가 선택한 언어는 유지됩니다.",
+      "keywords": "통계,데이터,분석,회귀,상관,생존분석,연구",
+      "guide_path": "docs/USER_GUIDE_KO.md"
+    },
+    {
+      "language": "ja",
+      "locale": "ja",
+      "name": "StatEdu Studio",
+      "subtitle": "統計分析",
+      "description": "StatEdu Studio 1.3.1 で Mac 上のデータをローカルに分析できます。R を内蔵しているため、別途 R をインストールせずに統計分析、表、図を利用できます。\n\n記述統計、群間比較、相関、回帰、信頼性、因子分析、生存分析に対応します。方法論の解説を確認し、結果をまとめて HTML、PDF、Word、Excel に保存できます。\n\nUI と内蔵ガイドは英語、韓国語、日本語、簡体字中国語、スペイン語、フランス語、ドイツ語、ベトナム語に対応します。統計表の見出しは英語です。初回起動は対応する macOS の優先言語を使用し、該当する言語がなければ英語を使用します。選択した言語は保持されます。",
+      "keywords": "統計,データ,分析,回帰,相関,生存分析,研究",
+      "guide_path": "docs/USER_GUIDE_JA.md"
+    },
+    {
+      "language": "zh",
+      "locale": "zh-Hans",
+      "name": "StatEdu Studio",
+      "subtitle": "统计分析",
+      "description": "使用 StatEdu Studio 1.3.1 在 Mac 上本地分析数据。应用内置 R，无需另行安装 R 即可进行统计分析并生成表格和图形。\n\n支持描述统计、组间比较、相关、回归、信度、因子分析和生存分析。查看方法论说明，汇总结果并保存为 HTML、PDF、Word 和 Excel。\n\n界面和内置指南支持英语、韩语、日语、简体中文、西班牙语、法语、德语和越南语。统计表标题使用英语。首次启动使用受支持的 macOS 首选语言；没有受支持的语言时使用英语。用户选择的语言会保留。",
+      "keywords": "统计,数据,分析,回归,相关,生存分析,研究",
+      "guide_path": "docs/USER_GUIDE_ZH.md"
+    },
+    {
+      "language": "es",
+      "locale": "es-ES",
+      "name": "StatEdu Studio",
+      "subtitle": "Análisis estadístico",
+      "description": "Analice datos localmente en su Mac con StatEdu Studio 1.3.1. R está incluido para realizar análisis estadísticos y generar tablas y figuras sin instalar R por separado.\n\nExplore estadística descriptiva, comparaciones de grupos, correlación, regresión, fiabilidad, análisis factorial y supervivencia. Consulte las notas metodológicas y reúna resultados para exportarlos a HTML, PDF, Word y Excel.\n\nLa interfaz y las guías integradas admiten inglés, coreano, japonés, chino simplificado, español, francés, alemán y vietnamita. Los encabezados de las tablas estadísticas permanecen en inglés. El primer inicio sigue los idiomas compatibles preferidos de macOS; si no hay ninguno, utiliza inglés. El idioma elegido se conserva.",
+      "keywords": "estadística,datos,análisis,regresión,correlación,supervivencia,investigación",
+      "guide_path": "docs/USER_GUIDE_ES.md"
+    },
+    {
+      "language": "fr",
+      "locale": "fr-FR",
+      "name": "StatEdu Studio",
+      "subtitle": "Analyse statistique",
+      "description": "Analysez vos données localement sur Mac avec StatEdu Studio 1.3.1. R est inclus pour réaliser des analyses statistiques et produire des tableaux et des figures sans installation séparée de R.\n\nExplorez les statistiques descriptives, les comparaisons de groupes, la corrélation, la régression, la fiabilité, les analyses factorielles et de survie. Consultez les notes méthodologiques et rassemblez les résultats pour les exporter en HTML, PDF, Word et Excel.\n\nL’interface et les guides intégrés prennent en charge l’anglais, le coréen, le japonais, le chinois simplifié, l’espagnol, le français, l’allemand et le vietnamien. Les en-têtes des tableaux statistiques restent en anglais. Le premier lancement suit les langues macOS préférées compatibles, avec l’anglais par défaut. La langue choisie est conservée.",
+      "keywords": "statistiques,données,analyse,régression,corrélation,survie,recherche",
+      "guide_path": "docs/USER_GUIDE_FR.md"
+    },
+    {
+      "language": "de",
+      "locale": "de-DE",
+      "name": "StatEdu Studio",
+      "subtitle": "Statistische Analyse",
+      "description": "Analysieren Sie Daten lokal auf Ihrem Mac mit StatEdu Studio 1.3.1. R ist enthalten, sodass Sie statistische Analysen, Tabellen und Abbildungen ohne separate R-Installation nutzen können.\n\nNutzen Sie deskriptive Statistik, Gruppenvergleiche, Korrelation, Regression, Reliabilität, Faktoren- und Überlebensanalyse. Lesen Sie methodische Hinweise und sammeln Sie Ergebnisse für den Export nach HTML, PDF, Word und Excel.\n\nOberfläche und integrierte Handbücher unterstützen Englisch, Koreanisch, Japanisch, vereinfachtes Chinesisch, Spanisch, Französisch, Deutsch und Vietnamesisch. Statistische Tabellenüberschriften bleiben auf Englisch. Beim ersten Start wird eine unterstützte bevorzugte macOS-Sprache verwendet, sonst Englisch. Die gewählte Sprache bleibt erhalten.",
+      "keywords": "Statistik,Daten,Analyse,Regression,Korrelation,Überleben,Forschung",
+      "guide_path": "docs/USER_GUIDE_DE.md"
+    },
+    {
+      "language": "vi",
+      "locale": "vi",
+      "name": "StatEdu Studio",
+      "subtitle": "Phân tích thống kê",
+      "description": "Phân tích dữ liệu trên máy Mac với StatEdu Studio 1.3.1. R được tích hợp để thực hiện phân tích thống kê, tạo bảng và hình mà không cần cài R riêng.\n\nKhám phá thống kê mô tả, so sánh nhóm, tương quan, hồi quy, độ tin cậy, phân tích nhân tố và sống còn. Xem ghi chú phương pháp và tập hợp kết quả để xuất sang HTML, PDF, Word và Excel.\n\nGiao diện và hướng dẫn tích hợp hỗ trợ tiếng Anh, Hàn, Nhật, Trung giản thể, Tây Ban Nha, Pháp, Đức và Việt. Tiêu đề bảng thống kê vẫn bằng tiếng Anh. Lần chạy đầu dùng ngôn ngữ macOS ưu tiên được hỗ trợ; nếu không có thì dùng tiếng Anh. Ngôn ngữ đã chọn được giữ lại.",
+      "keywords": "thống kê,dữ liệu,phân tích,hồi quy,tương quan,sống còn,nghiên cứu",
+      "guide_path": "docs/USER_GUIDE_VI.md"
+    }
+  ]
+}

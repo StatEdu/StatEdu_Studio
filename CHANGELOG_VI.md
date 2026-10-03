@@ -1,6 +1,6 @@
 # Lịch sử phiên bản
 
-## v1.3.1 - Chưa phát hành — chuẩn bị mã nguồn
+## v1.3.1 - 2026-10-02
 
 - Thêm kiểm tra phiên bản tối thiểu khi khởi động, chính sách Free/Pro riêng và bộ nhớ đệm ngoại tuyến.
 
@@ -8,7 +8,7 @@
 
 - Cải thiện bố cục số, tóm tắt kiểm định t, tiêu đề khoảng tin cậy và thư mục lưu; bỏ thời gian thêm trong kết quả tích lũy.
 
-- Menu công khai không có phân tích tổng hợp và ANOVA xử lý đo lặp trong cùng cá thể. Chưa tạo hoặc phát hành bộ cài đặt.
+- Menu công khai không có phân tích tổng hợp và ANOVA xử lý đo lặp trong cùng cá thể.
 
 ## v1.3.0 - 2026-09-20
 

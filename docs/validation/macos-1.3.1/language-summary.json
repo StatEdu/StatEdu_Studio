@@ -1,0 +1,23 @@
+{
+  "status": "passed",
+  "preferredLanguages": [
+    "ko-KR"
+  ],
+  "firstInstallLanguage": "ko",
+  "persistedLanguage": "fr",
+  "guideLanguage": "fr",
+  "isolatedProfile": true,
+  "supported_languages": [
+    "en",
+    "ko",
+    "ja",
+    "zh",
+    "es",
+    "fr",
+    "de",
+    "vi"
+  ],
+  "primary_store_locale": "en-US",
+  "store_metadata_status": "draft_not_uploaded",
+  "first_install_matrix": "eight supported system language variants, unsupported-language fallback and stored choice tested in validate_macos_language.cjs"
+}

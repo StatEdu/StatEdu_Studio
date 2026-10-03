@@ -1,12 +1,14 @@
-# Guía del usuario — StatEdu Studio 1.3.0
+# Guía del usuario — StatEdu Studio 1.3.1
 
 La versión 1.3.0 incorpora CFA, SEM y PLS-SEM/PLSc al alcance público y ofrece RMST y riesgos competitivos en supervivencia. Se complementan con el lienzo de mediación/moderación, análisis generales, modelos longitudinales y de panel, muestras complejas y herramientas de planificación. El historial distingue las novedades públicas de las mejoras de funciones existentes.
 
-El instalador de desarrollo es StatEdu Studio Dev 1.3.0-dev, con nombre de aplicación separado y menús de desarrollo. La edición pública excluye metaanálisis y ANOVA de tratamientos con medidas repetidas intraindividuales; conserva ANOVA mixto de medidas repetidas y pruebas pareadas.
+StatEdu Studio 1.3.1 es la versión pública para Mac. Abra StatEdu Studio desde Aplicaciones. El primer inicio utiliza el primer idioma compatible de las preferencias de macOS entre los ocho disponibles; si no hay ninguno, utiliza inglés. El idioma elegido en Preferencias se conserva y la guía integrada utiliza el mismo idioma. R está incluido y los datos se analizan localmente.
+
+La edición pública excluye metaanálisis y ANOVA de tratamientos con medidas repetidas intraindividuales; conserva ANOVA mixto de medidas repetidas y pruebas pareadas.
 
 ## 1. Inicio y preparación
 
-Abra StatEdu Studio Dev desde Inicio tras instalarlo. Cargue los datos y revise nombres, niveles de medida, valores ausentes y códigos. Compruebe la selección de casos y la división de datos activas; asigne variables, elija opciones y ejecute. Cambiar el idioma conserva los nombres y valores originales del usuario.
+Cargue los datos y revise nombres, niveles de medida, valores ausentes y códigos. Compruebe la selección de casos y la división de datos activas; asigne variables, elija opciones y ejecute. Cambiar el idioma conserva los nombres y valores originales del usuario.
 
 ## 2. CFA
 

@@ -80,6 +80,24 @@ class BundleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'vendor license notice missing'):
             check_bundle(self.stage,self.bundle)
 
+    def test_bundle_languages_match_supported_locales(self):
+        languages = ['en', 'ko', 'ja', 'zh-Hans', 'es', 'fr', 'de', 'vi']
+        locales = ['en', 'ko', 'ja', 'zh_CN', 'es', 'fr', 'de', 'vi']
+        package = {'version': '1.3.1', 'build': {'mac': {
+            'extendInfo': {'CFBundleDevelopmentRegion': 'en', 'CFBundleLocalizations': languages},
+            'electronLanguages': locales}}}
+        (self.stage/'package.json').write_text(json.dumps(package))
+        with self.assertRaisesRegex(ValueError, 'language declaration'):
+            check_bundle(self.stage, self.bundle)
+        self.info.update(package['build']['mac']['extendInfo'])
+        self.save_info()
+        for locale in locales:
+            (self.contents/'Resources'/f'{locale}.lproj').mkdir()
+        self.assertEqual(check_bundle(self.stage, self.bundle)[2], 1)
+        (self.contents/'Resources/it.lproj').mkdir()
+        with self.assertRaisesRegex(ValueError, 'Electron languages'):
+            check_bundle(self.stage, self.bundle)
+
     def test_bundle_identity_version_and_path_rejected(self):
         for key, value in [('CFBundleIdentifier', 'com.statedu.studio'),
                            ('CFBundleShortVersionString', '0.0.0'),
