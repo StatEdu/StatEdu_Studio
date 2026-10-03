@@ -89,7 +89,10 @@
       "subtitle": true
     }
   ],
-  "build_uploaded": false,
+  "build_uploaded": true,
   "review_submitted": false,
-  "storefront_published": false
+  "storefront_published": false,
+  "processed_build_confirmed": true,
+  "build_version": "2",
+  "latest_preparation_summary": "app-store-review-preparation-summary.json"
 }

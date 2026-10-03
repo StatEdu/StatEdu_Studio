@@ -1,0 +1,23 @@
+개인정보처리방침 macOS 추가 안내 초안
+대상: https://studio.statedu.com/privacy/ 의 기존 방침에 추가할 문구
+상태: 웹사이트에 게시되지 않은 초안. 기존 문의 자료 보관기간과 서버 로그 정책을 대체하지 않습니다.
+
+macOS 앱의 분석 자료와 파일 접근
+StatEdu Studio 1.3.1 macOS 앱은 사용자가 선택한 자료를 Mac에 포함된 R 실행 환경에서 분석합니다. 일반적인 로컬 분석 과정에서 분석 자료와 결과를 운영자 서버로 업로드하지 않습니다. 사용자가 내보낸 결과와 .studio 프로젝트는 사용자가 선택한 위치에 저장됩니다.
+
+앱은 macOS App Sandbox를 사용하며, 외부 파일을 열거나 저장할 때 사용자가 macOS 파일 선택창에서 허용한 파일에 접근합니다. 이전에 선택한 파일을 다음 실행에서도 열 수 있도록 접근 권한 정보인 security-scoped bookmark를 앱의 개인 컨테이너에 저장할 수 있습니다. 앱은 언어, 환경설정, 결과 이력, 버전 정책 캐시와 실행 로그도 Mac에 저장할 수 있습니다. 실행 로그에는 오류 메시지와 파일 경로 등 진단 정보가 포함될 수 있습니다. 앱을 제거하더라도 사용자가 저장한 파일이나 일부 설정이 남을 수 있습니다.
+
+버전 확인과 외부 접속
+앱은 시작할 때 최소 지원 버전과 업데이트 정책을 확인하기 위해 https://studio.statedu.com/releases/latest.json 에 접속합니다. 사용자가 업데이트 확인을 실행할 때도 접속합니다. 이 요청에 분석 자료나 결과를 첨부하지 않습니다. 통신 과정에서 IP 주소와 요청 시각 등 기술 정보가 서버에서 처리될 수 있으며, 기존 방침의 호스팅 및 보안 로그 기준이 적용됩니다. 도움말, 업데이트, 문의 링크를 열면 외부 웹사이트로 이동하며 해당 서비스의 방침이 적용됩니다.
+
+문의와 개인정보 관련 요청
+macOS 앱 지원은 support@statedu.com으로 문의할 수 있습니다. 문의 자료의 보관과 삭제, 개인정보 관련 요청에 관한 기존 방침이 함께 적용됩니다. 문의에 분석 자료를 첨부할 때에는 불필요한 개인정보나 민감정보를 제거해 주세요.
+
+English supplement draft
+StatEdu Studio 1.3.1 for macOS processes user-selected analysis data locally in the bundled R runtime. Normal local analysis does not upload the analysis data or results to the operator's server. Exported results and .studio projects are saved to locations selected by the user.
+
+The app uses macOS App Sandbox. Native file dialogs authorize access to files selected by the user. Security-scoped bookmarks may be stored in the app's private container to restore access to previously selected files on subsequent launches. Language preferences, application settings, result history, version-policy cache and startup logs may also be stored locally. Logs may contain error messages and file paths. User-created files or some settings may remain after uninstalling the app.
+
+The app contacts https://studio.statedu.com/releases/latest.json at startup and during user-initiated update checks to read the version policy. These requests do not attach analysis data or results. Technical information such as IP addresses and request times may be processed by the server under the website's existing hosting and security-log policy. Opening support, help or update links leads to external websites governed by their respective privacy policies.
+
+Mac app support is available at support@statedu.com. The existing policy's support-data retention, deletion and privacy-request provisions also apply. Remove unnecessary personal or sensitive information before attaching data to a support request.

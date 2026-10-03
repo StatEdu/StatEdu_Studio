@@ -1,0 +1,46 @@
+StatEdu Studio 1.3.1 - encryption technical description
+Prepared: 2026-10-03
+Status: technical preparation draft; not signed, filed, approved or uploaded as an approval document.
+
+Product and distribution
+Product: StatEdu Studio, public version 1.3.1, Mac App Store build 2.
+Bundle ID: com.statedu.studio.mac. App Store Connect ID: 6818689787.
+Platform: Apple Silicon macOS; declared minimum macOS version 13.0.
+Purpose: local statistical analysis of user-selected files using bundled R, with local report and project exports.
+Distribution requested by the operator: free, worldwide, including France.
+Product website: https://studio.statedu.com/
+Support: support@statedu.com
+
+Short purpose statement (App Store Connect, under 300 characters)
+StatEdu Studio is a local statistical analysis app for macOS. Bundled R analyzes user-selected files and exports results locally. HTTPS reads a public version-policy JSON. A random token protects its localhost Shiny service. No custom cryptographic algorithm or encrypted-data product is offered.
+
+Application operations
+1. HTTPS reads https://studio.statedu.com/releases/latest.json at startup or when the user checks for updates. The request reads a public version policy and does not attach analysis data or analysis results. R/update_check.R calls jsonlite::fromJSON on the HTTPS URL. The negotiated TLS version and cipher suite have not been measured for this submission.
+2. packaging/macos/main.js uses Node crypto.randomBytes(32) to produce a random token for access to the local Shiny service on 127.0.0.1. The token is generated for local runtime access. It is not an encryption key for analysis files. Do not include live tokens in a regulatory submission.
+3. Analysis modules use digest SHA-256 for code/content checks and cache signatures. SHA-256 is a hash function, not reversible encryption of analysis data.
+4. The normal product workflow processes data locally and exports ordinary report/project files. The application does not expose a user-configurable cryptographic algorithm or an encrypted-file feature. No proprietary algorithm was identified in these application paths.
+
+Included cryptographic components
+- Electron 43.4.0: the application ships the Electron/Node/Chromium runtime, including Node crypto. The packaging version is pinned in packaging/macos/package.json. A complete inventory of the embedded runtime's cryptographic capabilities and maximum key lengths remains to be finalized for an official declaration.
+- R openssl package 2.4.2: the actual build-2 payload includes Resources/library/openssl/libs/openssl.so. Its package description lists standard RSA, DSA, EC, AES, signatures, hash functions and random generation capabilities. This describes included library capabilities; it does not mean the Studio UI exposes all of them.
+- OpenSSL 3.5.4 (30 Sep 2025): the version string was observed in the above openssl.so. nm confirms compiled AES and EVP encryption symbols. otool -L does not show a separate system libssl/libcrypto dependency for this file. Thus this submission cannot be described as containing only encryption supplied by Apple's operating system.
+- The precise maximum key lengths and all enabled algorithms must be checked against the shipped binaries before completing section B.3.4 of the French form. Do not use an assumed cipher list as a verified inventory.
+
+Observed Apple requirement
+App Store Connect's encryption-document wizard, with standard encryption outside Apple's operating system and France selected, requests a copy of the French encryption declaration approval. No approval file has been supplied. The wizard was cancelled without submitting a document. Build 2 remains marked as missing export-compliance documentation.
+This technical draft is supporting information, not that approval. No ITSAppUsesNonExemptEncryption=false setting or exemption claim has been applied to bypass the document requirement. No final ECCN, exemption, mass-market classification or regulatory approval is asserted here.
+
+Official French form preparation
+ANSSI publishes an official interactive PDF form for cryptology declarations and authorization requests. The downloaded file uses dynamic XFA; ordinary PDF extraction shows a viewer-upgrade notice. It needs a compatible viewer for completion and visual verification. The original remains unchanged in local temporary storage.
+Known product and technical details above can support the product-description sections. The operator supplied a name, nationality, postal address and postal code on 2026-10-03; they are preserved only in local private preparation files, not in this public repository. Applicant capacity, exact address spelling, administrative/technical contacts, applicable operation/classification, confirmed algorithm/key-length inventory and the applicant's signature must still be verified before filing. An organization may need registration evidence as described by the official form. No signature or applicant address has been invented.
+ANSSI's official electronic procedure requests a completed electronic form, a signed scan and supporting documentation. No email has been sent and no filing has been made.
+
+Sources
+Apple encryption-documentation table:
+https://developer.apple.com/help/app-store-connect/reference/app-information/export-compliance-documentation-for-encryption
+Apple documentation workflow:
+https://developer.apple.com/help/app-store-connect/manage-app-information/determine-and-upload-app-encryption-documentation/
+ANSSI official forms and filing instructions:
+https://cyber.gouv.fr/reglementation/reglementation-identite-confiance-numerique/controles-reglementaires-cryptographie/controle-moyen-de-cryptologie/controle-reglementaire-cryptographie-formulaires/
+Official form download:
+https://cyber.gouv.fr/documents/330/crypto_declaration-demande_autorisation_operations_annexe1_v2.pdf

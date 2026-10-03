@@ -11,14 +11,16 @@
   "apple_processing_state_at_log_end": "PROCESSING",
   "transferred_bytes": 469845524,
   "package_sha256": "3c509fb551de089e6dafb64d0e8ce9f45944bbb09a610c9fa67d1858e60febad",
-  "processed_build_confirmed": false,
+  "processed_build_confirmed": true,
   "app_store_icon_confirmed": false,
   "review_submitted": false,
   "publicly_released": false,
   "raw_log_included": false,
   "app_store_connect_observation": {
-    "testflight_build_list": "no_builds_visible_yet",
+    "testflight_build_list": "build_2_visible_missing_export_compliance",
     "app_icon": "placeholder_svg",
-    "build_attachment": "not_available_yet"
-  }
+    "build_attachment": "build_2_attached_to_macos_1.3.1_draft"
+  },
+  "transporter_icon_confirmed": true,
+  "processed_build_checked_at": "2026-10-03T14:36:36+09:00"
 }

@@ -1,0 +1,24 @@
+StatEdu Studio 1.3.1 is a local statistical analysis app for Apple Silicon Macs (macOS 13 or later). No app account or login is required. R and the required packages are bundled; no separate R installation is needed.
+
+Review workflow:
+1. Launch the app. The initial interface language follows supported macOS preferred languages; language selection is preserved. Built-in guides are available in English, Korean, Japanese, Simplified Chinese, Spanish, French, German and Vietnamese.
+2. In Data, choose a CSV or Excel file using the native macOS file picker. Check the variable types and measurement levels before applying the data.
+3. Open Analysis > Correlation, select two numeric variables and run the analysis. The result table appears inside the app.
+4. Add results to the Result collection and save HTML, PDF, Word or Excel using the native save dialog. HWPX is also available from collected results with Korean UI.
+5. Save settings as a .studio project, quit and reopen it to restore the saved analysis setup.
+
+For a small test CSV, save the following as review.csv and choose it in step 2:
+x,y
+1,2
+2,4
+3,5
+4,8
+5,9
+6,12
+
+Analysis data and results are processed locally. The app contacts studio.statedu.com to read its version policy; the request does not attach analysis data or results. App Sandbox limits external file access to user-selected files. Saved security-scoped bookmarks restore access to files previously chosen by the user.
+
+Network client permission supports the HTTPS version check. Network server permission supports the bundled local Shiny service on 127.0.0.1. The embedded runtime uses the JIT entitlement. These permissions support local execution and are not used to host a public service.
+
+Support: support@statedu.com
+Product website: https://studio.statedu.com/
