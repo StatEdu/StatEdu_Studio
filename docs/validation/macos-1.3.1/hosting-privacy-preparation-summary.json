@@ -7,8 +7,8 @@
   "public_manifest_head_status": 200,
   "actual_hosting_product_verified": true,
   "authenticated_hosting_configuration_inspected": true,
-  "actual_update_request_log_inspected": false,
-  "actual_log_retention": "unknown_total_provider_and_operator_retention",
+  "actual_update_request_log_inspected": true,
+  "actual_log_retention": "access_log_storage_verified_total_provider_and_operator_retention_unknown",
   "provider_documentation": {
     "scope": "Cafe24_new_managed_wordpress",
     "web_log_download_window_days": 7,
@@ -21,10 +21,10 @@
   "website_privacy_policy_modified": false,
   "raw_access_logs_included_in_repository": false,
   "next_requirements": [
-    "retrieve_target_studio_statedu_com_web_log_from_verified_hosting_FTP_account",
-    "inspect_latest_json_request_log_fields_locally",
-    "confirm_provider_total_retention_and_operator_separate_storage_and_usage",
-    "verify_NinjaFirewall_scope_and_retention_against_actual_configuration"
+    "confirm_provider_log_purpose_total_retention_and_deletion_scope",
+    "confirm_operator_downloaded_copy_retention_and_deletion",
+    "verify_NinjaFirewall_scope_and_retention_against_actual_configuration",
+    "finalize_data_types_purposes_linkage_and_tracking_against_actual_usage"
   ],
   "actual_hosting_product": "뉴매니지드 워드프레스 비즈니스",
   "configuration_inspection_scope": "service_product_and_web_ftp_log_generation_page_only",
@@ -45,13 +45,13 @@
   "web_log_download_folder": "cafe24_log",
   "web_log_delivery_method": "FTP",
   "web_log_generation_notice_wait_minutes": 10,
-  "web_log_file_generation_verified": false,
-  "web_log_file_downloaded": false,
+  "web_log_file_generation_verified": true,
+  "web_log_file_downloaded": true,
   "public_privacy_policy_security_log_retention_days": 90,
   "security_log_retention_evidence": "public_privacy_policy_NinjaFirewall_statement_only",
   "wordpress_security_plugin_config_inspected": false,
   "website_settings_changed": false,
-  "evidence_method": "authenticated_Cafe24_service_and_web_log_UI_readback_with_generation_request_completion_notice; current_public_privacy_HTML",
+  "evidence_method": "authenticated_Cafe24_service_and_web_log_UI_readback_with_generation_request_completion_notice; current_public_privacy_HTML; locally_parsed_user_supplied_target_domain_HTTP_access_log; operator_log_usage_response",
   "received_file_inspection": {
     "classification": "PAM_session_authentication_log_with_ProFTPD_sessions",
     "bytes": 349,
@@ -98,8 +98,8 @@
       "target_studio_host_verified": false,
       "absence_proves_no_collection": false
     },
-    "target_host_http_access_log_received_verified": false,
-    "actual_client_ips_user_agents_referrers_included_in_repository": false
+    "actual_client_ips_user_agents_referrers_included_in_repository": false,
+    "target_host_http_access_log_received_verified_in_earlier_batch": false
   },
   "correct_target_ftp_connection_verified": {
     "evidence": "authenticated_Cafe24_service_connection_info_UI",
@@ -107,5 +107,57 @@
     "ftp_port": 21,
     "target_hosting_id_matches_earlier_service_verification": true,
     "password_observed_or_recorded": false
-  }
+  },
+  "web_log_file_receipt_evidence": "user_supplied_dated_target_domain_file; provider_origin_not_cryptographically_verified",
+  "target_http_access_log_inspection": {
+    "classification": "HTTP_combined_access_log",
+    "source_domain_from_filename": "studio.statedu.com",
+    "sha256": "d97170ddaa5332d63ac92e843cc5c1aa7de5b0a9adcf427760b825289a3d3ef5",
+    "bytes": 114109,
+    "lines": 403,
+    "counts": {
+      "parsed": 403,
+      "client_ip_present": 403,
+      "timestamp_present": 403,
+      "request_target_present": 403,
+      "user_agent_present": 403,
+      "referrer_present": 290
+    },
+    "methods": {
+      "GET": 322,
+      "POST": 81
+    },
+    "unparsed_line_count": 0,
+    "target_update_endpoint_count": 9,
+    "target_update_endpoint_found": true,
+    "explicit_target_virtual_host_field": false,
+    "raw_client_ips_user_agents_referrers_included": false,
+    "log_date": "2026-10-02",
+    "target_host_attribution": "filename_and_previously_verified_hosting_service; combined_log_has_no_Host_field",
+    "target_endpoint_methods": {
+      "GET": 9
+    },
+    "target_endpoint_status_counts": {
+      "200": 9
+    },
+    "target_endpoint_user_agent_families": {
+      "curl": 5,
+      "browser_like": 3,
+      "python_client": 1
+    },
+    "target_endpoint_client_identity_verified": false,
+    "endpoint_requests_are_not_app_launch_or_user_counts": true
+  },
+  "operator_log_usage_response": {
+    "response_date": "2026-10-03",
+    "separate_use_reported": false,
+    "response": "never_separately_used_or_unknown",
+    "provider_purpose_confirmed": false,
+    "total_retention_confirmed": false,
+    "tracking_classification_finalized": false,
+    "user_linkage_classification_finalized": false
+  },
+  "provider_inquiry_prepared_locally": true,
+  "provider_inquiry_sent": false,
+  "provider_inquiry_file": "packaging/macos/app-store/cafe24-log-policy-inquiry-draft.txt"
 }
