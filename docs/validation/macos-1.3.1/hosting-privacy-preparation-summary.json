@@ -51,5 +51,17 @@
   "security_log_retention_evidence": "public_privacy_policy_NinjaFirewall_statement_only",
   "wordpress_security_plugin_config_inspected": false,
   "website_settings_changed": false,
-  "evidence_method": "authenticated_Cafe24_service_and_web_log_UI_readback_with_generation_request_completion_notice; current_public_privacy_HTML"
+  "evidence_method": "authenticated_Cafe24_service_and_web_log_UI_readback_with_generation_request_completion_notice; current_public_privacy_HTML",
+  "received_file_inspection": {
+    "classification": "PAM_session_authentication_log_with_ProFTPD_sessions",
+    "bytes": 349,
+    "lines": 3,
+    "http_access_log": false,
+    "ftp_session_lines": 2,
+    "http_request_lines": 0,
+    "target_update_request_found": false,
+    "account_matches_verified_hosting_id": false,
+    "raw_file_or_account_names_included_in_repository": false,
+    "supports_no_collection_claim": false
+  }
 }
