@@ -5,15 +5,15 @@
   "provider_evidence": "operator_response_and_public_dns",
   "dns_cname": "statedustudio.mycafe24.com",
   "public_manifest_head_status": 200,
-  "actual_hosting_product_verified": false,
-  "authenticated_hosting_configuration_inspected": false,
+  "actual_hosting_product_verified": true,
+  "authenticated_hosting_configuration_inspected": true,
   "actual_update_request_log_inspected": false,
-  "actual_log_retention": "unknown",
+  "actual_log_retention": "unknown_total_provider_and_operator_retention",
   "provider_documentation": {
     "scope": "Cafe24_new_managed_wordpress",
     "web_log_download_window_days": 7,
     "download_window_confirms_total_retention": false,
-    "applies_to_actual_product_confirmed": false,
+    "applies_to_actual_product_confirmed": true,
     "url": "https://help.cafe24.com/faq/wordpress/managed-wordpress/etc/managed-wordpress-feature-limits-change-policy/"
   },
   "privacy_responses_finalized": false,
@@ -21,8 +21,35 @@
   "website_privacy_policy_modified": false,
   "raw_access_logs_included_in_repository": false,
   "next_requirements": [
-    "confirm_actual_hosting_product_in_cafe24_management",
+    "retrieve_requested_web_access_log_via_FTP_after_generation",
     "inspect_latest_json_request_log_fields_locally",
-    "confirm_provider_and_operator_retention_and_actual_usage"
-  ]
+    "confirm_provider_total_retention_and_operator_separate_storage_and_usage",
+    "verify_NinjaFirewall_scope_and_retention_against_actual_configuration"
+  ],
+  "actual_hosting_product": "뉴매니지드 워드프레스 비즈니스",
+  "configuration_inspection_scope": "service_product_and_web_ftp_log_generation_page_only",
+  "web_access_log_service_available": true,
+  "account_web_log_available_days_before_today": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "web_log_generation_request_completed": true,
+  "web_log_request_date": "2026-10-02",
+  "web_log_request_target": "main_domain_web_log_only",
+  "web_log_requested_at_by": "2026-10-03T16:45:47+09:00",
+  "web_log_download_folder": "cafe24_log",
+  "web_log_delivery_method": "FTP",
+  "web_log_generation_notice_wait_minutes": 10,
+  "web_log_file_generation_verified": false,
+  "web_log_file_downloaded": false,
+  "public_privacy_policy_security_log_retention_days": 90,
+  "security_log_retention_evidence": "public_privacy_policy_NinjaFirewall_statement_only",
+  "wordpress_security_plugin_config_inspected": false,
+  "website_settings_changed": false,
+  "evidence_method": "authenticated_Cafe24_service_and_web_log_UI_readback_with_generation_request_completion_notice; current_public_privacy_HTML"
 }
