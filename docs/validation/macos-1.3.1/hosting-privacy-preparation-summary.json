@@ -1,0 +1,28 @@
+{
+  "checked_on": "2026-10-03",
+  "domain": "studio.statedu.com",
+  "hosting_provider": "Cafe24",
+  "provider_evidence": "operator_response_and_public_dns",
+  "dns_cname": "statedustudio.mycafe24.com",
+  "public_manifest_head_status": 200,
+  "actual_hosting_product_verified": false,
+  "authenticated_hosting_configuration_inspected": false,
+  "actual_update_request_log_inspected": false,
+  "actual_log_retention": "unknown",
+  "provider_documentation": {
+    "scope": "Cafe24_new_managed_wordpress",
+    "web_log_download_window_days": 7,
+    "download_window_confirms_total_retention": false,
+    "applies_to_actual_product_confirmed": false,
+    "url": "https://help.cafe24.com/faq/wordpress/managed-wordpress/etc/managed-wordpress-feature-limits-change-policy/"
+  },
+  "privacy_responses_finalized": false,
+  "privacy_responses_published": false,
+  "website_privacy_policy_modified": false,
+  "raw_access_logs_included_in_repository": false,
+  "next_requirements": [
+    "confirm_actual_hosting_product_in_cafe24_management",
+    "inspect_latest_json_request_log_fields_locally",
+    "confirm_provider_and_operator_retention_and_actual_usage"
+  ]
+}
