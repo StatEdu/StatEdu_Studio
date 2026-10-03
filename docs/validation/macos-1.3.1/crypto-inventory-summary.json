@@ -157,7 +157,9 @@
       }
     ],
     "rsa_default_bits": 2048,
-    "rsa_maximum_in_shipped_build_verified": false
+    "rsa_maximum_in_shipped_build_verified": false,
+    "public_rsa_boundary_observed_bits": 16384,
+    "public_rsa_boundary_evidence_file": "docs/validation/macos-1.3.1/crypto-rsa-boundary-summary.json"
   },
   "code_equivalence": [
     {

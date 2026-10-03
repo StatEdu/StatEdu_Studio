@@ -16,6 +16,8 @@ App Store Connect에는 각 언어의 이름·부제·설명·키워드를 별�
 
 신고인의 주소 정정을 반영해 로컬 `output/pdf`의 영문 준비 자료 3페이지와 프랑스어 공식 양식 작성안 4페이지를 만들고 전체 페이지를 렌더링해 검수했습니다. 개인 주소가 포함된 파일은 GitHub에 올리지 않습니다. 작성안은 공식 XFA 양식·서명본·ANSSI 승인서를 대신하지 않습니다. 공식 양식의 작성·검수, 신고 자격과 적용 절차 확인, 서명·신고·승인 확보가 남아 있습니다. 근거: [ANSSI 공식 절차](https://cyber.gouv.fr/reglementation/reglementation-identite-confiance-numerique/controles-reglementaires-cryptographie/controle-moyen-de-cryptologie/).
 
+[RSA 경계 추가 확인](../../../docs/validation/macos-1.3.1/crypto-rsa-boundary-summary.json)은 합성 공개 모듈러스와 `RSA_NO_PADDING`을 사용했습니다. 두 native 공개 연산은 16,384비트까지 실행됐고 16,385비트에서는 `modulus too large`로 거부됐습니다. 이 검사는 개인 키 생성·실제 서명 검증이나 모든 RSA API의 최대값 인증이 아닙니다. 공식 양식의 알려진 신고인·제품 항목 21개를 개인 XML/JSON으로 준비해 읽기 검증했으나 공식 XFA 양식에 입력·저장한 상태는 아닙니다. 일반 브라우저 대신 데스크톱 Acrobat/Reader로 양식을 검증해야 합니다. 근거: [Adobe XFA 안내](https://experienceleague.adobe.com/en/docs/experience-manager-65/content/forms/troubleshooting/xfa-based-forms-in-chrome-firefox-ie-internet-explorter-safari-edge).
+
 개인정보 수집 응답도 아직 게시하지 않았습니다. 업데이트 요청의 서버 로그 보관 여부는 운영자가 모른다고 답해 호스팅 설정 확인이 필요합니다. [응답 준비 자료](privacy-responses-draft.txt)와 [macOS 방침 보완 초안](privacy-macos-addendum.txt)을 준비했으며 웹사이트에는 게시하지 않았습니다. 서버 로그를 확인해 실제 수집·이용 목적과 일치하는 응답을 확정해야 합니다. 근거: [Apple 개인정보 응답 기준](https://developer.apple.com/app-store/app-privacy-details/).
 
 8개 언어의 실제 앱 안내서 화면을 1280×800으로 캡처해 각 언어의 스토어 스크린샷으로 저장했습니다. 페이지 재접속 후 각 언어에 해당 파일이 표시되는 것도 확인했습니다. 지원 언어에서 영어 화면을 공통으로 재사용하지 않습니다.

@@ -1,0 +1,89 @@
+{
+  "version": "1.3.1",
+  "build_version": "2",
+  "component": "R openssl 2.4.2 / OpenSSL 3.5.4",
+  "probe_variant": "prepared runtime with executable code-section hash matching the submitted build-2 openssl.so",
+  "method": "synthetic public modulus and exponent; RSA_NO_PADDING public operations; no private key generation",
+  "public_operation_boundary_observed_bits": 16384,
+  "checks": [
+    {
+      "modulus_bits": 2048,
+      "operation": "RSA_public_encrypt",
+      "returned_bytes": 256,
+      "success": true,
+      "errors": []
+    },
+    {
+      "modulus_bits": 2048,
+      "operation": "RSA_public_decrypt",
+      "returned_bytes": 256,
+      "success": true,
+      "errors": []
+    },
+    {
+      "modulus_bits": 4096,
+      "operation": "RSA_public_encrypt",
+      "returned_bytes": 512,
+      "success": true,
+      "errors": []
+    },
+    {
+      "modulus_bits": 4096,
+      "operation": "RSA_public_decrypt",
+      "returned_bytes": 512,
+      "success": true,
+      "errors": []
+    },
+    {
+      "modulus_bits": 8192,
+      "operation": "RSA_public_encrypt",
+      "returned_bytes": 1024,
+      "success": true,
+      "errors": []
+    },
+    {
+      "modulus_bits": 8192,
+      "operation": "RSA_public_decrypt",
+      "returned_bytes": 1024,
+      "success": true,
+      "errors": []
+    },
+    {
+      "modulus_bits": 16384,
+      "operation": "RSA_public_encrypt",
+      "returned_bytes": 2048,
+      "success": true,
+      "errors": []
+    },
+    {
+      "modulus_bits": 16384,
+      "operation": "RSA_public_decrypt",
+      "returned_bytes": 2048,
+      "success": true,
+      "errors": []
+    },
+    {
+      "modulus_bits": 16385,
+      "operation": "RSA_public_encrypt",
+      "returned_bytes": -1,
+      "success": false,
+      "errors": [
+        "error:02000069:rsa routines::modulus too large"
+      ]
+    },
+    {
+      "modulus_bits": 16385,
+      "operation": "RSA_public_decrypt",
+      "returned_bytes": -1,
+      "success": false,
+      "errors": [
+        "error:02000069:rsa routines::modulus too large"
+      ]
+    }
+  ],
+  "private_operations_and_key_generation_maximum_certified": false,
+  "synthetic_parameters_are_valid_generated_rsa_keypair": false,
+  "generated_private_keys_or_ciphertext_in_evidence": false,
+  "maximum_for_all_rsa_apis_asserted": false,
+  "source": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.5.4/crypto/rsa/rsa_ossl.c"
+}
