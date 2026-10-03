@@ -56,6 +56,8 @@ PDF는 내장 Electron에서 생성한 4페이지를 이미지로 렌더링해 �
 
 기존 언어 수정 Developer ID 빌드의 Apple 앱 공증 요청 `0a0da5d8-4016-44b0-b83b-87c28dca19c0`과 DMG 요청 `07146075-fa51-48f7-a7ba-e1d23bba7d04` 모두 **Accepted**입니다. 앱·DMG 티켓 첨부·검증과 앱 Gatekeeper 검사도 통과했습니다. 이 공증은 당시 스테이지의 산출물에 한정하며, 아래 MAS 수정 패키지나 이후 새 소스 빌드의 공증을 의미하지 않습니다. 이전 `output/macos`의 서명 없는 DMG와 인증서 기반 빌드를 구분합니다.
 
+시작 오류 수정이 포함된 최신 웹 배포용 Developer ID 빌드도 엄격한 앱 서명과 [실제 GUI·6개 출력·재실행 검사](validation/macos-1.3.1/release-gui-summary.json)를 통과했습니다. 새 앱 공증 요청 `91a19d11-457a-4d0e-adad-d438131402c6`은 현재 **In Progress**입니다. 승인이 나면 빌드 도구가 앱 티켓 첨부와 DMG·ZIP 생성, DMG 별도 공증·검증을 이어서 수행합니다. 이 최신 산출물은 아직 일반 배포 완료로 표시하지 않습니다.
+
 Mac App Store용 Studio 전용 App ID·배포 프로필을 생성하고 앱·설치 인증서로 정식 **1.3.1 (빌드 1)** arm64 패키지를 서명했습니다. 엄격한 앱 서명과 설치 패키지 서명은 통과했습니다. 결과는 [패키지 검사 요약](validation/macos-1.3.1/mas-package-summary.json)에 기록했습니다. 최신 `.pkg` SHA-256은 `c9999cc1d3afa890d8902ce8752407512d0192a530459e01e80e3f7a2045a942`입니다.
 
 같은 소스의 로컬 Developer ID 서명 MAS 시험본에서 실제 App Sandbox·내장 R·8개 안내서·상관/Kaplan–Meier/Cox·HTML/PDF/XLSX/DOCX/HWPX/프로젝트·재시작 복원·R 종료가 통과했습니다. [MAS GUI 요약](validation/macos-1.3.1/mas-gui-summary.json)은 자동 선택창 응답을 사용했고, [실제 외부 파일 검사](validation/macos-1.3.1/mas-native-summary.json)는 사용자의 실제 macOS 열기·저장 조작과 재실행 후 두 파일의 권한 복원을 확인했습니다. Store 배포 서명 패키지 자체의 Apple 처리·TestFlight 실행은 아직 미검증입니다.
