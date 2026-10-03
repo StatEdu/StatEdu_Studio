@@ -30,7 +30,7 @@ PDF는 내장 Electron에서 생성한 4페이지를 이미지로 렌더링해 �
 
 [실제 GUI 검사 요약](validation/macos-1.3.1/gui-summary.json)과 [네이티브 검사 요약](validation/macos-1.3.1/native-summary.json)을 함께 보관합니다.
 
-맥 전용 Python 검사 45개와 JavaScript 8개 검증 스크립트가 통과했습니다. 합성 파일·모의 선택창 검사는 실제 Mac 실행·선택창 검사와 구분했습니다. [서명된 앱 GUI 재검사](validation/macos-1.3.1/signed-gui-summary.json)와 [초기 언어·설정 보존 검사](validation/macos-1.3.1/language-summary.json)를 추가했습니다.
+맥 전용 Python 검사 50개와 JavaScript 8개 검증 스크립트가 통과했습니다. Python 검사는 첫 스토어 업로드 거부의 패키지 회귀 검사 5개를 포함합니다. 합성 파일·모의 선택창 검사는 실제 Mac 실행·선택창 검사와 구분했습니다. [서명된 앱 GUI 재검사](validation/macos-1.3.1/signed-gui-summary.json)와 [초기 언어·설정 보존 검사](validation/macos-1.3.1/language-summary.json)를 추가했습니다.
 
 ## 발견한 문제와 수정
 
@@ -47,6 +47,7 @@ PDF는 내장 Electron에서 생성한 4페이지를 이미지로 렌더링해 �
 - 앱 시작 도중 창을 닫으면 종료한 로컬 서버를 나중에 열려는 `ERR_FAILED (-2)` 경고가 발생했습니다. 종료 상태와 창의 유효성을 확인해 URL 로드와 경고창 생성을 중단하도록 수정했습니다. 실제 시작 오류는 계속 표시하며 종료 중 성공·실패와 실제 실패의 회귀 검사를 추가했습니다.
 - MAS에서 Word 저장 중 기존 OpenMP 17의 공유 메모리·임시 파일 등록이 실패해 R이 SIGABRT로 종료됐습니다. 격리된 MAS 런타임에 공식 CRAN OpenMP 18.1.8 arm64 라이브러리를 해시 검증해 적용하고 재서명했습니다. 공식 R 4.5.3 및 전체 251개 R 패키지 버전은 유지합니다.
 - MAS의 기본 HTML 데이터 업로드는 재실행용 파일 권한을 저장하지 않았습니다. 이 입력을 기존 R→macOS 선택창 브리지로 연결하고 security-scoped bookmark를 개인 컨테이너에 보관해 다음 R 실행 전에 복원합니다. 실제 사용자가 CSV 열기와 새 프로젝트 저장을 수행한 뒤 재실행 검사를 통과했습니다.
+- 첫 Transporter 제출은 103건의 패키지 검증 오류로 거부됐습니다. 내장 R의 `.dSYM` 디버그 번들 99개에서 Apple 식별자 오류 100건(90278·90277), R.framework 실행 파일 정보에서 2건(90260), 512pt @2x 아이콘 누락에서 1건(90236)이 발생했습니다. MAS 런타임에서 디버그 파일을 제외하고, 버전 디렉터리의 R을 일반 Mach-O 파일로 배치해 `CFBundleExecutable=R`과 세 내부 라이브러리 참조를 보정했습니다. 기존 공식 1254픽셀 로고를 MAS 아이콘 원본으로 사용합니다. 생성된 ICNS에서 1024×1024 이미지를 직접 추출해 확인했습니다. 공개 버전은 1.3.1, 내부 빌드는 2입니다. 원본 인증 헤더 없이 [거부 원인 요약](validation/macos-1.3.1/mas-upload-rejection-summary.json)을 보관합니다.
 
 1.3.1의 기존 동작에서는 앱만 다시 시작하면 결과 모음을 복원하지만, 프로젝트를 열면 이전 분석·결과 모음을 초기화합니다. 프로젝트 파일은 데이터·설정을 복원하며 결과 모음 파일과 별도입니다. 이 동작을 변경하지 않습니다.
 
@@ -62,11 +63,11 @@ DMG 제출 직전 일시적으로 Keychain 프로필을 찾지 못해 작업이 
 
 [읽기 전용 DMG 실행 검사](validation/macos-1.3.1/release-dmg-language-summary.json)는 앱 초기 한국어와 프랑스어 선택·재실행·안내서 표시를 확인했습니다. 현재 Mac에서의 공증·실행 성공과 깨끗한 다른 Mac 검증은 구분합니다.
 
-Mac App Store용 Studio 전용 App ID·배포 프로필을 생성하고 앱·설치 인증서로 정식 **1.3.1 (빌드 1)** arm64 패키지를 서명했습니다. 엄격한 앱 서명과 설치 패키지 서명은 통과했습니다. 결과는 [패키지 검사 요약](validation/macos-1.3.1/mas-package-summary.json)에 기록했습니다. 최신 `.pkg` SHA-256은 `c9999cc1d3afa890d8902ce8752407512d0192a530459e01e80e3f7a2045a942`입니다.
+Mac App Store용 Studio 전용 App ID·배포 프로필과 앱·설치 인증서로 정식 **1.3.1 (빌드 2)** arm64 패키지를 서명했습니다. 엄격한 앱 서명과 설치 패키지 서명이 통과했습니다. 실제 서명된 설치 패키지도 풀어서 소스 파일 617개, 디버그 번들 없음, Retina 아이콘과 R 실행 파일 정보, Mach-O 154개의 내부 참조·아키텍처를 검사했습니다. 결과는 [패키지 검사 요약](validation/macos-1.3.1/mas-package-summary.json)에 기록했습니다. 최신 파일은 `output/macos-store/StatEdu_Studio_MAS_1.3.1_build2_arm64.pkg`, SHA-256은 `3c509fb551de089e6dafb64d0e8ce9f45944bbb09a610c9fa67d1858e60febad`입니다. 거부된 빌드 1 파일은 `output/macos-store/failed-build1`에 구분해 보관합니다.
 
-같은 소스의 로컬 Developer ID 서명 MAS 시험본에서 실제 App Sandbox·내장 R·8개 안내서·상관/Kaplan–Meier/Cox·HTML/PDF/XLSX/DOCX/HWPX/프로젝트·재시작 복원·R 종료가 통과했습니다. [MAS GUI 요약](validation/macos-1.3.1/mas-gui-summary.json)은 자동 선택창 응답을 사용했고, [실제 외부 파일 검사](validation/macos-1.3.1/mas-native-summary.json)는 사용자의 실제 macOS 열기·저장 조작과 재실행 후 두 파일의 권한 복원을 확인했습니다. Store 배포 서명 패키지 자체의 Apple 처리·TestFlight 실행은 아직 미검증입니다.
+빌드 2와 같은 소스·런타임의 로컬 Developer ID 서명 MAS 시험본에서 실제 App Sandbox·내장 R·8개 안내서·상관/Kaplan–Meier/Cox·HTML/PDF/XLSX/DOCX/HWPX/프로젝트·재시작 복원·R 종료를 다시 검사해 통과했습니다. [MAS GUI 요약](validation/macos-1.3.1/mas-gui-summary.json)은 자동 선택창 응답을 사용했습니다. 이전 [실제 외부 파일 검사](validation/macos-1.3.1/mas-native-summary.json)는 사용자의 실제 macOS 열기·저장 조작과 재실행 후 두 파일의 권한 복원을 확인했습니다. 빌드 2에서 외부 선택창을 다시 수동 조작한 검사는 아닙니다. Store 배포 서명 패키지 자체의 Apple 처리·TestFlight 실행은 아직 미검증입니다.
 
-App Store Connect 앱 **6818689787**, 기본 영어(미국), macOS 버전 **1.3.1**을 등록했습니다. 8개 언어의 이름·부제·설명·키워드를 저장하고 다시 읽어 일치를 확인했습니다. [등록 확인 요약](validation/macos-1.3.1/app-store-metadata-summary.json)과 [등록·빌드 안내](../packaging/macos/app-store/README_KO.md)를 참고하십시오. Transporter 1.4.5를 설치하고 개발자 계정 로그인·제출 패키지 추가를 확인했습니다. 제출 빌드에는 `CFBundleIconFile=icon.icns`와 실제 StatEdu 아이콘이 포함됩니다. 현재 빌드 업로드 완료·Apple 처리·심사 제출·스토어 출시는 아직 확인하지 않았습니다. 지원·개인정보 URL과 개인정보 응답, 가격·배포 지역, 연령 등급 및 심사 연락처도 남아 있습니다.
+App Store Connect 앱 **6818689787**, 기본 영어(미국), macOS 버전 **1.3.1**을 등록했습니다. 8개 언어의 이름·부제·설명·키워드를 저장하고 다시 읽어 일치를 확인했습니다. [등록 확인 요약](validation/macos-1.3.1/app-store-metadata-summary.json)과 [등록·빌드 안내](../packaging/macos/app-store/README_KO.md)를 참고하십시오. Transporter 1.4.5에서 빌드 1 전송을 시도했으나 위 검증 오류로 실패했습니다. 서명된 앱에 아이콘 파일이 있다는 검사만으로 App Store 필수 해상도 충족을 확인할 수 없었습니다. 이를 실제 ICNS 검사로 보완한 빌드 2를 준비했습니다. 재전송 성공·Apple 처리·심사 제출·스토어 출시는 아직 확인하지 않았습니다. 지원·개인정보 URL과 개인정보 응답, 가격·배포 지역, 연령 등급 및 심사 연락처도 남아 있습니다.
 
 8개 언어의 실제 안내서 화면을 1280×800 스크린샷으로 저장하고 스토어 초안의 각 언어에 업로드했습니다. 페이지를 다시 열어 모든 언어에서 해당 파일의 표시를 확인했습니다. [스크린샷 등록 확인](validation/macos-1.3.1/app-store-screenshot-summary.json)은 공개 스토어 게시를 의미하지 않습니다.
 

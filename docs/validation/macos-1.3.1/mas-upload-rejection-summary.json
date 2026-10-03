@@ -1,0 +1,44 @@
+{
+  "version": "1.3.1",
+  "build_version": "1",
+  "upload_status": "validation_failed",
+  "validation_issue_count": 103,
+  "error_counts": {
+    "90236": 1,
+    "90260": 2,
+    "90277": 1,
+    "90278": 99
+  },
+  "causes": [
+    {
+      "cause": "Bundled R debug symbol bundles",
+      "issues": 100,
+      "codes": [
+        "90278",
+        "90277"
+      ],
+      "debug_bundle_count": 99,
+      "fix": "Exclude dSYM bundles from isolated MAS runtime; keep application libraries and R package versions"
+    },
+    {
+      "cause": "R framework executable metadata missing",
+      "issues": 2,
+      "codes": [
+        "90260"
+      ],
+      "fix": "Set CFBundleExecutable=R for framework and its Current version; verify existing R Mach-O alias"
+    },
+    {
+      "cause": "Missing required Retina icon",
+      "issues": 1,
+      "codes": [
+        "90236"
+      ],
+      "fix": "Use existing 1254 pixel official master for MAS icon; require ic10 (512pt at 2x) in built ICNS"
+    }
+  ],
+  "authentication_error": false,
+  "build_processed": false,
+  "review_submitted": false,
+  "raw_log_included": false
+}

@@ -60,6 +60,7 @@ def prepare(destination):
     for name in ("release.json", "mas.json", "mas-local-sign.cjs", "release-sign.cjs", "bundle-notices.cjs", "runtime-packages.lock.csv", "build/entitlements.mac.plist", "build/entitlements.mas.plist", "build/entitlements.mas.inherit.plist"):
         shutil.copy2(electron / name, destination / name)
     shutil.copy2(electron / "build/icon.png", destination / "build/icon.png")
+    shutil.copy2(electron / "build/icon-mas.png", destination / "build/icon-mas.png")
     # Only application source/assets: do not ship personal data, logs or evidence.
     files = subprocess.check_output(
         ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"], cwd=ROOT

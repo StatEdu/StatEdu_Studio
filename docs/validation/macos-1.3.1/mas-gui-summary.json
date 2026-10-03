@@ -17,27 +17,29 @@
     "studio"
   ],
   "status": "passed",
-  "readyMs": 15499,
+  "readyMs": 19453,
   "records": [
     {
       "id": "correlation_results",
       "tables": 4,
       "plots": 2,
-      "elapsedMs": 1793
+      "elapsedMs": 1783
     },
     {
       "id": "survival_km_results",
       "tables": 12,
       "plots": 4,
-      "elapsedMs": 6092
+      "elapsedMs": 5974
     },
     {
       "id": "survival_cox_results",
       "tables": 14,
       "plots": 3,
-      "elapsedMs": 3148
+      "elapsedMs": 3152
     }
   ],
   "errors": [],
-  "shutdownConfirmed": true
+  "shutdownConfirmed": true,
+  "build_version": "2",
+  "scope": "Same MAS source/runtime under local Developer ID signature and actual App Sandbox; App Store processing and TestFlight execution not yet verified"
 }

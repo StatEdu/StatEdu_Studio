@@ -11,6 +11,7 @@ import subprocess
 from prepare_macos import assert_macos_destination, check_runtime, verify_stage
 from verify_macos_app import check_bundle
 from prepare_macos_store_runtime import prepare as prepare_store_runtime
+from prepare_macos_store_bundle import prepare_stage, validate_bundle
 
 
 def valid_identity(team, prefixes, policy='codesigning'):
@@ -77,6 +78,7 @@ def build(stage, mode, profile_path, team, check_only=False):
         return {'status':'passed','mode':mode,'identity':identity_name,'profile':profile_info,
                 'installer_identity':installer[1] if installer else None}
     openmp=prepare_store_runtime(stage)
+    bundle_preparation=prepare_stage(stage)
     check_runtime(stage)
     base = package['build']
     override = json.loads((stage/'mas.json').read_text())
@@ -104,6 +106,7 @@ def build(stage, mode, profile_path, team, check_only=False):
     if mode == 'sandbox':
         subprocess.run(['node',str(stage/'mas-local-sign.cjs'),str(bundle),str(stage)],cwd=stage,env=env,check=True)
     check_bundle(stage,bundle)
+    store_bundle_validation=validate_bundle(bundle)
     subprocess.run(['codesign','--verify','--deep','--strict',str(bundle)],check=True)
     effective_entitlements=plistlib.loads(subprocess.check_output(['codesign','-d','--entitlements',':-',str(bundle)],stderr=subprocess.DEVNULL))
     if effective_entitlements.get('com.apple.security.app-sandbox') is not True:
@@ -113,6 +116,7 @@ def build(stage, mode, profile_path, team, check_only=False):
     result={'status':'built','mode':mode,'version':'1.3.1','app_id':bundle_id,'identity':identity_name,
             'profile':profile_info,'sandbox_entitlements':effective_entitlements,
             'openmp_runtime':openmp,'strict_signature_verified':True,'gui_verified':False,'app_store_uploaded':False,'app':str(bundle)}
+    result.update(bundle_preparation=bundle_preparation,store_bundle_validation=store_bundle_validation)
     if mode=='distribution':
         pkgs=list(bundle.parent.glob('*.pkg'))
         if len(pkgs)!=1: raise ValueError('Expected one signed MAS installer package')
