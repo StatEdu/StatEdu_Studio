@@ -56,7 +56,9 @@ PDF는 내장 Electron에서 생성한 4페이지를 이미지로 렌더링해 �
 
 기존 언어 수정 Developer ID 빌드의 Apple 앱 공증 요청 `0a0da5d8-4016-44b0-b83b-87c28dca19c0`과 DMG 요청 `07146075-fa51-48f7-a7ba-e1d23bba7d04` 모두 **Accepted**입니다. 앱·DMG 티켓 첨부·검증과 앱 Gatekeeper 검사도 통과했습니다. 이 공증은 당시 스테이지의 산출물에 한정하며, 아래 MAS 수정 패키지나 이후 새 소스 빌드의 공증을 의미하지 않습니다. 이전 `output/macos`의 서명 없는 DMG와 인증서 기반 빌드를 구분합니다.
 
-시작 오류 수정이 포함된 최신 웹 배포용 Developer ID 빌드도 엄격한 앱 서명과 [실제 GUI·6개 출력·재실행 검사](validation/macos-1.3.1/release-gui-summary.json)를 통과했습니다. 새 앱 공증 요청 `91a19d11-457a-4d0e-adad-d438131402c6`은 현재 **In Progress**입니다. 승인이 나면 빌드 도구가 앱 티켓 첨부와 DMG·ZIP 생성, DMG 별도 공증·검증을 이어서 수행합니다. 이 최신 산출물은 아직 일반 배포 완료로 표시하지 않습니다.
+시작 오류 수정이 포함된 최신 웹 배포용 Developer ID 빌드도 엄격한 앱 서명과 [실제 GUI·6개 출력·재실행 검사](validation/macos-1.3.1/release-gui-summary.json)를 통과했습니다. 새 앱 공증 요청 `91a19d11-457a-4d0e-adad-d438131402c6`은 **Accepted**이며 앱 티켓 검증과 Gatekeeper 실행 검사를 통과했습니다. 공증된 앱이 포함된 ZIP의 압축 무결성도 확인했습니다. ZIP SHA-256은 `734ce3ca17bed5586d45aa220f8766cf6a084567f2c12156f70c302189ec1fee`입니다.
+
+DMG 제출 직전 일시적으로 Keychain 프로필을 찾지 못해 작업이 멈췄으나, 같은 프로필로 다시 인증에 성공하고 기존 DMG를 제출했습니다. DMG 요청 `6bec7e60-85c3-487d-a60d-e27c2eee4171`은 현재 **In Progress**입니다. 승인 후 티켓 첨부·Gatekeeper 검증을 완료하는 작업이 대기 중입니다. [읽기 전용 DMG 실행 검사](validation/macos-1.3.1/release-dmg-language-summary.json)는 앱 초기 한국어와 프랑스어 선택·재실행·안내서 표시를 확인했습니다. DMG 전체의 공증 완료와 깨끗한 다른 Mac 검증은 구분합니다.
 
 Mac App Store용 Studio 전용 App ID·배포 프로필을 생성하고 앱·설치 인증서로 정식 **1.3.1 (빌드 1)** arm64 패키지를 서명했습니다. 엄격한 앱 서명과 설치 패키지 서명은 통과했습니다. 결과는 [패키지 검사 요약](validation/macos-1.3.1/mas-package-summary.json)에 기록했습니다. 최신 `.pkg` SHA-256은 `c9999cc1d3afa890d8902ce8752407512d0192a530459e01e80e3f7a2045a942`입니다.
 

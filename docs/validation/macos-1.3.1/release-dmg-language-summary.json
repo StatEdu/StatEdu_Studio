@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "preferredLanguages": [
+    "ko-KR"
+  ],
+  "firstInstallLanguage": "ko",
+  "persistedLanguage": "fr",
+  "guideLanguage": "fr",
+  "isolatedProfile": true,
+  "readOnlyDmg": true
+}
